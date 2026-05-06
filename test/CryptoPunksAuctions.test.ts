@@ -147,12 +147,12 @@ async function offerPunkV1ToAuctions(
   await punksAsSeller.write.offerPunkForSaleToAddress([punkId, priceWei, to])
 }
 
-async function placeStandingBid(
+async function placeOffer(
   ctx: Ctx,
-  bidder: any,
+  offerer: any,
   {
     standard = Standard.CRYPTOPUNKS,
-    bidWei = parseEther('1'),
+    amountWei = parseEther('1'),
     settlementWei = parseEther('0.05'),
     receiver = zeroAddress,
     traitFilters = [],
@@ -160,7 +160,7 @@ async function placeStandingBid(
     excludeIds = [],
   }: {
     standard?: number
-    bidWei?: bigint
+    amountWei?: bigint
     settlementWei?: bigint
     receiver?: `0x${string}`
     traitFilters?: Array<{ required: boolean; traitId: number }>
@@ -168,21 +168,21 @@ async function placeStandingBid(
     excludeIds?: number[]
   } = {},
 ) {
-  const auctionsAsBidder = await ctx.viem.getContractAt(
+  const auctionsAsOfferer = await ctx.viem.getContractAt(
     'CryptoPunksAuctions',
     ctx.auctions.address,
-    { client: { wallet: bidder } },
+    { client: { wallet: offerer } },
   )
-  await auctionsAsBidder.write.placeBid([
+  await auctionsAsOfferer.write.placeOffer([
     standard,
-    bidWei,
+    amountWei,
     settlementWei,
     receiver,
     traitFilters,
     includeIds,
     excludeIds,
-  ], { value: bidWei + settlementWei })
-  return ctx.auctions.read.lastStandingBidId() as Promise<bigint>
+  ], { value: amountWei + settlementWei })
+  return ctx.auctions.read.lastOfferId() as Promise<bigint>
 }
 
 describe('CryptoPunksAuctions', () => {
@@ -497,13 +497,13 @@ describe('CryptoPunksAuctions', () => {
     )
   })
 
-  describe('standing bids', () => {
-    it('lets bidders place, adjust, inspect, and cancel native ETH standing bids', async () => {
+  describe('offers', () => {
+    it('lets offerers place, adjust, inspect, and cancel native ETH offers', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, bidder1, other } = ctx
 
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: parseEther('0.1'),
         receiver: other.account.address,
         traitFilters: [{ required: true, traitId: 7 }],
@@ -511,61 +511,61 @@ describe('CryptoPunksAuctions', () => {
         excludeIds: [3],
       })
 
-      let bid = await auctions.read.standingBids([bidId])
-      assert.equal(bid[0], parseEther('1'))
-      assert.equal(bid[1], parseEther('0.1'))
-      assert.equal(bid[2].toLowerCase(), bidder1.account.address.toLowerCase())
-      assert.equal(bid[3].toLowerCase(), other.account.address.toLowerCase())
-      assert.equal(bid[4], Standard.CRYPTOPUNKS)
+      let offer = await auctions.read.offers([offerId])
+      assert.equal(offer[0], parseEther('1'))
+      assert.equal(offer[1], parseEther('0.1'))
+      assert.equal(offer[2].toLowerCase(), bidder1.account.address.toLowerCase())
+      assert.equal(offer[3].toLowerCase(), other.account.address.toLowerCase())
+      assert.equal(offer[4], Standard.CRYPTOPUNKS)
 
-      const filters = await auctions.read.getBidFilters([bidId])
+      const filters = await auctions.read.getOfferFilters([offerId])
       assert.equal(filters[0][0].required, true)
       assert.equal(filters[0][0].traitId, 7)
       assert.deepEqual(filters[1], [1, 2])
       assert.deepEqual(filters[2], [3])
 
-      const auctionsAsBidder = await ctx.viem.getContractAt(
+      const auctionsAsOfferer = await ctx.viem.getContractAt(
         'CryptoPunksAuctions',
         auctions.address,
         { client: { wallet: bidder1 } },
       )
-      await auctionsAsBidder.write.adjustBidPrice([bidId, parseEther('0.25'), true], {
+      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('0.25'), true], {
         value: parseEther('0.25'),
       })
-      await auctionsAsBidder.write.adjustBidSettlementPrice([bidId, parseEther('0.05'), true], {
+      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.05'), true], {
         value: parseEther('0.05'),
       })
-      await auctionsAsBidder.write.adjustBidPrice([bidId, parseEther('0.1'), false])
-      await auctionsAsBidder.write.adjustBidSettlementPrice([bidId, parseEther('0.02'), false])
+      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('0.1'), false])
+      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.02'), false])
 
-      bid = await auctions.read.standingBids([bidId])
-      assert.equal(bid[0], parseEther('1.15'))
-      assert.equal(bid[1], parseEther('0.13'))
+      offer = await auctions.read.offers([offerId])
+      assert.equal(offer[0], parseEther('1.15'))
+      assert.equal(offer[1], parseEther('0.13'))
 
       const publicClient = await ctx.viem.getPublicClient()
       const before = await publicClient.getBalance({ address: bidder1.account.address })
-      const hash = await auctionsAsBidder.write.cancelBid([bidId])
+      const hash = await auctionsAsOfferer.write.cancelOffer([offerId])
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
       const after = await publicClient.getBalance({ address: bidder1.account.address })
       const gas = receipt.gasUsed * receipt.effectiveGasPrice
       assert.equal(after - before + gas, parseEther('1.28'))
 
       await ctx.viem.assertions.revertWithCustomError(
-        auctionsAsBidder.write.cancelBid([bidId]),
+        auctionsAsOfferer.write.cancelOffer([offerId]),
         auctions,
-        'StandingBidNotActive',
+        'OfferNotActive',
       )
     })
 
-    it('accepts a canonical Punk bid through the original marketplace and refunds excess', async () => {
+    it('accepts a canonical Punk offer through the original marketplace and refunds excess', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punks, seller, bidder1, other, attacker } = ctx
 
       await assignPunk(ctx, seller, 700n)
       await offerPunkToAuctions(ctx, seller, 700n, parseEther('0.9'))
 
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: parseEther('0.2'),
         receiver: other.account.address,
       })
@@ -579,7 +579,7 @@ describe('CryptoPunksAuctions', () => {
         auctions.address,
         { client: { wallet: attacker } },
       )
-      const hash = await auctionsAsSettler.write.acceptBid([bidId, 700])
+      const hash = await auctionsAsSettler.write.acceptOffer([offerId, 700])
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
 
       assert.equal(
@@ -596,30 +596,30 @@ describe('CryptoPunksAuctions', () => {
       const gas = receipt.gasUsed * receipt.effectiveGasPrice
       assert.equal(settlerAfter - settlerBefore + gas, parseEther('0.2'))
 
-      const bid = await auctions.read.standingBids([bidId])
-      assert.equal(bid[2], zeroAddress)
+      const offer = await auctions.read.offers([offerId])
+      assert.equal(offer[2], zeroAddress)
     })
 
-    it('rejects immediate acceptance unless the Punk is listed to the auctions contract at or below bid max', async () => {
+    it('rejects immediate acceptance unless the Punk is listed to the auctions contract at or below the offer amount', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller, bidder1, other } = ctx
 
       await assignPunk(ctx, seller, 701n)
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: 0n,
       })
 
       await offerPunkToAuctions(ctx, seller, 701n, parseEther('0.9'), other.account.address)
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptBid([bidId, 701]),
+        auctions.write.acceptOffer([offerId, 701]),
         auctions,
         'ListingNotValid',
       )
 
       await offerPunkToAuctions(ctx, seller, 701n, parseEther('1.1'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptBid([bidId, 701]),
+        auctions.write.acceptOffer([offerId, 701]),
         auctions,
         'ListingPriceTooHigh',
       )
@@ -633,8 +633,8 @@ describe('CryptoPunksAuctions', () => {
       await traits.write.setTrait([801, 7, false])
       await traits.write.setTrait([802, 7, true])
 
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: 0n,
         traitFilters: [{ required: true, traitId: 7 }],
         includeIds: [800, 801, 802],
@@ -644,7 +644,7 @@ describe('CryptoPunksAuctions', () => {
       await assignPunk(ctx, seller, 799n)
       await offerPunkToAuctions(ctx, seller, 799n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptBid([bidId, 799]),
+        auctions.write.acceptOffer([offerId, 799]),
         auctions,
         'PunkNotIncluded',
       )
@@ -652,7 +652,7 @@ describe('CryptoPunksAuctions', () => {
       await assignPunk(ctx, seller, 802n)
       await offerPunkToAuctions(ctx, seller, 802n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptBid([bidId, 802]),
+        auctions.write.acceptOffer([offerId, 802]),
         auctions,
         'PunkExcluded',
       )
@@ -660,26 +660,26 @@ describe('CryptoPunksAuctions', () => {
       await assignPunk(ctx, seller, 801n)
       await offerPunkToAuctions(ctx, seller, 801n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptBid([bidId, 801]),
+        auctions.write.acceptOffer([offerId, 801]),
         auctions,
         'PunkTraitMismatch',
       )
 
       await assignPunk(ctx, seller, 800n)
       await offerPunkToAuctions(ctx, seller, 800n, parseEther('0.9'))
-      await auctions.write.acceptBid([bidId, 800])
+      await auctions.write.acceptOffer([offerId, 800])
     })
 
-    it('accepts a V1 Punk bid through the bug-aware marketplace path', async () => {
+    it('accepts a V1 Punk offer through the bug-aware marketplace path', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punksV1, seller, bidder1, attacker } = ctx
 
       await assignPunkV1(ctx, seller, 900n)
       await offerPunkV1ToAuctions(ctx, seller, 900n, parseEther('0.8'))
 
-      const bidId = await placeStandingBid(ctx, bidder1, {
+      const offerId = await placeOffer(ctx, bidder1, {
         standard: Standard.CRYPTOPUNKS_V1,
-        bidWei: parseEther('1'),
+        amountWei: parseEther('1'),
         settlementWei: parseEther('0.1'),
       })
 
@@ -692,7 +692,7 @@ describe('CryptoPunksAuctions', () => {
         auctions.address,
         { client: { wallet: attacker } },
       )
-      await auctionsAsSettler.write.acceptBid([bidId, 900])
+      await auctionsAsSettler.write.acceptOffer([offerId, 900])
 
       assert.equal(
         ((await punksV1.read.punkIndexToAddress([900n])) as string).toLowerCase(),
@@ -709,15 +709,15 @@ describe('CryptoPunksAuctions', () => {
       assert.equal(await punksV1.read.pendingWithdrawals([auctions.address]), 0n)
     })
 
-    it('initializes a 24h auction from a standing bid using the seller vault path', async () => {
+    it('initializes a 24h auction from an offer using the seller vault path', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, escrow, punks, seller, bidder1, other } = ctx
 
       await assignPunk(ctx, seller, 950n)
       await depositPunk(ctx, seller, 950n)
 
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: parseEther('0.05'),
         receiver: other.account.address,
         includeIds: [950],
@@ -730,7 +730,7 @@ describe('CryptoPunksAuctions', () => {
         auctions.address,
         { client: { wallet: seller } },
       )
-      await auctionsAsSeller.write.acceptBidToAuction([bidId, 950])
+      await auctionsAsSeller.write.acceptOfferToAuction([offerId, 950])
 
       assert.equal(
         await publicClient.getBalance({ address: bidder1.account.address }) - bidderBefore,
@@ -745,7 +745,7 @@ describe('CryptoPunksAuctions', () => {
       assert.equal(auction[4].toLowerCase(), bidder1.account.address.toLowerCase())
       assert.equal(auction[5], parseEther('1'))
       assert.equal(
-        ((await auctions.read.auctionReceivers([1n])) as string).toLowerCase(),
+        ((await auctions.read.winnerReceivers([1n])) as string).toLowerCase(),
         other.account.address.toLowerCase(),
       )
 
@@ -757,13 +757,13 @@ describe('CryptoPunksAuctions', () => {
       )
     })
 
-    it('requires vault custody when a standing bid is used to initialize an auction', async () => {
+    it('requires vault custody when an offer is used to initialize an auction', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller, bidder1 } = ctx
 
       await assignPunk(ctx, seller, 951n)
-      const bidId = await placeStandingBid(ctx, bidder1, {
-        bidWei: parseEther('1'),
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
         settlementWei: 0n,
       })
 
@@ -773,7 +773,7 @@ describe('CryptoPunksAuctions', () => {
         { client: { wallet: seller } },
       )
       await ctx.viem.assertions.revertWithCustomError(
-        auctionsAsSeller.write.acceptBidToAuction([bidId, 951]),
+        auctionsAsSeller.write.acceptOfferToAuction([offerId, 951]),
         auctions,
         'PunkNotInVault',
       )

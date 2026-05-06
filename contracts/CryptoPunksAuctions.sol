@@ -3,17 +3,15 @@ pragma solidity 0.8.34;
 
 import "./escrow/CryptoPunkEscrowManager.sol";
 import "./interfaces/ICryptoPunksAuctions.sol";
-import "./interfaces/ICryptoPunksTraits.sol";
-import "./lib/PushPullEscrow.sol";
+import "./interfaces/ICryptoPunksMarket.sol";
+import "./offers/Offers.sol";
 
 /// @title CryptoPunksAuctions
 /// @notice Zero-fee auction house for CryptoPunks.
-///         Standing bid subsystem inspired by MouseDev's CryptoPunksBids,
-///         concept by mousedev.eth and kilo.
 contract CryptoPunksAuctions is
     ICryptoPunksAuctions,
     CryptoPunkEscrowManager,
-    PushPullEscrow
+    Offers
 {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
@@ -23,23 +21,18 @@ contract CryptoPunksAuctions is
 
     uint256 public lastLotId;
     uint256 public lastAuctionId;
-    uint256 public lastStandingBidId;
 
     mapping(uint256 => Lot) public lots;
     mapping(uint256 => Auction) public auctions;
     mapping(uint256 => bool) public pendingDelivery;
-    mapping(uint256 => address) public auctionReceivers;
-    mapping(uint256 => StandingBid) public standingBids;
+    mapping(uint256 => address) public winnerReceivers;
 
     mapping(bytes32 => uint64) public sellerTokenVersion;
 
-    ICryptoPunksTraits public immutable TRAITS;
-
     constructor(address punks, address punksV1, address traits)
         CryptoPunkEscrowManager(punks, punksV1)
-    {
-        TRAITS = ICryptoPunksTraits(traits);
-    }
+        Offers(traits)
+    {}
 
     receive() external payable {
         if (!_isPunkReceiveSender(msg.sender)) revert();
@@ -143,7 +136,7 @@ contract CryptoPunksAuctions is
 
         auction.latestBidder = msg.sender;
         auction.latestBidWei = bidWei;
-        delete auctionReceivers[auctionId];
+        delete winnerReceivers[auctionId];
 
         _maybeExtend(auctionId, auction);
 
@@ -154,213 +147,50 @@ contract CryptoPunksAuctions is
         emit Bid(auctionId, msg.sender, bidWei);
     }
 
-    function currentMinBidWei(uint256 auctionId) external view returns (uint96) {
-        return _currentMinBidWei(auctions[auctionId].latestBidWei);
-    }
-
-    function placeBid(
-        TokenStandard standard,
-        uint96 bidWei,
-        uint96 settlementWei,
-        address receiver,
-        TraitFilter[] calldata traitFilters,
-        uint16[] calldata includeIds,
-        uint16[] calldata excludeIds
-    ) external payable returns (uint256 bidId) {
-        _requireSupportedPunkStandard(standard);
-        if (bidWei == 0) revert InvalidAmount();
-        if (traitFilters.length > 0 && address(TRAITS) == address(0)) revert TraitsUnavailable();
-        if (msg.value != uint256(bidWei) + uint256(settlementWei)) revert IncorrectPayment();
-
-        unchecked { bidId = ++lastStandingBidId; }
-
-        StandingBid storage storedBid = standingBids[bidId];
-        storedBid.bidWei = bidWei;
-        storedBid.settlementWei = settlementWei;
-        storedBid.bidder = msg.sender;
-        storedBid.receiver = receiver;
-        storedBid.standard = standard;
-
-        uint256 len = traitFilters.length;
-        for (uint256 i; i < len;) {
-            storedBid.traitFilters.push(traitFilters[i]);
-            unchecked { ++i; }
-        }
-
-        len = includeIds.length;
-        for (uint256 i; i < len;) {
-            storedBid.includeIds.push(includeIds[i]);
-            unchecked { ++i; }
-        }
-
-        len = excludeIds.length;
-        for (uint256 i; i < len;) {
-            storedBid.excludeIds.push(excludeIds[i]);
-            unchecked { ++i; }
-        }
-
-        emit StandingBidPlaced(
-            bidId,
-            standard,
-            msg.sender,
-            receiver,
-            bidWei,
-            settlementWei,
-            traitFilters,
-            includeIds,
-            excludeIds
-        );
-    }
-
-    function cancelBid(uint256 bidId) external nonReentrant {
-        StandingBid memory standingBid = _activeStandingBid(bidId);
-        if (standingBid.bidder != msg.sender) revert NotBidder();
-
-        delete standingBids[bidId];
-        _pushOrCredit(msg.sender, uint256(standingBid.bidWei) + uint256(standingBid.settlementWei));
-
-        emit StandingBidRemoved(bidId);
-    }
-
-    function adjustBidPrice(uint256 bidId, uint96 weiToAdjust, bool increase)
-        external
-        payable
-        nonReentrant
-    {
-        StandingBid storage standingBid = standingBids[bidId];
-        if (standingBid.bidder == address(0)) revert StandingBidNotActive();
-        if (standingBid.bidder != msg.sender) revert NotBidder();
-
-        uint96 oldBidWei = standingBid.bidWei;
-        if (increase) {
-            if (msg.value != weiToAdjust) revert IncorrectPayment();
-            standingBid.bidWei = oldBidWei + weiToAdjust;
-        } else {
-            if (msg.value != 0) revert IncorrectPayment();
-            if (weiToAdjust > oldBidWei) revert NegativeAdjustmentHigherThanCurrentBid();
-            standingBid.bidWei = oldBidWei - weiToAdjust;
-            _pushOrCredit(msg.sender, weiToAdjust);
-        }
-
-        emit StandingBidAdjusted(bidId, standingBid.bidWei);
-    }
-
-    function adjustBidSettlementPrice(uint256 bidId, uint96 weiToAdjust, bool increase)
-        external
-        payable
-        nonReentrant
-    {
-        StandingBid storage standingBid = standingBids[bidId];
-        if (standingBid.bidder == address(0)) revert StandingBidNotActive();
-        if (standingBid.bidder != msg.sender) revert NotBidder();
-
-        uint96 oldSettlementWei = standingBid.settlementWei;
-        if (increase) {
-            if (msg.value != weiToAdjust) revert IncorrectPayment();
-            standingBid.settlementWei = oldSettlementWei + weiToAdjust;
-        } else {
-            if (msg.value != 0) revert IncorrectPayment();
-            if (weiToAdjust > oldSettlementWei) revert NegativeAdjustmentHigherThanCurrentBid();
-            standingBid.settlementWei = oldSettlementWei - weiToAdjust;
-            _pushOrCredit(msg.sender, weiToAdjust);
-        }
-
-        emit StandingBidSettlementAdjusted(bidId, standingBid.settlementWei);
-    }
-
-    function acceptBid(uint256 bidId, uint16 punkId) external nonReentrant {
-        StandingBid memory standingBid = _activeStandingBid(bidId);
-        _requireBidMatchesPunk(standingBid, punkId);
-
-        ICryptoPunksMarket market = _marketForStandard(standingBid.standard);
-        (address seller, uint256 listingWei) = _requireAcceptableListing(
-            market, punkId, standingBid.bidWei
-        );
-
-        delete standingBids[bidId];
-
-        address recipient = _standingBidRecipient(standingBid);
-        if (standingBid.standard == TokenStandard.CRYPTOPUNKS) {
-            PUNKS.buyPunk{value: listingWei}(punkId);
-            PUNKS.transferPunk(recipient, punkId);
-        } else {
-            PUNKS_V1.buyPunk{value: listingWei}(punkId);
-            PUNKS_V1.withdraw();
-            PUNKS_V1.transferPunk(recipient, punkId);
-            _pushOrCredit(seller, listingWei);
-        }
-
-        _pushOrCredit(msg.sender, standingBid.settlementWei);
-
-        uint256 excess = uint256(standingBid.bidWei) - listingWei;
-        if (excess > 0) _pushOrCredit(standingBid.bidder, excess);
-
-        emit StandingBidAccepted(
-            bidId,
-            standingBid.standard,
-            punkId,
-            seller,
-            standingBid.bidder,
-            recipient,
-            listingWei,
-            standingBid.settlementWei
-        );
-    }
-
-    function acceptBidToAuction(uint256 bidId, uint16 punkId)
+    function acceptOfferToAuction(uint256 offerId, uint16 punkId)
         external
         nonReentrant
         returns (uint256 auctionId)
     {
-        StandingBid memory standingBid = _activeStandingBid(bidId);
-        _requireBidMatchesPunk(standingBid, punkId);
+        Offer memory offer = _consumeOfferForAuction(offerId, punkId);
 
-        address tokenContract = _tokenContractForStandard(standingBid.standard);
-        _maybeRequirePunkInVault(standingBid.standard, msg.sender, punkId);
+        address tokenContract = _offerTokenContract(offer.standard);
+        _maybeRequirePunkInVault(offer.standard, msg.sender, punkId);
 
-        delete standingBids[bidId];
-        _pushOrCredit(standingBid.bidder, standingBid.settlementWei);
+        _refundOfferSettlement(offer);
 
         bytes32 tokenKey = _tokenKey(msg.sender, tokenContract, punkId);
         unchecked { ++sellerTokenVersion[tokenKey]; }
 
+        address recipient = _offerRecipient(offer);
         auctionId = _createAuction(
             Lot({
                 seller: msg.sender,
                 tokenContract: tokenContract,
                 tokenId: punkId,
-                standard: standingBid.standard,
-                reserveWei: standingBid.bidWei,
+                standard: offer.standard,
+                reserveWei: offer.amountWei,
                 expiresAt: uint40(block.timestamp),
                 version: 0
             }),
-            standingBid.bidder,
-            standingBid.bidWei,
-            _standingBidRecipient(standingBid)
+            offer.offerer,
+            offer.amountWei,
+            recipient
         );
 
-        emit StandingBidAuctionInitialised(
-            bidId,
+        emit OfferAuctionInitialised(
+            offerId,
             auctionId,
             punkId,
             msg.sender,
-            standingBid.bidder,
-            _standingBidRecipient(standingBid),
-            standingBid.bidWei
+            offer.offerer,
+            recipient,
+            offer.amountWei
         );
     }
 
-    function getBidFilters(uint256 bidId)
-        external
-        view
-        returns (
-            TraitFilter[] memory traitFilters,
-            uint16[] memory includeIds,
-            uint16[] memory excludeIds
-        )
-    {
-        StandingBid storage standingBid = standingBids[bidId];
-        return (standingBid.traitFilters, standingBid.includeIds, standingBid.excludeIds);
+    function currentMinBidWei(uint256 auctionId) external view returns (uint96) {
+        return _currentMinBidWei(auctions[auctionId].latestBidWei);
     }
 
     function auctionActive(uint256 auctionId) external view returns (bool) {
@@ -426,7 +256,7 @@ contract CryptoPunksAuctions is
 
     function _createAuction(
         Lot memory lot,
-        address bidder,
+        address bidder_,
         uint96 bidWei,
         address receiver
     ) internal returns (uint256 auctionId) {
@@ -439,13 +269,13 @@ contract CryptoPunksAuctions is
             tokenContract: lot.tokenContract,
             tokenId: lot.tokenId,
             standard: lot.standard,
-            latestBidder: bidder,
+            latestBidder: bidder_,
             latestBidWei: bidWei,
             endTimestamp: endTimestamp,
             settled: false
         });
-        if (receiver != address(0) && receiver != bidder) {
-            auctionReceivers[auctionId] = receiver;
+        if (receiver != address(0) && receiver != bidder_) {
+            winnerReceivers[auctionId] = receiver;
         }
 
         _pullPunk(lot.standard, lot.tokenContract, lot.seller, lot.tokenId);
@@ -458,7 +288,7 @@ contract CryptoPunksAuctions is
             lot.standard,
             endTimestamp
         );
-        emit Bid(auctionId, bidder, bidWei);
+        emit Bid(auctionId, bidder_, bidWei);
     }
 
     function _clearStaleLot(uint256 id) internal {
@@ -520,78 +350,50 @@ contract CryptoPunksAuctions is
         }
     }
 
-    function _activeStandingBid(uint256 bidId) internal view returns (StandingBid memory standingBid) {
-        standingBid = standingBids[bidId];
-        if (standingBid.bidder == address(0)) revert StandingBidNotActive();
-    }
-
-    function _requireBidMatchesPunk(StandingBid memory standingBid, uint16 punkId) internal view {
-        uint256 len = standingBid.includeIds.length;
-        if (len > 0) {
-            bool included;
-            for (uint256 i; i < len;) {
-                if (standingBid.includeIds[i] == punkId) {
-                    included = true;
-                    break;
-                }
-                unchecked { ++i; }
-            }
-            if (!included) revert PunkNotIncluded();
-        }
-
-        len = standingBid.excludeIds.length;
-        for (uint256 i; i < len;) {
-            if (standingBid.excludeIds[i] == punkId) revert PunkExcluded();
-            unchecked { ++i; }
-        }
-
-        len = standingBid.traitFilters.length;
-        if (len == 0) return;
-        if (address(TRAITS) == address(0)) revert TraitsUnavailable();
-
-        for (uint256 i; i < len;) {
-            TraitFilter memory filter = standingBid.traitFilters[i];
-            bool hasTrait = TRAITS.hasTrait(punkId, filter.traitId);
-            if (filter.required != hasTrait) revert PunkTraitMismatch();
-            unchecked { ++i; }
-        }
-    }
-
-    function _requireAcceptableListing(
-        ICryptoPunksMarket market,
-        uint16 punkId,
-        uint96 bidWei
-    ) internal view returns (address seller, uint256 listingWei) {
-        (bool isForSale,, address listingSeller, uint256 minValue, address onlySellTo) =
-            market.punksOfferedForSale(punkId);
-
-        if (!isForSale || listingSeller == address(0) || onlySellTo != address(this)) {
-            revert ListingNotValid();
-        }
-        if (market.punkIndexToAddress(punkId) != listingSeller) revert ListingNotValid();
-        if (minValue > bidWei) revert ListingPriceTooHigh();
-
-        return (listingSeller, minValue);
-    }
-
-    function _marketForStandard(TokenStandard standard) internal view returns (ICryptoPunksMarket) {
+    function _offerMarket(TokenStandard standard)
+        internal
+        view
+        override
+        returns (ICryptoPunksMarket)
+    {
         if (standard == TokenStandard.CRYPTOPUNKS) return PUNKS;
         if (standard == TokenStandard.CRYPTOPUNKS_V1) return PUNKS_V1;
         revert UnsupportedStandard();
     }
 
-    function _tokenContractForStandard(TokenStandard standard) internal view returns (address) {
+    function _offerTokenContract(TokenStandard standard)
+        internal
+        view
+        override
+        returns (address)
+    {
         if (standard == TokenStandard.CRYPTOPUNKS) return address(PUNKS);
         if (standard == TokenStandard.CRYPTOPUNKS_V1) return address(PUNKS_V1);
         revert UnsupportedStandard();
     }
 
-    function _standingBidRecipient(StandingBid memory standingBid) internal pure returns (address) {
-        return standingBid.receiver == address(0) ? standingBid.bidder : standingBid.receiver;
+    function _buyListedOfferPunk(
+        TokenStandard standard,
+        uint16 punkId,
+        uint256 listingWei,
+        address seller,
+        address recipient
+    ) internal override {
+        if (standard == TokenStandard.CRYPTOPUNKS) {
+            PUNKS.buyPunk{value: listingWei}(punkId);
+            PUNKS.transferPunk(recipient, punkId);
+        } else if (standard == TokenStandard.CRYPTOPUNKS_V1) {
+            PUNKS_V1.buyPunk{value: listingWei}(punkId);
+            PUNKS_V1.withdraw();
+            PUNKS_V1.transferPunk(recipient, punkId);
+            _pushOrCredit(seller, listingWei);
+        } else {
+            revert UnsupportedStandard();
+        }
     }
 
     function _auctionRecipient(uint256 auctionId, address bidder_) internal view returns (address) {
-        address receiver = auctionReceivers[auctionId];
+        address receiver = winnerReceivers[auctionId];
         return receiver == address(0) ? bidder_ : receiver;
     }
 

@@ -33,10 +33,10 @@ interface ICryptoPunksAuctions {
         bool    settled;
     }
 
-    struct StandingBid {
-        uint96 bidWei;
+    struct Offer {
+        uint96 amountWei;
         uint96 settlementWei;
-        address bidder;
+        address offerer;
         address receiver;
         TokenStandard standard;
         TraitFilter[] traitFilters;
@@ -78,38 +78,38 @@ interface ICryptoPunksAuctions {
     event DeliveryDeferred(uint256 indexed auctionId, address indexed winner);
     event SettledTokenClaimed(uint256 indexed auctionId, address indexed winner, address indexed to);
 
-    event StandingBidPlaced(
-        uint256 indexed bidId,
+    event OfferPlaced(
+        uint256 indexed offerId,
         TokenStandard indexed standard,
-        address indexed bidder,
+        address indexed offerer,
         address receiver,
-        uint96 bidWei,
+        uint96 amountWei,
         uint96 settlementWei,
         TraitFilter[] traitFilters,
         uint16[] includeIds,
         uint16[] excludeIds
     );
-    event StandingBidRemoved(uint256 indexed bidId);
-    event StandingBidAdjusted(uint256 indexed bidId, uint96 newBidWei);
-    event StandingBidSettlementAdjusted(uint256 indexed bidId, uint96 newSettlementWei);
-    event StandingBidAccepted(
-        uint256 indexed bidId,
+    event OfferCancelled(uint256 indexed offerId);
+    event OfferAmountAdjusted(uint256 indexed offerId, uint96 newAmountWei);
+    event OfferSettlementAdjusted(uint256 indexed offerId, uint96 newSettlementWei);
+    event OfferAccepted(
+        uint256 indexed offerId,
         TokenStandard indexed standard,
         uint256 indexed punkId,
         address seller,
-        address bidder,
+        address offerer,
         address receiver,
         uint256 listingWei,
         uint256 settlementWei
     );
-    event StandingBidAuctionInitialised(
-        uint256 indexed bidId,
+    event OfferAuctionInitialised(
+        uint256 indexed offerId,
         uint256 indexed auctionId,
         uint256 indexed punkId,
         address seller,
-        address bidder,
+        address offerer,
         address receiver,
-        uint256 bidWei
+        uint256 amountWei
     );
 
     error ZeroAddress();
@@ -121,9 +121,9 @@ interface ICryptoPunksAuctions {
     error PunkNotInVault();
     error NotAuctions();
     error IncorrectPayment();
-    error NotBidder();
-    error StandingBidNotActive();
-    error NegativeAdjustmentHigherThanCurrentBid();
+    error NotOfferer();
+    error OfferNotActive();
+    error NegativeAdjustmentHigherThanCurrentOffer();
     error ListingNotValid();
     error ListingPriceTooHigh();
     error PunkNotIncluded();
@@ -166,27 +166,27 @@ interface ICryptoPunksAuctions {
 
     function bid(uint256 auctionId) external payable;
 
-    function placeBid(
+    function placeOffer(
         TokenStandard standard,
-        uint96 bidWei,
+        uint96 amountWei,
         uint96 settlementWei,
         address receiver,
         TraitFilter[] calldata traitFilters,
         uint16[] calldata includeIds,
         uint16[] calldata excludeIds
-    ) external payable returns (uint256 bidId);
+    ) external payable returns (uint256 offerId);
 
-    function cancelBid(uint256 bidId) external;
+    function cancelOffer(uint256 offerId) external;
 
-    function adjustBidPrice(uint256 bidId, uint96 weiToAdjust, bool increase) external payable;
+    function adjustOfferAmount(uint256 offerId, uint96 weiToAdjust, bool increase) external payable;
 
-    function adjustBidSettlementPrice(uint256 bidId, uint96 weiToAdjust, bool increase) external payable;
+    function adjustOfferSettlement(uint256 offerId, uint96 weiToAdjust, bool increase) external payable;
 
-    function acceptBid(uint256 bidId, uint16 punkId) external;
+    function acceptOffer(uint256 offerId, uint16 punkId) external;
 
-    function acceptBidToAuction(uint256 bidId, uint16 punkId) external returns (uint256 auctionId);
+    function acceptOfferToAuction(uint256 offerId, uint16 punkId) external returns (uint256 auctionId);
 
-    function getBidFilters(uint256 bidId)
+    function getOfferFilters(uint256 offerId)
         external
         view
         returns (
