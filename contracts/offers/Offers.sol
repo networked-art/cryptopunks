@@ -35,7 +35,9 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         if (traitFilters.length > 0 && address(TRAITS) == address(0)) revert TraitsUnavailable();
         if (msg.value != uint256(amountWei) + uint256(settlementWei)) revert IncorrectPayment();
 
-        unchecked { offerId = ++lastOfferId; }
+        unchecked {
+            offerId = ++lastOfferId;
+        }
 
         Offer storage storedOffer = offers[offerId];
         storedOffer.amountWei = amountWei;
@@ -44,23 +46,7 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         storedOffer.receiver = receiver;
         storedOffer.standard = standard;
 
-        uint256 len = traitFilters.length;
-        for (uint256 i; i < len;) {
-            storedOffer.traitFilters.push(traitFilters[i]);
-            unchecked { ++i; }
-        }
-
-        len = includeIds.length;
-        for (uint256 i; i < len;) {
-            storedOffer.includeIds.push(includeIds[i]);
-            unchecked { ++i; }
-        }
-
-        len = excludeIds.length;
-        for (uint256 i; i < len;) {
-            storedOffer.excludeIds.push(excludeIds[i]);
-            unchecked { ++i; }
-        }
+        _storeOfferFilters(storedOffer, traitFilters, includeIds, excludeIds);
 
         emit OfferPlaced(
             offerId,
@@ -76,11 +62,11 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
     }
 
     function cancelOffer(uint256 offerId) external nonReentrant {
-        Offer memory offer = _activeOffer(offerId);
-        if (offer.offerer != msg.sender) revert NotOfferer();
+        Offer storage offer = _offerForOfferer(offerId);
+        uint256 refundWei = uint256(offer.amountWei) + uint256(offer.settlementWei);
 
         delete offers[offerId];
-        _pushOrCredit(msg.sender, uint256(offer.amountWei) + uint256(offer.settlementWei));
+        _pushOrCredit(msg.sender, refundWei);
 
         emit OfferCancelled(offerId);
     }
@@ -90,9 +76,7 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         payable
         nonReentrant
     {
-        Offer storage offer = offers[offerId];
-        if (offer.offerer == address(0)) revert OfferNotActive();
-        if (offer.offerer != msg.sender) revert NotOfferer();
+        Offer storage offer = _offerForOfferer(offerId);
 
         uint96 oldAmountWei = offer.amountWei;
         if (increase) {
@@ -113,9 +97,7 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         payable
         nonReentrant
     {
-        Offer storage offer = offers[offerId];
-        if (offer.offerer == address(0)) revert OfferNotActive();
-        if (offer.offerer != msg.sender) revert NotOfferer();
+        Offer storage offer = _offerForOfferer(offerId);
 
         uint96 oldSettlementWei = offer.settlementWei;
         if (increase) {
@@ -189,6 +171,47 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         if (offer.offerer == address(0)) revert OfferNotActive();
     }
 
+    function _offerForOfferer(uint256 offerId)
+        private
+        view
+        returns (Offer storage offer)
+    {
+        offer = offers[offerId];
+        if (offer.offerer == address(0)) revert OfferNotActive();
+        if (offer.offerer != msg.sender) revert NotOfferer();
+    }
+
+    function _storeOfferFilters(
+        Offer storage storedOffer,
+        TraitFilter[] calldata traitFilters,
+        uint16[] calldata includeIds,
+        uint16[] calldata excludeIds
+    ) private {
+        uint256 len = traitFilters.length;
+        for (uint256 i; i < len;) {
+            storedOffer.traitFilters.push(traitFilters[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        len = includeIds.length;
+        for (uint256 i; i < len;) {
+            storedOffer.includeIds.push(includeIds[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        len = excludeIds.length;
+        for (uint256 i; i < len;) {
+            storedOffer.excludeIds.push(excludeIds[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     function _requireOfferMatchesPunk(Offer memory offer, uint16 punkId) internal view {
         uint256 len = offer.includeIds.length;
         if (len > 0) {
@@ -198,7 +221,9 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
                     included = true;
                     break;
                 }
-                unchecked { ++i; }
+                unchecked {
+                    ++i;
+                }
             }
             if (!included) revert PunkNotIncluded();
         }
@@ -206,7 +231,9 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
         len = offer.excludeIds.length;
         for (uint256 i; i < len;) {
             if (offer.excludeIds[i] == punkId) revert PunkExcluded();
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         len = offer.traitFilters.length;
@@ -217,7 +244,9 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
             TraitFilter memory filter = offer.traitFilters[i];
             bool hasTrait = TRAITS.hasTrait(punkId, filter.traitId);
             if (filter.required != hasTrait) revert PunkTraitMismatch();
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -247,15 +276,20 @@ abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
     }
 
     function _requireSupportedOfferStandard(TokenStandard standard) internal pure {
-        if (
-            standard != TokenStandard.CRYPTOPUNKS &&
-            standard != TokenStandard.CRYPTOPUNKS_V1
-        ) {
+        if (!_isSupportedOfferStandard(standard)) {
             revert UnsupportedStandard();
         }
     }
 
-    function _offerMarket(TokenStandard standard) internal view virtual returns (ICryptoPunksMarket);
+    function _isSupportedOfferStandard(TokenStandard standard) private pure returns (bool) {
+        return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
+    }
+
+    function _offerMarket(TokenStandard standard)
+        internal
+        view
+        virtual
+        returns (ICryptoPunksMarket);
 
     function _offerTokenContract(TokenStandard standard) internal view virtual returns (address);
 

@@ -5,7 +5,12 @@ pragma solidity 0.8.34;
 /// @notice Public types, events, errors, and core API for the zero-fee Punk auction house.
 interface ICryptoPunksAuctions {
     /// @notice Numeric values match NetworkedAuctions for punk standards.
-    enum TokenStandard { ERC721, ERC1155, CRYPTOPUNKS, CRYPTOPUNKS_V1 }
+    enum TokenStandard {
+        ERC721,
+        ERC1155,
+        CRYPTOPUNKS,
+        CRYPTOPUNKS_V1
+    }
 
     struct TraitFilter {
         bool required;
@@ -17,9 +22,9 @@ interface ICryptoPunksAuctions {
         address tokenContract;
         uint256 tokenId;
         TokenStandard standard;
-        uint96  reserveWei;
-        uint40  expiresAt;
-        uint64  version;
+        uint96 reserveWei;
+        uint40 expiresAt;
+        uint64 version;
     }
 
     struct Auction {
@@ -28,9 +33,9 @@ interface ICryptoPunksAuctions {
         uint256 tokenId;
         TokenStandard standard;
         address latestBidder;
-        uint96  latestBidWei;
-        uint40  endTimestamp;
-        bool    settled;
+        uint96 latestBidWei;
+        uint40 endTimestamp;
+        bool settled;
     }
 
     struct Offer {
@@ -50,8 +55,8 @@ interface ICryptoPunksAuctions {
         address indexed tokenContract,
         uint256 tokenId,
         TokenStandard standard,
-        uint96  reserveWei,
-        uint40  expiresAt
+        uint96 reserveWei,
+        uint40 expiresAt
     );
     event LotCancelled(uint256 indexed lotId);
     event LotCleared(uint256 indexed lotId, address indexed cleaner);
@@ -63,7 +68,7 @@ interface ICryptoPunksAuctions {
         uint256 indexed tokenId,
         address seller,
         TokenStandard standard,
-        uint40  endTimestamp
+        uint40 endTimestamp
     );
     event Bid(uint256 indexed auctionId, address indexed bidder, uint256 amountWei);
     event AuctionExtended(uint256 indexed auctionId, uint40 endTimestamp);
@@ -76,7 +81,11 @@ interface ICryptoPunksAuctions {
         uint256 protocolWei
     );
     event DeliveryDeferred(uint256 indexed auctionId, address indexed winner);
-    event SettledTokenClaimed(uint256 indexed auctionId, address indexed winner, address indexed to);
+    event SettledTokenClaimed(
+        uint256 indexed auctionId,
+        address indexed winner,
+        address indexed to
+    );
 
     event OfferPlaced(
         uint256 indexed offerId,
@@ -113,6 +122,7 @@ interface ICryptoPunksAuctions {
     );
 
     error ZeroAddress();
+    error UnexpectedEtherSender();
     error InvalidAmount();
     error InvalidExpiry();
     error UnsupportedStandard();
@@ -162,7 +172,10 @@ interface ICryptoPunksAuctions {
 
     function clearStaleLots(uint256[] calldata lotIds) external;
 
-    function openAuction(uint256 lotId, uint96 expectedReserveWei) external payable returns (uint256 auctionId);
+    function openAuction(uint256 lotId, uint96 expectedReserveWei)
+        external
+        payable
+        returns (uint256 auctionId);
 
     function bid(uint256 auctionId) external payable;
 
@@ -178,13 +191,23 @@ interface ICryptoPunksAuctions {
 
     function cancelOffer(uint256 offerId) external;
 
-    function adjustOfferAmount(uint256 offerId, uint96 weiToAdjust, bool increase) external payable;
+    function adjustOfferAmount(
+        uint256 offerId,
+        uint96 weiToAdjust,
+        bool increase
+    ) external payable;
 
-    function adjustOfferSettlement(uint256 offerId, uint96 weiToAdjust, bool increase) external payable;
+    function adjustOfferSettlement(
+        uint256 offerId,
+        uint96 weiToAdjust,
+        bool increase
+    ) external payable;
 
     function acceptOffer(uint256 offerId, uint16 punkId) external;
 
-    function acceptOfferToAuction(uint256 offerId, uint16 punkId) external returns (uint256 auctionId);
+    function acceptOfferToAuction(uint256 offerId, uint16 punkId)
+        external
+        returns (uint256 auctionId);
 
     function getOfferFilters(uint256 offerId)
         external

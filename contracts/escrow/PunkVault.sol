@@ -13,7 +13,9 @@ contract PunkVault {
     error NotOwner();
 
     constructor(address owner_, address punks_) {
-        if (owner_ == address(0) || punks_ == address(0)) revert ICryptoPunksAuctions.ZeroAddress();
+        if (owner_ == address(0) || punks_ == address(0)) {
+            revert ICryptoPunksAuctions.ZeroAddress();
+        }
         OWNER = owner_;
         PUNKS = ICryptoPunksMarket(punks_);
     }

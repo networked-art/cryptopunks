@@ -9,9 +9,9 @@ import "./CryptoPunksEscrow.sol";
 /// @notice Wires canonical and V1 Punk markets to dedicated escrows.
 abstract contract CryptoPunkEscrowManager {
     ICryptoPunksMarket public immutable PUNKS;
-    CryptoPunksEscrow  public immutable PUNKS_ESCROW;
+    CryptoPunksEscrow public immutable PUNKS_ESCROW;
     ICryptoPunksMarket public immutable PUNKS_V1;
-    CryptoPunksEscrow  public immutable PUNKS_ESCROW_V1;
+    CryptoPunksEscrow public immutable PUNKS_ESCROW_V1;
 
     constructor(address punks, address punksV1) {
         if (punks == address(0) || punksV1 == address(0) || punks == punksV1) {
@@ -28,10 +28,8 @@ abstract contract CryptoPunkEscrowManager {
         ICryptoPunksAuctions.TokenStandard standard,
         address tokenContract
     ) internal view {
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            if (tokenContract != address(PUNKS)) revert ICryptoPunksAuctions.PunkContractMismatch();
-        } else if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            if (tokenContract != address(PUNKS_V1)) revert ICryptoPunksAuctions.PunkContractMismatch();
+        if (tokenContract != address(_punkMarketFor(standard))) {
+            revert ICryptoPunksAuctions.PunkContractMismatch();
         }
     }
 
@@ -40,11 +38,8 @@ abstract contract CryptoPunkEscrowManager {
         address seller,
         uint256 punkIndex
     ) internal view {
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            _requirePunkInSellerVault(PUNKS_ESCROW, PUNKS, seller, punkIndex);
-        } else if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            _requirePunkInSellerVault(PUNKS_ESCROW_V1, PUNKS_V1, seller, punkIndex);
-        }
+        (ICryptoPunksMarket market, CryptoPunksEscrow escrow) = _punkRouteFor(standard);
+        _requirePunkInSellerVault(escrow, market, seller, punkIndex);
     }
 
     function _punkStillInSellerVault(
@@ -52,13 +47,8 @@ abstract contract CryptoPunkEscrowManager {
         address seller,
         uint256 punkIndex
     ) internal view returns (bool) {
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            return _punkInVault(PUNKS_ESCROW, PUNKS, seller, punkIndex);
-        }
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            return _punkInVault(PUNKS_ESCROW_V1, PUNKS_V1, seller, punkIndex);
-        }
-        revert ICryptoPunksAuctions.UnsupportedStandard();
+        (ICryptoPunksMarket market, CryptoPunksEscrow escrow) = _punkRouteFor(standard);
+        return _punkInVault(escrow, market, seller, punkIndex);
     }
 
     function _pullPunk(
@@ -67,15 +57,9 @@ abstract contract CryptoPunkEscrowManager {
         address from,
         uint256 tokenId
     ) internal {
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            if (tokenContract != address(PUNKS)) revert ICryptoPunksAuctions.PunkContractMismatch();
-            PUNKS_ESCROW.pullFromVault(from, tokenId);
-        } else if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            if (tokenContract != address(PUNKS_V1)) revert ICryptoPunksAuctions.PunkContractMismatch();
-            PUNKS_ESCROW_V1.pullFromVault(from, tokenId);
-        } else {
-            revert ICryptoPunksAuctions.UnsupportedStandard();
-        }
+        (, CryptoPunksEscrow escrow) = _punkRouteFor(standard);
+        _requirePunkContract(standard, tokenContract);
+        escrow.pullFromVault(from, tokenId);
     }
 
     function _deliverPunk(
@@ -85,14 +69,14 @@ abstract contract CryptoPunkEscrowManager {
         address to,
         uint256 hammerWei
     ) internal {
+        _requirePunkContract(standard, tokenContract);
+
         if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            if (tokenContract != address(PUNKS)) revert ICryptoPunksAuctions.PunkContractMismatch();
             PUNKS_ESCROW.offerToAuctions(tokenId, hammerWei);
             PUNKS.buyPunk{value: hammerWei}(tokenId);
             PUNKS_ESCROW.sweepProceeds();
             PUNKS.transferPunk(to, tokenId);
         } else if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            if (tokenContract != address(PUNKS_V1)) revert ICryptoPunksAuctions.PunkContractMismatch();
             PUNKS_ESCROW_V1.offerToAuctions(tokenId, hammerWei);
             PUNKS_V1.buyPunk{value: hammerWei}(tokenId);
             PUNKS_V1.withdraw();
@@ -108,19 +92,35 @@ abstract contract CryptoPunkEscrowManager {
         uint256 tokenId,
         address to
     ) internal {
+        (, CryptoPunksEscrow escrow) = _punkRouteFor(standard);
         _requirePunkContract(standard, tokenContract);
-
-        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
-            PUNKS_ESCROW.transferPunkTo(tokenId, to);
-        } else if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
-            PUNKS_ESCROW_V1.transferPunkTo(tokenId, to);
-        } else {
-            revert ICryptoPunksAuctions.UnsupportedStandard();
-        }
+        escrow.transferPunkTo(tokenId, to);
     }
 
     function _isPunkReceiveSender(address account) internal view returns (bool) {
         return account == address(PUNKS_ESCROW) || account == address(PUNKS_V1);
+    }
+
+    function _punkMarketFor(ICryptoPunksAuctions.TokenStandard standard)
+        internal
+        view
+        returns (ICryptoPunksMarket market)
+    {
+        (market,) = _punkRouteFor(standard);
+    }
+
+    function _punkRouteFor(ICryptoPunksAuctions.TokenStandard standard)
+        private
+        view
+        returns (ICryptoPunksMarket market, CryptoPunksEscrow escrow)
+    {
+        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS) {
+            return (PUNKS, PUNKS_ESCROW);
+        }
+        if (standard == ICryptoPunksAuctions.TokenStandard.CRYPTOPUNKS_V1) {
+            return (PUNKS_V1, PUNKS_ESCROW_V1);
+        }
+        revert ICryptoPunksAuctions.UnsupportedStandard();
     }
 
     function _requirePunkInSellerVault(

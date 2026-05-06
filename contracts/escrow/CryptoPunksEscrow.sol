@@ -25,22 +25,20 @@ contract CryptoPunksEscrow {
     }
 
     constructor(address punks, address auctions) {
-        if (punks == address(0) || auctions == address(0)) revert ICryptoPunksAuctions.ZeroAddress();
+        if (punks == address(0) || auctions == address(0)) {
+            revert ICryptoPunksAuctions.ZeroAddress();
+        }
         PUNKS = ICryptoPunksMarket(punks);
         AUCTIONS = auctions;
         VAULT_IMPLEMENTATION = address(new PunkVault(address(this), punks));
     }
 
     receive() external payable {
-        if (msg.sender != address(PUNKS)) revert();
+        if (msg.sender != address(PUNKS)) revert ICryptoPunksAuctions.UnexpectedEtherSender();
     }
 
     function predictVault(address user) public view returns (address) {
-        return Clones.predictDeterministicAddress(
-            VAULT_IMPLEMENTATION,
-            _salt(user),
-            address(this)
-        );
+        return Clones.predictDeterministicAddress(VAULT_IMPLEMENTATION, _salt(user), address(this));
     }
 
     function ensureVault(address user) external returns (address vault) {
@@ -53,16 +51,12 @@ contract CryptoPunksEscrow {
     }
 
     function pullFromVault(address seller, uint256 punkIndex) external onlyAuctions {
-        address vault = vaults[seller];
-        if (vault == address(0)) revert ICryptoPunksAuctions.PunkNotInVault();
-        if (PUNKS.punkIndexToAddress(punkIndex) != vault) revert ICryptoPunksAuctions.PunkNotInVault();
+        address vault = _vaultHoldingPunk(seller, punkIndex);
         PunkVault(vault).transfer(punkIndex, address(this));
     }
 
     function reclaim(uint256 punkIndex) external {
-        address vault = vaults[msg.sender];
-        if (vault == address(0)) revert ICryptoPunksAuctions.PunkNotInVault();
-        if (PUNKS.punkIndexToAddress(punkIndex) != vault) revert ICryptoPunksAuctions.PunkNotInVault();
+        address vault = _vaultHoldingPunk(msg.sender, punkIndex);
         PunkVault(vault).transfer(punkIndex, msg.sender);
     }
 
@@ -85,5 +79,16 @@ contract CryptoPunksEscrow {
 
     function _salt(address user) private pure returns (bytes32) {
         return bytes32(uint256(uint160(user)));
+    }
+
+    function _vaultHoldingPunk(address user, uint256 punkIndex)
+        private
+        view
+        returns (address vault)
+    {
+        vault = vaults[user];
+        if (vault == address(0) || PUNKS.punkIndexToAddress(punkIndex) != vault) {
+            revert ICryptoPunksAuctions.PunkNotInVault();
+        }
     }
 }

@@ -4,7 +4,7 @@ pragma solidity 0.8.34;
 /// @notice Mock of the CryptoPunksMarket subset used by the auction house.
 contract MockCryptoPunksMarket {
     struct Offer {
-        bool    isForSale;
+        bool isForSale;
         uint256 punkIndex;
         address seller;
         uint256 minValue;
@@ -12,14 +12,19 @@ contract MockCryptoPunksMarket {
     }
 
     mapping(uint256 => address) public punkIndexToAddress;
-    mapping(uint256 => Offer)   public punksOfferedForSale;
+    mapping(uint256 => Offer) public punksOfferedForSale;
     mapping(address => uint256) public pendingWithdrawals;
 
     bool public breakBuyPunk;
 
     event PunkTransfer(address indexed from, address indexed to, uint256 punkIndex);
     event PunkOffered(uint256 indexed punkIndex, uint256 minValue, address indexed toAddress);
-    event PunkBought(uint256 indexed punkIndex, uint256 value, address indexed fromAddress, address indexed toAddress);
+    event PunkBought(
+        uint256 indexed punkIndex,
+        uint256 value,
+        address indexed fromAddress,
+        address indexed toAddress
+    );
     event PunkNoLongerForSale(uint256 indexed punkIndex);
 
     function setBreakBuyPunk(bool v) external {

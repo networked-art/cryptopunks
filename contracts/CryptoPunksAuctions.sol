@@ -8,15 +8,11 @@ import "./offers/Offers.sol";
 
 /// @title CryptoPunksAuctions
 /// @notice Zero-fee auction house for CryptoPunks.
-contract CryptoPunksAuctions is
-    ICryptoPunksAuctions,
-    CryptoPunkEscrowManager,
-    Offers
-{
+contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, Offers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
-    uint40  internal constant AUCTION_DURATION = 24 hours;
-    uint40  internal constant BIDDING_GRACE_PERIOD = 15 minutes;
+    uint40 internal constant AUCTION_DURATION = 24 hours;
+    uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
     uint256 internal constant DELIVER_GAS_LIMIT = 500_000;
 
     uint256 public lastLotId;
@@ -35,7 +31,7 @@ contract CryptoPunksAuctions is
     {}
 
     receive() external payable {
-        if (!_isPunkReceiveSender(msg.sender)) revert();
+        if (!_isPunkReceiveSender(msg.sender)) revert UnexpectedEtherSender();
     }
 
     function createLot(
@@ -47,7 +43,9 @@ contract CryptoPunksAuctions is
     ) external returns (uint256 id) {
         _validateLotArgs(msg.sender, tokenContract, tokenId, standard, reserveWei, expiresAt);
 
-        unchecked { id = ++lastLotId; }
+        unchecked {
+            id = ++lastLotId;
+        }
         lots[id] = Lot({
             seller: msg.sender,
             tokenContract: tokenContract,
@@ -61,11 +59,7 @@ contract CryptoPunksAuctions is
         emit LotCreated(id, msg.sender, tokenContract, tokenId, standard, reserveWei, expiresAt);
     }
 
-    function updateLot(
-        uint256 id,
-        uint96 reserveWei,
-        uint40 expiresAt
-    ) external {
+    function updateLot(uint256 id, uint96 reserveWei, uint40 expiresAt) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
         if (lot.seller != msg.sender) revert NotSeller();
@@ -95,7 +89,9 @@ contract CryptoPunksAuctions is
         uint256 len = ids.length;
         for (uint256 i; i < len;) {
             _clearStaleLot(ids[i]);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -117,7 +113,9 @@ contract CryptoPunksAuctions is
         if (bidWei < lot.reserveWei) revert ReserveNotMet();
 
         delete lots[id];
-        unchecked { ++sellerTokenVersion[tokenKey]; }
+        unchecked {
+            ++sellerTokenVersion[tokenKey];
+        }
 
         auctionId = _createAuction(lot, msg.sender, bidWei, address(0));
     }
@@ -160,7 +158,9 @@ contract CryptoPunksAuctions is
         _refundOfferSettlement(offer);
 
         bytes32 tokenKey = _tokenKey(msg.sender, tokenContract, punkId);
-        unchecked { ++sellerTokenVersion[tokenKey]; }
+        unchecked {
+            ++sellerTokenVersion[tokenKey];
+        }
 
         address recipient = _offerRecipient(offer);
         auctionId = _createAuction(
@@ -256,11 +256,13 @@ contract CryptoPunksAuctions is
 
     function _createAuction(
         Lot memory lot,
-        address bidder_,
+        address initialBidder,
         uint96 bidWei,
         address receiver
     ) internal returns (uint256 auctionId) {
-        unchecked { auctionId = ++lastAuctionId; }
+        unchecked {
+            auctionId = ++lastAuctionId;
+        }
 
         uint40 endTimestamp = uint40(block.timestamp) + AUCTION_DURATION;
 
@@ -269,12 +271,12 @@ contract CryptoPunksAuctions is
             tokenContract: lot.tokenContract,
             tokenId: lot.tokenId,
             standard: lot.standard,
-            latestBidder: bidder_,
+            latestBidder: initialBidder,
             latestBidWei: bidWei,
             endTimestamp: endTimestamp,
             settled: false
         });
-        if (receiver != address(0) && receiver != bidder_) {
+        if (receiver != address(0) && receiver != initialBidder) {
             winnerReceivers[auctionId] = receiver;
         }
 
@@ -288,7 +290,7 @@ contract CryptoPunksAuctions is
             lot.standard,
             endTimestamp
         );
-        emit Bid(auctionId, bidder_, bidWei);
+        emit Bid(auctionId, initialBidder, bidWei);
     }
 
     function _clearStaleLot(uint256 id) internal {
@@ -305,7 +307,9 @@ contract CryptoPunksAuctions is
         delete lots[id];
 
         if (!sellerStillOwns) {
-            unchecked { ++sellerTokenVersion[tokenKey]; }
+            unchecked {
+                ++sellerTokenVersion[tokenKey];
+            }
         }
 
         emit LotCleared(id, msg.sender);
@@ -328,12 +332,13 @@ contract CryptoPunksAuctions is
     }
 
     function _requireSupportedPunkStandard(TokenStandard standard) internal pure {
-        if (
-            standard != TokenStandard.CRYPTOPUNKS &&
-            standard != TokenStandard.CRYPTOPUNKS_V1
-        ) {
+        if (!_isSupportedPunkStandard(standard)) {
             revert UnsupportedStandard();
         }
+    }
+
+    function _isSupportedPunkStandard(TokenStandard standard) internal pure returns (bool) {
+        return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
     }
 
     function _tryDeliver(Auction memory auction, address to) internal returns (bool) {
@@ -356,9 +361,7 @@ contract CryptoPunksAuctions is
         override
         returns (ICryptoPunksMarket)
     {
-        if (standard == TokenStandard.CRYPTOPUNKS) return PUNKS;
-        if (standard == TokenStandard.CRYPTOPUNKS_V1) return PUNKS_V1;
-        revert UnsupportedStandard();
+        return _punkMarketFor(standard);
     }
 
     function _offerTokenContract(TokenStandard standard)
@@ -367,9 +370,7 @@ contract CryptoPunksAuctions is
         override
         returns (address)
     {
-        if (standard == TokenStandard.CRYPTOPUNKS) return address(PUNKS);
-        if (standard == TokenStandard.CRYPTOPUNKS_V1) return address(PUNKS_V1);
-        revert UnsupportedStandard();
+        return address(_punkMarketFor(standard));
     }
 
     function _buyListedOfferPunk(
@@ -392,9 +393,9 @@ contract CryptoPunksAuctions is
         }
     }
 
-    function _auctionRecipient(uint256 auctionId, address bidder_) internal view returns (address) {
+    function _auctionRecipient(uint256 auctionId, address bidder) internal view returns (address) {
         address receiver = winnerReceivers[auctionId];
-        return receiver == address(0) ? bidder_ : receiver;
+        return receiver == address(0) ? bidder : receiver;
     }
 
     function _maybeExtend(uint256 auctionId, Auction storage auction) internal {
