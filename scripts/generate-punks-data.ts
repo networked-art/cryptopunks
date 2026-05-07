@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { network } from 'hardhat'
 import {
   bytesToHex,
+  createPublicClient,
   encodeAbiParameters,
+  http,
   keccak256,
   parseAbi,
   type Hex,
@@ -27,6 +28,10 @@ const RGBA_BYTES_PER_PUNK = PIXELS_PER_PUNK * 4
 const TRANSPARENT_RGBA = '00000000'
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const CONCURRENCY = Number(process.env.PUNKS_DATA_CONCURRENCY ?? '12')
+const RPC_URL =
+  process.env.PUNKS_DATA_RPC_URL ??
+  process.env.RPC_URL ??
+  'https://ethereum-rpc.publicnode.com'
 
 const KIND_HEAD_VARIANT = 0
 const KIND_NORMALIZED_TYPE = 1
@@ -68,8 +73,9 @@ type TraitRecord = {
 }
 
 async function main() {
-  const { viem } = await network.create()
-  const publicClient = await viem.getPublicClient()
+  const publicClient = createPublicClient({
+    transport: http(RPC_URL),
+  })
 
   const chainId = await publicClient.getChainId()
   if (chainId !== SOURCE_CHAIN_ID) {
@@ -90,6 +96,7 @@ async function main() {
     throw new Error(`Pinned source extcodehash mismatch: ${codeHash}`)
   }
 
+  console.log(`Using RPC ${redactRpcUrl(RPC_URL)}`)
   console.log(`Reading ${PUNK_COUNT} Punk attribute/image pairs`)
   const rows = await mapLimit(
     Array.from({ length: PUNK_COUNT }, (_, id) => id),
@@ -628,6 +635,20 @@ function mustGet<K, V>(map: Map<K, V>, key: K): V {
   const value = map.get(key)
   if (value === undefined) throw new Error(`Missing key ${String(key)}`)
   return value
+}
+
+function redactRpcUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.username !== '') parsed.username = '...'
+    if (parsed.password !== '') parsed.password = '...'
+    for (const key of parsed.searchParams.keys()) {
+      parsed.searchParams.set(key, '...')
+    }
+    return parsed.toString()
+  } catch {
+    return '<custom rpc>'
+  }
 }
 
 async function writeBinary(fileName: string, bytes: Uint8Array) {
