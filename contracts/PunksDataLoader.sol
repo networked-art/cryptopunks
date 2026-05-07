@@ -38,7 +38,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         uint256(TRAIT_COUNT) * TRAIT_META_RECORD_SIZE;
 
     // -----------------------------------------------------------------
-    // Packed scalar layout — 5 scalars of 48 bits each, packed in a uint256.
+    // Packed scalar layout: 5 scalars of 48 bits each, packed in a uint256.
     //   bits  0-15  pixelCount
     //   bits 16-23  colorCount
     //   bits 24-31  attributeCount
@@ -64,7 +64,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     uint256 internal constant MAX_ATTRIBUTE_COUNT = 7;
 
     // -----------------------------------------------------------------
-    // Bitmap row layout — shared by TraitBitmaps, ColorBitmaps,
+    // Bitmap row layout: shared by TraitBitmaps, ColorBitmaps,
     // PixelCountBitmaps, ColorCountBitmaps. `(row, wordIndex)` indexes
     // byte offset `(row * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES`.
     // -----------------------------------------------------------------
@@ -78,7 +78,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     uint256 internal constant PALETTE_RGB_BYTES_PER_COLOR = 3;
 
     // -----------------------------------------------------------------
-    // Pixel offsets — uint24 BE per punk + 1 sentinel, indexing into
+    // Pixel offsets: uint24 BE per punk + 1 sentinel, indexing into
     // CompressedPixels.
     // -----------------------------------------------------------------
     uint256 internal constant PIXEL_OFFSET_BYTES = 3;
@@ -121,7 +121,9 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     // -----------------------------------------------------------------
     // Storage
     // -----------------------------------------------------------------
+    /// @notice Returns the account that can load and seal the data.
     address public admin;
+    /// @notice Returns true after the data has been sealed.
     bool public isSealed;
     bytes32 internal _datasetHash;
 
@@ -141,11 +143,13 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         _;
     }
 
+    /// @notice Sets the first data loader admin.
     constructor(address initialAdmin) {
         if (initialAdmin == address(0)) revert ZeroAddress();
         admin = initialAdmin;
     }
 
+    /// @notice Loads packed trait masks for a range of Punks.
     function loadTraitMaskPairs(uint16 startPairIndex, uint256[] calldata packedPairs)
         external
         whenUnsealed
@@ -168,6 +172,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         }
     }
 
+    /// @notice Loads color masks for a range of Punks.
     function loadColorMasks(uint16 startPunkId, uint256[] calldata masks)
         external
         whenUnsealed
@@ -186,6 +191,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         }
     }
 
+    /// @notice Loads packed image summary data for a range of Punks.
     function loadPackedScalars(uint16 startWordIndex, uint256[] calldata words)
         external
         whenUnsealed
@@ -204,6 +210,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         }
     }
 
+    /// @notice Loads total pixel counts for a range of palette colors.
     function loadColorSupplies(uint8 startColorId, uint32[] calldata supplies)
         external
         whenUnsealed
@@ -220,6 +227,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         }
     }
 
+    /// @notice Loads one chunk of a data blob.
     function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data)
         external
         whenUnsealed
@@ -228,6 +236,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         _blobs[blobId].append(chunkIndex, data);
     }
 
+    /// @notice Seals the data set so it can no longer be changed.
     function seal(DatasetCommitment calldata commitment) external whenUnsealed onlyAdmin {
         _requireNonZeroCommitment(commitment);
         _requireDatasetShape();

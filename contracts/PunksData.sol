@@ -37,22 +37,28 @@ contract PunksData is PunksDataLoader, IPunksData {
         uint256 bitOffset;
     }
 
+    /// @notice Creates the data contract and sets the loader admin.
     constructor(address initialAdmin) PunksDataLoader(initialAdmin) {}
 
+    /// @notice Returns the hash of the sealed Punk data set.
+    /// @dev The hash is zero until the admin seals the data.
     function datasetHash() public view returns (bytes32) {
         return _datasetHash;
     }
 
     // ---------------- Criteria ----------------
 
+    /// @notice Returns the number of supported traits.
     function traitCount() external pure returns (uint16) {
         return TRAIT_COUNT;
     }
 
+    /// @notice Checks whether a trait id is in range.
     function isValidTraitId(uint16 traitId) external pure returns (bool) {
         return traitId < TRAIT_COUNT;
     }
 
+    /// @notice Returns the display name for a trait.
     function traitName(uint16 traitId) external view returns (string memory) {
         TraitMetaRecord memory meta = _readTraitMeta(traitId);
         return string(
@@ -60,25 +66,30 @@ contract PunksData is PunksDataLoader, IPunksData {
         );
     }
 
+    /// @notice Returns the kind of trait.
     function traitKind(uint16 traitId) external view returns (TraitKind) {
         TraitMetaRecord memory meta = _readTraitMeta(traitId);
         if (meta.kind > uint8(TraitKind.Accessory)) revert InvalidTraitId();
         return TraitKind(meta.kind);
     }
 
+    /// @notice Returns how many Punks have a trait.
     function traitSupply(uint16 traitId) external view returns (uint16) {
         return _readTraitMeta(traitId).supply;
     }
 
+    /// @notice Checks whether a Punk has a trait.
     function hasTrait(uint16 punkId, uint16 traitId) external view returns (bool) {
         _requireTraitId(traitId);
         return (_traitMaskOf(punkId) & (uint256(1) << traitId)) != 0;
     }
 
+    /// @notice Returns the full trait mask for a Punk.
     function traitMaskOf(uint16 punkId) external view returns (uint256) {
         return _traitMaskOf(punkId);
     }
 
+    /// @notice Checks whether a Punk matches a group of trait rules.
     function hasTraits(
         uint16 punkId,
         uint256 requiredMask,
@@ -91,6 +102,7 @@ contract PunksData is PunksDataLoader, IPunksData {
             && (anyOfMask == 0 || (mask & anyOfMask) != 0);
     }
 
+    /// @notice Returns one bitmap word for a trait.
     function traitBitmapWord(uint16 traitId, uint8 wordIndex)
         external
         view
@@ -100,24 +112,30 @@ contract PunksData is PunksDataLoader, IPunksData {
         return _bitmapWord(BlobId.TraitBitmaps, traitId, wordIndex);
     }
 
+    /// @notice Returns the head variant for a Punk.
     function headVariantOf(uint16 punkId) external view returns (HeadVariant) {
         return _readPackedScalar(punkId).headVariant;
     }
 
+    /// @notice Returns the type for a Punk.
     function punkTypeOf(uint16 punkId) external view returns (PunkType) {
         return _readPackedScalar(punkId).punkType;
     }
 
+    /// @notice Returns the number of attributes on a Punk.
     function attributeCountOf(uint16 punkId) external view returns (uint8) {
         return _readPackedScalar(punkId).attributeCount;
     }
 
     // ---------------- Visual ----------------
 
+    /// @notice Returns the number of palette entries.
+    /// @dev Palette id zero is reserved for transparent pixels.
     function paletteSize() public pure returns (uint16) {
         return PALETTE_SIZE;
     }
 
+    /// @notice Returns a palette color as red, green, blue, and alpha bytes.
     function colorOf(uint8 colorId) external view returns (bytes4 rgba) {
         _requireColorId(colorId);
         bytes memory data = _blobs[BlobId.Palette].read(
@@ -129,16 +147,19 @@ contract PunksData is PunksDataLoader, IPunksData {
         }
     }
 
+    /// @notice Returns how many visible pixels use a palette color.
     function colorSupply(uint8 colorId) external view returns (uint32 pixels) {
         _requireColorId(colorId);
         return _colorSupplies[colorId];
     }
 
+    /// @notice Returns the full color mask for a Punk.
     function colorMaskOf(uint16 punkId) external view returns (uint256) {
         _requirePunkId(punkId);
         return _colorMasks[punkId];
     }
 
+    /// @notice Checks whether a Punk uses a palette color.
     /// @dev Color id 0 represents transparency and is never recorded in a punk's color mask.
     function hasColor(uint16 punkId, uint8 colorId) external view returns (bool) {
         _requirePunkId(punkId);
@@ -147,19 +168,23 @@ contract PunksData is PunksDataLoader, IPunksData {
         return (_colorMasks[punkId] & (uint256(1) << colorId)) != 0;
     }
 
+    /// @notice Returns the number of visible pixels in a Punk image.
     function pixelCountOf(uint16 punkId) external view returns (uint16) {
         return _readPackedScalar(punkId).pixelCount;
     }
 
+    /// @notice Returns the number of palette colors used by a Punk.
     function colorCountOf(uint16 punkId) external view returns (uint8) {
         return _readPackedScalar(punkId).colorCount;
     }
 
+    /// @notice Returns one bitmap word for a palette color.
     function colorBitmapWord(uint8 colorId, uint8 wordIndex) external view returns (uint256) {
         _requireColorId(colorId);
         return _bitmapWord(BlobId.ColorBitmaps, colorId, wordIndex);
     }
 
+    /// @notice Returns one bitmap word for a pixel count.
     function pixelCountBitmapWord(uint16 pixelCount, uint8 wordIndex)
         external
         view
@@ -175,6 +200,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         );
     }
 
+    /// @notice Returns one bitmap word for a color count.
     function colorCountBitmapWord(uint8 colorCount, uint8 wordIndex)
         external
         view
@@ -192,16 +218,19 @@ contract PunksData is PunksDataLoader, IPunksData {
 
     // ---------------- Indexed pixels ----------------
 
+    /// @notice Returns all palette indexes for one Punk image.
     function indexedPixelsOf(uint16 punkId) external view returns (bytes memory) {
         return _indexedPixelsOf(punkId);
     }
 
+    /// @notice Returns the palette color id at one pixel.
     function colorAt(uint16 punkId, uint8 x, uint8 y) external view returns (uint8 colorId) {
         if (x >= PUNK_WIDTH || y >= PUNK_HEIGHT) revert InvalidCoordinate();
         bytes memory pixels = _indexedPixelsOf(punkId);
         return uint8(pixels[uint256(y) * PUNK_WIDTH + x]);
     }
 
+    /// @notice Returns the whole palette as red, green, and blue bytes.
     function paletteRgbBytes() external view returns (bytes memory rgb) {
         bytes memory rgba = _paletteBytes();
         uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
@@ -221,6 +250,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         }
     }
 
+    /// @notice Returns the alpha byte for every palette color.
     function paletteAlphaBytes() external view returns (bytes memory alpha) {
         bytes memory rgba = _paletteBytes();
         uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
@@ -236,6 +266,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         }
     }
 
+    /// @notice Returns the whole palette as red, green, blue, and alpha bytes.
     function paletteRgbaBytes() external view returns (bytes memory) {
         return _paletteBytes();
     }

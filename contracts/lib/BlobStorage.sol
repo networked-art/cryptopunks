@@ -21,7 +21,7 @@ library BlobStorage {
     uint256 private constant WORD_BYTES = 32;
     uint256 private constant UINT24_BYTES = 3;
 
-    /// @notice Append `data` as a new bytecode-deployed chunk at sequential index `chunkIndex`.
+    /// @dev Appends `data` as a new bytecode-deployed chunk at sequential index `chunkIndex`.
     /// @return newLength Cumulative blob length after the append.
     function append(Chunk[] storage chunks, uint16 chunkIndex, bytes calldata data)
         internal
@@ -36,13 +36,13 @@ library BlobStorage {
         chunks.push(Chunk({pointer: pointer, endOffset: uint32(newLength)}));
     }
 
-    /// @notice Total cumulative length of all stored bytes across chunks.
+    /// @dev Returns the cumulative length of all stored bytes across chunks.
     function totalLength(Chunk[] storage chunks) internal view returns (uint256) {
         uint256 chunkCount = chunks.length;
         return chunkCount == 0 ? 0 : chunks[chunkCount - 1].endOffset;
     }
 
-    /// @notice Read `segmentLength` bytes from logical `offset`, walking chunks as needed.
+    /// @dev Reads `segmentLength` bytes from logical `offset`, walking chunks as needed.
     function read(Chunk[] storage chunks, uint256 offset, uint256 segmentLength)
         internal
         view
@@ -82,7 +82,7 @@ library BlobStorage {
         }
     }
 
-    /// @notice Big-endian uint256 word read from logical `offset`.
+    /// @dev Reads a big-endian uint256 word from logical `offset`.
     function readWordAt(Chunk[] storage chunks, uint256 offset)
         internal
         view
@@ -94,7 +94,7 @@ library BlobStorage {
         }
     }
 
-    /// @notice Big-endian uint24 read from logical `offset`.
+    /// @dev Reads a big-endian uint24 from logical `offset`.
     function readUint24At(Chunk[] storage chunks, uint256 offset)
         internal
         view

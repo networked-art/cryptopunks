@@ -11,6 +11,7 @@ library BytecodeBlob {
     error BlobPointerEmpty();
     error BlobReadOutOfBounds();
 
+    /// @dev Deploys data as contract bytecode and returns the pointer.
     function write(bytes memory data) internal returns (address pointer) {
         uint256 dataLength = data.length;
         if (dataLength == 0 || dataLength > MAX_DATA_SIZE) revert BlobTooLarge();
@@ -29,6 +30,7 @@ library BytecodeBlob {
         if (pointer == address(0)) revert BlobWriteFailed();
     }
 
+    /// @dev Returns the stored data length, excluding the leading stop byte.
     function dataSize(address pointer) internal view returns (uint256 size) {
         size = pointer.code.length;
         if (size == 0) revert BlobPointerEmpty();
@@ -37,6 +39,7 @@ library BytecodeBlob {
         }
     }
 
+    /// @dev Reads bytes from a deployed data pointer.
     function read(address pointer, uint256 start, uint256 length)
         internal
         view

@@ -8,11 +8,16 @@ import "./PunksEscrow.sol";
 /// @title PunksEscrowManager
 /// @notice Wires canonical and V1 Punk markets to dedicated escrows.
 abstract contract PunksEscrowManager {
+    /// @notice Returns the canonical CryptoPunks market.
     ICryptoPunksMarket public immutable PUNKS;
+    /// @notice Returns the escrow used for canonical CryptoPunks.
     PunksEscrow public immutable PUNKS_ESCROW;
+    /// @notice Returns the CryptoPunks V1 market.
     ICryptoPunksMarket public immutable PUNKS_V1;
+    /// @notice Returns the escrow used for CryptoPunks V1.
     PunksEscrow public immutable PUNKS_ESCROW_V1;
 
+    /// @notice Creates escrow routes for the canonical and V1 Punk markets.
     constructor(address punks, address punksV1) {
         if (punks == address(0) || punksV1 == address(0) || punks == punksV1) {
             revert IPunksAuction.ZeroAddress();
@@ -24,6 +29,7 @@ abstract contract PunksEscrowManager {
         PUNKS_ESCROW_V1 = new PunksEscrow(punksV1, address(this));
     }
 
+    /// @dev Reverts when a token contract does not match the selected Punk standard.
     function _requirePunkContract(
         IPunksAuction.TokenStandard standard,
         address tokenContract
@@ -33,6 +39,7 @@ abstract contract PunksEscrowManager {
         }
     }
 
+    /// @dev Reverts when the seller does not have the Punk in the right vault.
     function _maybeRequirePunkInVault(
         IPunksAuction.TokenStandard standard,
         address seller,
@@ -42,6 +49,7 @@ abstract contract PunksEscrowManager {
         _requirePunkInSellerVault(escrow, market, seller, punkIndex);
     }
 
+    /// @dev Checks whether the seller still has the Punk in the right vault.
     function _punkStillInSellerVault(
         IPunksAuction.TokenStandard standard,
         address seller,
@@ -51,6 +59,7 @@ abstract contract PunksEscrowManager {
         return _punkInVault(escrow, market, seller, punkIndex);
     }
 
+    /// @dev Pulls a Punk from the seller vault into escrow custody.
     function _pullPunk(
         IPunksAuction.TokenStandard standard,
         address tokenContract,
@@ -62,6 +71,7 @@ abstract contract PunksEscrowManager {
         escrow.pullFromVault(from, tokenId);
     }
 
+    /// @dev Completes delivery for a won Punk and handles V1 settlement rules.
     function _deliverPunk(
         IPunksAuction.TokenStandard standard,
         address tokenContract,
@@ -86,10 +96,12 @@ abstract contract PunksEscrowManager {
         }
     }
 
+    /// @dev Returns true for contracts allowed to send ETH to the auction house.
     function _isPunkReceiveSender(address account) internal view returns (bool) {
         return account == address(PUNKS_ESCROW) || account == address(PUNKS_V1);
     }
 
+    /// @dev Returns the market for a supported Punk standard.
     function _punkMarketFor(IPunksAuction.TokenStandard standard)
         internal
         view

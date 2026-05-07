@@ -11,16 +11,21 @@ import "../lib/PushPullEscrow.sol";
 ///         Inspired by MouseDev's CryptoPunksBids, concept by
 ///         mousedev.eth and kilo.
 abstract contract Offers is IPunksAuction, PushPullEscrow {
+    /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
 
+    /// @notice Returns public details for an offer.
     mapping(uint256 => Offer) public offers;
 
+    /// @notice Returns the trait lookup contract used for offer filters.
     ICryptoPunksTraits public immutable TRAITS;
 
+    /// @notice Creates the offer module with an optional trait lookup contract.
     constructor(address traits) {
         TRAITS = ICryptoPunksTraits(traits);
     }
 
+    /// @notice Places an ETH offer for Punks that match your filters.
     function placeOffer(
         TokenStandard standard,
         uint96 amountWei,
@@ -61,6 +66,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         );
     }
 
+    /// @notice Cancels your active offer and refunds its ETH.
     function cancelOffer(uint256 offerId) external nonReentrant {
         Offer storage offer = _offerForOfferer(offerId);
         uint256 refundWei = uint256(offer.amountWei) + uint256(offer.settlementWei);
@@ -71,6 +77,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferCancelled(offerId);
     }
 
+    /// @notice Increases or decreases the offer amount.
     function adjustOfferAmount(uint256 offerId, uint96 weiToAdjust, bool increase)
         external
         payable
@@ -92,6 +99,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferAmountAdjusted(offerId, offer.amountWei);
     }
 
+    /// @notice Increases or decreases the seller settlement amount.
     function adjustOfferSettlement(uint256 offerId, uint96 weiToAdjust, bool increase)
         external
         payable
@@ -113,6 +121,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferSettlementAdjusted(offerId, offer.settlementWei);
     }
 
+    /// @notice Accepts an offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
         _requireOfferMatchesPunk(offer, punkId);
@@ -144,6 +153,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         );
     }
 
+    /// @notice Returns the filters saved for an offer.
     function getOfferFilters(uint256 offerId)
         external
         view
@@ -157,6 +167,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         return (offer.traitFilters, offer.includeIds, offer.excludeIds);
     }
 
+    /// @dev Consumes an active offer after checking that it matches the Punk.
     function _consumeOfferForAuction(uint256 offerId, uint16 punkId)
         internal
         returns (Offer memory offer)
@@ -166,6 +177,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         delete offers[offerId];
     }
 
+    /// @dev Loads an active offer and reverts if it is missing.
     function _activeOffer(uint256 offerId) internal view returns (Offer memory offer) {
         offer = offers[offerId];
         if (offer.offerer == address(0)) revert OfferNotActive();
@@ -212,6 +224,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         }
     }
 
+    /// @dev Checks include, exclude, and trait filters for a Punk.
     function _requireOfferMatchesPunk(Offer memory offer, uint16 punkId) internal view {
         uint256 len = offer.includeIds.length;
         if (len > 0) {
@@ -250,6 +263,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         }
     }
 
+    /// @dev Validates a Punk listing and returns its seller and price.
     function _requireAcceptableListing(
         ICryptoPunksMarket market,
         uint16 punkId,
@@ -267,14 +281,17 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         return (listingSeller, minValue);
     }
 
+    /// @dev Returns the requested receiver, or the offerer when none is set.
     function _offerRecipient(Offer memory offer) internal pure returns (address) {
         return offer.receiver == address(0) ? offer.offerer : offer.receiver;
     }
 
+    /// @dev Refunds the settlement amount to the offerer.
     function _refundOfferSettlement(Offer memory offer) internal {
         _pushOrCredit(offer.offerer, offer.settlementWei);
     }
 
+    /// @dev Reverts when the Punk standard is not supported by offers.
     function _requireSupportedOfferStandard(TokenStandard standard) internal pure {
         if (!_isSupportedOfferStandard(standard)) {
             revert UnsupportedStandard();
@@ -285,14 +302,17 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
     }
 
+    /// @dev Resolves the Punk market for an offer standard.
     function _offerMarket(TokenStandard standard)
         internal
         view
         virtual
         returns (ICryptoPunksMarket);
 
+    /// @dev Resolves the token contract for an offer standard.
     function _offerTokenContract(TokenStandard standard) internal view virtual returns (address);
 
+    /// @dev Buys a listed Punk and sends it to the final recipient.
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
