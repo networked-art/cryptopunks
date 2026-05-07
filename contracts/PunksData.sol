@@ -6,22 +6,14 @@ import "./interfaces/IPunksData.sol";
 
 /// @title PunksData
 /// @notice Sealed primitive data surface for CryptoPunks traits and indexed pixels.
-contract PunksData is
-    PunksDataLoader,
-    IPunksDataCriteria,
-    IPunksDataVisual,
-    IPunksDataIndexed
-{
+contract PunksData is PunksDataLoader, IPunksData {
     constructor(address initialAdmin) PunksDataLoader(initialAdmin) {}
 
-    function datasetHash()
-        public
-        view
-        override(PunksDataLoader, IPunksDataCriteria)
-        returns (bytes32)
-    {
-        return PunksDataLoader.datasetHash();
+    function datasetHash() public view override(IPunksDataCriteria) returns (bytes32) {
+        return _datasetHash;
     }
+
+    // Criteria
 
     function traitCount() external pure returns (uint16) {
         return TRAIT_COUNT;
@@ -32,23 +24,24 @@ contract PunksData is
     }
 
     function traitName(uint16 traitId) external view returns (string memory) {
-        _requireTraitId(traitId);
-        bytes memory record = _traitMetaRecord(traitId);
-        uint256 nameOffset = _readUint16(record, 3);
-        uint256 nameLength = uint8(record[5]);
-        return string(_readBlob(BlobId.TraitMeta, TRAIT_META_HEADER_SIZE + nameOffset, nameLength));
+        (,, uint256 nameOffset, uint256 nameLength) = _traitMeta(traitId);
+        bytes memory name = _readBlob(
+            BlobId.TraitMeta,
+            TRAIT_META_HEADER_SIZE + nameOffset,
+            nameLength
+        );
+        return string(name);
     }
 
     function traitKind(uint16 traitId) external view returns (TraitKind) {
-        _requireTraitId(traitId);
-        uint8 kind = uint8(_traitMetaRecord(traitId)[0]);
+        (uint8 kind,,,) = _traitMeta(traitId);
         if (kind > uint8(TraitKind.Accessory)) revert InvalidTraitId();
         return TraitKind(kind);
     }
 
     function traitSupply(uint16 traitId) external view returns (uint16) {
-        _requireTraitId(traitId);
-        return _readUint16(_traitMetaRecord(traitId), 1);
+        (, uint16 supply,,) = _traitMeta(traitId);
+        return supply;
     }
 
     function hasTrait(uint16 punkId, uint16 traitId) external view returns (bool) {
@@ -78,11 +71,7 @@ contract PunksData is
         returns (uint256)
     {
         _requireTraitId(traitId);
-        _requireWordIndex(wordIndex);
-        return _readBitmapWord(
-            BlobId.TraitBitmaps,
-            (uint256(traitId) * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES
-        );
+        return _bitmapWord(BlobId.TraitBitmaps, traitId, wordIndex);
     }
 
     function headVariantOf(uint16 punkId) external view returns (HeadVariant) {
@@ -96,6 +85,8 @@ contract PunksData is
     function attributeCountOf(uint16 punkId) external view returns (uint8) {
         return uint8(_scalarField(punkId, ATTRIBUTE_COUNT_SHIFT, UINT8_MASK));
     }
+
+    // Visual
 
     function colorCount() public pure returns (uint16) {
         return MAX_COLOR_COUNT;
@@ -140,11 +131,7 @@ contract PunksData is
 
     function colorBitmapWord(uint8 colorId, uint8 wordIndex) external view returns (uint256) {
         _requireColorId(colorId);
-        _requireWordIndex(wordIndex);
-        return _readBitmapWord(
-            BlobId.ColorBitmaps,
-            (uint256(colorId) * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES
-        );
+        return _bitmapWord(BlobId.ColorBitmaps, colorId, wordIndex);
     }
 
     function pixelCountBitmapWord(uint16 pixelCount, uint8 wordIndex)
@@ -155,11 +142,10 @@ contract PunksData is
         if (pixelCount < PIXEL_COUNT_MIN || pixelCount > PIXEL_COUNT_MAX) {
             revert InvalidPixelCount();
         }
-        _requireWordIndex(wordIndex);
-        return _readBitmapWord(
+        return _bitmapWord(
             BlobId.PixelCountBitmaps,
-            (uint256(pixelCount) - PIXEL_COUNT_MIN) * BITMAP_WORD_COUNT * WORD_BYTES
-                + uint256(wordIndex) * WORD_BYTES
+            uint256(pixelCount) - PIXEL_COUNT_MIN,
+            wordIndex
         );
     }
 
@@ -169,13 +155,14 @@ contract PunksData is
         returns (uint256)
     {
         if (count < COLOR_COUNT_MIN || count > COLOR_COUNT_MAX) revert InvalidColorCount();
-        _requireWordIndex(wordIndex);
-        return _readBitmapWord(
+        return _bitmapWord(
             BlobId.ColorCountBitmaps,
-            (uint256(count) - COLOR_COUNT_MIN) * BITMAP_WORD_COUNT * WORD_BYTES
-                + uint256(wordIndex) * WORD_BYTES
+            uint256(count) - COLOR_COUNT_MIN,
+            wordIndex
         );
     }
+
+    // Indexed pixels
 
     function indexedPixelsOf(uint16 punkId) external view returns (bytes memory) {
         return _indexedPixelsOf(punkId);
@@ -225,6 +212,8 @@ contract PunksData is
         return _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
     }
 
+    // Decoding helpers
+
     function _traitMaskOf(uint16 punkId) private view returns (uint256) {
         _requirePunkId(punkId);
         uint256 packed = _traitMaskPairs[punkId >> 1];
@@ -232,6 +221,8 @@ contract PunksData is
         return packed >> 128;
     }
 
+    /// @dev Compressed entry layout:
+    ///      visibleColorCount | visible bitmap | local palette | packed local color indexes.
     function _indexedPixelsOf(uint16 punkId) private view returns (bytes memory pixels) {
         _requirePunkId(punkId);
         uint256 start = _readUint24(BlobId.PixelOffsets, uint256(punkId) * PIXEL_OFFSET_BYTES);
@@ -243,7 +234,7 @@ contract PunksData is
         if (entry.length < COMPRESSED_PIXEL_HEADER_SIZE) revert MalformedPixelBlob();
 
         uint256 visibleColorCount = uint8(entry[0]);
-        uint256 paletteCount = colorCount();
+        uint256 paletteCount = MAX_COLOR_COUNT;
         if (
             visibleColorCount == 0
                 || entry.length < COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount
@@ -331,12 +322,21 @@ contract PunksData is
         }
     }
 
-    function _traitMetaRecord(uint16 traitId) private view returns (bytes memory) {
-        return _readBlob(
+    function _traitMeta(uint16 traitId)
+        private
+        view
+        returns (uint8 kind, uint16 supply, uint256 nameOffset, uint256 nameLength)
+    {
+        _requireTraitId(traitId);
+        bytes memory record = _readBlob(
             BlobId.TraitMeta,
             uint256(traitId) * TRAIT_META_RECORD_SIZE,
             TRAIT_META_RECORD_SIZE
         );
+        kind = uint8(record[TRAIT_META_KIND_OFFSET]);
+        supply = _readUint16(record, TRAIT_META_SUPPLY_OFFSET);
+        nameOffset = _readUint16(record, TRAIT_META_NAME_OFFSET_FIELD);
+        nameLength = uint8(record[TRAIT_META_NAME_LENGTH_OFFSET]);
     }
 
     function _scalarField(uint16 punkId, uint256 fieldShift, uint256 fieldMask)
@@ -355,7 +355,13 @@ contract PunksData is
         return (_packedScalarWords[uint16(wordIndex)] >> shift) & SCALAR_MASK;
     }
 
-    function _readBitmapWord(BlobId blobId, uint256 offset) private view returns (uint256 value) {
+    function _bitmapWord(BlobId blobId, uint256 row, uint8 wordIndex)
+        private
+        view
+        returns (uint256 value)
+    {
+        _requireWordIndex(wordIndex);
+        uint256 offset = (row * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES;
         bytes memory data = _readBlob(blobId, offset, WORD_BYTES);
         assembly ("memory-safe") {
             value := mload(add(data, 0x20))
@@ -371,6 +377,8 @@ contract PunksData is
     function _readUint16(bytes memory data, uint256 offset) private pure returns (uint16) {
         return (uint16(uint8(data[offset])) << 8) | uint8(data[offset + 1]);
     }
+
+    // Validation
 
     function _requirePunkId(uint16 punkId) private pure {
         if (punkId >= PUNK_COUNT) revert InvalidPunkId();

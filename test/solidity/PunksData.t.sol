@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {PunksData} from "../../contracts/PunksData.sol";
-import {IPunksDataLoader} from "../../contracts/interfaces/IPunksData.sol";
+import {IPunksDataErrors} from "../../contracts/interfaces/IPunksData.sol";
 
 /// @notice Minimal subset of the forge-style `Vm` cheat-code interface, used
 /// by Hardhat 3's native Solidity test runner. Self-contained.
@@ -55,21 +55,21 @@ contract PunksDataFuzzTest {
     function testFuzz_invalidMaskOutOfRange(uint8 bitSeed) public {
         uint256 bit = 111 + (uint256(bitSeed) % 145); // 111..255
         uint256 outOfRange = uint256(1) << bit;
-        vm.expectRevert(IPunksDataLoader.InvalidMask.selector);
+        vm.expectRevert(IPunksDataErrors.InvalidMask.selector);
         data.hasTraits(0, outOfRange, 0, 0);
     }
 
     function testFuzz_invalidMaskRequiredOverlapsForbidden(uint128 seed) public {
         uint256 m = uint256(seed) & CANONICAL_TRAIT_MASK;
         vm.assume(m != 0);
-        vm.expectRevert(IPunksDataLoader.InvalidMask.selector);
+        vm.expectRevert(IPunksDataErrors.InvalidMask.selector);
         data.hasTraits(0, m, m, 0);
     }
 
     function testFuzz_invalidMaskForbiddenOverlapsAnyOf(uint128 seed) public {
         uint256 m = uint256(seed) & CANONICAL_TRAIT_MASK;
         vm.assume(m != 0);
-        vm.expectRevert(IPunksDataLoader.InvalidMask.selector);
+        vm.expectRevert(IPunksDataErrors.InvalidMask.selector);
         data.hasTraits(0, 0, m, m);
     }
 
@@ -78,7 +78,7 @@ contract PunksDataFuzzTest {
         uint256[] memory words = new uint256[](1);
         words[0] = word;
         if (!_isValidScalarWord(word)) {
-            vm.expectRevert(IPunksDataLoader.InvalidScalar.selector);
+            vm.expectRevert(IPunksDataErrors.InvalidScalar.selector);
         }
         data.loadPackedScalars(0, words);
     }

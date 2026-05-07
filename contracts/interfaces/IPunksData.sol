@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title IPunksDataLoader
-/// @notice Loader types, events, errors, and write API for staging and sealing Punk data.
-interface IPunksDataLoader {
+interface IPunksDataTypes {
     enum BlobId {
         TraitBitmaps,
         TraitMeta,
@@ -14,24 +12,9 @@ interface IPunksDataLoader {
         PixelCountBitmaps,
         ColorCountBitmaps
     }
+}
 
-    struct DatasetCommitment {
-        bytes32 traitCatalogHash;
-        bytes32 punkMaskHash;
-        bytes32 paletteHash;
-        bytes32 indexedPixelsHash;
-        bytes32 compressedPixelsHash;
-    }
-
-    event DatasetCommitted(
-        bytes32 traitCatalogHash,
-        bytes32 punkMaskHash,
-        bytes32 paletteHash,
-        bytes32 indexedPixelsHash,
-        bytes32 compressedPixelsHash,
-        bytes32 datasetHash
-    );
-
+interface IPunksDataErrors is IPunksDataTypes {
     error ZeroAddress();
     error NotAdmin();
     error InvalidChunkIndex();
@@ -48,6 +31,27 @@ interface IPunksDataLoader {
     error InvalidMask();
     error BlobReadOutOfBounds(BlobId blobId, uint256 offset, uint256 length);
     error MalformedPixelBlob();
+}
+
+/// @title IPunksDataLoader
+/// @notice Loader types, events, errors, and write API for staging and sealing Punk data.
+interface IPunksDataLoader is IPunksDataErrors {
+    struct DatasetCommitment {
+        bytes32 traitCatalogHash;
+        bytes32 punkMaskHash;
+        bytes32 paletteHash;
+        bytes32 indexedPixelsHash;
+        bytes32 compressedPixelsHash;
+    }
+
+    event DatasetCommitted(
+        bytes32 traitCatalogHash,
+        bytes32 punkMaskHash,
+        bytes32 paletteHash,
+        bytes32 indexedPixelsHash,
+        bytes32 compressedPixelsHash,
+        bytes32 datasetHash
+    );
 
     function admin() external view returns (address);
 
@@ -153,3 +157,10 @@ interface IPunksDataIndexed {
     function paletteAlphaBytes() external view returns (bytes memory);
     function paletteRgbaBytes() external view returns (bytes memory);
 }
+
+interface IPunksData is
+    IPunksDataLoader,
+    IPunksDataCriteria,
+    IPunksDataVisual,
+    IPunksDataIndexed
+{}

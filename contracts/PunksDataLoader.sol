@@ -25,6 +25,10 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     uint256 internal constant CANONICAL_COLOR_MASK = (uint256(1) << MAX_COLOR_COUNT) - 1;
     uint256 internal constant TRAIT_META_RECORD_SIZE = 6;
     uint256 internal constant TRAIT_META_HEADER_SIZE = uint256(TRAIT_COUNT) * TRAIT_META_RECORD_SIZE;
+    uint256 internal constant TRAIT_META_KIND_OFFSET = 0;
+    uint256 internal constant TRAIT_META_SUPPLY_OFFSET = 1;
+    uint256 internal constant TRAIT_META_NAME_OFFSET_FIELD = 3;
+    uint256 internal constant TRAIT_META_NAME_LENGTH_OFFSET = 5;
     uint256 internal constant WORD_BYTES = 32;
     uint256 internal constant PIXEL_OFFSET_BYTES = 3;
     uint256 internal constant BITS_PER_BYTE = 8;
@@ -203,10 +207,6 @@ abstract contract PunksDataLoader is IPunksDataLoader {
             commitment.compressedPixelsHash,
             committedDatasetHash
         );
-    }
-
-    function datasetHash() public view virtual returns (bytes32) {
-        return _datasetHash;
     }
 
     function _readBlob(BlobId blobId, uint256 offset, uint256 length)
