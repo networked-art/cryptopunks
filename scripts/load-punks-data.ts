@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { network } from 'hardhat'
 import { bytesToHex, getAddress, type Address, type Hex } from 'viem'
@@ -19,6 +19,9 @@ enum BlobId {
   ColorCountBitmaps,
 }
 
+type BlobName = keyof typeof BlobId & string
+type WordMethod = 'loadTraitMaskPairs' | 'loadColorMasks' | 'loadPackedScalars'
+
 type Manifest = {
   hashes: {
     traitCatalogHash: Hex
@@ -31,6 +34,15 @@ type Manifest = {
   files: Record<string, string>
 }
 
+type LoadState = {
+  address: Address
+  chainId: number
+  blobs: Record<BlobName, number>
+  words: Record<WordMethod, number>
+  colorSupplies: number
+  sealed: boolean
+}
+
 async function main() {
   const manifest = JSON.parse(
     await readFile(join(OUTPUT_DIR, 'manifest.json'), 'utf8'),
@@ -40,23 +52,34 @@ async function main() {
   const publicClient = await viem.getPublicClient()
 
   const address = await resolvePunksDataAddress(publicClient)
+  const chainId = await publicClient.getChainId()
   const contract = await viem.getContractAt('PunksData', address)
+  const state = await loadOrInitState(address, chainId)
 
-  console.log(`PunksData ${contract.address}`)
+  console.log(`PunksData ${contract.address} (chain ${chainId})`)
+  console.log(`progress state ${stateFilePath(chainId)}`)
 
-  await loadBlob(contract, publicClient, BlobId.TraitBitmaps, manifest.files.traitBitmaps)
-  await loadBlob(contract, publicClient, BlobId.TraitMeta, manifest.files.traitMeta)
-  await loadBlob(contract, publicClient, BlobId.Palette, manifest.files.palette)
-  await loadBlob(contract, publicClient, BlobId.PixelOffsets, manifest.files.pixelOffsets)
-  await loadBlob(contract, publicClient, BlobId.CompressedPixels, manifest.files.compressedPixels)
-  await loadBlob(contract, publicClient, BlobId.ColorBitmaps, manifest.files.colorBitmaps)
+  await loadBlob(state, contract, publicClient, BlobId.TraitBitmaps, manifest.files.traitBitmaps)
+  await loadBlob(state, contract, publicClient, BlobId.TraitMeta, manifest.files.traitMeta)
+  await loadBlob(state, contract, publicClient, BlobId.Palette, manifest.files.palette)
+  await loadBlob(state, contract, publicClient, BlobId.PixelOffsets, manifest.files.pixelOffsets)
   await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.CompressedPixels,
+    manifest.files.compressedPixels,
+  )
+  await loadBlob(state, contract, publicClient, BlobId.ColorBitmaps, manifest.files.colorBitmaps)
+  await loadBlob(
+    state,
     contract,
     publicClient,
     BlobId.PixelCountBitmaps,
     manifest.files.pixelCountBitmaps,
   )
   await loadBlob(
+    state,
     contract,
     publicClient,
     BlobId.ColorCountBitmaps,
@@ -64,40 +87,44 @@ async function main() {
   )
 
   await loadUint256Batches(
-    'trait mask pairs',
+    state,
     contract,
     publicClient,
     'loadTraitMaskPairs',
     manifest.files.traitMaskPairs,
   )
   await loadUint256Batches(
-    'color masks',
+    state,
     contract,
     publicClient,
     'loadColorMasks',
     manifest.files.colorMasks,
   )
   await loadUint256Batches(
-    'packed scalars',
+    state,
     contract,
     publicClient,
     'loadPackedScalars',
     manifest.files.packedScalars,
   )
-  await loadColorSupplies(contract, publicClient, manifest.files.colorSupplies)
+  await loadColorSupplies(state, contract, publicClient, manifest.files.colorSupplies)
 
-  await submit(
-    publicClient,
-    contract.write.seal([
-      {
-        traitCatalogHash: manifest.hashes.traitCatalogHash,
-        punkMaskHash: manifest.hashes.punkMaskHash,
-        paletteHash: manifest.hashes.paletteHash,
-        indexedPixelsHash: manifest.hashes.indexedPixelsHash,
-        compressedPixelsHash: manifest.hashes.compressedPixelsHash,
-      },
-    ]),
-  )
+  if (!state.sealed) {
+    await submit(
+      publicClient,
+      contract.write.seal([
+        {
+          traitCatalogHash: manifest.hashes.traitCatalogHash,
+          punkMaskHash: manifest.hashes.punkMaskHash,
+          paletteHash: manifest.hashes.paletteHash,
+          indexedPixelsHash: manifest.hashes.indexedPixelsHash,
+          compressedPixelsHash: manifest.hashes.compressedPixelsHash,
+        },
+      ]),
+    )
+    state.sealed = true
+    await saveState(state)
+  }
 
   const onchainHash = await contract.read.datasetHash()
   if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
@@ -108,48 +135,79 @@ async function main() {
 }
 
 async function loadBlob(
+  state: LoadState,
   contract: any,
   publicClient: any,
   blobId: BlobId,
   fileName: string,
 ) {
+  const blobName = BlobId[blobId] as BlobName
   const bytes = new Uint8Array(await readFile(join(OUTPUT_DIR, fileName)))
   const chunks = Math.ceil(bytes.length / CHUNK_SIZE)
-  console.log(`loading blob ${blobId} ${fileName} (${bytes.length} bytes, ${chunks} chunks)`)
-  for (let index = 0; index < chunks; index++) {
+  const startIndex = state.blobs[blobName]
+  if (startIndex >= chunks) {
+    console.log(`blob ${blobName}: already loaded (${chunks}/${chunks} chunks)`)
+    return
+  }
+  console.log(
+    `blob ${blobName}: loading chunks ${startIndex}..${chunks - 1} (${bytes.length} bytes, ${fileName})`,
+  )
+  for (let index = startIndex; index < chunks; index++) {
     const chunk = bytes.slice(index * CHUNK_SIZE, Math.min(bytes.length, (index + 1) * CHUNK_SIZE))
-    await submit(
-      publicClient,
-      contract.write.loadBlobChunk([blobId, index, bytesToHex(chunk)]),
-    )
+    await submit(publicClient, contract.write.loadBlobChunk([blobId, index, bytesToHex(chunk)]))
+    state.blobs[blobName] = index + 1
+    await saveState(state)
   }
 }
 
 async function loadUint256Batches(
-  label: string,
+  state: LoadState,
   contract: any,
   publicClient: any,
-  method: 'loadTraitMaskPairs' | 'loadColorMasks' | 'loadPackedScalars',
+  method: WordMethod,
   fileName: string,
 ) {
   const words = readUint256Words(new Uint8Array(await readFile(join(OUTPUT_DIR, fileName))))
-  console.log(`loading ${label} (${words.length} words)`)
-  for (let start = 0; start < words.length; start += STORAGE_BATCH) {
+  const startIndex = state.words[method]
+  if (startIndex >= words.length) {
+    console.log(`${method}: already loaded (${words.length}/${words.length} words)`)
+    return
+  }
+  console.log(
+    `${method}: loading words ${startIndex}..${words.length - 1} (${words.length} total)`,
+  )
+  for (let start = startIndex; start < words.length; start += STORAGE_BATCH) {
     const batch = words.slice(start, start + STORAGE_BATCH)
     await submit(publicClient, contract.write[method]([start, batch]))
+    state.words[method] = start + batch.length
+    await saveState(state)
   }
 }
 
-async function loadColorSupplies(contract: any, publicClient: any, fileName: string) {
+async function loadColorSupplies(
+  state: LoadState,
+  contract: any,
+  publicClient: any,
+  fileName: string,
+) {
   const bytes = new Uint8Array(await readFile(join(OUTPUT_DIR, fileName)))
   const supplies: number[] = []
   for (let offset = 0; offset < bytes.length; offset += 4) {
     supplies.push(readUint32(bytes, offset))
   }
-  console.log(`loading color supplies (${supplies.length})`)
-  for (let start = 0; start < supplies.length; start += STORAGE_BATCH) {
+  const startIndex = state.colorSupplies
+  if (startIndex >= supplies.length) {
+    console.log(`color supplies: already loaded (${supplies.length}/${supplies.length})`)
+    return
+  }
+  console.log(
+    `color supplies: loading entries ${startIndex}..${supplies.length - 1} (${supplies.length} total)`,
+  )
+  for (let start = startIndex; start < supplies.length; start += STORAGE_BATCH) {
     const batch = supplies.slice(start, start + STORAGE_BATCH)
     await submit(publicClient, contract.write.loadColorSupplies([start, batch]))
+    state.colorSupplies = start + batch.length
+    await saveState(state)
   }
 }
 
@@ -183,6 +241,56 @@ async function resolvePunksDataAddress(publicClient: any): Promise<Address> {
     throw new Error(`PunksData#PunksData not found in ${deployedAddressesPath}`)
   }
   return getAddress(address)
+}
+
+function stateFilePath(chainId: number): string {
+  return join(OUTPUT_DIR, `.load-state-${chainId}.json`)
+}
+
+function freshState(address: Address, chainId: number): LoadState {
+  return {
+    address,
+    chainId,
+    blobs: {
+      TraitBitmaps: 0,
+      TraitMeta: 0,
+      Palette: 0,
+      PixelOffsets: 0,
+      CompressedPixels: 0,
+      ColorBitmaps: 0,
+      PixelCountBitmaps: 0,
+      ColorCountBitmaps: 0,
+    },
+    words: {
+      loadTraitMaskPairs: 0,
+      loadColorMasks: 0,
+      loadPackedScalars: 0,
+    },
+    colorSupplies: 0,
+    sealed: false,
+  }
+}
+
+async function loadOrInitState(address: Address, chainId: number): Promise<LoadState> {
+  const path = stateFilePath(chainId)
+  if (!existsSync(path)) return freshState(address, chainId)
+  const existing = JSON.parse(await readFile(path, 'utf8')) as LoadState
+  if (
+    existing.address.toLowerCase() !== address.toLowerCase()
+    || existing.chainId !== chainId
+  ) {
+    throw new Error(
+      `State file ${path} mismatches current address/chainId (file: ${existing.address} on ${existing.chainId}, want: ${address} on ${chainId}). Delete it to start fresh.`,
+    )
+  }
+  return existing
+}
+
+async function saveState(state: LoadState) {
+  const path = stateFilePath(state.chainId)
+  const tmpPath = `${path}.tmp`
+  await writeFile(tmpPath, JSON.stringify(state, null, 2))
+  await rename(tmpPath, path)
 }
 
 function readUint256Words(bytes: Uint8Array): bigint[] {
