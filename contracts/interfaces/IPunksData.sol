@@ -95,3 +95,38 @@ interface IPunksDataIndexed {
     function paletteAlphaBytes() external view returns (bytes memory);
     function paletteRgbaBytes() external view returns (bytes memory);
 }
+
+interface IPunksDataDeployment {
+    enum BlobId {
+        Invalid,
+        TraitBitmaps,
+        TraitMeta,
+        Palette,
+        PixelOffsets,
+        CompressedPixels,
+        ColorBitmaps,
+        PixelCountBitmaps,
+        ColorCountBitmaps
+    }
+
+    struct TraitNameHash {
+        bytes32 nameHash;
+        IPunksDataCriteria.TraitKind kind;
+        uint16 traitId;
+    }
+
+    struct DatasetCommitment {
+        bytes32 traitCatalogHash;
+        bytes32 punkMaskHash;
+        bytes32 paletteHash;
+        bytes32 indexedPixelsHash;
+        bytes32 compressedPixelsHash;
+    }
+
+    function blobChunkCount(BlobId blobId) external view returns (uint256);
+    function blobLength(BlobId blobId) external view returns (uint256);
+
+    function loadTraitNameHashes(TraitNameHash[] calldata entries) external;
+    function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data) external;
+    function seal(DatasetCommitment calldata commitment) external;
+}

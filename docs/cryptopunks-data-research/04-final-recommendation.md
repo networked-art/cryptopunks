@@ -97,9 +97,10 @@ Color predicates are visible-color predicates. `colorMaskOf`, `hasColor`, and
 transparent palette entry. `colorSupply` may still expose the transparent
 pixel total as a global palette statistic.
 
-Loader/admin functions use named shapes rather than parallel arrays:
-`BlobId` names each SSTORE2 blob, `TraitNameHash[]` loads trait lookup rows,
-and `DatasetCommitment` passes the five seal hashes as one commitment.
+Loader/admin functions use named shapes rather than parallel arrays. The
+`IPunksDataDeployment` interface defines `BlobId` for SSTORE2 blobs,
+`TraitNameHash[]` for trait lookup rows, and `DatasetCommitment` for the
+five seal hashes.
 
 Public-good functions:
 

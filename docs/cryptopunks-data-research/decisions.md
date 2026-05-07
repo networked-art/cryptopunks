@@ -366,6 +366,10 @@ approach.
   revert post-seal.
 - No proxy. No upgrade. No emergency override.
 
+`BlobId`, `TraitNameHash`, and `DatasetCommitment` live in the
+deployment-only `IPunksDataDeployment` interface, separate from the consumer
+criteria/visual/indexed interfaces.
+
 The deployer is responsible for calling `seal(DatasetCommitment)`. A
 deployed-but-unsealed contract is not canonical.
 

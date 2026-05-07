@@ -8,7 +8,13 @@ import "./lib/BytecodeBlob.sol";
 
 /// @title PunksData
 /// @notice Sealed primitive data surface for CryptoPunks traits and indexed pixels.
-contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIndexed {
+contract PunksData is
+    ERC165,
+    IPunksDataCriteria,
+    IPunksDataVisual,
+    IPunksDataIndexed,
+    IPunksDataDeployment
+{
     using BytecodeBlob for address;
 
     uint16 public constant PUNK_COUNT = 10_000;
@@ -22,18 +28,6 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     uint8 public constant PUNK_WIDTH = 24;
     uint8 public constant PUNK_HEIGHT = 24;
     uint16 public constant PIXELS_PER_PUNK = 576;
-
-    enum BlobId {
-        Invalid,
-        TraitBitmaps,
-        TraitMeta,
-        Palette,
-        PixelOffsets,
-        CompressedPixels,
-        ColorBitmaps,
-        PixelCountBitmaps,
-        ColorCountBitmaps
-    }
 
     uint256 public constant SOURCE_CHAIN_ID = 1;
     uint256 public constant SOURCE_BLOCK_NUMBER = 25_044_552;
@@ -79,20 +73,6 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     struct Chunk {
         address pointer;
         uint32 endOffset;
-    }
-
-    struct TraitNameHash {
-        bytes32 nameHash;
-        TraitKind kind;
-        uint16 traitId;
-    }
-
-    struct DatasetCommitment {
-        bytes32 traitCatalogHash;
-        bytes32 punkMaskHash;
-        bytes32 paletteHash;
-        bytes32 indexedPixelsHash;
-        bytes32 compressedPixelsHash;
     }
 
     mapping(uint16 pairIndex => uint256 packedMasks) private _traitMaskPairs;
@@ -168,6 +148,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return interfaceId == type(IPunksDataCriteria).interfaceId
             || interfaceId == type(IPunksDataVisual).interfaceId
             || interfaceId == type(IPunksDataIndexed).interfaceId
+            || interfaceId == type(IPunksDataDeployment).interfaceId
             || super.supportsInterface(interfaceId);
     }
 
