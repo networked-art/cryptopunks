@@ -143,7 +143,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit Bid(auctionId, msg.sender, bidWei);
     }
 
-    function acceptOfferToAuction(uint256 offerId, uint16 punkId)
+    function startAuctionFromOffer(uint256 offerId, uint16 punkId)
         external
         nonReentrant
         returns (uint256 auctionId)

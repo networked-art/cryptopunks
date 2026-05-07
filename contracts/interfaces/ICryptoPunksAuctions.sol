@@ -197,7 +197,7 @@ interface ICryptoPunksAuctions {
 
     function acceptOffer(uint256 offerId, uint16 punkId) external;
 
-    function acceptOfferToAuction(uint256 offerId, uint16 punkId)
+    function startAuctionFromOffer(uint256 offerId, uint16 punkId)
         external
         returns (uint256 auctionId);
 

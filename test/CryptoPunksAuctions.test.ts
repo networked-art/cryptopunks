@@ -720,7 +720,7 @@ describe('CryptoPunksAuctions', () => {
         auctions.address,
         { client: { wallet: seller } },
       )
-      await auctionsAsSeller.write.acceptOfferToAuction([offerId, 950])
+      await auctionsAsSeller.write.startAuctionFromOffer([offerId, 950])
 
       assert.equal(
         await publicClient.getBalance({ address: bidder1.account.address }) - bidderBefore,
@@ -763,7 +763,7 @@ describe('CryptoPunksAuctions', () => {
         { client: { wallet: seller } },
       )
       await ctx.viem.assertions.revertWithCustomError(
-        auctionsAsSeller.write.acceptOfferToAuction([offerId, 951]),
+        auctionsAsSeller.write.startAuctionFromOffer([offerId, 951]),
         auctions,
         'PunkNotInVault',
       )
