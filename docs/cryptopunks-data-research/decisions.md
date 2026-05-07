@@ -1,8 +1,8 @@
 # CryptoPunks Data Research — Decisions
 
-This is a defaults sheet. Each item proposes one answer with a short
-rationale. Strike or rewrite the ones you disagree with; what's left becomes
-the spec input for the data contract and the encoder contracts.
+This is the accepted-decision sheet for the data contract and encoder
+contracts. The review notes remain useful background; this file is the spec
+input to implement against.
 
 ## Already locked (by project memory and prior decisions)
 
@@ -13,7 +13,11 @@ the spec input for the data contract and the encoder contracts.
   single-method `hasTrait` shim is an optional third-party deployment,
   not on this repo's critical path.
 - No PNG bytes are stored anywhere. Every output byte is derived from
-  `palette.bin` + `indexedPixelsOf(punkId)` at call time.
+  `palette.bin` + `indexedPixelsOf(punkId)` plus encoder logic at call
+  time.
+- The full mosaic target is byte-identical to the GitHub `punks.png`, with
+  the same SHA-256 hash. This requires reproducing the exact PNG container,
+  IDAT chunking, zlib header, DEFLATE stream, and checksum bytes.
 - Pre-deployment posture: interfaces, structs, and events are freely
   editable. No migration shims, no compat layers for "old" offers.
 
@@ -24,17 +28,30 @@ the spec input for the data contract and the encoder contracts.
 Why: ~600 bytes, no expansion, matches the data shape directly. Truecolor
 RGBA at 24×24 buys nothing.
 
-### A2. Mosaic PNG byte-match goal — NO
+### A2. Mosaic PNG byte-match goal — YES
 
-Why: Reproducing the github file's exact zlib/DEFLATE stream is reverse
-engineering, may not be feasible, and adds no informational value. Anchor
-verification on `mosaicPixelsHash() = 0xdb0e780a…` instead. Use stored
-(uncompressed) deflate; the resulting PNG is valid, decodes to the same
-pixels, and has a different SHA.
+Target:
 
-Alternate if you disagree: pursue byte-match as a stretch goal in a later
-encoder version that depends on the same data contract; do not block the
-first encoder on it.
+```text
+sha256(generatedPunksPng) == ac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b
+```
+
+Why: The art/provenance goal is stronger than pixel equivalence. The
+generated mosaic should be the canonical GitHub `punks.png` byte stream,
+not merely a different PNG that decodes to the same pixels.
+
+Implication: the encoder must reproduce the reference file exactly:
+2400x2400 truecolor RGBA PNG, no ancillary chunks, filter byte 0 on every
+scanline, reference IDAT chunking, zlib header, exact DEFLATE stream,
+Adler-32, and PNG CRC32 values.
+
+This is a separate encoder milestone and must not block `PunksData` or the
+auction rewrite. The base data contract only needs enough primitives to prove
+the uncompressed pixel stream:
+
+```text
+mosaicPixelsHash() == db0e780ac7553b5dd6a3bb02ed2bf8106c16659e15a36797294e01e8817286bf
+```
 
 ### A3. `anyOfMask` — IN
 
@@ -51,34 +68,34 @@ packed `pixelCount`/`colorCount`); SSTORE2 for large sequential blobs
 Why: SLOAD is cheaper than EXTCODECOPY on the settlement hot path. Blob
 data has no settlement-path consumer.
 
-### A5. Phased delivery — ALL AT ONCE
+### A5. Phased delivery — DATA ALL AT ONCE, EXACT MOSAIC SEPARATE
 
-Why: Spec is clear, deployment cost deprioritized, public-good positioning
-favors one canonical sealed contract over partial deliveries.
+Why: The sealed data contract should ship as one canonical primitive surface:
+traits, masks, bitmaps, palette, indexed pixels, and visual metrics. The
+byte-exact composite PNG encoder is specialized compression work and ships
+separately against the same sealed data contract.
 
-### A6. Deployment chain — MAINNET
+### A6. Deployment chain — MAINNET ONLY
 
 Why: Larva Labs's data contract is on mainnet; canonical successor lives
 where Punks live. Cost (~0.8–8 ETH at SSTORE2-everywhere; lower with
 mixed layout) is real but not prohibitive for a sealed deployment.
 
-Flag: this is the only decision with material cost. If you want L2 or
-L2 + a thin mainnet pointer, say so.
-
 ### A7. Filtered mosaic generator — IN SCOPE (same encoder)
 
 Why: Same encoder contract, ~10 lines of generator logic, zero new
-storage, big art-piece value. Composes V2 trait masks with mosaic
+storage, big art-piece value. Composes `PunksData` trait masks with mosaic
 generation: "all 9 Aliens in canonical positions", "every 0-attribute
 Punk", etc.
 
 ## Naming
 
-### N1. Data contract — `CryptoPunksAtlas`
+### N1. Data contract — `PunksData`
 
-Why: Matches "register of every Punk's traits, colors, pixels". No
-collision with V1/V2 token-standard naming, no collision with Larva Labs's
-`CryptoPunksData`.
+Why: Short, humble, and close enough to Larva Labs's original
+`CryptopunksData` to be legible without implying a token V1/V2 distinction.
+The plural `Punks` keeps it general; the absence of `CryptoPunksDataV2`
+avoids version confusion.
 
 ### N2. Encoders — `CryptoPunksPng`, `CryptoPunksSvg`, `CryptoPunksMetadata`
 
@@ -188,14 +205,30 @@ function paletteRgbaBytes()  external view returns (bytes memory); // 888
 Why: Encoders need PLTE/tRNS split; reading 222 `colorOf` calls per
 generation is wasteful. Cheap to expose from the data contract.
 
-### E2. Mosaic adler32 — IMMUTABLE PRECOMPUTE
+### E2. Reference PNG commitments
 
-`bytes4 immutable mosaicAdler32` set at deploy.
+Expose immutable commitments for the exact-reference target:
 
-Why: Pixel data is fixed forever; adler32 is a function of fixed data.
-Anyone suspicious can recompute from `mosaicRgbaRow(0..99)` outputs and
-confirm. Storing the resulting four bytes is not the same as storing the
-PNG.
+```solidity
+function referencePngSha256() external pure returns (bytes32);
+function referenceInflatedScanlinesSha256() external pure returns (bytes32);
+function referenceIdatSha256() external pure returns (bytes32);
+```
+
+Pinned values:
+
+```text
+referencePngSha256:
+  ac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b
+referenceInflatedScanlinesSha256:
+  62a66b4618a72410d6d99b5fceee6013fabcb3574728ed5ce437b2a161da8673
+referenceIdatSha256:
+  7d080b4bca3e4c8e19ed53254eb8dc1dd1c887c8b6b3560d3374436c19f9614f
+```
+
+Why: The final PNG hash proves byte identity. The inflated-scanline hash
+proves the indexed pixels and palette expand into the correct 2400x2400 RGBA
+image. The IDAT hash isolates the hard compression target.
 
 ### E3. Per-Punk PNG signatures
 
@@ -207,7 +240,7 @@ function punkPng(uint16 punkId, bytes4 backgroundRgba) external view returns (by
 First overload returns transparent-background PNG-8. Second flattens
 against an opaque background and returns alpha-255 throughout.
 
-### E4. Mosaic surface — paged, two layers in the PNG encoder
+### E4. Mosaic surface — paged, byte-exact reference target
 
 Layer 1 (pixel generation):
 
@@ -220,13 +253,19 @@ function mosaicPixelsHash() external view returns (bytes32); // 0xdb0e780a…
 Layer 2 (PNG byte stream):
 
 ```solidity
-function pngHeader()  external view returns (bytes memory);
-function pngStripe(uint8 rowIndex) external view returns (bytes memory);
-function pngFooter()  external view returns (bytes memory);
-function pngStreamHash() external view returns (bytes32);
+function compositePngChunkCount() external pure returns (uint16);
+function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
+function compositePngSha256() external pure returns (bytes32);
+function compositeIdatSha256() external pure returns (bytes32);
 ```
 
-Bonus: `pngStripeFiltered(uint8 row, uint256 required, uint256 forbidden, uint256 anyOf)`.
+The concatenation of all `compositePngChunk(i)` outputs must be byte-equal to
+the GitHub `punks.png` file. Chunking is an RPC/EVM return-size requirement,
+not a different file format.
+
+Bonus: `compositePngChunkFiltered(...)` is not part of the byte-exact
+reference target because filtered mosaics are new generated compositions, not
+the canonical GitHub image.
 
 ### E5. Drop `punksWithTrait`
 
@@ -236,7 +275,7 @@ approach.
 
 ## Lifecycle
 
-### L1. Sealed-initializer pattern
+### L1. Deployer seals the data contract
 
 - Constructor records `address admin`.
 - `loadChunk(blobName, index, bytes)` admin-only, accumulates SSTORE2
@@ -244,6 +283,9 @@ approach.
 - `seal()` called once: writes `datasetHash`, emits `DatasetCommitted`,
   sets `admin = address(0)`. All loader functions revert post-seal.
 - No proxy. No upgrade. No emergency override.
+
+The deployer is responsible for calling `seal()`. A deployed-but-unsealed
+contract is not canonical.
 
 ### L2. `DatasetCommitted` event
 
@@ -265,6 +307,8 @@ alone.
 
 Why: One-shot cache invalidation for marketplaces. Renderer replacements
 emit from themselves later.
+
+Decision: We ditch this. No consumer for this exists...
 
 ### L4. Invalid IDs — REVERT
 
@@ -290,13 +334,51 @@ for tooling that wants to probe without catching reverts.
 
 ### O1. Deployer / owner / mirrorer
 
-Flag: I don't know who's committing. Fill in name + address. Without it
-the public-good claim has no name attached.
+Flag: choose the deployer/admin address before deployment. That address loads
+the dataset and must call `seal()`. After seal, it has no authority.
 
-### O2. Post-deploy artifacts
+### O2. ENS naming — `punksdata.eth`
 
-- ENS subdomain (TBD — suggest `punks-data.eth` or scoped under an
-  existing name).
+Register and manage `punksdata.eth` as the public discovery namespace for the
+contracts.
+
+Name map:
+
+```text
+punksdata.eth              -> PunksData
+png.punksdata.eth          -> CryptoPunksPng
+svg.punksdata.eth          -> CryptoPunksSvg
+metadata.punksdata.eth     -> CryptoPunksMetadata
+traits.punksdata.eth       -> CryptoPunksTraitsCompat, optional
+renderer.punksdata.eth     -> optional aggregate/default renderer, only if
+                              such a contract is deployed
+```
+
+For each deployed contract, configure both directions:
+
+- forward ENS record: name resolves to the contract address,
+- reverse / primary name: contract address resolves back to the ENS name.
+
+Deployment flow:
+
+1. Register/control `punksdata.eth` from the deployer Safe.
+2. Deploy contracts with temporary admin/owner authority where needed.
+3. Set forward records for `punksdata.eth` and subnames.
+4. Set reverse primary names through the Reverse Registrar while the deployer
+   or temporary owner is still authorized.
+5. Call `seal()` on `PunksData`; after seal, the data contract has no admin.
+
+ENS is a discovery layer, not the security root. The canonical trust anchors
+remain the deployed addresses, verified source, `DatasetCommitted`, and
+`datasetHash()`. `PunksData` should not own `punksdata.eth`; keep ENS
+ownership in a Safe so subnames, text records, and metadata can be maintained
+without giving the sealed data contract mutable authority.
+
+Reference:
+`https://docs.ens.domains/web/naming-contracts/`
+
+### O3. Post-deploy artifacts
+
 - Etherscan source verification with deterministic build (Solidity
   version + optimizer settings pinned in repo).
 - IPFS mirror of: trait catalog JSON, palette JSON, dataset hashes,
@@ -304,7 +386,7 @@ the public-good claim has no name attached.
 - Dataset bundle CID recorded on the deploy artifact (not in the
   contract — derive-don't-duplicate).
 
-### O3. Auction-side knock-on (downstream of the data contract)
+### O4. Auction-side knock-on (downstream of the data contract)
 
 - `Offer.traitFilters` (`TraitFilter[]`) replaced by `requiredMask` +
   `forbiddenMask` + `anyOfMask`.
@@ -314,7 +396,7 @@ the public-good claim has no name attached.
 - `MockCryptoPunksTraits` rewritten with `mapping(uint16 => uint256)`
   + `setMask` helper; the current per-trait-bool mock goes away.
 
-### O4. Cost benchmarks — POST-IMPLEMENTATION
+### O5. Cost benchmarks — POST-IMPLEMENTATION
 
 Why: Real numbers per view (`hasTrait`, `traitMaskOf`, `hasTraits`,
 `indexedPixelsOf`, `colorAt`) reported in a benchmarks doc once contracts
@@ -322,14 +404,15 @@ are written. Spec doesn't block on speculative gas numbers.
 
 ## Doc cleanup once these decisions are agreed
 
-- Doc 04 (final-recommendation): replace V2 naming, drop adapter-as-bridge
-  framing, add `anyOfMask`, mark phasing decision, replace storage
-  recommendation with mixed layout.
+- Doc 04 (final-recommendation): replace V2 naming with `PunksData`, drop
+  adapter-as-bridge framing, add `anyOfMask`, mark phasing decision, replace
+  storage recommendation with mixed layout.
 - Doc 02 (trait-filtering): add `anyOfMask` signature, kind enum, name
   hash semantics.
 - Doc 06 (reproducibility): add pinned chain ID, block height, source
   `extcodehash`.
-- Doc 08 (composite-PNG): replace byte-exact target with stored-deflate
-  + pixel hash anchor; mark exact-DEFLATE as a possible later encoder.
+- Doc 08 (composite-PNG): keep byte-exact target, make chunked exact-reference
+  output the goal, and state that reproducing the exact DEFLATE stream is the
+  blocker.
 - review/*: leave as-is (peer review of the original notes); decisions
   here are the synthesis.
