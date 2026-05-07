@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   bytesToHex,
@@ -27,6 +27,8 @@ const PIXELS_PER_PUNK = 576
 const RGBA_BYTES_PER_PUNK = PIXELS_PER_PUNK * 4
 const TRANSPARENT_RGBA = '00000000'
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
+const RAW_CACHE_ENABLED = process.env.PUNKS_DATA_RAW_CACHE !== '0'
+const RAW_CACHE_DIR = process.env.PUNKS_DATA_RAW_CACHE_DIR ?? join(OUTPUT_DIR, 'raw')
 const CONCURRENCY = readPositiveIntEnv('PUNKS_DATA_CONCURRENCY', 4)
 const RPC_RETRIES = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRIES', 8)
 const RPC_RETRY_BASE_MS = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRY_BASE_MS', 750)
@@ -76,6 +78,19 @@ type TraitRecord = {
   nameHash: Hex
 }
 
+type RawPunkCache = {
+  version: 1
+  source: {
+    address: string
+    chainId: number
+    blockNumber: number
+  }
+  id: number
+  attributes: string
+  image: Hex
+  imageSha256: string
+}
+
 async function main() {
   const publicClient = createPublicClient({
     transport: http(RPC_URL),
@@ -104,11 +119,21 @@ async function main() {
   console.log(
     `RPC settings: concurrency=${CONCURRENCY}, retries=${RPC_RETRIES}, requestDelayMs=${REQUEST_DELAY_MS}`,
   )
+  if (RAW_CACHE_ENABLED) {
+    await mkdir(RAW_CACHE_DIR, { recursive: true })
+    console.log(`Raw cache ${RAW_CACHE_DIR}`)
+  }
   console.log(`Reading ${PUNK_COUNT} Punk attribute/image pairs`)
   const rows = await mapLimit(
     Array.from({ length: PUNK_COUNT }, (_, id) => id),
     CONCURRENCY,
     async (id): Promise<PunkRow> => {
+      const cached = await readRawPunkCache(id)
+      if (cached !== undefined) {
+        if (id % 500 === 0) console.log(`  cached ${id}`)
+        return cached
+      }
+
       const attributes = await withRpcRetry(`punkAttributes(${id})`, async () => {
         await sleep(REQUEST_DELAY_MS)
         return publicClient.readContract({
@@ -133,6 +158,7 @@ async function main() {
       if (image.length !== RGBA_BYTES_PER_PUNK) {
         throw new Error(`Punk ${id} image length ${image.length}`)
       }
+      await writeRawPunkCache({ id, attributes, image })
       if (id % 500 === 0) console.log(`  read ${id}`)
       return { id, attributes, image }
     },
@@ -648,6 +674,89 @@ function mustGet<K, V>(map: Map<K, V>, key: K): V {
   const value = map.get(key)
   if (value === undefined) throw new Error(`Missing key ${String(key)}`)
   return value
+}
+
+async function readRawPunkCache(id: number): Promise<PunkRow | undefined> {
+  if (!RAW_CACHE_ENABLED) return undefined
+
+  try {
+    const parsed = JSON.parse(await readFile(rawPunkCachePath(id), 'utf8')) as unknown
+    if (!isRawPunkCache(parsed, id)) return undefined
+
+    const image = hexToBytes(parsed.image)
+    if (image.length !== RGBA_BYTES_PER_PUNK) return undefined
+
+    const imageSha256 = sha256Hex(image)
+    if (parsed.imageSha256 !== imageSha256) return undefined
+
+    return {
+      id,
+      attributes: parsed.attributes,
+      image,
+    }
+  } catch (error) {
+    if (isMissingFileError(error)) return undefined
+    console.warn(`  ignoring invalid raw cache for Punk ${id}: ${shortError(error)}`)
+    return undefined
+  }
+}
+
+async function writeRawPunkCache(row: PunkRow): Promise<void> {
+  if (!RAW_CACHE_ENABLED) return
+
+  const payload: RawPunkCache = {
+    version: 1,
+    source: {
+      address: SOURCE_DATA,
+      chainId: SOURCE_CHAIN_ID,
+      blockNumber: Number(SOURCE_BLOCK_NUMBER),
+    },
+    id: row.id,
+    attributes: row.attributes,
+    image: bytesToHex(row.image),
+    imageSha256: sha256Hex(row.image),
+  }
+
+  const path = rawPunkCachePath(row.id)
+  const tmpPath = `${path}.tmp-${process.pid}-${Date.now()}`
+  await writeFile(tmpPath, `${JSON.stringify(payload)}\n`)
+  await rename(tmpPath, path)
+}
+
+function isRawPunkCache(value: unknown, id: number): value is RawPunkCache {
+  if (!isRecord(value)) return false
+  if (value.version !== 1 || value.id !== id) return false
+  if (typeof value.attributes !== 'string' || value.attributes.length === 0) return false
+  if (typeof value.image !== 'string' || !/^0x[0-9a-fA-F]*$/.test(value.image)) {
+    return false
+  }
+  if (typeof value.imageSha256 !== 'string') return false
+  if (!isRecord(value.source)) return false
+  if (
+    typeof value.source.address !== 'string'
+      || typeof value.source.chainId !== 'number'
+      || typeof value.source.blockNumber !== 'number'
+  ) return false
+
+  return value.source.address.toLowerCase() === SOURCE_DATA.toLowerCase()
+    && value.source.chainId === SOURCE_CHAIN_ID
+    && value.source.blockNumber === Number(SOURCE_BLOCK_NUMBER)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function rawPunkCachePath(id: number): string {
+  return join(RAW_CACHE_DIR, `${String(id).padStart(4, '0')}.json`)
+}
+
+function sha256Hex(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return isRecord(error) && error.code === 'ENOENT'
 }
 
 async function withRpcRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
