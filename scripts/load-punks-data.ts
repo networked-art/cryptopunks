@@ -1,7 +1,8 @@
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { network } from 'hardhat'
-import { bytesToHex, getAddress, type Hex } from 'viem'
+import { bytesToHex, getAddress, type Address, type Hex } from 'viem'
 
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const CHUNK_SIZE = 24_575
@@ -37,11 +38,9 @@ async function main() {
 
   const { viem } = await network.create()
   const publicClient = await viem.getPublicClient()
-  const [deployer] = await viem.getWalletClients()
 
-  const contract = process.env.PUNKS_DATA_ADDRESS
-    ? await viem.getContractAt('PunksData', getAddress(process.env.PUNKS_DATA_ADDRESS))
-    : await viem.deployContract('PunksData', [deployer.account.address])
+  const address = await resolvePunksDataAddress(publicClient)
+  const contract = await viem.getContractAt('PunksData', address)
 
   console.log(`PunksData ${contract.address}`)
 
@@ -157,6 +156,33 @@ async function loadColorSupplies(contract: any, publicClient: any, fileName: str
 async function submit(publicClient: any, txPromise: Promise<Hex>) {
   const hash = await txPromise
   await publicClient.waitForTransactionReceipt({ hash })
+}
+
+async function resolvePunksDataAddress(publicClient: any): Promise<Address> {
+  if (process.env.PUNKS_DATA_ADDRESS) {
+    return getAddress(process.env.PUNKS_DATA_ADDRESS)
+  }
+  const chainId = await publicClient.getChainId()
+  const deploymentId = process.env.PUNKS_DATA_DEPLOYMENT_ID ?? `chain-${chainId}`
+  const deployedAddressesPath = join(
+    'ignition/deployments',
+    deploymentId,
+    'deployed_addresses.json',
+  )
+  if (!existsSync(deployedAddressesPath)) {
+    throw new Error(
+      `No PunksData address found. Set PUNKS_DATA_ADDRESS, or deploy first: hardhat ignition deploy ignition/modules/PunksData.ts --network <network>`,
+    )
+  }
+  const deployed = JSON.parse(await readFile(deployedAddressesPath, 'utf8')) as Record<
+    string,
+    string
+  >
+  const address = deployed['PunksData#PunksData']
+  if (!address) {
+    throw new Error(`PunksData#PunksData not found in ${deployedAddressesPath}`)
+  }
+  return getAddress(address)
 }
 
 function readUint256Words(bytes: Uint8Array): bigint[] {
