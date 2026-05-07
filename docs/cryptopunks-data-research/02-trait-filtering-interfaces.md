@@ -109,6 +109,11 @@ function pixelCountOf(uint16 punkId) external view returns (uint16);
 function colorCountOf(uint16 punkId) external view returns (uint8);
 ```
 
+`colorMaskOf`, `hasColor`, and `colorCountOf` are visible-color predicates:
+transparent pixels are excluded. If `colorId` is the transparent palette entry,
+`hasColor(punkId, colorId)` returns false for every Punk. `colorSupply` may
+still report transparent-pixel supply as a palette statistic.
+
 For bids, color and metric criteria should not be crammed into `traitId` unless
 the criteria type is also encoded. A clean interface separates trait masks,
 color masks, and numeric bounds.
@@ -159,6 +164,17 @@ The three-mask shape lets a single offer express *all of*, *none of*, and
 common bidder requests like "any sunglasses" or "any beard" without
 fragmenting liquidity across N offers. An offer that does not need
 disjunction passes `anyOfMask = 0`.
+
+Malformed masks revert. Specifically:
+
+- any bit outside the canonical trait range reverts,
+- `requiredMask & forbiddenMask != 0` reverts,
+- `forbiddenMask & anyOfMask != 0` reverts.
+
+`requiredMask & anyOfMask` is allowed but redundant because the required bit
+already satisfies the disjunction. Frontends should normalize overlaps before
+signing. For "any hat except Beanie", remove `Beanie` from `anyOfMask` and put
+it in `forbiddenMask`.
 
 `hasTrait(punkId, traitId)` is also exposed as a third-party convenience.
 This repo's `Offers` contract consumes the mask form directly.
@@ -236,6 +252,7 @@ by ID:
 struct Criteria {
     uint256 requiredMask;
     uint256 forbiddenMask;
+    uint256 anyOfMask;
     bytes32 includeRoot;
     bytes32 excludeRoot;
 }
@@ -257,8 +274,7 @@ This is useful when many offers reuse the same predicates, such as:
 - Zombie excluding a few known IDs.
 
 Tradeoff: it adds coordination and lifecycle complexity. The first version does
-not need it. `requiredMask` and `forbiddenMask` are simpler and cover most
-valuable filters.
+not need it. The direct mask trio is simpler and covers most valuable filters.
 
 ## Seaport-Style Merkle Criteria
 
@@ -286,7 +302,7 @@ standard itself notes that metadata returned as a string is not meant for other
 contracts to query. OpenSea's metadata format expects an `attributes` array
 using `trait_type` and `value`.
 
-A Punk data V2 can expose both:
+`PunksData` and its encoders can expose both:
 
 - numeric predicate functions for contracts,
 - JSON attributes for marketplace display.

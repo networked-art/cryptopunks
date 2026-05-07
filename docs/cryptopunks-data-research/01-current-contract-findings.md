@@ -172,8 +172,9 @@ contract should keep that provenance, but expose integration-friendly views:
 The current auction contracts already made the right architectural move:
 `ICryptoPunksTraits` is replaceable and minimal.
 
-That means the first useful V2 does not need to rewrite auctions. It can be a
-standalone immutable `hasTrait` oracle. The auction system immediately gets
-trait bidding for canonical Punks and V1 Punks that share the same token ID
-image/attribute set.
-
+The accepted design goes further because these contracts are pre-deployment:
+`Offers` should consume the richer `PunksData` mask predicate interface
+directly instead of preserving the current `hasTrait` shim on this repo's
+settlement path. A standalone immutable `hasTrait` adapter can still ship for
+third-party protocols, but it is not the auction system's primary integration
+surface.

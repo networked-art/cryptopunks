@@ -14,7 +14,7 @@ The live `punkImage(uint16)` crawl found:
 - Every 24x24 Punk can be represented as 576 one-byte color IDs.
 
 That makes a full indexed-image dataset realistic. Instead of storing or
-returning 2,304 raw RGBA bytes per Punk, a V2 data contract can store 576 bytes
+returning 2,304 raw RGBA bytes per Punk, `PunksData` can store 576 bytes
 per Punk plus a 222-entry palette.
 
 This is much more useful than a traits-only contract:
@@ -166,6 +166,10 @@ function colorCountBitmapWord(uint8 colorCount, uint8 wordIndex) external view r
 Because there are only 221 visible colors, a single `uint256 colorMask` can
 describe all colors used by a Punk.
 
+`colorMaskOf`, `hasColor`, and `colorCountOf` count visible non-transparent
+colors only. The transparent palette entry is excluded from per-Punk color
+masks; `hasColor(punkId, transparentColorId)` returns false.
+
 ## Renderer Scope
 
 Encoders are split by output format and read primitives from `PunksData`
@@ -208,8 +212,12 @@ function punkPng(uint16 punkId, bytes4 backgroundRgba) external view returns (by
 
 function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
 function mosaicRgbaRow(uint8 rowIndex) external view returns (bytes memory);
+function mosaicPixelsHash() external pure returns (bytes32);
 function compositePngChunkCount() external pure returns (uint16);
 function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
+function referencePngSha256() external pure returns (bytes32);
+function referenceIdatSha256() external pure returns (bytes32);
+function referenceInflatedScanlinesSha256() external pure returns (bytes32);
 ```
 
 For contract consumers wanting raw bytes, `mosaicIndexedRow` /
@@ -253,32 +261,35 @@ status. Live status belongs to market/indexer code or a separate state adapter.
 
 ## Data Layout Implication
 
-Recommended immutable blobs:
+Accepted mixed layout:
 
 ```text
+Storage mappings / packed per-Punk storage
+  traitMaskOf(punkId)        uint256
+  colorMaskOf(punkId)        uint256, visible colors only
+  pixelCountOf(punkId)       packed scalar
+  colorCountOf(punkId)       packed scalar, visible colors only
+  visiblePixelBitmapOf(id)   three packed bitmap words or equivalent
+
+SSTORE2 bytecode chunks
 palette.bin
   222 * 4 bytes
 
 indexedPixels.bin
   10000 * 576 bytes
 
-traitMasks.bin
-  10000 * 32 bytes
-
 traitBitmaps.bin
   traitCount * 40 * 32 bytes
 
-colorMasks.bin
-  10000 * 32 bytes
-
-visualMetrics.bin
-  pixel count, color count, histogram offsets
+traitMeta.bin
+  kind, supply, name offsets
 
 colorHistograms.bin
   packed (colorId, pixelCount) pairs
 ```
 
 This is a bigger deployment than a traits-only oracle, but it is much more
-useful and still straightforward to verify. The generator must prove that
-expanding each indexed image through `palette.bin` exactly reproduces the
-source `punkImage(uint16)` bytes.
+useful and still straightforward to verify. Hot settlement and filtering
+scalars stay in storage for cheap `SLOAD` reads; large sequential data stays in
+SSTORE2 chunks. The generator must prove that expanding each indexed image
+through `palette.bin` exactly reproduces the source `punkImage(uint16)` bytes.

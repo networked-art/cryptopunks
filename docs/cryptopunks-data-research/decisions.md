@@ -53,6 +53,13 @@ the uncompressed pixel stream:
 mosaicPixelsHash() == db0e780ac7553b5dd6a3bb02ed2bf8106c16659e15a36797294e01e8817286bf
 ```
 
+No PNG payload bytes may be stored. Do not store the reference PNG bytes, full
+IDAT stream, full literal/match token stream, per-output-byte copy
+instructions, or anything morally equivalent to compressed `punks.png`.
+Allowed constants are limited to reference hashes, dimensions, chunk sizes,
+zlib settings, and generic encoder/checksum tables that do not encode the
+image payload itself.
+
 ### A3. `anyOfMask` — IN
 
 Why: Real bidder demand for "any sunglasses" / "any beard" exists. One
@@ -67,6 +74,10 @@ packed `pixelCount`/`colorCount`); SSTORE2 for large sequential blobs
 
 Why: SLOAD is cheaper than EXTCODECOPY on the settlement hot path. Blob
 data has no settlement-path consumer.
+
+Color predicates are visible non-transparent predicates. `colorMaskOf`,
+`hasColor`, and `colorCountOf` ignore transparent pixels; `hasColor` returns
+false for the transparent palette entry.
 
 ### A5. Phased delivery — DATA ALL AT ONCE, EXACT MOSAIC SEPARATE
 
@@ -93,9 +104,9 @@ Punk", etc.
 ### N1. Data contract — `PunksData`
 
 Why: Short, humble, and close enough to Larva Labs's original
-`CryptopunksData` to be legible without implying a token V1/V2 distinction.
-The plural `Punks` keeps it general; the absence of `CryptoPunksDataV2`
-avoids version confusion.
+`CryptopunksData` to be legible without implying a Punk token-standard
+distinction.
+The plural `Punks` keeps it general and avoids version confusion.
 
 ### N2. Encoders — `PunksPng`, `PunksSvg`, `PunksMetadata`
 
@@ -173,22 +184,28 @@ datasetHash = keccak256(abi.encode(
 SHA-256 stays as the offchain tooling hash (README, generator artifacts).
 Both coexist; `datasetHash()` is the contract's public commitment.
 
-### P6. Source crawl pinning — chain ID 1, recent finalized block
+### P6. Source crawl pinning — chain ID 1, block 25044552
 
 Pin chain ID, block height, and source `extcodehash` at that block.
 Static data, but pinning blocks fork-injection attacks against future
 verifiers.
 
-To do once you confirm: I'll re-crawl at a chosen block, write the height
-and `extcodehash` into doc 06, and re-confirm `db0e780a…` /
-`3974413596…` round-trip.
+Pinned in doc 06:
+
+```text
+chain ID:        1
+block height:    25044552
+block hash:      0x2185f56dcb307a56cb8b90c1e61d4fd7898be906eb28d79e14c01d15f5cabb9f
+source extcodehash:
+  0x52ab51c14a3f26a80eca178374e21027492fd276c7365f9ab234b737d34c6b60
+```
 
 ### P7. ERC-165 interfaces — split, not bundled
 
-- `IPunkTraitsCompat` — `hasTrait(uint16,uint16)` only.
-- `IPunkDataCriteria` — mask predicates.
-- `IPunkDataVisual` — color and pixel views.
-- `IPunkDataIndexed` — `indexedPixelsOf`, `colorAt`, palette views.
+- `IPunksTraitsCompat` — `hasTrait(uint16,uint16)` only.
+- `IPunksDataCriteria` — mask predicates.
+- `IPunksDataVisual` — color and pixel views.
+- `IPunksDataIndexed` — `indexedPixelsOf`, `colorAt`, palette views.
 
 `bytes4` IDs computed from the final function set; pinned in spec before
 Solidity is written.
@@ -248,16 +265,24 @@ Layer 1 (pixel generation):
 ```solidity
 function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
 function mosaicRgbaRow(uint8 rowIndex)    external view returns (bytes memory);
-function mosaicPixelsHash() external view returns (bytes32); // 0xdb0e780a…
+function mosaicPixelsHash() external pure returns (bytes32); // 0xdb0e780a…
 ```
+
+`mosaicIndexedRow` and `mosaicRgbaRow` return raster-order Punk rows:
+24 pixel rows, each row containing 100 side-by-side tiles. `mosaicPixelsHash`
+is intentionally different: it is SHA-256 over the concatenation of all
+10,000 24x24 RGBA `punkImage` outputs in Punk-ID tile order. Consumers that
+start from raster rows must retile them before comparing to
+`mosaicPixelsHash`; consumers that want PNG scanline verification use
+`referenceInflatedScanlinesSha256()`.
 
 Layer 2 (PNG byte stream):
 
 ```solidity
 function compositePngChunkCount() external pure returns (uint16);
 function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
-function compositePngSha256() external pure returns (bytes32);
-function compositeIdatSha256() external pure returns (bytes32);
+function referencePngSha256() external pure returns (bytes32);
+function referenceIdatSha256() external pure returns (bytes32);
 ```
 
 The concatenation of all `compositePngChunk(i)` outputs must be byte-equal to
@@ -304,18 +329,25 @@ event DatasetCommitted(
 Emitted exactly once at seal. Makes the dataset auditable from event logs
 alone.
 
-### L3. `BatchMetadataUpdate(0, 9999)` — emit once at seal
+### L3. No ERC-4906 metadata update event
 
-Why: One-shot cache invalidation for marketplaces. Renderer replacements
-emit from themselves later.
+Why: no known consumer exists for a standalone renderer/data contract in this
+deployment shape. `PunksData` is not the token contract that marketplaces
+cache, and `PunksMetadata` does not own the canonical `tokenURI` for any Punk
+token standard. Do not emit `BatchMetadataUpdate(0, 9999)`.
 
-Decision: We ditch this. No consumer for this exists...
-
-### L4. Invalid IDs — REVERT
+### L4. Invalid IDs and malformed masks — REVERT
 
 Why: Silent `false` from a malformed filter is the bug class that turns a
 misconfigured offer into an exploit. Add `isValidTraitId(uint16) view`
 for tooling that wants to probe without catching reverts.
+
+`hasTraits` reverts if any mask includes bits outside the canonical trait
+range, if `requiredMask & forbiddenMask != 0`, or if
+`forbiddenMask & anyOfMask != 0`. `requiredMask & anyOfMask` is allowed but
+redundant. Frontends should normalize user intent before signing; for
+"any hat except Beanie", remove `Beanie` from `anyOfMask` and put it in
+`forbiddenMask`.
 
 ### L5. Generator invariants (asserted before seal)
 
@@ -403,17 +435,7 @@ Why: Real numbers per view (`hasTrait`, `traitMaskOf`, `hasTraits`,
 `indexedPixelsOf`, `colorAt`) reported in a benchmarks doc once contracts
 are written. Spec doesn't block on speculative gas numbers.
 
-## Doc cleanup once these decisions are agreed
+## Historical Review Notes
 
-- Doc 04 (final-recommendation): replace V2 naming with `PunksData`, drop
-  adapter-as-bridge framing, add `anyOfMask`, mark phasing decision, replace
-  storage recommendation with mixed layout.
-- Doc 02 (trait-filtering): add `anyOfMask` signature, kind enum, name
-  hash semantics.
-- Doc 06 (reproducibility): add pinned chain ID, block height, source
-  `extcodehash`.
-- Doc 08 (composite-PNG): keep byte-exact target, make chunked exact-reference
-  output the goal, and state that reproducing the exact DEFLATE stream is the
-  blocker.
-- review/*: leave as-is (peer review of the original notes); decisions
-  here are the synthesis.
+`review/*` remains a peer review of earlier drafts. Treat this file and docs
+01–08 as the current synthesis.

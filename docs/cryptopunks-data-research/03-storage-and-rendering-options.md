@@ -291,7 +291,7 @@ Cons:
 - `punkImage` itself is still about 1.2M to 1.6M gas in representative probes.
 - Calls another contract during a heavy view.
 
-Verdict: a practical interim renderer, but the canonical V2 renderer should not
+Verdict: a practical interim renderer, but the canonical renderer should not
 depend on it.
 
 ## Immutability And Verification

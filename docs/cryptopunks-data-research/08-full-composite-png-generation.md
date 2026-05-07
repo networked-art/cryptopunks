@@ -171,7 +171,7 @@ the generated pixels.
 Pros:
 
 - Less compute than full compression search.
-- Could still derive final bytes from V2 pixel data.
+- Could still derive final bytes from `PunksData` pixel data.
 
 Cons:
 
@@ -180,8 +180,13 @@ Cons:
   becomes.
 - Needs a clear rule for what is acceptable to store.
 
-This should be avoided unless the stored hints are small, general, and clearly
-not a disguised copy of `IDAT`.
+Rule: do not store the reference PNG bytes, the full IDAT stream, the full
+literal/match token stream, per-output-byte copy instructions, or any artifact
+that is morally equivalent to compressed `punks.png`. Allowed constants are
+limited to small public commitments and generic encoder machinery: reference
+hashes, dimensions, chunk sizes, zlib settings, Huffman tables if they are
+algorithmic/static for the compressor, CRC tables, and other format logic that
+does not encode the image payload itself.
 
 ## Contract Boundary
 
@@ -245,7 +250,7 @@ container:
 ```solidity
 function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
 function mosaicRgbaRow(uint8 rowIndex) external view returns (bytes memory);
-function mosaicPixelsHash() external view returns (bytes32);
+function mosaicPixelsHash() external pure returns (bytes32);
 ```
 
 `mosaicPixelsHash()` returns
@@ -254,19 +259,27 @@ the SHA-256 over the concatenation of all 10,000 source `punkImage` outputs
 in row-major tile order. It's the verification anchor for any consumer
 that wants to confirm pixel correctness without trusting the PNG encoder.
 
+This byte order is Punk-ID tile order: Punk 0's 24x24 RGBA bytes, then Punk 1's
+24x24 RGBA bytes, and so on through Punk 9999. It is not the same byte order as
+`mosaicRgbaRow(rowIndex)`, which returns raster rows for 100 tiles side by
+side. A consumer starting from `mosaicRgbaRow(0..99)` must retile the raster
+rows back into Punk-ID tile order before comparing to `mosaicPixelsHash`.
+For PNG scanline verification, use `referenceInflatedScanlinesSha256()`
+instead; that hash covers raster scanlines with one filter byte per row.
+
 Reference hashes are exposed as `pure` views so consumers can verify the
 encoder targets without inspecting bytecode:
 
 ```solidity
-function compositePngSha256() external pure returns (bytes32);
+function referencePngSha256() external pure returns (bytes32);
 // 0xac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b
-function compositeIdatSha256() external pure returns (bytes32);
+function referenceIdatSha256() external pure returns (bytes32);
 // 0x7d080b4bca3e4c8e19ed53254eb8dc1dd1c887c8b6b3560d3374436c19f9614f
 function referenceInflatedScanlinesSha256() external pure returns (bytes32);
 // 0x62a66b4618a72410d6d99b5fceee6013fabcb3574728ed5ce437b2a161da8673
 ```
 
-A filtered-mosaic generator composes V2 trait masks with the mosaic
+A filtered-mosaic generator composes `PunksData` trait masks with the mosaic
 surface, but it is *not* part of the byte-exact target — these are new
 compositions, not the canonical GitHub image:
 

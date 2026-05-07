@@ -93,6 +93,11 @@ function paletteRgbaBytes() external view returns (bytes memory);  // 888 bytes
 PLTE and tRNS chunks without 222 individual `colorOf` calls. `paletteRgbaBytes`
 serves consumers that want raw RGBA in one call.
 
+Color predicates are visible-color predicates. `colorMaskOf`, `hasColor`, and
+`colorCountOf` ignore transparent pixels; `hasColor` returns false for the
+transparent palette entry. `colorSupply` may still expose the transparent
+pixel total as a global palette statistic.
+
 Public-good functions:
 
 ```solidity
@@ -119,6 +124,12 @@ room for stable derived predicates without a second mask type.
 
 Invalid Punk IDs and trait IDs should revert. A bad filter should fail loudly
 instead of becoming an accidental "false" predicate.
+
+Malformed masks should also revert. `hasTraits` rejects unknown bits,
+`requiredMask & forbiddenMask != 0`, and `forbiddenMask & anyOfMask != 0`.
+`requiredMask & anyOfMask` is allowed but redundant. Frontends should submit
+canonical masks; for "any hat except Beanie", subtract `Beanie` from
+`anyOfMask` and include it in `forbiddenMask`.
 
 ## Trait ID Policy
 
@@ -277,7 +288,7 @@ Composite mosaic — Layer 1 (pixel generation):
 ```solidity
 function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
 function mosaicRgbaRow(uint8 rowIndex)    external view returns (bytes memory);
-function mosaicPixelsHash() external view returns (bytes32); // 0xdb0e780a…
+function mosaicPixelsHash() external pure returns (bytes32); // 0xdb0e780a…
 ```
 
 Composite mosaic — Layer 2 (paged byte-exact PNG):
@@ -285,8 +296,8 @@ Composite mosaic — Layer 2 (paged byte-exact PNG):
 ```solidity
 function compositePngChunkCount() external pure returns (uint16);
 function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
-function compositePngSha256() external pure returns (bytes32); // 0xac39af…
-function compositeIdatSha256() external pure returns (bytes32); // 0x7d080b…
+function referencePngSha256() external pure returns (bytes32); // 0xac39af…
+function referenceIdatSha256() external pure returns (bytes32); // 0x7d080b…
 function referenceInflatedScanlinesSha256() external pure returns (bytes32); // 0x62a66b…
 ```
 
@@ -313,10 +324,6 @@ Reproducing the exact zlib/DEFLATE stream is the encoder's hard
 milestone; doc 08 covers the constraints. The data contract does not
 depend on this work — `PunksData` ships first and `PunksPng` ships when
 the encoder is audited.
-
-Mosaic adler32 is `bytes4 immutable` precomputed at deploy. Pixel data
-is fixed forever; storing a four-byte commitment over fixed onchain data
-is not the same as storing the PNG.
 
 ## Tradeoff Summary
 
@@ -364,7 +371,7 @@ forever after.
    - `popcount(colorMaskOf(p)) == colorCountOf(p)`,
    - visible-pixel-bitmap popcount == `pixelCountOf(p)`,
    - palette-expanded indexed pixels byte-equal source `punkImage(p)`.
-3. Fork-test V2 against the source contract for every Punk.
+3. Fork-test `PunksData` against the source contract for every Punk.
 4. Implement `PunksData` with immutable blob pointers, sealed-initializer
    pattern (`loadChunk` + one-shot `seal()` that emits
    `DatasetCommitted`).

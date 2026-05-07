@@ -145,8 +145,8 @@ A production generator should do more than produce the blobs:
 - produce per-Punk masks,
 - produce per-trait bitmaps,
 - assert `traitSupply(traitId) == popcount(bitmap(traitId))`,
-  - assert every source string round-trips from decoded V2 traits,
-  - write dataset and blob hashes into deployment artifacts.
+- assert every source string round-trips from decoded `PunksData` traits,
+- write dataset and blob hashes into deployment artifacts.
 
 ## Image Metrics Hashes
 
