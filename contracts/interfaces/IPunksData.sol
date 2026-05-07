@@ -1,6 +1,69 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+/// @title IPunksDataLoader
+/// @notice Loader types, events, errors, and write API for staging and sealing Punk data.
+interface IPunksDataLoader {
+    enum BlobId {
+        TraitBitmaps,
+        TraitMeta,
+        Palette,
+        PixelOffsets,
+        CompressedPixels,
+        ColorBitmaps,
+        PixelCountBitmaps,
+        ColorCountBitmaps
+    }
+
+    struct DatasetCommitment {
+        bytes32 traitCatalogHash;
+        bytes32 punkMaskHash;
+        bytes32 paletteHash;
+        bytes32 indexedPixelsHash;
+        bytes32 compressedPixelsHash;
+    }
+
+    event DatasetCommitted(
+        bytes32 traitCatalogHash,
+        bytes32 punkMaskHash,
+        bytes32 paletteHash,
+        bytes32 indexedPixelsHash,
+        bytes32 compressedPixelsHash,
+        bytes32 datasetHash
+    );
+
+    error ZeroAddress();
+    error NotAdmin();
+    error InvalidChunkIndex();
+    error InvalidLength();
+    error InvalidHash();
+    error InvalidPunkId();
+    error InvalidTraitId();
+    error InvalidColorId();
+    error InvalidWordIndex();
+    error InvalidCoordinate();
+    error InvalidPixelCount();
+    error InvalidColorCount();
+    error InvalidScalar();
+    error InvalidMask();
+    error BlobReadOutOfBounds(BlobId blobId, uint256 offset, uint256 length);
+    error MalformedPixelBlob();
+
+    function admin() external view returns (address);
+
+    function loadTraitMaskPairs(uint16 startPairIndex, uint256[] calldata packedPairs) external;
+
+    function loadColorMasks(uint16 startPunkId, uint256[] calldata masks) external;
+
+    function loadPackedScalars(uint16 startWordIndex, uint256[] calldata words) external;
+
+    function loadColorSupplies(uint8 startColorId, uint32[] calldata supplies) external;
+
+    function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data) external;
+
+    function seal(DatasetCommitment calldata commitment) external;
+}
+
 interface IPunksDataCriteria {
     enum PunkType {
         Alien,
