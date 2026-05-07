@@ -105,8 +105,8 @@ function sourceDataContract() external view returns (address);
 function datasetHash() external view returns (bytes32);
 function traitCount() external view returns (uint16);
 function traitName(uint16 traitId) external view returns (string memory);
-function traitIdByNameHash(bytes32 nameHash, uint8 kind) external view returns (uint16, bool);
-function traitKind(uint16 traitId) external view returns (uint8);
+function traitIdByNameHash(bytes32 nameHash, TraitKind kind) external view returns (uint16, bool);
+function traitKind(uint16 traitId) external view returns (TraitKind);
 function traitSupply(uint16 traitId) external view returns (uint16);
 function traitBitmapWord(uint16 traitId, uint8 wordIndex) external view returns (uint256);
 function headVariantOf(uint16 punkId) external view returns (HeadVariant);
@@ -118,11 +118,11 @@ function pixelCountBitmapWord(uint16 pixelCount, uint8 wordIndex) external view 
 function colorCountBitmapWord(uint8 colorCount, uint8 wordIndex) external view returns (uint256);
 ```
 
-The `HeadVariant` and `PunkType` enums are defined alongside
+The `TraitKind`, `HeadVariant`, and `PunkType` enums are defined alongside
 `IPunksDataCriteria` in
 [doc 02](./02-trait-filtering-interfaces.md#core-interface). They ABI-encode as
-`uint8` and match local indices (head variant 0..10, type 0..4); the
-corresponding mask bit is `uint8(headVariantOf(p)) + 5` and
+`uint8` and match local indices. For Punk-derived enums, the corresponding
+mask bit is `uint8(headVariantOf(p)) + 5` and
 `uint8(punkTypeOf(p))`.
 
 Public APIs use `uint256` masks even though the first version fits in 128

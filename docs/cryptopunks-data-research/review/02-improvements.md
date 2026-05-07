@@ -83,7 +83,7 @@ Where it appears: `02-trait-filtering-interfaces.md` lines 102–107.
 ```solidity
 function traitIdByNameHash(
     bytes32 nameHash,
-    uint8 kind
+    TraitKind kind
 ) external view returns (uint16 traitId, bool exists);
 ```
 

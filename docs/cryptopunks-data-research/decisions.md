@@ -188,18 +188,19 @@ lowercasing, no normalization. This covers head variants and accessories.
 
 Synthesized names are pinned to canonical literal strings:
 
-- Normalized types (kind 1): `Alien`, `Ape`, `Female`, `Male`, `Zombie`.
-- Attribute counts (kind 2): `0 Attributes`, `1 Attributes`, `2
+- Normalized types (`TraitKind.NormalizedType`): `Alien`, `Ape`, `Female`,
+  `Male`, `Zombie`.
+- Attribute counts (`TraitKind.AttributeCount`): `0 Attributes`, `1
   Attributes`, ..., `7 Attributes` (always plural for code symmetry).
 
 Frontends build a static name → hash table at build time.
 
 ### P3. `traitIdByNameHash(nameHash, kind)` — kind enum
 
-- 0 = head variant
-- 1 = normalized type
-- 2 = attribute count
-- 3 = accessory
+- `TraitKind.HeadVariant`
+- `TraitKind.NormalizedType`
+- `TraitKind.AttributeCount`
+- `TraitKind.Accessory`
 
 Why: Resolves the Alien/Ape/Zombie collision between exact head variant
 and normalized type.

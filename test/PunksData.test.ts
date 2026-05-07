@@ -25,6 +25,13 @@ const BLOB_COLOR_BITMAPS = 6
 const BLOB_PIXEL_COUNT_BITMAPS = 7
 const BLOB_COLOR_COUNT_BITMAPS = 8
 
+enum TraitKind {
+  HeadVariant,
+  NormalizedType,
+  AttributeCount,
+  Accessory,
+}
+
 type Ctx = Awaited<ReturnType<typeof deployLoadedPunksData>>
 
 describe('PunksData', () => {
@@ -73,18 +80,20 @@ describe('PunksData', () => {
 
     assert.equal(await data.read.traitCount(), 111)
     assert.equal(await data.read.traitName([0]), 'Alien')
-    assert.equal(await data.read.traitKind([0]), 1)
-    assert.equal(await data.read.traitKind([5]), 0)
+    assert.equal(await data.read.traitKind([0]), TraitKind.NormalizedType)
+    assert.equal(await data.read.traitKind([5]), TraitKind.HeadVariant)
     assert.equal(await data.read.traitSupply([24]), 1)
 
     const alienHash = keccakBytes(new TextEncoder().encode('Alien'))
-    assert.deepEqual(await data.read.traitIdByNameHash([alienHash, 1]), [0, true])
-    assert.deepEqual(await data.read.traitIdByNameHash([alienHash, 0]), [5, true])
-    await ctx.viem.assertions.revertWithCustomError(
-      data.read.traitIdByNameHash([alienHash, 4]),
-      data,
-      'InvalidTraitId',
+    assert.deepEqual(
+      await data.read.traitIdByNameHash([alienHash, TraitKind.NormalizedType]),
+      [0, true],
     )
+    assert.deepEqual(
+      await data.read.traitIdByNameHash([alienHash, TraitKind.HeadVariant]),
+      [5, true],
+    )
+    await assert.rejects(() => data.read.traitIdByNameHash([alienHash, 4]))
 
     assert.equal(await data.read.hasTrait([0, 0]), true)
     assert.equal(await data.read.hasTrait([0, 1]), false)
@@ -201,8 +210,12 @@ async function deployLoadedPunksData() {
   await data.write.loadPackedScalars([0, [fixture.packedScalarWord]])
   await data.write.loadColorSupplies([0, fixture.colorSupplies])
   await data.write.loadTraitNameHashes([
-    [keccakBytes(new TextEncoder().encode('Alien')), keccakBytes(new TextEncoder().encode('Alien')), keccakBytes(new TextEncoder().encode('Beanie'))],
-    [1, 0, 3],
+    [
+      keccakBytes(new TextEncoder().encode('Alien')),
+      keccakBytes(new TextEncoder().encode('Alien')),
+      keccakBytes(new TextEncoder().encode('Beanie')),
+    ],
+    [TraitKind.NormalizedType, TraitKind.HeadVariant, TraitKind.Accessory],
     [0, 5, 24],
   ])
 
@@ -311,11 +324,11 @@ function traitName(id: number): string {
   return `Trait ${id}`
 }
 
-function traitKind(id: number): number {
-  if (id < 5) return 1
-  if (id < 16) return 0
-  if (id < 24) return 2
-  return 3
+function traitKind(id: number): TraitKind {
+  if (id < 5) return TraitKind.NormalizedType
+  if (id < 16) return TraitKind.HeadVariant
+  if (id < 24) return TraitKind.AttributeCount
+  return TraitKind.Accessory
 }
 
 function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]): Uint8Array {

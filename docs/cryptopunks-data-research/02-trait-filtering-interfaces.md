@@ -81,10 +81,12 @@ live in optional taxonomy contracts.
 ### Kind Enum
 
 ```solidity
-uint8 constant KIND_HEAD_VARIANT    = 0;
-uint8 constant KIND_NORMALIZED_TYPE = 1;
-uint8 constant KIND_ATTRIBUTE_COUNT = 2;
-uint8 constant KIND_ACCESSORY       = 3;
+enum TraitKind {
+    HeadVariant,
+    NormalizedType,
+    AttributeCount,
+    Accessory
+}
 ```
 
 ### Name Hash
@@ -99,8 +101,9 @@ normalization.
 Synthesized names — kinds without a source CSV string — are pinned to
 canonical literals:
 
-- Normalized types (kind 1): `Alien`, `Ape`, `Female`, `Male`, `Zombie`.
-- Attribute counts (kind 2): `0 Attributes`, `1 Attributes`, `2
+- Normalized types (`TraitKind.NormalizedType`): `Alien`, `Ape`, `Female`,
+  `Male`, `Zombie`.
+- Attribute counts (`TraitKind.AttributeCount`): `0 Attributes`, `1
   Attributes`, ..., `7 Attributes` (always plural for code symmetry).
 
 Frontends build a static name → hash table at build time.
@@ -156,6 +159,13 @@ interface IPunksDataCriteria {
         Zombie    // mask bit 15
     }
 
+    enum TraitKind {
+        HeadVariant,
+        NormalizedType,
+        AttributeCount,
+        Accessory
+    }
+
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function sourceDataContract() external view returns (address);
@@ -165,9 +175,9 @@ interface IPunksDataCriteria {
     function traitName(uint16 traitId) external view returns (string memory);
     function traitIdByNameHash(
         bytes32 nameHash,
-        uint8 kind
+        TraitKind kind
     ) external view returns (uint16 traitId, bool exists);
-    function traitKind(uint16 traitId) external view returns (uint8);
+    function traitKind(uint16 traitId) external view returns (TraitKind);
     function traitSupply(uint16 traitId) external view returns (uint16);
     function isValidTraitId(uint16 traitId) external view returns (bool);
 

@@ -24,6 +24,13 @@ interface IPunksDataCriteria {
         Zombie
     }
 
+    enum TraitKind {
+        HeadVariant,
+        NormalizedType,
+        AttributeCount,
+        Accessory
+    }
+
     function sourceDataContract() external view returns (address);
     function datasetHash() external view returns (bytes32);
     function traitCount() external pure returns (uint16);
@@ -31,9 +38,9 @@ interface IPunksDataCriteria {
     function traitName(uint16 traitId) external view returns (string memory);
     function traitIdByNameHash(
         bytes32 nameHash,
-        uint8 kind
+        TraitKind kind
     ) external view returns (uint16 traitId, bool exists);
-    function traitKind(uint16 traitId) external view returns (uint8);
+    function traitKind(uint16 traitId) external view returns (TraitKind);
     function traitSupply(uint16 traitId) external view returns (uint16);
     function isValidTraitId(uint16 traitId) external pure returns (bool);
 

@@ -20,11 +20,6 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     uint8 public constant COLOR_COUNT_MIN = 2;
     uint8 public constant COLOR_COUNT_MAX = 14;
 
-    uint8 public constant KIND_HEAD_VARIANT = 0;
-    uint8 public constant KIND_NORMALIZED_TYPE = 1;
-    uint8 public constant KIND_ATTRIBUTE_COUNT = 2;
-    uint8 public constant KIND_ACCESSORY = 3;
-
     uint8 public constant BLOB_TRAIT_BITMAPS = 1;
     uint8 public constant BLOB_TRAIT_META = 2;
     uint8 public constant BLOB_PALETTE = 3;
@@ -309,16 +304,15 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function loadTraitNameHashes(
         bytes32[] calldata nameHashes,
-        uint8[] calldata kinds,
+        TraitKind[] calldata kinds,
         uint16[] calldata traitIds
     ) external onlyAdmin onlyUnsealed {
         uint256 len = nameHashes.length;
         if (kinds.length != len || traitIds.length != len) revert InvalidLength();
 
         for (uint256 i; i < len;) {
-            uint8 kind = kinds[i];
+            uint8 kind = uint8(kinds[i]);
             uint16 traitId = traitIds[i];
-            if (kind > KIND_ACCESSORY) revert InvalidTraitId();
             _requireTraitId(traitId);
             _traitIdsByNameHash[nameHashes[i]][kind] = traitId + 1;
             unchecked {
@@ -410,22 +404,23 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return string(_readBlob(BLOB_TRAIT_META, TRAIT_META_HEADER_SIZE + nameOffset, nameLength));
     }
 
-    function traitIdByNameHash(bytes32 nameHash, uint8 kind)
+    function traitIdByNameHash(bytes32 nameHash, TraitKind kind)
         external
         view
         returns (uint16 traitId, bool exists)
     {
-        if (kind > KIND_ACCESSORY) revert InvalidTraitId();
-        uint16 traitIdPlusOne = _traitIdsByNameHash[nameHash][kind];
+        uint16 traitIdPlusOne = _traitIdsByNameHash[nameHash][uint8(kind)];
         if (traitIdPlusOne == 0) return (0, false);
         unchecked {
             return (traitIdPlusOne - 1, true);
         }
     }
 
-    function traitKind(uint16 traitId) external view returns (uint8) {
+    function traitKind(uint16 traitId) external view returns (TraitKind) {
         _requireTraitId(traitId);
-        return uint8(_traitMetaRecord(traitId)[0]);
+        uint8 kind = uint8(_traitMetaRecord(traitId)[0]);
+        if (kind > uint8(TraitKind.Accessory)) revert InvalidTraitId();
+        return TraitKind(kind);
     }
 
     function traitSupply(uint16 traitId) external view returns (uint16) {

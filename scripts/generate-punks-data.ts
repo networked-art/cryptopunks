@@ -39,10 +39,12 @@ const RPC_URL =
   process.env.RPC_URL ??
   'https://ethereum-rpc.publicnode.com'
 
-const KIND_HEAD_VARIANT = 0
-const KIND_NORMALIZED_TYPE = 1
-const KIND_ATTRIBUTE_COUNT = 2
-const KIND_ACCESSORY = 3
+enum TraitKind {
+  HeadVariant,
+  NormalizedType,
+  AttributeCount,
+  Accessory,
+}
 
 const NORMALIZED_TYPES = ['Alien', 'Ape', 'Female', 'Male', 'Zombie'] as const
 const HEAD_VARIANTS = [
@@ -73,7 +75,7 @@ type PunkRow = {
 type TraitRecord = {
   id: number
   name: string
-  kind: number
+  kind: TraitKind
   supply: number
   nameHash: Hex
 }
@@ -215,11 +217,26 @@ async function main() {
     imageHash.update(row.image)
 
     let mask = 0n
-    mask = setBit(mask, mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${normalizedType}`))
-    mask = setBit(mask, mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${headVariant}`))
-    mask = setBit(mask, mustGet(traitIdByKindAndName, `${KIND_ATTRIBUTE_COUNT}:${accessories.length} Attributes`))
+    mask = setBit(
+      mask,
+      mustGet(traitIdByKindAndName, `${TraitKind.NormalizedType}:${normalizedType}`),
+    )
+    mask = setBit(
+      mask,
+      mustGet(traitIdByKindAndName, `${TraitKind.HeadVariant}:${headVariant}`),
+    )
+    mask = setBit(
+      mask,
+      mustGet(
+        traitIdByKindAndName,
+        `${TraitKind.AttributeCount}:${accessories.length} Attributes`,
+      ),
+    )
     for (const accessory of accessories) {
-      mask = setBit(mask, mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
+      mask = setBit(
+        mask,
+        mustGet(traitIdByKindAndName, `${TraitKind.Accessory}:${accessory}`),
+      )
     }
     traitMasks[row.id] = mask
     addMaskToPair(traitMaskPairs, row.id, mask)
@@ -383,15 +400,17 @@ function collectAccessories(rows: PunkRow[]): string[] {
 
 function buildTraitCatalog(accessories: string[]): TraitRecord[] {
   const traits: TraitRecord[] = []
-  for (const name of NORMALIZED_TYPES) pushTrait(traits, name, KIND_NORMALIZED_TYPE)
-  for (const name of HEAD_VARIANTS) pushTrait(traits, name, KIND_HEAD_VARIANT)
-  for (let i = 0; i <= 7; i++) pushTrait(traits, `${i} Attributes`, KIND_ATTRIBUTE_COUNT)
-  for (const name of accessories) pushTrait(traits, name, KIND_ACCESSORY)
+  for (const name of NORMALIZED_TYPES) pushTrait(traits, name, TraitKind.NormalizedType)
+  for (const name of HEAD_VARIANTS) pushTrait(traits, name, TraitKind.HeadVariant)
+  for (let i = 0; i <= 7; i++) {
+    pushTrait(traits, `${i} Attributes`, TraitKind.AttributeCount)
+  }
+  for (const name of accessories) pushTrait(traits, name, TraitKind.Accessory)
   if (traits.length !== TRAIT_COUNT) throw new Error(`Trait count ${traits.length}`)
   return traits
 }
 
-function pushTrait(traits: TraitRecord[], name: string, kind: number) {
+function pushTrait(traits: TraitRecord[], name: string, kind: TraitKind) {
   traits.push({
     id: traits.length,
     name,
