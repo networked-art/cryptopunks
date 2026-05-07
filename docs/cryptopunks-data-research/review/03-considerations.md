@@ -71,7 +71,7 @@ The cleaner sequence:
    interface is no longer load-bearing.
 
 The compat adapter is still worth shipping — see
-[02 Improvements §13](./02-improvements.md#13-the-adapter-is-for-third-parties-not-for-this-repos-migration)
+[02 Improvements §14](./02-improvements.md#14-the-adapter-is-for-third-parties-not-for-this-repos-migration)
 — but as a *separate deployment artifact* aimed at external consumers,
 not as a bridge that exists for this repo's benefit.
 

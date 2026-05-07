@@ -30,6 +30,13 @@ semantic.
 - [04 Numerical Checks](./04-numerical-checks.md) — independent sanity checks
   on the trait, attribute-count, color-count, and pixel totals reported in the
   research, plus byte-budget arithmetic for each proposed blob.
+- [05 Full Mosaic Onchain](./05-full-mosaic-onchain.md) — design proposal for
+  *generating* the canonical 2400×2400 mosaic onchain from primitives the V2
+  contract already stores (`palette.bin` + `indexedPixelsOf(punkId)`), with
+  no duplicated artifact storage. Two layers: paged pixel generation
+  (workhorse) and paged PNG byte-stream generation (strict art-piece
+  deliverable). Single-call full return is shown to be infeasible due to EVM
+  memory cost regardless of fees.
 
 ## Headline Findings
 
@@ -94,6 +101,59 @@ The remaining notes are smaller — gas-cost framing, ERC-165 ID assignment,
 proofs in any future criteria registry, and renderer mode naming. They are in
 [02 Improvements](./02-improvements.md) and
 [03 Considerations](./03-considerations.md).
+
+## Art-Piece Extension: Mosaic Generated From Primitives
+
+[05 Full Mosaic Onchain](./05-full-mosaic-onchain.md) proposes
+*generating* the canonical 2400×2400 mosaic onchain from the primitives
+the V2 contract already stores — `palette.bin` and
+`indexedPixelsOf(punkId)`. No PNG bytes are stored; every byte of the
+output is computed at call time.
+
+Key facts I verified while scoping the proposal (2026-05-07):
+
+- The github file at
+  `raw.githubusercontent.com/larvalabs/cryptopunks/master/punks.png` is
+  2400 × 2400, 8-bit RGBA, with exactly **222 distinct RGBA colors** —
+  same palette as the source contract's `punkImage(uint16)` outputs.
+- Concatenating the 10,000 24×24 RGBA tiles from punks.png in row-major
+  order (punkId 0 at top-left, columns first) produces a byte stream
+  whose SHA-256 is **byte-equal** to the research's recorded hash
+  `db0e780ac7553b5dd6a3bb02ed2bf8106c16659e15a36797294e01e8817286bf`
+  over concatenated source `punkImage` outputs. That confirms the layout
+  convention and gives a verification anchor for any onchain generator.
+
+The constraint reality: a single eth_call cannot return the full
+mosaic. EVM memory cost (`3·words + words²/512`) makes a 5.76 MB
+indexed return ~64 M gas just for memory expansion, which exceeds
+typical eth_call gas caps regardless of how much the caller is willing
+to pay. The proposal is therefore paged — the contract knows how to
+generate the mosaic byte-for-byte from primitives, and exposes paged
+views that downstream code concatenates into the full image.
+
+PNG generation lives in a **dedicated contract** — `CryptoPunksPng` —
+that reads from `CryptoPunksData` via public views. The data contract
+stays sealed and primitive-only; the encoder is pluggable. Anyone can
+deploy a better encoder later (e.g. with real deflate compression) and
+have it sit alongside the first one. The same contract handles per-Punk
+PNG (`punkPng(punkId)`) and the paged mosaic.
+
+Two delivery layers inside the encoder contract:
+
+- **Layer 1**: paged pixel generation (`mosaicIndexedRow`,
+  `mosaicRgbaRow`, `mosaicPixelsHash`). 100 calls assemble the full
+  mosaic. The workhorse.
+- **Layer 2**: paged PNG byte-stream generation (`pngHeader`,
+  `pngStripe`, `pngFooter`). Caller concatenates the parts into a valid
+  PNG-8 file whose pixels match `mosaicPixelsHash`. The strict
+  art-piece deliverable — even the file-format wrapper is generated
+  onchain, with no offchain encoder in the trust path.
+
+Bonus generator: `mosaicIndexedRowFiltered(rowIndex, masks)` produces
+the mosaic *through a trait predicate*, with non-matching tiles
+transparent. "All 9 Aliens in canonical positions", "every 0-attribute
+Punk", etc. — new canonical compositions composed onchain from V2
+primitives.
 
 ## Internal Consistency Of The Dataset
 

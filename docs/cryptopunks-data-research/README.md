@@ -17,6 +17,7 @@ better for trait offers, trait filtering, and rendering.
 - [05 Trait Catalog](./05-trait-catalog.md)
 - [06 Reproducibility Notes](./06-reproducibility-notes.md)
 - [07 Visual Metrics And Renderer Scope](./07-visual-metrics-and-renderer-scope.md)
+- [08 Full Composite PNG Generation](./08-full-composite-png-generation.md)
 
 ## High-Level Takeaway
 

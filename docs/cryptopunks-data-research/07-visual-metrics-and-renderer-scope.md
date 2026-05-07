@@ -190,11 +190,18 @@ function punkSvgCustomBackground(uint16 punkId, bytes4 rgba) external view retur
 function punkBitmap(uint16 punkId, BackgroundMode mode) external view returns (bytes memory);
 function punkRgba(uint16 punkId, BackgroundMode mode) external view returns (bytes memory);
 function tokenUriJson(uint16 punkId, BackgroundMode mode) external view returns (string memory);
+
 ```
 
 `punkBitmap` should be defined explicitly. It could mean indexed 24x24 bytes,
 raw 24x24 RGBA, or a BMP data URI. For contract consumers, indexed bytes are
 usually the best primitive. For marketplace display, SVG remains easier.
+
+The full-composite PNG generator should be treated as a separate contract, not
+as part of the normal per-Punk renderer. If the goal is to match the official
+`punks.png` SHA-256 exactly, the composite renderer must reproduce the
+reference truecolor RGBA PNG and its exact zlib/DEFLATE stream. See
+[08 Full Composite PNG Generation](./08-full-composite-png-generation.md).
 
 ## Background Colors
 
@@ -257,4 +264,3 @@ This is a bigger deployment than a traits-only oracle, but it is much more
 useful and still straightforward to verify. The generator must prove that
 expanding each indexed image through `palette.bin` exactly reproduces the
 source `punkImage(uint16)` bytes.
-

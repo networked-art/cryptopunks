@@ -8,6 +8,8 @@ Build the new data surface in three layers:
    small predicate interface, including this auction system.
 3. `CryptoPunksRendererV2`: renderer and metadata layer consuming
    `CryptoPunksDataV2`.
+4. `CryptoPunksCompositeRenderer`: optional byte-exact `punks.png` generator
+   consuming `CryptoPunksDataV2`.
 
 This is a change from the first draft. The main contract should not be bounded
 by the current auction interface. Trait bidding remains important, but it should
@@ -30,6 +32,11 @@ CryptoPunksDataV2
 
 CryptoPunksRendererV2
   -> transparent, backgrounded, SVG, bitmap, and metadata outputs
+
+CryptoPunksCompositeRenderer
+  -> reads CryptoPunksDataV2 indexed pixels and palette
+  -> generates the full 100x100 punks.png artifact
+  -> aims for exact SHA-256 match to the Larva Labs reference PNG
 ```
 
 ## Core Data Scope
@@ -163,6 +170,22 @@ The renderer should consume flattened indexed pixels from `CryptoPunksDataV2`.
 That is more useful than wrapping the old composition contract because rendering
 no longer pays the cost of reconstructing the Punk from assets.
 
+## Composite Renderer Follow-Up
+
+The full composite `punks.png` generator should be a separate contract from
+both `CryptoPunksDataV2` and the normal per-Punk renderer. Its byte-exact PNG
+goal is specialized, expensive, and compression-sensitive. Keeping it separate
+protects the canonical data contract from renderer complexity while preserving
+the art/provenance feature.
+
+Composite renderer scope:
+
+- `compositePng()` as a full-return art-piece convenience function.
+- chunked `compositePngChunk(uint16 chunkIndex)` output for practical reads.
+- exact RGBA scanline generation from `CryptoPunksDataV2`.
+- reference hash helpers for the final PNG, inflated scanlines, and IDAT
+  payload.
+
 ## Tradeoff Summary
 
 | Approach | Bid strength | UI filtering | Visual data | Complexity | Recommendation |
@@ -207,3 +230,6 @@ rebuilding images through the old asset composition path.
    criteria functions.
 5. Prototype `CryptoPunksRendererV2` over indexed pixels and benchmark SVG,
    raw bitmap, and backgrounded outputs against the current `punkImageSvg`.
+6. Prototype `CryptoPunksCompositeRenderer` separately. First verify exact
+   inflated scanlines from `CryptoPunksDataV2`; only then attempt exact
+   zlib/DEFLATE reproduction for the reference PNG hash.

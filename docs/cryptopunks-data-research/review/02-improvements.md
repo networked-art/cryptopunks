@@ -301,7 +301,57 @@ Punk token contract. Suggested rename: `metadataJson(uint16,
 BackgroundMode)`. Same shape, less implication that this contract owns
 the tokenURI for Punks.
 
-## 13. The Adapter Is For Third Parties, Not For This Repo's Migration
+## 13. Split The Renderer By Output Format
+
+Where it appears: `04-final-recommendation.md` lines 9–10, 148–164;
+`07-visual-metrics-and-renderer-scope.md` lines 170–197.
+
+The research notes describe a single `CryptoPunksRendererV2` that
+handles SVG, JSON metadata, raw bitmap, and (per the mosaic proposal in
+[05](./05-full-mosaic-onchain.md)) PNG generation.
+
+Better: split the renderer by output format. One contract per format,
+each reading from the sealed data contract via its public views.
+
+```text
+CryptoPunksData         (sealed primitives — palette, indexed pixels, traits)
+CryptoPunksPng          (per-Punk PNG + paged mosaic PNG)
+CryptoPunksSvg          (per-Punk SVG with status backgrounds)
+CryptoPunksMetadata     (OpenSea-shaped JSON; calls into CryptoPunksSvg
+                         or CryptoPunksPng for embedded image)
+```
+
+Why:
+
+- Each format has its own complexity and audit surface. Bundling them
+  is convenient for one-shot deployment but makes the contract harder
+  to review.
+- Encoders are *pluggable in a public-good sense*: anyone can deploy a
+  new format-specific renderer against the sealed data contract.
+  Better PNG compression next year? Deploy a `CryptoPunksPngV2`
+  alongside the original. Consumers pick which they call.
+- Smaller contracts hit EIP-170 less often. Especially relevant if any
+  encoder needs lookup tables (e.g., a CRC32 polynomial table for PNG)
+  baked into bytecode.
+- The data contract's view surface stays the contract that *all*
+  encoders depend on. That focuses the data contract's API design
+  on "what does any reasonable encoder need?"
+
+The data contract should expose **bulk primitive views** that encoders
+can read efficiently:
+
+- `paletteRgbBytes()` → 666 bytes (RGB triples for PLTE / direct RGB).
+- `paletteAlphaBytes()` → 222 bytes (alpha for tRNS).
+- `paletteRgbaBytes()` → 888 bytes (RGBA for raw consumers).
+- `indexedPixelsOf(uint16)` → 576 bytes (already in the spec).
+- `traitMaskOf(uint16)` → uint256 (already in the spec).
+
+The bulk views are cheaper for encoders than calling `colorOf(uint8)`
+222 times to build the same data. Adding them to the data contract is
+the kind of API decision the spec should pin before the data contract
+seals.
+
+## 14. The Adapter Is For Third Parties, Not For This Repo's Migration
 
 Where it appears: `04-final-recommendation.md` lines 122–127.
 
