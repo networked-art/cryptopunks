@@ -175,7 +175,7 @@ contract PunksData is PunksDataLoader, IPunksData {
     }
 
     function paletteRgbBytes() external view returns (bytes memory rgb) {
-        bytes memory rgba = _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
+        bytes memory rgba = _paletteBytes();
         uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
         rgb = new bytes(count * PALETTE_RGB_BYTES_PER_COLOR);
         uint256 rgbaBytesPerColor = PALETTE_RGBA_BYTES_PER_COLOR;
@@ -194,7 +194,7 @@ contract PunksData is PunksDataLoader, IPunksData {
     }
 
     function paletteAlphaBytes() external view returns (bytes memory alpha) {
-        bytes memory rgba = _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
+        bytes memory rgba = _paletteBytes();
         uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
         alpha = new bytes(count);
         uint256 rgbaBytesPerColor = PALETTE_RGBA_BYTES_PER_COLOR;
@@ -209,7 +209,7 @@ contract PunksData is PunksDataLoader, IPunksData {
     }
 
     function paletteRgbaBytes() external view returns (bytes memory) {
-        return _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
+        return _paletteBytes();
     }
 
     // Decoding helpers
@@ -234,22 +234,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         if (entry.length < COMPRESSED_PIXEL_HEADER_SIZE) revert MalformedPixelBlob();
 
         uint256 visibleColorCount = uint8(entry[0]);
-        uint256 paletteCount = MAX_COLOR_COUNT;
-        if (
-            visibleColorCount == 0
-                || entry.length < COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount
-                || visibleColorCount > paletteCount - 1
-        ) revert MalformedPixelBlob();
-
-        bytes memory localPalette = new bytes(visibleColorCount);
-        for (uint256 i; i < visibleColorCount;) {
-            uint8 paletteId = uint8(entry[COMPRESSED_PIXEL_HEADER_SIZE + i]);
-            if (paletteId == 0 || paletteId >= paletteCount) revert MalformedPixelBlob();
-            localPalette[i] = bytes1(paletteId);
-            unchecked {
-                ++i;
-            }
-        }
+        bytes memory localPalette = _readLocalPalette(entry, visibleColorCount);
 
         uint256 bitsPerIndex = _bitsForPalette(visibleColorCount);
         uint256 indexesOffset = COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount;
@@ -277,6 +262,28 @@ contract PunksData is PunksDataLoader, IPunksData {
         uint256 expectedIndexBytes = (bitOffset + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
         if (entry.length != indexesOffset + expectedIndexBytes || visiblePixelCount == 0) {
             revert MalformedPixelBlob();
+        }
+    }
+
+    function _readLocalPalette(bytes memory entry, uint256 visibleColorCount)
+        private
+        pure
+        returns (bytes memory localPalette)
+    {
+        if (
+            visibleColorCount == 0
+                || entry.length < COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount
+                || visibleColorCount > MAX_COLOR_COUNT - 1
+        ) revert MalformedPixelBlob();
+
+        localPalette = new bytes(visibleColorCount);
+        for (uint256 i; i < visibleColorCount;) {
+            uint8 paletteId = uint8(entry[COMPRESSED_PIXEL_HEADER_SIZE + i]);
+            if (paletteId == 0 || paletteId >= MAX_COLOR_COUNT) revert MalformedPixelBlob();
+            localPalette[i] = bytes1(paletteId);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -404,6 +411,10 @@ contract PunksData is PunksDataLoader, IPunksData {
         uint256 wordIndex = uint256(punkId) / SCALARS_PER_WORD;
         uint256 shift = (uint256(punkId) % SCALARS_PER_WORD) * SCALAR_BITS;
         return (_packedScalarWords[uint16(wordIndex)] >> shift) & SCALAR_MASK;
+    }
+
+    function _paletteBytes() private view returns (bytes memory) {
+        return _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
     }
 
     function _bitmapWord(BlobId blobId, uint256 row, uint8 wordIndex)

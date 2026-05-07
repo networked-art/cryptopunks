@@ -153,49 +153,10 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     }
 
     function seal(DatasetCommitment calldata commitment) external onlyAdmin {
-        if (
-            commitment.traitCatalogHash == bytes32(0) || commitment.punkMaskHash == bytes32(0)
-                || commitment.paletteHash == bytes32(0) || commitment.indexedPixelsHash == bytes32(0)
-                || commitment.compressedPixelsHash == bytes32(0)
-        ) revert InvalidHash();
+        _requireNonZeroCommitment(commitment);
+        _requireDatasetShape();
 
-        _requireBlobLength(
-            BlobId.TraitBitmaps,
-            uint256(TRAIT_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
-        );
-        if (_blobLength(BlobId.TraitMeta) < TRAIT_META_HEADER_SIZE) revert InvalidLength();
-        _requireBlobLength(
-            BlobId.Palette,
-            uint256(MAX_COLOR_COUNT) * PALETTE_RGBA_BYTES_PER_COLOR
-        );
-        _requireBlobLength(
-            BlobId.PixelOffsets,
-            (uint256(PUNK_COUNT) + 1) * PIXEL_OFFSET_BYTES
-        );
-        if (_blobLength(BlobId.CompressedPixels) == 0) revert InvalidLength();
-        _requireBlobLength(
-            BlobId.ColorBitmaps,
-            uint256(MAX_COLOR_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
-        );
-        _requireBlobLength(
-            BlobId.PixelCountBitmaps,
-            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
-        );
-        _requireBlobLength(
-            BlobId.ColorCountBitmaps,
-            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
-        );
-
-        bytes32 committedDatasetHash = keccak256(
-            abi.encode(
-                commitment.traitCatalogHash,
-                commitment.punkMaskHash,
-                commitment.paletteHash,
-                commitment.indexedPixelsHash,
-                commitment.compressedPixelsHash
-            )
-        );
-
+        bytes32 committedDatasetHash = _commitmentHash(commitment);
         _datasetHash = committedDatasetHash;
         admin = address(0);
 
@@ -227,21 +188,12 @@ abstract contract PunksDataLoader is IPunksDataLoader {
 
         out = new bytes(length);
 
-        uint256 lo;
-        uint256 hi = chunkCount;
-        while (lo < hi) {
-            uint256 mid = (lo + hi) >> 1;
-            if (chunks[mid].endOffset <= offset) {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
+        uint256 chunkIndex = _firstChunkContainingOffset(chunks, offset, chunkCount);
 
         uint256 copied;
-        uint256 chunkStart = lo == 0 ? 0 : chunks[lo - 1].endOffset;
+        uint256 chunkStart = chunkIndex == 0 ? 0 : chunks[chunkIndex - 1].endOffset;
         while (copied < length) {
-            Chunk storage chunk = chunks[lo];
+            Chunk storage chunk = chunks[chunkIndex];
             uint256 chunkEnd = chunk.endOffset;
             uint256 readStart = offset + copied - chunkStart;
             uint256 readLength = chunkEnd - chunkStart - readStart;
@@ -254,7 +206,23 @@ abstract contract PunksDataLoader is IPunksDataLoader {
 
             chunkStart = chunkEnd;
             unchecked {
-                ++lo;
+                ++chunkIndex;
+            }
+        }
+    }
+
+    function _firstChunkContainingOffset(
+        Chunk[] storage chunks,
+        uint256 offset,
+        uint256 chunkCount
+    ) private view returns (uint256 index) {
+        uint256 hi = chunkCount;
+        while (index < hi) {
+            uint256 mid = (index + hi) >> 1;
+            if (chunks[mid].endOffset <= offset) {
+                index = mid + 1;
+            } else {
+                hi = mid;
             }
         }
     }
@@ -282,26 +250,79 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         if (_blobLength(blobId) != expected) revert InvalidLength();
     }
 
+    function _requireNonZeroCommitment(DatasetCommitment calldata commitment) private pure {
+        if (
+            commitment.traitCatalogHash == bytes32(0) || commitment.punkMaskHash == bytes32(0)
+                || commitment.paletteHash == bytes32(0) || commitment.indexedPixelsHash == bytes32(0)
+                || commitment.compressedPixelsHash == bytes32(0)
+        ) revert InvalidHash();
+    }
+
+    function _requireDatasetShape() private view {
+        _requireBlobLength(
+            BlobId.TraitBitmaps,
+            uint256(TRAIT_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        if (_blobLength(BlobId.TraitMeta) < TRAIT_META_HEADER_SIZE) revert InvalidLength();
+        _requireBlobLength(
+            BlobId.Palette,
+            uint256(MAX_COLOR_COUNT) * PALETTE_RGBA_BYTES_PER_COLOR
+        );
+        _requireBlobLength(
+            BlobId.PixelOffsets,
+            (uint256(PUNK_COUNT) + 1) * PIXEL_OFFSET_BYTES
+        );
+        if (_blobLength(BlobId.CompressedPixels) == 0) revert InvalidLength();
+        _requireBlobLength(
+            BlobId.ColorBitmaps,
+            uint256(MAX_COLOR_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        _requireBlobLength(
+            BlobId.PixelCountBitmaps,
+            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        _requireBlobLength(
+            BlobId.ColorCountBitmaps,
+            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+    }
+
+    function _commitmentHash(DatasetCommitment calldata commitment) private pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                commitment.traitCatalogHash,
+                commitment.punkMaskHash,
+                commitment.paletteHash,
+                commitment.indexedPixelsHash,
+                commitment.compressedPixelsHash
+            )
+        );
+    }
+
     function _validateScalarWord(uint256 word) private pure {
         if (word >> (SCALARS_PER_WORD * SCALAR_BITS) != 0) revert InvalidScalar();
         for (uint256 i; i < SCALARS_PER_WORD;) {
             uint256 scalar = (word >> (i * SCALAR_BITS)) & SCALAR_MASK;
-            uint256 pixelCount = (scalar >> PIXEL_COUNT_SHIFT) & UINT16_MASK;
-            uint256 colorCountValue = (scalar >> COLOR_COUNT_SHIFT) & UINT8_MASK;
-            uint256 attributeCount = (scalar >> ATTRIBUTE_COUNT_SHIFT) & UINT8_MASK;
-            uint256 punkType = (scalar >> PUNK_TYPE_SHIFT) & UINT8_MASK;
-            uint256 headVariant = (scalar >> HEAD_VARIANT_SHIFT) & UINT8_MASK;
-            if (
-                pixelCount < PIXEL_COUNT_MIN || pixelCount > PIXEL_COUNT_MAX
-                    || colorCountValue < COLOR_COUNT_MIN || colorCountValue > COLOR_COUNT_MAX
-                    || attributeCount > MAX_ATTRIBUTE_COUNT
-                    || punkType > uint8(IPunksDataCriteria.PunkType.Zombie)
-                    || headVariant > uint8(IPunksDataCriteria.HeadVariant.Zombie)
-            ) revert InvalidScalar();
+            _requireValidScalar(scalar);
             unchecked {
                 ++i;
             }
         }
+    }
+
+    function _requireValidScalar(uint256 scalar) private pure {
+        uint256 pixelCount = (scalar >> PIXEL_COUNT_SHIFT) & UINT16_MASK;
+        uint256 colorCountValue = (scalar >> COLOR_COUNT_SHIFT) & UINT8_MASK;
+        uint256 attributeCount = (scalar >> ATTRIBUTE_COUNT_SHIFT) & UINT8_MASK;
+        uint256 punkType = (scalar >> PUNK_TYPE_SHIFT) & UINT8_MASK;
+        uint256 headVariant = (scalar >> HEAD_VARIANT_SHIFT) & UINT8_MASK;
+        if (
+            pixelCount < PIXEL_COUNT_MIN || pixelCount > PIXEL_COUNT_MAX
+                || colorCountValue < COLOR_COUNT_MIN || colorCountValue > COLOR_COUNT_MAX
+                || attributeCount > MAX_ATTRIBUTE_COUNT
+                || punkType > uint8(IPunksDataCriteria.PunkType.Zombie)
+                || headVariant > uint8(IPunksDataCriteria.HeadVariant.Zombie)
+        ) revert InvalidScalar();
     }
 
     function _scalarWordCount() private pure returns (uint256) {

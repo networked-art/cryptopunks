@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+/// @title IPunksDataTypes
+/// @notice Shared loader/read types for the Punk data contract family.
 interface IPunksDataTypes {
     enum BlobId {
         TraitBitmaps,
@@ -14,6 +16,8 @@ interface IPunksDataTypes {
     }
 }
 
+/// @title IPunksDataErrors
+/// @notice Shared custom errors for loader and read surfaces.
 interface IPunksDataErrors is IPunksDataTypes {
     error ZeroAddress();
     error NotAdmin();
@@ -158,6 +162,8 @@ interface IPunksDataIndexed {
     function paletteRgbaBytes() external view returns (bytes memory);
 }
 
+/// @title IPunksData
+/// @notice Full public ABI for loading, sealing, and reading Punk data.
 interface IPunksData is
     IPunksDataLoader,
     IPunksDataCriteria,
