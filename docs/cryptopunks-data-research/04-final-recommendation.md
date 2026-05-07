@@ -97,12 +97,18 @@ Color predicates are visible-color predicates. `colorMaskOf`, `hasColor`, and
 transparent palette entry. `colorSupply` may still expose the transparent
 pixel total as a global palette statistic.
 
+Loader/admin functions use named shapes rather than parallel arrays:
+`BlobId` names each SSTORE2 blob, `TraitNameHash[]` loads trait lookup rows,
+and `DatasetCommitment` passes the five seal hashes as one commitment.
+
 Public-good functions:
 
 ```solidity
 function supportsInterface(bytes4 interfaceId) external view returns (bool);
 function sourceDataContract() external view returns (address);
 function datasetHash() external view returns (bytes32);
+function blobChunkCount(BlobId blobId) external view returns (uint256);
+function blobLength(BlobId blobId) external view returns (uint256);
 function traitCount() external view returns (uint16);
 function traitName(uint16 traitId) external view returns (string memory);
 function traitIdByNameHash(bytes32 nameHash, TraitKind kind) external view returns (uint16, bool);
@@ -392,8 +398,8 @@ forever after.
    - palette-expanded decoded indexed pixels byte-equal source `punkImage(p)`.
 3. Fork-test `PunksData` against the source contract for every Punk.
 4. Implement `PunksData` with immutable blob pointers, sealed-initializer
-   pattern (`loadChunk` + one-shot `seal()` that emits
-   `DatasetCommitted`).
+   pattern (`loadBlobChunk(BlobId, ...)` + one-shot
+   `seal(DatasetCommitment)` that emits `DatasetCommitted`).
 5. Rewrite `Offers.sol` to consume `IPunksDataCriteria.hasTraits` directly
    with the mask trio (`requiredMask`, `forbiddenMask`, `anyOfMask`).
    Rewrite `MockCryptoPunksTraits` accordingly.

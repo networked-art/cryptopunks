@@ -8,14 +8,17 @@ const CHUNK_SIZE = 24_575
 const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '100')
 const HASH_BATCH = Number(process.env.PUNKS_DATA_HASH_BATCH ?? '111')
 
-const BLOB_TRAIT_BITMAPS = 1
-const BLOB_TRAIT_META = 2
-const BLOB_PALETTE = 3
-const BLOB_PIXEL_OFFSETS = 4
-const BLOB_COMPRESSED_PIXELS = 5
-const BLOB_COLOR_BITMAPS = 6
-const BLOB_PIXEL_COUNT_BITMAPS = 7
-const BLOB_COLOR_COUNT_BITMAPS = 8
+enum BlobId {
+  Invalid,
+  TraitBitmaps,
+  TraitMeta,
+  Palette,
+  PixelOffsets,
+  CompressedPixels,
+  ColorBitmaps,
+  PixelCountBitmaps,
+  ColorCountBitmaps,
+}
 
 type Manifest = {
   source: {
@@ -55,22 +58,22 @@ async function main() {
 
   console.log(`PunksData ${contract.address}`)
 
-  await loadBlob(contract, publicClient, BLOB_TRAIT_BITMAPS, manifest.files.traitBitmaps)
-  await loadBlob(contract, publicClient, BLOB_TRAIT_META, manifest.files.traitMeta)
-  await loadBlob(contract, publicClient, BLOB_PALETTE, manifest.files.palette)
-  await loadBlob(contract, publicClient, BLOB_PIXEL_OFFSETS, manifest.files.pixelOffsets)
-  await loadBlob(contract, publicClient, BLOB_COMPRESSED_PIXELS, manifest.files.compressedPixels)
-  await loadBlob(contract, publicClient, BLOB_COLOR_BITMAPS, manifest.files.colorBitmaps)
+  await loadBlob(contract, publicClient, BlobId.TraitBitmaps, manifest.files.traitBitmaps)
+  await loadBlob(contract, publicClient, BlobId.TraitMeta, manifest.files.traitMeta)
+  await loadBlob(contract, publicClient, BlobId.Palette, manifest.files.palette)
+  await loadBlob(contract, publicClient, BlobId.PixelOffsets, manifest.files.pixelOffsets)
+  await loadBlob(contract, publicClient, BlobId.CompressedPixels, manifest.files.compressedPixels)
+  await loadBlob(contract, publicClient, BlobId.ColorBitmaps, manifest.files.colorBitmaps)
   await loadBlob(
     contract,
     publicClient,
-    BLOB_PIXEL_COUNT_BITMAPS,
+    BlobId.PixelCountBitmaps,
     manifest.files.pixelCountBitmaps,
   )
   await loadBlob(
     contract,
     publicClient,
-    BLOB_COLOR_COUNT_BITMAPS,
+    BlobId.ColorCountBitmaps,
     manifest.files.colorCountBitmaps,
   )
 
@@ -101,11 +104,13 @@ async function main() {
   await submit(
     publicClient,
     contract.write.seal([
-      manifest.hashes.traitCatalogHash,
-      manifest.hashes.punkMaskHash,
-      manifest.hashes.paletteHash,
-      manifest.hashes.indexedPixelsHash,
-      manifest.hashes.compressedPixelsHash,
+      {
+        traitCatalogHash: manifest.hashes.traitCatalogHash,
+        punkMaskHash: manifest.hashes.punkMaskHash,
+        paletteHash: manifest.hashes.paletteHash,
+        indexedPixelsHash: manifest.hashes.indexedPixelsHash,
+        compressedPixelsHash: manifest.hashes.compressedPixelsHash,
+      },
     ]),
   )
 
@@ -120,7 +125,7 @@ async function main() {
 async function loadBlob(
   contract: any,
   publicClient: any,
-  blobId: number,
+  blobId: BlobId,
   fileName: string,
 ) {
   const bytes = new Uint8Array(await readFile(join(OUTPUT_DIR, fileName)))
@@ -174,9 +179,11 @@ async function loadTraitNameHashes(
     await submit(
       publicClient,
       contract.write.loadTraitNameHashes([
-        batch.map((trait) => trait.nameHash),
-        batch.map((trait) => trait.kind),
-        batch.map((trait) => trait.id),
+        batch.map((trait) => ({
+          nameHash: trait.nameHash,
+          kind: trait.kind,
+          traitId: trait.id,
+        })),
       ]),
     )
   }

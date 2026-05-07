@@ -24,11 +24,11 @@ For a public-good claim of "immutable forever," a one-line "we'll seal it"
 is not a spec. The pattern I would commit to:
 
 - Constructor records `address admin` (or uses `Ownable`).
-- `loadChunk(blobName, index, bytes data)` writes one SSTORE2 chunk and
-  records a pointer. Only `admin` can call.
-- `seal()` is called once: it writes the canonical `datasetHash`,
-  emits `DatasetCommitted`, sets `admin = address(0)`, and disables every
-  loader function permanently.
+- `loadBlobChunk(BlobId blobId, index, bytes data)` writes one SSTORE2
+  chunk and records a pointer. Only `admin` can call.
+- `seal(DatasetCommitment commitment)` is called once: it writes the
+  canonical `datasetHash`, emits `DatasetCommitted`, sets
+  `admin = address(0)`, and disables every loader function permanently.
 - After seal, every state-changing function reverts.
 - After seal, the contract has no owner, no admin, no proxy, no upgrade
   path. Period.

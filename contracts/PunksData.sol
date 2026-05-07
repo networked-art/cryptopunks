@@ -19,15 +19,21 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     uint16 public constant PIXEL_COUNT_MAX = 332;
     uint8 public constant COLOR_COUNT_MIN = 2;
     uint8 public constant COLOR_COUNT_MAX = 14;
+    uint8 public constant PUNK_WIDTH = 24;
+    uint8 public constant PUNK_HEIGHT = 24;
+    uint16 public constant PIXELS_PER_PUNK = 576;
 
-    uint8 public constant BLOB_TRAIT_BITMAPS = 1;
-    uint8 public constant BLOB_TRAIT_META = 2;
-    uint8 public constant BLOB_PALETTE = 3;
-    uint8 public constant BLOB_PIXEL_OFFSETS = 4;
-    uint8 public constant BLOB_COMPRESSED_PIXELS = 5;
-    uint8 public constant BLOB_COLOR_BITMAPS = 6;
-    uint8 public constant BLOB_PIXEL_COUNT_BITMAPS = 7;
-    uint8 public constant BLOB_COLOR_COUNT_BITMAPS = 8;
+    enum BlobId {
+        Invalid,
+        TraitBitmaps,
+        TraitMeta,
+        Palette,
+        PixelOffsets,
+        CompressedPixels,
+        ColorBitmaps,
+        PixelCountBitmaps,
+        ColorCountBitmaps
+    }
 
     uint256 public constant SOURCE_CHAIN_ID = 1;
     uint256 public constant SOURCE_BLOCK_NUMBER = 25_044_552;
@@ -40,9 +46,24 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     uint256 internal constant CANONICAL_COLOR_MASK = (uint256(1) << MAX_COLOR_COUNT) - 1;
     uint256 internal constant TRAIT_META_RECORD_SIZE = 6;
     uint256 internal constant TRAIT_META_HEADER_SIZE = uint256(TRAIT_COUNT) * TRAIT_META_RECORD_SIZE;
+    uint256 internal constant WORD_BYTES = 32;
+    uint256 internal constant PIXEL_OFFSET_BYTES = 3;
+    uint256 internal constant BITS_PER_BYTE = 8;
+    uint256 internal constant UINT8_MASK = 0xff;
+    uint256 internal constant UINT16_MASK = 0xffff;
     uint256 internal constant SCALAR_BITS = 48;
     uint256 internal constant SCALARS_PER_WORD = 5;
     uint256 internal constant SCALAR_MASK = (uint256(1) << SCALAR_BITS) - 1;
+    uint256 internal constant PIXEL_COUNT_SHIFT = 0;
+    uint256 internal constant COLOR_COUNT_SHIFT = 16;
+    uint256 internal constant ATTRIBUTE_COUNT_SHIFT = 24;
+    uint256 internal constant PUNK_TYPE_SHIFT = 32;
+    uint256 internal constant HEAD_VARIANT_SHIFT = 40;
+    uint256 internal constant MAX_ATTRIBUTE_COUNT = 7;
+    uint256 internal constant PALETTE_RGBA_BYTES_PER_COLOR = 4;
+    uint256 internal constant PALETTE_RGB_BYTES_PER_COLOR = 3;
+    uint256 internal constant VISIBLE_BITMAP_BYTES = uint256(PIXELS_PER_PUNK) / BITS_PER_BYTE;
+    uint256 internal constant COMPRESSED_PIXEL_HEADER_SIZE = 1 + VISIBLE_BITMAP_BYTES;
 
     address public immutable sourceDataContract;
     address public admin;
@@ -60,16 +81,30 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         uint32 endOffset;
     }
 
+    struct TraitNameHash {
+        bytes32 nameHash;
+        TraitKind kind;
+        uint16 traitId;
+    }
+
+    struct DatasetCommitment {
+        bytes32 traitCatalogHash;
+        bytes32 punkMaskHash;
+        bytes32 paletteHash;
+        bytes32 indexedPixelsHash;
+        bytes32 compressedPixelsHash;
+    }
+
     mapping(uint16 pairIndex => uint256 packedMasks) private _traitMaskPairs;
     mapping(uint16 punkId => uint256 mask) private _colorMasks;
     mapping(uint16 wordIndex => uint256 packedScalars) private _packedScalarWords;
     mapping(uint8 colorId => uint32 pixels) private _colorSupplies;
     mapping(bytes32 nameHash => mapping(uint8 kind => uint16 traitIdPlusOne))
         private _traitIdsByNameHash;
-    mapping(uint8 blobId => Chunk[] chunks) private _blobChunks;
+    mapping(BlobId blobId => Chunk[] chunks) private _blobChunks;
 
     event BlobChunkLoaded(
-        uint8 indexed blobId,
+        BlobId indexed blobId,
         uint16 indexed chunkIndex,
         address pointer,
         uint256 size,
@@ -102,7 +137,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     error InvalidColorCount();
     error InvalidScalar();
     error InvalidMask();
-    error BlobReadOutOfBounds(uint8 blobId, uint256 offset, uint256 length);
+    error BlobReadOutOfBounds(BlobId blobId, uint256 offset, uint256 length);
     error MalformedPixelBlob();
 
     modifier onlyAdmin() {
@@ -141,7 +176,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function recomputeTraitCatalogHash() external view returns (bytes32) {
-        bytes memory blob = _readBlob(BLOB_TRAIT_META, 0, _blobLength(BLOB_TRAIT_META));
+        bytes memory blob = _readBlob(BlobId.TraitMeta, 0, _blobLength(BlobId.TraitMeta));
 
         uint256 totalLen = TRAIT_COUNT;
         for (uint256 i; i < TRAIT_COUNT;) {
@@ -176,7 +211,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function recomputePunkMaskHash() external view returns (bytes32) {
-        bytes memory data = new bytes(uint256(PUNK_COUNT) * 32);
+        bytes memory data = new bytes(uint256(PUNK_COUNT) * WORD_BYTES);
         uint256 dataPtr;
         assembly ("memory-safe") {
             dataPtr := add(data, 0x20)
@@ -195,16 +230,16 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function recomputePaletteHash() external view returns (bytes32) {
-        return keccak256(_readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE)));
+        return keccak256(_readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette)));
     }
 
     function recomputeCompressedPixelsHash() external view returns (bytes32) {
-        uint256 offsetsLen = _blobLength(BLOB_PIXEL_OFFSETS);
-        uint256 pixelsLen = _blobLength(BLOB_COMPRESSED_PIXELS);
+        uint256 offsetsLen = _blobLength(BlobId.PixelOffsets);
+        uint256 pixelsLen = _blobLength(BlobId.CompressedPixels);
 
         bytes memory data = new bytes(offsetsLen + pixelsLen);
-        _copyBlobInto(BLOB_PIXEL_OFFSETS, data, 0, offsetsLen);
-        _copyBlobInto(BLOB_COMPRESSED_PIXELS, data, offsetsLen, pixelsLen);
+        _copyBlobInto(BlobId.PixelOffsets, data, 0, offsetsLen);
+        _copyBlobInto(BlobId.CompressedPixels, data, offsetsLen, pixelsLen);
 
         return keccak256(data);
     }
@@ -217,12 +252,12 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return traitId < TRAIT_COUNT;
     }
 
-    function blobChunkCount(uint8 blobId) external view returns (uint256) {
+    function blobChunkCount(BlobId blobId) external view returns (uint256) {
         _requireBlobId(blobId);
         return _blobChunks[blobId].length;
     }
 
-    function blobLength(uint8 blobId) external view returns (uint256) {
+    function blobLength(BlobId blobId) external view returns (uint256) {
         _requireBlobId(blobId);
         return _blobLength(blobId);
     }
@@ -302,26 +337,25 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
     }
 
-    function loadTraitNameHashes(
-        bytes32[] calldata nameHashes,
-        TraitKind[] calldata kinds,
-        uint16[] calldata traitIds
-    ) external onlyAdmin onlyUnsealed {
-        uint256 len = nameHashes.length;
-        if (kinds.length != len || traitIds.length != len) revert InvalidLength();
+    function loadTraitNameHashes(TraitNameHash[] calldata entries)
+        external
+        onlyAdmin
+        onlyUnsealed
+    {
+        uint256 len = entries.length;
 
         for (uint256 i; i < len;) {
-            uint8 kind = uint8(kinds[i]);
-            uint16 traitId = traitIds[i];
+            TraitNameHash calldata entry = entries[i];
+            uint16 traitId = entry.traitId;
             _requireTraitId(traitId);
-            _traitIdsByNameHash[nameHashes[i]][kind] = traitId + 1;
+            _traitIdsByNameHash[entry.nameHash][uint8(entry.kind)] = traitId + 1;
             unchecked {
                 ++i;
             }
         }
     }
 
-    function loadBlobChunk(uint8 blobId, uint16 chunkIndex, bytes calldata data)
+    function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data)
         external
         onlyAdmin
         onlyUnsealed
@@ -339,46 +373,52 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         emit BlobChunkLoaded(blobId, chunkIndex, pointer, data.length, keccak256(data));
     }
 
-    function seal(
-        bytes32 newTraitCatalogHash,
-        bytes32 newPunkMaskHash,
-        bytes32 newPaletteHash,
-        bytes32 newIndexedPixelsHash,
-        bytes32 newCompressedPixelsHash
-    ) external onlyAdmin onlyUnsealed {
+    function seal(DatasetCommitment calldata commitment) external onlyAdmin onlyUnsealed {
         if (
-            newTraitCatalogHash == bytes32(0) || newPunkMaskHash == bytes32(0)
-                || newPaletteHash == bytes32(0) || newIndexedPixelsHash == bytes32(0)
-                || newCompressedPixelsHash == bytes32(0)
+            commitment.traitCatalogHash == bytes32(0) || commitment.punkMaskHash == bytes32(0)
+                || commitment.paletteHash == bytes32(0) || commitment.indexedPixelsHash == bytes32(0)
+                || commitment.compressedPixelsHash == bytes32(0)
         ) revert InvalidHash();
 
-        _requireBlobLength(BLOB_TRAIT_BITMAPS, uint256(TRAIT_COUNT) * BITMAP_WORD_COUNT * 32);
-        if (_blobLength(BLOB_TRAIT_META) < TRAIT_META_HEADER_SIZE) revert InvalidLength();
-        _requireBlobLength(BLOB_PALETTE, uint256(MAX_COLOR_COUNT) * 4);
-        _requireBlobLength(BLOB_PIXEL_OFFSETS, (uint256(PUNK_COUNT) + 1) * 3);
-        if (_blobLength(BLOB_COMPRESSED_PIXELS) == 0) revert InvalidLength();
-        _requireBlobLength(BLOB_COLOR_BITMAPS, uint256(MAX_COLOR_COUNT) * BITMAP_WORD_COUNT * 32);
         _requireBlobLength(
-            BLOB_PIXEL_COUNT_BITMAPS,
-            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * BITMAP_WORD_COUNT * 32
+            BlobId.TraitBitmaps,
+            uint256(TRAIT_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        if (_blobLength(BlobId.TraitMeta) < TRAIT_META_HEADER_SIZE) revert InvalidLength();
+        _requireBlobLength(
+            BlobId.Palette,
+            uint256(MAX_COLOR_COUNT) * PALETTE_RGBA_BYTES_PER_COLOR
         );
         _requireBlobLength(
-            BLOB_COLOR_COUNT_BITMAPS,
-            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * 32
+            BlobId.PixelOffsets,
+            (uint256(PUNK_COUNT) + 1) * PIXEL_OFFSET_BYTES
+        );
+        if (_blobLength(BlobId.CompressedPixels) == 0) revert InvalidLength();
+        _requireBlobLength(
+            BlobId.ColorBitmaps,
+            uint256(MAX_COLOR_COUNT) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        _requireBlobLength(
+            BlobId.PixelCountBitmaps,
+            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
+        );
+        _requireBlobLength(
+            BlobId.ColorCountBitmaps,
+            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
         );
 
-        traitCatalogHash = newTraitCatalogHash;
-        punkMaskHash = newPunkMaskHash;
-        paletteHash = newPaletteHash;
-        indexedPixelsHash = newIndexedPixelsHash;
-        compressedPixelsHash = newCompressedPixelsHash;
+        traitCatalogHash = commitment.traitCatalogHash;
+        punkMaskHash = commitment.punkMaskHash;
+        paletteHash = commitment.paletteHash;
+        indexedPixelsHash = commitment.indexedPixelsHash;
+        compressedPixelsHash = commitment.compressedPixelsHash;
         _datasetHash = keccak256(
             abi.encode(
-                newTraitCatalogHash,
-                newPunkMaskHash,
-                newPaletteHash,
-                newIndexedPixelsHash,
-                newCompressedPixelsHash
+                commitment.traitCatalogHash,
+                commitment.punkMaskHash,
+                commitment.paletteHash,
+                commitment.indexedPixelsHash,
+                commitment.compressedPixelsHash
             )
         );
 
@@ -387,11 +427,11 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
         emit DatasetCommitted(
             sourceDataContract,
-            newTraitCatalogHash,
-            newPunkMaskHash,
-            newPaletteHash,
-            newIndexedPixelsHash,
-            newCompressedPixelsHash,
+            commitment.traitCatalogHash,
+            commitment.punkMaskHash,
+            commitment.paletteHash,
+            commitment.indexedPixelsHash,
+            commitment.compressedPixelsHash,
             _datasetHash
         );
     }
@@ -401,7 +441,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         bytes memory record = _traitMetaRecord(traitId);
         uint256 nameOffset = _readUint16(record, 3);
         uint256 nameLength = uint8(record[5]);
-        return string(_readBlob(BLOB_TRAIT_META, TRAIT_META_HEADER_SIZE + nameOffset, nameLength));
+        return string(_readBlob(BlobId.TraitMeta, TRAIT_META_HEADER_SIZE + nameOffset, nameLength));
     }
 
     function traitIdByNameHash(bytes32 nameHash, TraitKind kind)
@@ -457,21 +497,21 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         _requireTraitId(traitId);
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
-            BLOB_TRAIT_BITMAPS,
-            (uint256(traitId) * BITMAP_WORD_COUNT + wordIndex) * 32
+            BlobId.TraitBitmaps,
+            (uint256(traitId) * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES
         );
     }
 
     function headVariantOf(uint16 punkId) external view returns (HeadVariant) {
-        return HeadVariant(_scalarField(punkId, 40, 0xff));
+        return HeadVariant(_scalarField(punkId, HEAD_VARIANT_SHIFT, UINT8_MASK));
     }
 
     function punkTypeOf(uint16 punkId) external view returns (PunkType) {
-        return PunkType(_scalarField(punkId, 32, 0xff));
+        return PunkType(_scalarField(punkId, PUNK_TYPE_SHIFT, UINT8_MASK));
     }
 
     function attributeCountOf(uint16 punkId) external view returns (uint8) {
-        return uint8(_scalarField(punkId, 24, 0xff));
+        return uint8(_scalarField(punkId, ATTRIBUTE_COUNT_SHIFT, UINT8_MASK));
     }
 
     function colorCount() public pure returns (uint16) {
@@ -480,7 +520,11 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function colorOf(uint8 colorId) external view returns (bytes4 rgba) {
         _requireColorId(colorId);
-        bytes memory data = _readBlob(BLOB_PALETTE, uint256(colorId) * 4, 4);
+        bytes memory data = _readBlob(
+            BlobId.Palette,
+            uint256(colorId) * PALETTE_RGBA_BYTES_PER_COLOR,
+            PALETTE_RGBA_BYTES_PER_COLOR
+        );
         assembly ("memory-safe") {
             rgba := mload(add(data, 0x20))
         }
@@ -504,19 +548,19 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function pixelCountOf(uint16 punkId) external view returns (uint16) {
-        return uint16(_scalarField(punkId, 0, 0xffff));
+        return uint16(_scalarField(punkId, PIXEL_COUNT_SHIFT, UINT16_MASK));
     }
 
     function colorCountOf(uint16 punkId) external view returns (uint8) {
-        return uint8(_scalarField(punkId, 16, 0xff));
+        return uint8(_scalarField(punkId, COLOR_COUNT_SHIFT, UINT8_MASK));
     }
 
     function colorBitmapWord(uint8 colorId, uint8 wordIndex) external view returns (uint256) {
         _requireColorId(colorId);
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
-            BLOB_COLOR_BITMAPS,
-            (uint256(colorId) * BITMAP_WORD_COUNT + wordIndex) * 32
+            BlobId.ColorBitmaps,
+            (uint256(colorId) * BITMAP_WORD_COUNT + wordIndex) * WORD_BYTES
         );
     }
 
@@ -530,9 +574,9 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
-            BLOB_PIXEL_COUNT_BITMAPS,
-            (uint256(pixelCount) - PIXEL_COUNT_MIN) * BITMAP_WORD_COUNT * 32
-                + uint256(wordIndex) * 32
+            BlobId.PixelCountBitmaps,
+            (uint256(pixelCount) - PIXEL_COUNT_MIN) * BITMAP_WORD_COUNT * WORD_BYTES
+                + uint256(wordIndex) * WORD_BYTES
         );
     }
 
@@ -544,9 +588,9 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         if (count < COLOR_COUNT_MIN || count > COLOR_COUNT_MAX) revert InvalidColorCount();
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
-            BLOB_COLOR_COUNT_BITMAPS,
-            (uint256(count) - COLOR_COUNT_MIN) * BITMAP_WORD_COUNT * 32
-                + uint256(wordIndex) * 32
+            BlobId.ColorCountBitmaps,
+            (uint256(count) - COLOR_COUNT_MIN) * BITMAP_WORD_COUNT * WORD_BYTES
+                + uint256(wordIndex) * WORD_BYTES
         );
     }
 
@@ -555,21 +599,23 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function colorAt(uint16 punkId, uint8 x, uint8 y) external view returns (uint8 colorId) {
-        if (x >= 24 || y >= 24) revert InvalidCoordinate();
+        if (x >= PUNK_WIDTH || y >= PUNK_HEIGHT) revert InvalidCoordinate();
         bytes memory pixels = _indexedPixelsOf(punkId);
-        return uint8(pixels[uint256(y) * 24 + x]);
+        return uint8(pixels[uint256(y) * PUNK_WIDTH + x]);
     }
 
     function paletteRgbBytes() external view returns (bytes memory rgb) {
-        bytes memory rgba = _readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE));
-        uint256 count = rgba.length >> 2;
-        rgb = new bytes(count * 3);
+        bytes memory rgba = _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
+        uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
+        rgb = new bytes(count * PALETTE_RGB_BYTES_PER_COLOR);
+        uint256 rgbaBytesPerColor = PALETTE_RGBA_BYTES_PER_COLOR;
+        uint256 rgbBytesPerColor = PALETTE_RGB_BYTES_PER_COLOR;
         assembly ("memory-safe") {
             let src := add(rgba, 0x20)
             let dst := add(rgb, 0x20)
             for { let i := 0 } lt(i, count) { i := add(i, 1) } {
-                let word := mload(add(src, shl(2, i)))
-                let dstOff := add(dst, mul(i, 3))
+                let word := mload(add(src, mul(i, rgbaBytesPerColor)))
+                let dstOff := add(dst, mul(i, rgbBytesPerColor))
                 mstore8(dstOff, byte(0, word))
                 mstore8(add(dstOff, 1), byte(1, word))
                 mstore8(add(dstOff, 2), byte(2, word))
@@ -578,21 +624,22 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function paletteAlphaBytes() external view returns (bytes memory alpha) {
-        bytes memory rgba = _readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE));
-        uint256 count = rgba.length >> 2;
+        bytes memory rgba = _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
+        uint256 count = rgba.length / PALETTE_RGBA_BYTES_PER_COLOR;
         alpha = new bytes(count);
+        uint256 rgbaBytesPerColor = PALETTE_RGBA_BYTES_PER_COLOR;
         assembly ("memory-safe") {
             let src := add(rgba, 0x20)
             let dst := add(alpha, 0x20)
             for { let i := 0 } lt(i, count) { i := add(i, 1) } {
-                let word := mload(add(src, shl(2, i)))
+                let word := mload(add(src, mul(i, rgbaBytesPerColor)))
                 mstore8(add(dst, i), byte(3, word))
             }
         }
     }
 
     function paletteRgbaBytes() external view returns (bytes memory) {
-        return _readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE));
+        return _readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette));
     }
 
     function _traitMaskOf(uint16 punkId) private view returns (uint256) {
@@ -604,23 +651,25 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function _indexedPixelsOf(uint16 punkId) private view returns (bytes memory pixels) {
         _requirePunkId(punkId);
-        uint256 start = _readUint24(BLOB_PIXEL_OFFSETS, uint256(punkId) * 3);
-        uint256 end = _readUint24(BLOB_PIXEL_OFFSETS, (uint256(punkId) + 1) * 3);
+        uint256 start = _readUint24(BlobId.PixelOffsets, uint256(punkId) * PIXEL_OFFSET_BYTES);
+        uint256 end =
+            _readUint24(BlobId.PixelOffsets, (uint256(punkId) + 1) * PIXEL_OFFSET_BYTES);
         if (end <= start) revert MalformedPixelBlob();
 
-        bytes memory entry = _readBlob(BLOB_COMPRESSED_PIXELS, start, end - start);
-        if (entry.length < 73) revert MalformedPixelBlob();
+        bytes memory entry = _readBlob(BlobId.CompressedPixels, start, end - start);
+        if (entry.length < COMPRESSED_PIXEL_HEADER_SIZE) revert MalformedPixelBlob();
 
         uint256 visibleColorCount = uint8(entry[0]);
         uint256 paletteCount = colorCount();
         if (
-            visibleColorCount == 0 || entry.length < 73 + visibleColorCount
+            visibleColorCount == 0
+                || entry.length < COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount
                 || visibleColorCount > paletteCount - 1
         ) revert MalformedPixelBlob();
 
         bytes memory localPalette = new bytes(visibleColorCount);
         for (uint256 i; i < visibleColorCount;) {
-            uint8 paletteId = uint8(entry[73 + i]);
+            uint8 paletteId = uint8(entry[COMPRESSED_PIXEL_HEADER_SIZE + i]);
             if (paletteId == 0 || paletteId >= paletteCount) revert MalformedPixelBlob();
             localPalette[i] = bytes1(paletteId);
             unchecked {
@@ -629,23 +678,23 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
 
         uint256 bitsPerIndex = _bitsForPalette(visibleColorCount);
-        uint256 indexesOffset = 73 + visibleColorCount;
+        uint256 indexesOffset = COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount;
         uint256 visibleIndex;
         uint256 bitOffset;
-        pixels = new bytes(576);
+        pixels = new bytes(PIXELS_PER_PUNK);
 
-        for (uint256 byteIdx; byteIdx < 72;) {
+        for (uint256 byteIdx; byteIdx < VISIBLE_BITMAP_BYTES;) {
             uint8 bitmapByte = uint8(entry[1 + byteIdx]);
             if (bitmapByte != 0) {
-                for (uint256 b; b < 8;) {
-                    if ((bitmapByte & (1 << (7 - b))) != 0) {
+                for (uint256 b; b < BITS_PER_BYTE;) {
+                    if ((bitmapByte & (1 << (BITS_PER_BYTE - 1 - b))) != 0) {
                         uint256 localIndex;
                         if (bitsPerIndex != 0) {
                             localIndex = _readBits(entry, indexesOffset, bitOffset, bitsPerIndex);
                             bitOffset += bitsPerIndex;
                         }
                         if (localIndex >= visibleColorCount) revert MalformedPixelBlob();
-                        pixels[byteIdx * 8 + b] = localPalette[localIndex];
+                        pixels[byteIdx * BITS_PER_BYTE + b] = localPalette[localIndex];
                         unchecked {
                             ++visibleIndex;
                         }
@@ -660,7 +709,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
             }
         }
 
-        uint256 expectedIndexBytes = (bitOffset + 7) >> 3;
+        uint256 expectedIndexBytes = (bitOffset + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
         if (entry.length != indexesOffset + expectedIndexBytes || visibleIndex == 0) {
             revert MalformedPixelBlob();
         }
@@ -673,14 +722,15 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         uint256 bitLength
     ) private pure returns (uint256 value) {
         if (bitLength == 0) return 0;
-        uint256 endByte = byteOffset + ((bitOffset + bitLength + 7) >> 3);
+        uint256 endByte =
+            byteOffset + ((bitOffset + bitLength + BITS_PER_BYTE - 1) / BITS_PER_BYTE);
         if (endByte > data.length) revert MalformedPixelBlob();
 
         for (uint256 i; i < bitLength;) {
             uint256 absoluteBit = bitOffset + i;
-            uint256 byteIndex = byteOffset + (absoluteBit >> 3);
+            uint256 byteIndex = byteOffset + (absoluteBit / BITS_PER_BYTE);
             uint8 current = uint8(data[byteIndex]);
-            uint256 bit = (current >> (7 - (absoluteBit & 7))) & 1;
+            uint256 bit = (current >> (BITS_PER_BYTE - 1 - (absoluteBit % BITS_PER_BYTE))) & 1;
             value = (value << 1) | bit;
             unchecked {
                 ++i;
@@ -700,7 +750,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function _traitMetaRecord(uint16 traitId) private view returns (bytes memory) {
         return _readBlob(
-            BLOB_TRAIT_META,
+            BlobId.TraitMeta,
             uint256(traitId) * TRAIT_META_RECORD_SIZE,
             TRAIT_META_RECORD_SIZE
         );
@@ -726,15 +776,15 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         if (word >> (SCALARS_PER_WORD * SCALAR_BITS) != 0) revert InvalidScalar();
         for (uint256 i; i < SCALARS_PER_WORD;) {
             uint256 scalar = (word >> (i * SCALAR_BITS)) & SCALAR_MASK;
-            uint256 pixelCount = scalar & 0xffff;
-            uint256 colorCountValue = (scalar >> 16) & 0xff;
-            uint256 attributeCount = (scalar >> 24) & 0xff;
-            uint256 punkType = (scalar >> 32) & 0xff;
-            uint256 headVariant = (scalar >> 40) & 0xff;
+            uint256 pixelCount = (scalar >> PIXEL_COUNT_SHIFT) & UINT16_MASK;
+            uint256 colorCountValue = (scalar >> COLOR_COUNT_SHIFT) & UINT8_MASK;
+            uint256 attributeCount = (scalar >> ATTRIBUTE_COUNT_SHIFT) & UINT8_MASK;
+            uint256 punkType = (scalar >> PUNK_TYPE_SHIFT) & UINT8_MASK;
+            uint256 headVariant = (scalar >> HEAD_VARIANT_SHIFT) & UINT8_MASK;
             if (
                 pixelCount < PIXEL_COUNT_MIN || pixelCount > PIXEL_COUNT_MAX
                     || colorCountValue < COLOR_COUNT_MIN || colorCountValue > COLOR_COUNT_MAX
-                    || attributeCount > 7 || punkType > uint8(PunkType.Zombie)
+                    || attributeCount > MAX_ATTRIBUTE_COUNT || punkType > uint8(PunkType.Zombie)
                     || headVariant > uint8(HeadVariant.Zombie)
             ) revert InvalidScalar();
             unchecked {
@@ -747,15 +797,15 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return (uint256(PUNK_COUNT) + SCALARS_PER_WORD - 1) / SCALARS_PER_WORD;
     }
 
-    function _readBitmapWord(uint8 blobId, uint256 offset) private view returns (uint256 value) {
-        bytes memory data = _readBlob(blobId, offset, 32);
+    function _readBitmapWord(BlobId blobId, uint256 offset) private view returns (uint256 value) {
+        bytes memory data = _readBlob(blobId, offset, WORD_BYTES);
         assembly ("memory-safe") {
             value := mload(add(data, 0x20))
         }
     }
 
-    function _readUint24(uint8 blobId, uint256 offset) private view returns (uint256) {
-        bytes memory data = _readBlob(blobId, offset, 3);
+    function _readUint24(BlobId blobId, uint256 offset) private view returns (uint256) {
+        bytes memory data = _readBlob(blobId, offset, PIXEL_OFFSET_BYTES);
         return (uint256(uint8(data[0])) << 16) | (uint256(uint8(data[1])) << 8)
             | uint8(data[2]);
     }
@@ -764,7 +814,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return (uint16(uint8(data[offset])) << 8) | uint8(data[offset + 1]);
     }
 
-    function _readBlob(uint8 blobId, uint256 offset, uint256 length)
+    function _readBlob(BlobId blobId, uint256 offset, uint256 length)
         private
         view
         returns (bytes memory out)
@@ -826,14 +876,14 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
     }
 
-    function _blobLength(uint8 blobId) private view returns (uint256) {
+    function _blobLength(BlobId blobId) private view returns (uint256) {
         Chunk[] storage chunks = _blobChunks[blobId];
         uint256 len = chunks.length;
         if (len == 0) return 0;
         return chunks[len - 1].endOffset;
     }
 
-    function _copyBlobInto(uint8 blobId, bytes memory dst, uint256 dstOffset, uint256 length)
+    function _copyBlobInto(BlobId blobId, bytes memory dst, uint256 dstOffset, uint256 length)
         private
         view
     {
@@ -874,14 +924,12 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
     }
 
-    function _requireBlobLength(uint8 blobId, uint256 expected) private view {
+    function _requireBlobLength(BlobId blobId, uint256 expected) private view {
         if (_blobLength(blobId) != expected) revert InvalidLength();
     }
 
-    function _requireBlobId(uint8 blobId) private pure {
-        if (blobId < BLOB_TRAIT_BITMAPS || blobId > BLOB_COLOR_COUNT_BITMAPS) {
-            revert InvalidBlobId();
-        }
+    function _requireBlobId(BlobId blobId) private pure {
+        if (blobId == BlobId.Invalid) revert InvalidBlobId();
     }
 
     function _requirePunkId(uint16 punkId) private pure {

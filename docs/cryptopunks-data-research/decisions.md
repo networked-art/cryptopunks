@@ -357,14 +357,17 @@ approach.
 ### L1. Deployer seals the data contract
 
 - Constructor records `address admin`.
-- `loadChunk(blobName, index, bytes)` admin-only, accumulates SSTORE2
-  pointers.
-- `seal()` called once: writes `datasetHash`, emits `DatasetCommitted`,
-  sets `admin = address(0)`. All loader functions revert post-seal.
+- `loadBlobChunk(BlobId blobId, index, bytes)` admin-only, accumulates
+  SSTORE2 pointers.
+- `loadTraitNameHashes(TraitNameHash[] entries)` loads name lookup keys as
+  named tuples, not parallel arrays.
+- `seal(DatasetCommitment commitment)` called once: writes `datasetHash`,
+  emits `DatasetCommitted`, sets `admin = address(0)`. All loader functions
+  revert post-seal.
 - No proxy. No upgrade. No emergency override.
 
-The deployer is responsible for calling `seal()`. A deployed-but-unsealed
-contract is not canonical.
+The deployer is responsible for calling `seal(DatasetCommitment)`. A
+deployed-but-unsealed contract is not canonical.
 
 ### L2. `DatasetCommitted` event
 
@@ -431,7 +434,8 @@ keys.
 ### O1. Deployer / owner / mirrorer
 
 Flag: choose the deployer/admin address before deployment. That address loads
-the dataset and must call `seal()`. After seal, it has no authority.
+the dataset and must call `seal(DatasetCommitment)`. After seal, it has no
+authority.
 
 ### O2. ENS naming — `punksdata.eth`
 
@@ -462,7 +466,8 @@ Deployment flow:
 3. Set forward records for `punksdata.eth` and subnames.
 4. Set reverse primary names through the Reverse Registrar while the deployer
    or temporary owner is still authorized.
-5. Call `seal()` on `PunksData`; after seal, the data contract has no admin.
+5. Call `seal(DatasetCommitment)` on `PunksData`; after seal, the data
+   contract has no admin.
 
 ENS is a discovery layer, not the security root. The canonical trust anchors
 remain the deployed addresses, verified source, `DatasetCommitted`, and

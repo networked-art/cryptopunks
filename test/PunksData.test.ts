@@ -15,15 +15,20 @@ const TRAIT_COUNT = 111
 const WORDS_PER_BITMAP = 40
 const MAX_COLOR_COUNT = 222
 const CHUNK_SIZE = 24_575
+const PIXELS_PER_PUNK = 576
+const VISIBLE_BITMAP_BYTES = PIXELS_PER_PUNK / 8
 
-const BLOB_TRAIT_BITMAPS = 1
-const BLOB_TRAIT_META = 2
-const BLOB_PALETTE = 3
-const BLOB_PIXEL_OFFSETS = 4
-const BLOB_COMPRESSED_PIXELS = 5
-const BLOB_COLOR_BITMAPS = 6
-const BLOB_PIXEL_COUNT_BITMAPS = 7
-const BLOB_COLOR_COUNT_BITMAPS = 8
+enum BlobId {
+  Invalid,
+  TraitBitmaps,
+  TraitMeta,
+  Palette,
+  PixelOffsets,
+  CompressedPixels,
+  ColorBitmaps,
+  PixelCountBitmaps,
+  ColorCountBitmaps,
+}
 
 enum TraitKind {
   HeadVariant,
@@ -48,17 +53,19 @@ describe('PunksData', () => {
     )
 
     await ctx.viem.assertions.revertWithCustomError(
-      data.write.loadBlobChunk([BLOB_PALETTE, 99, '0x12']),
+      data.write.loadBlobChunk([BlobId.Palette, 99, '0x12']),
       data,
       'InvalidChunkIndex',
     )
 
     await data.write.seal([
-      hashes.traitCatalogHash,
-      hashes.punkMaskHash,
-      hashes.paletteHash,
-      hashes.indexedPixelsHash,
-      hashes.compressedPixelsHash,
+      {
+        traitCatalogHash: hashes.traitCatalogHash,
+        punkMaskHash: hashes.punkMaskHash,
+        paletteHash: hashes.paletteHash,
+        indexedPixelsHash: hashes.indexedPixelsHash,
+        compressedPixelsHash: hashes.compressedPixelsHash,
+      },
     ])
 
     assert.equal(await data.read.isSealed(), true)
@@ -153,7 +160,7 @@ describe('PunksData', () => {
     const { data } = ctx
 
     const pixels = hexToBytes(await data.read.indexedPixelsOf([0]))
-    assert.equal(pixels.length, 576)
+    assert.equal(pixels.length, PIXELS_PER_PUNK)
     assert.equal(pixels[0], 1)
     assert.equal(pixels[99], 1)
     assert.equal(pixels[100], 2)
@@ -196,14 +203,14 @@ async function deployLoadedPunksData() {
   ])
   const fixture = makeFixture()
 
-  await loadBlob(data, BLOB_TRAIT_BITMAPS, fixture.traitBitmaps)
-  await loadBlob(data, BLOB_TRAIT_META, fixture.traitMeta)
-  await loadBlob(data, BLOB_PALETTE, fixture.palette)
-  await loadBlob(data, BLOB_PIXEL_OFFSETS, fixture.pixelOffsets)
-  await loadBlob(data, BLOB_COMPRESSED_PIXELS, fixture.compressedPixels)
-  await loadBlob(data, BLOB_COLOR_BITMAPS, fixture.colorBitmaps)
-  await loadBlob(data, BLOB_PIXEL_COUNT_BITMAPS, fixture.pixelCountBitmaps)
-  await loadBlob(data, BLOB_COLOR_COUNT_BITMAPS, fixture.colorCountBitmaps)
+  await loadBlob(data, BlobId.TraitBitmaps, fixture.traitBitmaps)
+  await loadBlob(data, BlobId.TraitMeta, fixture.traitMeta)
+  await loadBlob(data, BlobId.Palette, fixture.palette)
+  await loadBlob(data, BlobId.PixelOffsets, fixture.pixelOffsets)
+  await loadBlob(data, BlobId.CompressedPixels, fixture.compressedPixels)
+  await loadBlob(data, BlobId.ColorBitmaps, fixture.colorBitmaps)
+  await loadBlob(data, BlobId.PixelCountBitmaps, fixture.pixelCountBitmaps)
+  await loadBlob(data, BlobId.ColorCountBitmaps, fixture.colorCountBitmaps)
 
   await data.write.loadTraitMaskPairs([0, [fixture.traitMask]])
   await data.write.loadColorMasks([0, [fixture.colorMask]])
@@ -211,18 +218,28 @@ async function deployLoadedPunksData() {
   await data.write.loadColorSupplies([0, fixture.colorSupplies])
   await data.write.loadTraitNameHashes([
     [
-      keccakBytes(new TextEncoder().encode('Alien')),
-      keccakBytes(new TextEncoder().encode('Alien')),
-      keccakBytes(new TextEncoder().encode('Beanie')),
+      {
+        nameHash: keccakBytes(new TextEncoder().encode('Alien')),
+        kind: TraitKind.NormalizedType,
+        traitId: 0,
+      },
+      {
+        nameHash: keccakBytes(new TextEncoder().encode('Alien')),
+        kind: TraitKind.HeadVariant,
+        traitId: 5,
+      },
+      {
+        nameHash: keccakBytes(new TextEncoder().encode('Beanie')),
+        kind: TraitKind.Accessory,
+        traitId: 24,
+      },
     ],
-    [TraitKind.NormalizedType, TraitKind.HeadVariant, TraitKind.Accessory],
-    [0, 5, 24],
   ])
 
   return { connection, viem, deployer, other, data, fixture, hashes: fixture.hashes }
 }
 
-async function loadBlob(data: any, blobId: number, bytes: Uint8Array) {
+async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const chunkCount = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let index = 0; index < chunkCount; index++) {
     const chunk = bytes.slice(index * CHUNK_SIZE, Math.min(bytes.length, (index + 1) * CHUNK_SIZE))
@@ -246,7 +263,7 @@ function makeFixture() {
   palette.set([0x11, 0x22, 0x33, 0xff], 4)
   palette.set([0xaa, 0xbb, 0xcc, 0x80], 8)
 
-  const indexed = new Uint8Array(576)
+  const indexed = new Uint8Array(PIXELS_PER_PUNK)
   indexed.fill(1, 0, 100)
   indexed.fill(2, 100, 148)
   const compressed = encodeSparseIndexed(indexed, [1, 2])
@@ -332,7 +349,7 @@ function traitKind(id: number): TraitKind {
 }
 
 function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]): Uint8Array {
-  const bitmap = new Uint8Array(72)
+  const bitmap = new Uint8Array(VISIBLE_BITMAP_BYTES)
   const indexBytes = new Uint8Array(Math.ceil(148 / 8))
   let bitOffset = 0
   for (let pixel = 0; pixel < indexed.length; pixel++) {
