@@ -60,10 +60,6 @@ contract CryptoPunksEscrow {
         PunkVault(vault).transfer(punkIndex, msg.sender);
     }
 
-    function transferPunkTo(uint256 punkIndex, address to) external onlyAuctions {
-        PUNKS.transferPunk(to, punkIndex);
-    }
-
     function offerToAuctions(uint256 punkIndex, uint256 priceWei) external onlyAuctions {
         PUNKS.offerPunkForSaleToAddress(punkIndex, priceWei, AUCTIONS);
     }

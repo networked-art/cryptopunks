@@ -408,7 +408,7 @@ describe('CryptoPunksAuctions', () => {
     assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
   })
 
-  it('pays the seller and allows direct winner claim when settlement delivery is deferred', async () => {
+  it('reverts settlement without paying the seller when delivery fails', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, escrow, punks, seller, bidder1 } = ctx
 
@@ -427,30 +427,20 @@ describe('CryptoPunksAuctions', () => {
     const sellerBefore = await publicClient.getBalance({
       address: seller.account.address,
     })
-    await auctions.write.settle([1n])
+    await assert.rejects(auctions.write.settle([1n]))
     const sellerAfter = await publicClient.getBalance({
       address: seller.account.address,
     })
 
-    assert.equal(sellerAfter - sellerBefore, bidWei)
-    assert.equal(await auctions.read.pendingDelivery([1n]), true)
+    assert.equal(sellerAfter, sellerBefore)
     assert.equal(
       ((await punks.read.punkIndexToAddress([201n])) as string).toLowerCase(),
       escrow.address.toLowerCase(),
     )
+    assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
 
-    const auctionsAsWinner = await ctx.viem.getContractAt(
-      'CryptoPunksAuctions',
-      auctions.address,
-      { client: { wallet: bidder1 } },
-    )
-    await auctionsAsWinner.write.claimSettledToken([1n, zeroAddress])
-
-    assert.equal(await auctions.read.pendingDelivery([1n]), false)
-    assert.equal(
-      ((await punks.read.punkIndexToAddress([201n])) as string).toLowerCase(),
-      bidder1.account.address.toLowerCase(),
-    )
+    const auction = await auctions.read.auctions([1n])
+    assert.equal(auction[7], false)
   })
 
   it('settles V1 Punks through the bug-aware withdraw path with zero fees', async () => {

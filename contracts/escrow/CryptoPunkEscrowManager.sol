@@ -86,17 +86,6 @@ abstract contract CryptoPunkEscrowManager {
         }
     }
 
-    function _deliverPunkDirect(
-        ICryptoPunksAuctions.TokenStandard standard,
-        address tokenContract,
-        uint256 tokenId,
-        address to
-    ) internal {
-        (, CryptoPunksEscrow escrow) = _punkRouteFor(standard);
-        _requirePunkContract(standard, tokenContract);
-        escrow.transferPunkTo(tokenId, to);
-    }
-
     function _isPunkReceiveSender(address account) internal view returns (bool) {
         return account == address(PUNKS_ESCROW) || account == address(PUNKS_V1);
     }

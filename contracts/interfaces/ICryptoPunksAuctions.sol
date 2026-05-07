@@ -80,12 +80,6 @@ interface ICryptoPunksAuctions {
         uint256 sellerWei,
         uint256 protocolWei
     );
-    event DeliveryDeferred(uint256 indexed auctionId, address indexed winner);
-    event SettledTokenClaimed(
-        uint256 indexed auctionId,
-        address indexed winner,
-        address indexed to
-    );
 
     event OfferPlaced(
         uint256 indexed offerId,
@@ -153,8 +147,6 @@ interface ICryptoPunksAuctions {
     error AuctionAlreadySettled();
     error AuctionNotComplete();
     error MinimumBidNotMet();
-    error NotWinner();
-    error NoPendingDelivery();
 
     function createLot(
         address tokenContract,
@@ -219,8 +211,6 @@ interface ICryptoPunksAuctions {
         );
 
     function settle(uint256 auctionId) external;
-
-    function claimSettledToken(uint256 auctionId, address to) external;
 
     function currentMinBidWei(uint256 auctionId) external view returns (uint96);
 

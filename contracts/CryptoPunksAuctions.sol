@@ -13,14 +13,12 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
     uint256 internal constant BID_INCREASE_BPS = 1_000;
     uint40 internal constant AUCTION_DURATION = 24 hours;
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
-    uint256 internal constant DELIVER_GAS_LIMIT = 500_000;
 
     uint256 public lastLotId;
     uint256 public lastAuctionId;
 
     mapping(uint256 => Lot) public lots;
     mapping(uint256 => Auction) public auctions;
-    mapping(uint256 => bool) public pendingDelivery;
     mapping(uint256 => address) public winnerReceivers;
 
     mapping(bytes32 => uint64) public sellerTokenVersion;
@@ -211,12 +209,13 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
 
         storedAuction.settled = true;
 
-        bool delivered = _tryDeliver(auction, _auctionRecipient(auctionId, auction.latestBidder));
-        if (!delivered) {
-            pendingDelivery[auctionId] = true;
-            emit DeliveryDeferred(auctionId, auction.latestBidder);
-        }
-
+        _deliverPunk(
+            auction.standard,
+            auction.tokenContract,
+            auction.tokenId,
+            _auctionRecipient(auctionId, auction.latestBidder),
+            uint256(auction.latestBidWei)
+        );
         _pushOrCredit(auction.seller, auction.latestBidWei);
 
         emit AuctionSettled(
@@ -227,31 +226,6 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
             auction.latestBidWei,
             0
         );
-    }
-
-    function claimSettledToken(uint256 auctionId, address to) external nonReentrant {
-        Auction memory auction = auctions[auctionId];
-        if (auction.endTimestamp == 0) revert AuctionDoesNotExist();
-        if (msg.sender != auction.latestBidder) revert NotWinner();
-        if (!pendingDelivery[auctionId]) revert NoPendingDelivery();
-
-        address recipient = to == address(0) ? _auctionRecipient(auctionId, msg.sender) : to;
-        delete pendingDelivery[auctionId];
-
-        _deliverPunkDirect(auction.standard, auction.tokenContract, auction.tokenId, recipient);
-
-        emit SettledTokenClaimed(auctionId, msg.sender, recipient);
-    }
-
-    function _externalDeliver(
-        TokenStandard standard,
-        address tokenContract,
-        uint256 tokenId,
-        address to,
-        uint256 hammerWei
-    ) external {
-        if (msg.sender != address(this)) revert NotAuctions();
-        _deliverPunk(standard, tokenContract, tokenId, to, hammerWei);
     }
 
     function _createAuction(
@@ -339,20 +313,6 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
 
     function _isSupportedPunkStandard(TokenStandard standard) internal pure returns (bool) {
         return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
-    }
-
-    function _tryDeliver(Auction memory auction, address to) internal returns (bool) {
-        try this._externalDeliver{gas: DELIVER_GAS_LIMIT}(
-            auction.standard,
-            auction.tokenContract,
-            auction.tokenId,
-            to,
-            uint256(auction.latestBidWei)
-        ) {
-            return true;
-        } catch {
-            return false;
-        }
     }
 
     function _offerMarket(TokenStandard standard)
