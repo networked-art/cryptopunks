@@ -13,7 +13,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     uint16 public constant PUNK_COUNT = 10_000;
     uint16 public constant TRAIT_COUNT = 111;
-    uint16 public constant TRAIT_WORD_COUNT = 40;
+    uint16 public constant BITMAP_WORD_COUNT = 40;
     uint16 public constant MAX_COLOR_COUNT = 222;
     uint16 public constant PIXEL_COUNT_MIN = 148;
     uint16 public constant PIXEL_COUNT_MAX = 332;
@@ -60,13 +60,18 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     bytes32 public indexedPixelsHash;
     bytes32 public compressedPixelsHash;
 
+    struct Chunk {
+        address pointer;
+        uint32 endOffset;
+    }
+
     mapping(uint16 pairIndex => uint256 packedMasks) private _traitMaskPairs;
     mapping(uint16 punkId => uint256 mask) private _colorMasks;
     mapping(uint16 wordIndex => uint256 packedScalars) private _packedScalarWords;
     mapping(uint8 colorId => uint32 pixels) private _colorSupplies;
     mapping(bytes32 nameHash => mapping(uint8 kind => uint16 traitIdPlusOne))
         private _traitIdsByNameHash;
-    mapping(uint8 blobId => address[] chunks) private _blobChunks;
+    mapping(uint8 blobId => Chunk[] chunks) private _blobChunks;
 
     event BlobChunkLoaded(
         uint8 indexed blobId,
@@ -86,6 +91,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     );
 
     error ZeroAddress();
+    error InvalidSource();
     error NotAdmin();
     error AlreadySealed();
     error InvalidBlobId();
@@ -116,6 +122,9 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     constructor(address sourceData, address initialAdmin) {
         if (sourceData == address(0) || initialAdmin == address(0)) revert ZeroAddress();
+        if (block.chainid == SOURCE_CHAIN_ID && sourceData.codehash != SOURCE_EXTCODEHASH) {
+            revert InvalidSource();
+        }
         sourceDataContract = sourceData;
         admin = initialAdmin;
     }
@@ -134,6 +143,75 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function datasetHash() external view returns (bytes32) {
         return _datasetHash;
+    }
+
+    function recomputeTraitCatalogHash() external view returns (bytes32) {
+        bytes memory blob = _readBlob(BLOB_TRAIT_META, 0, _blobLength(BLOB_TRAIT_META));
+
+        uint256 totalLen = TRAIT_COUNT;
+        for (uint256 i; i < TRAIT_COUNT;) {
+            totalLen += uint8(blob[i * TRAIT_META_RECORD_SIZE + 5]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        bytes memory data = new bytes(totalLen);
+        uint256 cursor;
+        for (uint256 i; i < TRAIT_COUNT;) {
+            uint256 recordOffset = i * TRAIT_META_RECORD_SIZE;
+            uint256 nameOffset = (uint256(uint8(blob[recordOffset + 3])) << 8)
+                | uint8(blob[recordOffset + 4]);
+            uint256 nameLen = uint8(blob[recordOffset + 5]);
+            for (uint256 j; j < nameLen;) {
+                data[cursor + j] = blob[TRAIT_META_HEADER_SIZE + nameOffset + j];
+                unchecked {
+                    ++j;
+                }
+            }
+            cursor += nameLen;
+            data[cursor] = blob[recordOffset];
+            unchecked {
+                ++cursor;
+                ++i;
+            }
+        }
+
+        return keccak256(data);
+    }
+
+    function recomputePunkMaskHash() external view returns (bytes32) {
+        bytes memory data = new bytes(uint256(PUNK_COUNT) * 32);
+        uint256 dataPtr;
+        assembly ("memory-safe") {
+            dataPtr := add(data, 0x20)
+        }
+
+        for (uint256 punkId; punkId < PUNK_COUNT;) {
+            uint256 mask = _traitMaskOf(uint16(punkId));
+            assembly ("memory-safe") {
+                mstore(add(dataPtr, mul(punkId, 0x20)), mask)
+            }
+            unchecked {
+                ++punkId;
+            }
+        }
+        return keccak256(data);
+    }
+
+    function recomputePaletteHash() external view returns (bytes32) {
+        return keccak256(_readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE)));
+    }
+
+    function recomputeCompressedPixelsHash() external view returns (bytes32) {
+        uint256 offsetsLen = _blobLength(BLOB_PIXEL_OFFSETS);
+        uint256 pixelsLen = _blobLength(BLOB_COMPRESSED_PIXELS);
+
+        bytes memory data = new bytes(offsetsLen + pixelsLen);
+        _copyBlobInto(BLOB_PIXEL_OFFSETS, data, 0, offsetsLen);
+        _copyBlobInto(BLOB_COMPRESSED_PIXELS, data, offsetsLen, pixelsLen);
+
+        return keccak256(data);
     }
 
     function traitCount() external pure returns (uint16) {
@@ -255,11 +333,15 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         onlyUnsealed
     {
         _requireBlobId(blobId);
-        address[] storage chunks = _blobChunks[blobId];
+        Chunk[] storage chunks = _blobChunks[blobId];
         if (chunkIndex != chunks.length) revert InvalidChunkIndex();
 
         address pointer = BytecodeBlob.write(data);
-        chunks.push(pointer);
+        uint256 prevEnd = chunkIndex == 0 ? 0 : chunks[chunkIndex - 1].endOffset;
+        uint256 newEnd = prevEnd + data.length;
+        if (newEnd > type(uint32).max) revert InvalidLength();
+        chunks.push(Chunk({pointer: pointer, endOffset: uint32(newEnd)}));
+
         emit BlobChunkLoaded(blobId, chunkIndex, pointer, data.length, keccak256(data));
     }
 
@@ -276,19 +358,19 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
                 || newCompressedPixelsHash == bytes32(0)
         ) revert InvalidHash();
 
-        _requireBlobLength(BLOB_TRAIT_BITMAPS, uint256(TRAIT_COUNT) * TRAIT_WORD_COUNT * 32);
+        _requireBlobLength(BLOB_TRAIT_BITMAPS, uint256(TRAIT_COUNT) * BITMAP_WORD_COUNT * 32);
         if (_blobLength(BLOB_TRAIT_META) < TRAIT_META_HEADER_SIZE) revert InvalidLength();
         _requireBlobLength(BLOB_PALETTE, uint256(MAX_COLOR_COUNT) * 4);
         _requireBlobLength(BLOB_PIXEL_OFFSETS, (uint256(PUNK_COUNT) + 1) * 3);
         if (_blobLength(BLOB_COMPRESSED_PIXELS) == 0) revert InvalidLength();
-        _requireBlobLength(BLOB_COLOR_BITMAPS, uint256(MAX_COLOR_COUNT) * TRAIT_WORD_COUNT * 32);
+        _requireBlobLength(BLOB_COLOR_BITMAPS, uint256(MAX_COLOR_COUNT) * BITMAP_WORD_COUNT * 32);
         _requireBlobLength(
             BLOB_PIXEL_COUNT_BITMAPS,
-            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * TRAIT_WORD_COUNT * 32
+            (uint256(PIXEL_COUNT_MAX) - PIXEL_COUNT_MIN + 1) * BITMAP_WORD_COUNT * 32
         );
         _requireBlobLength(
             BLOB_COLOR_COUNT_BITMAPS,
-            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * TRAIT_WORD_COUNT * 32
+            (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * 32
         );
 
         traitCatalogHash = newTraitCatalogHash;
@@ -381,7 +463,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
             BLOB_TRAIT_BITMAPS,
-            (uint256(traitId) * TRAIT_WORD_COUNT + wordIndex) * 32
+            (uint256(traitId) * BITMAP_WORD_COUNT + wordIndex) * 32
         );
     }
 
@@ -397,8 +479,8 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         return uint8(_scalarField(punkId, 24, 0xff));
     }
 
-    function colorCount() public view returns (uint16) {
-        return uint16(_blobLength(BLOB_PALETTE) / 4);
+    function colorCount() public pure returns (uint16) {
+        return MAX_COLOR_COUNT;
     }
 
     function colorOf(uint8 colorId) external view returns (bytes4 rgba) {
@@ -439,7 +521,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
             BLOB_COLOR_BITMAPS,
-            (uint256(colorId) * TRAIT_WORD_COUNT + wordIndex) * 32
+            (uint256(colorId) * BITMAP_WORD_COUNT + wordIndex) * 32
         );
     }
 
@@ -454,7 +536,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
             BLOB_PIXEL_COUNT_BITMAPS,
-            (uint256(pixelCount) - PIXEL_COUNT_MIN) * TRAIT_WORD_COUNT * 32
+            (uint256(pixelCount) - PIXEL_COUNT_MIN) * BITMAP_WORD_COUNT * 32
                 + uint256(wordIndex) * 32
         );
     }
@@ -468,7 +550,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         _requireWordIndex(wordIndex);
         return _readBitmapWord(
             BLOB_COLOR_COUNT_BITMAPS,
-            (uint256(count) - COLOR_COUNT_MIN) * TRAIT_WORD_COUNT * 32
+            (uint256(count) - COLOR_COUNT_MIN) * BITMAP_WORD_COUNT * 32
                 + uint256(wordIndex) * 32
         );
     }
@@ -485,28 +567,31 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
 
     function paletteRgbBytes() external view returns (bytes memory rgb) {
         bytes memory rgba = _readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE));
-        uint256 count = rgba.length / 4;
+        uint256 count = rgba.length >> 2;
         rgb = new bytes(count * 3);
-        for (uint256 i; i < count;) {
-            uint256 src = i * 4;
-            uint256 dst = i * 3;
-            rgb[dst] = rgba[src];
-            rgb[dst + 1] = rgba[src + 1];
-            rgb[dst + 2] = rgba[src + 2];
-            unchecked {
-                ++i;
+        assembly ("memory-safe") {
+            let src := add(rgba, 0x20)
+            let dst := add(rgb, 0x20)
+            for { let i := 0 } lt(i, count) { i := add(i, 1) } {
+                let word := mload(add(src, shl(2, i)))
+                let dstOff := add(dst, mul(i, 3))
+                mstore8(dstOff, byte(0, word))
+                mstore8(add(dstOff, 1), byte(1, word))
+                mstore8(add(dstOff, 2), byte(2, word))
             }
         }
     }
 
     function paletteAlphaBytes() external view returns (bytes memory alpha) {
         bytes memory rgba = _readBlob(BLOB_PALETTE, 0, _blobLength(BLOB_PALETTE));
-        uint256 count = rgba.length / 4;
+        uint256 count = rgba.length >> 2;
         alpha = new bytes(count);
-        for (uint256 i; i < count;) {
-            alpha[i] = rgba[i * 4 + 3];
-            unchecked {
-                ++i;
+        assembly ("memory-safe") {
+            let src := add(rgba, 0x20)
+            let dst := add(alpha, 0x20)
+            for { let i := 0 } lt(i, count) { i := add(i, 1) } {
+                let word := mload(add(src, shl(2, i)))
+                mstore8(add(dst, i), byte(3, word))
             }
         }
     }
@@ -518,7 +603,7 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     function _traitMaskOf(uint16 punkId) private view returns (uint256) {
         _requirePunkId(punkId);
         uint256 packed = _traitMaskPairs[punkId >> 1];
-        if (punkId & 1 == 0) return uint128(packed);
+        if ((punkId & 1) == 0) return uint128(packed);
         return packed >> 128;
     }
 
@@ -532,12 +617,20 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         if (entry.length < 73) revert MalformedPixelBlob();
 
         uint256 visibleColorCount = uint8(entry[0]);
-        if (visibleColorCount == 0 || entry.length < 73 + visibleColorCount) {
-            revert MalformedPixelBlob();
-        }
         uint256 paletteCount = colorCount();
-        if (paletteCount == 0 || visibleColorCount > paletteCount - 1) {
-            revert MalformedPixelBlob();
+        if (
+            visibleColorCount == 0 || entry.length < 73 + visibleColorCount
+                || visibleColorCount > paletteCount - 1
+        ) revert MalformedPixelBlob();
+
+        bytes memory localPalette = new bytes(visibleColorCount);
+        for (uint256 i; i < visibleColorCount;) {
+            uint8 paletteId = uint8(entry[73 + i]);
+            if (paletteId == 0 || paletteId >= paletteCount) revert MalformedPixelBlob();
+            localPalette[i] = bytes1(paletteId);
+            unchecked {
+                ++i;
+            }
         }
 
         uint256 bitsPerIndex = _bitsForPalette(visibleColorCount);
@@ -546,23 +639,29 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         uint256 bitOffset;
         pixels = new bytes(576);
 
-        for (uint256 pixelIndex; pixelIndex < 576;) {
-            if (_visibleBitmapAt(entry, pixelIndex)) {
-                uint256 localIndex;
-                if (bitsPerIndex != 0) {
-                    localIndex = _readBits(entry, indexesOffset, bitOffset, bitsPerIndex);
-                    bitOffset += bitsPerIndex;
-                }
-                if (localIndex >= visibleColorCount) revert MalformedPixelBlob();
-                uint8 paletteId = uint8(entry[73 + localIndex]);
-                if (paletteId == 0 || paletteId >= paletteCount) revert MalformedPixelBlob();
-                pixels[pixelIndex] = bytes1(paletteId);
-                unchecked {
-                    ++visibleIndex;
+        for (uint256 byteIdx; byteIdx < 72;) {
+            uint8 bitmapByte = uint8(entry[1 + byteIdx]);
+            if (bitmapByte != 0) {
+                for (uint256 b; b < 8;) {
+                    if ((bitmapByte & (1 << (7 - b))) != 0) {
+                        uint256 localIndex;
+                        if (bitsPerIndex != 0) {
+                            localIndex = _readBits(entry, indexesOffset, bitOffset, bitsPerIndex);
+                            bitOffset += bitsPerIndex;
+                        }
+                        if (localIndex >= visibleColorCount) revert MalformedPixelBlob();
+                        pixels[byteIdx * 8 + b] = localPalette[localIndex];
+                        unchecked {
+                            ++visibleIndex;
+                        }
+                    }
+                    unchecked {
+                        ++b;
+                    }
                 }
             }
             unchecked {
-                ++pixelIndex;
+                ++byteIdx;
             }
         }
 
@@ -572,26 +671,19 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
     }
 
-    function _visibleBitmapAt(bytes memory entry, uint256 pixelIndex)
-        private
-        pure
-        returns (bool)
-    {
-        uint8 bitmapByte = uint8(entry[1 + (pixelIndex >> 3)]);
-        uint8 bit = uint8(1 << (7 - (pixelIndex & 7)));
-        return bitmapByte & bit != 0;
-    }
-
     function _readBits(
         bytes memory data,
         uint256 byteOffset,
         uint256 bitOffset,
         uint256 bitLength
     ) private pure returns (uint256 value) {
+        if (bitLength == 0) return 0;
+        uint256 endByte = byteOffset + ((bitOffset + bitLength + 7) >> 3);
+        if (endByte > data.length) revert MalformedPixelBlob();
+
         for (uint256 i; i < bitLength;) {
             uint256 absoluteBit = bitOffset + i;
             uint256 byteIndex = byteOffset + (absoluteBit >> 3);
-            if (byteIndex >= data.length) revert MalformedPixelBlob();
             uint8 current = uint8(data[byteIndex]);
             uint256 bit = (current >> (7 - (absoluteBit & 7))) & 1;
             value = (value << 1) | bit;
@@ -612,7 +704,11 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
     }
 
     function _traitMetaRecord(uint16 traitId) private view returns (bytes memory) {
-        return _readBlob(BLOB_TRAIT_META, uint256(traitId) * TRAIT_META_RECORD_SIZE, 6);
+        return _readBlob(
+            BLOB_TRAIT_META,
+            uint256(traitId) * TRAIT_META_RECORD_SIZE,
+            TRAIT_META_RECORD_SIZE
+        );
     }
 
     function _scalarField(uint16 punkId, uint256 fieldShift, uint256 fieldMask)
@@ -678,31 +774,49 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         view
         returns (bytes memory out)
     {
-        address[] storage chunks = _blobChunks[blobId];
+        if (length == 0) return new bytes(0);
+
+        Chunk[] storage chunks = _blobChunks[blobId];
+        uint256 chunkCount = chunks.length;
+        if (chunkCount == 0) revert BlobReadOutOfBounds(blobId, offset, length);
+
+        uint256 totalLength = chunks[chunkCount - 1].endOffset;
+        if (offset >= totalLength || length > totalLength - offset) {
+            revert BlobReadOutOfBounds(blobId, offset, length);
+        }
+
         out = new bytes(length);
 
-        uint256 remainingOffset = offset;
-        uint256 copied;
-        for (uint256 i; i < chunks.length;) {
-            uint256 chunkLength = chunks[i].dataSize();
-            if (remainingOffset >= chunkLength) {
-                remainingOffset -= chunkLength;
+        uint256 lo;
+        uint256 hi = chunkCount;
+        while (lo < hi) {
+            uint256 mid = (lo + hi) >> 1;
+            if (chunks[mid].endOffset <= offset) {
+                lo = mid + 1;
             } else {
-                uint256 copyLength = chunkLength - remainingOffset;
-                uint256 remainingLength = length - copied;
-                if (copyLength > remainingLength) copyLength = remainingLength;
-
-                bytes memory part = chunks[i].read(remainingOffset, copyLength);
-                _copyBytes(part, out, copied, copyLength);
-                copied += copyLength;
-                if (copied == length) return out;
-                remainingOffset = 0;
-            }
-            unchecked {
-                ++i;
+                hi = mid;
             }
         }
-        revert BlobReadOutOfBounds(blobId, offset, length);
+
+        uint256 copied;
+        uint256 chunkStart = lo == 0 ? 0 : chunks[lo - 1].endOffset;
+        while (copied < length) {
+            Chunk storage chunk = chunks[lo];
+            uint256 chunkEnd = chunk.endOffset;
+            uint256 readStart = offset + copied - chunkStart;
+            uint256 readLength = chunkEnd - chunkStart - readStart;
+            uint256 remaining = length - copied;
+            if (readLength > remaining) readLength = remaining;
+
+            bytes memory part = chunk.pointer.read(readStart, readLength);
+            _copyBytes(part, out, copied, readLength);
+            copied += readLength;
+
+            chunkStart = chunkEnd;
+            unchecked {
+                ++lo;
+            }
+        }
     }
 
     function _copyBytes(bytes memory src, bytes memory dst, uint256 dstOffset, uint256 length)
@@ -717,12 +831,50 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         }
     }
 
-    function _blobLength(uint8 blobId) private view returns (uint256 length) {
-        address[] storage chunks = _blobChunks[blobId];
-        for (uint256 i; i < chunks.length;) {
-            length += chunks[i].dataSize();
+    function _blobLength(uint8 blobId) private view returns (uint256) {
+        Chunk[] storage chunks = _blobChunks[blobId];
+        uint256 len = chunks.length;
+        if (len == 0) return 0;
+        return chunks[len - 1].endOffset;
+    }
+
+    function _copyBlobInto(uint8 blobId, bytes memory dst, uint256 dstOffset, uint256 length)
+        private
+        view
+    {
+        if (length == 0) return;
+
+        Chunk[] storage chunks = _blobChunks[blobId];
+        uint256 chunkCount = chunks.length;
+        if (chunkCount == 0) revert BlobReadOutOfBounds(blobId, 0, length);
+
+        uint256 totalLength = chunks[chunkCount - 1].endOffset;
+        if (length > totalLength) revert BlobReadOutOfBounds(blobId, 0, length);
+
+        uint256 copied;
+        uint256 chunkStart;
+        uint256 lo;
+        while (copied < length) {
+            Chunk storage chunk = chunks[lo];
+            uint256 chunkEnd = chunk.endOffset;
+            uint256 chunkSize = chunkEnd - chunkStart;
+            uint256 remaining = length - copied;
+            uint256 readLength = chunkSize > remaining ? remaining : chunkSize;
+
+            address pointer = chunk.pointer;
+            assembly ("memory-safe") {
+                extcodecopy(
+                    pointer,
+                    add(add(dst, 0x20), add(dstOffset, copied)),
+                    1,
+                    readLength
+                )
+            }
+            copied += readLength;
+
+            chunkStart = chunkEnd;
             unchecked {
-                ++i;
+                ++lo;
             }
         }
     }
@@ -745,12 +897,12 @@ contract PunksData is ERC165, IPunksDataCriteria, IPunksDataVisual, IPunksDataIn
         if (traitId >= TRAIT_COUNT) revert InvalidTraitId();
     }
 
-    function _requireColorId(uint8 colorId) private view {
-        if (colorId >= colorCount()) revert InvalidColorId();
+    function _requireColorId(uint8 colorId) private pure {
+        if (colorId >= MAX_COLOR_COUNT) revert InvalidColorId();
     }
 
     function _requireWordIndex(uint8 wordIndex) private pure {
-        if (wordIndex >= TRAIT_WORD_COUNT) revert InvalidWordIndex();
+        if (wordIndex >= BITMAP_WORD_COUNT) revert InvalidWordIndex();
     }
 
     function _requireCriteriaMasks(
