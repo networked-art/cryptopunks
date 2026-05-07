@@ -95,7 +95,7 @@ would be much harder if there were live offers. Make them now.
 Where the research touches it: `04-final-recommendation.md` lines 128–145.
 
 Since the contracts are pre-deployment, the `Offer` struct in
-`contracts/interfaces/ICryptoPunksAuctions.sol:41` can be redesigned
+`contracts/interfaces/IPunksAuction.sol:41` can be redesigned
 freely. The mask-based shape is straightforwardly the right call. This
 section just records the slot accounting so the team can pick the final
 layout deliberately.

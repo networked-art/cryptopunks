@@ -13,8 +13,8 @@ Where it appears: `04-final-recommendation.md` lines 1, 4–10, 21–34;
 `07-visual-metrics-and-renderer-scope.md` lines 6, 172, 233.
 
 This codebase already uses "V1" and "V2" to refer to *Punk token standards*.
-`ICryptoPunksAuctions.TokenStandard` enumerates `CRYPTOPUNKS` and
-`CRYPTOPUNKS_V1` (`contracts/interfaces/ICryptoPunksAuctions.sol:8`). A reader
+`IPunksAuction.TokenStandard` enumerates `CRYPTOPUNKS` and
+`CRYPTOPUNKS_V1` (`contracts/interfaces/IPunksAuction.sol:8`). A reader
 seeing `CryptoPunksDataV2` will read it as "the data contract for V2 Punks"
 before they read it as "the second version of the Punk data contract."
 

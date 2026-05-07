@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "../interfaces/ICryptoPunksAuctions.sol";
+import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
 import "../interfaces/ICryptoPunksTraits.sol";
 import "../lib/PushPullEscrow.sol";
@@ -10,7 +10,7 @@ import "../lib/PushPullEscrow.sol";
 /// @notice Native ETH offers for CryptoPunks.
 ///         Inspired by MouseDev's CryptoPunksBids, concept by
 ///         mousedev.eth and kilo.
-abstract contract Offers is ICryptoPunksAuctions, PushPullEscrow {
+abstract contract Offers is IPunksAuction, PushPullEscrow {
     uint256 public lastOfferId;
 
     mapping(uint256 => Offer) public offers;

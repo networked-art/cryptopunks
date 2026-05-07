@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./escrow/CryptoPunkEscrowManager.sol";
-import "./interfaces/ICryptoPunksAuctions.sol";
+import "./escrow/PunksEscrowManager.sol";
+import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./offers/Offers.sol";
 
-/// @title CryptoPunksAuctions
+/// @title PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks.
-contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, Offers {
+contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
     uint40 internal constant AUCTION_DURATION = 24 hours;
@@ -24,7 +24,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
     mapping(bytes32 => uint64) public sellerTokenVersion;
 
     constructor(address punks, address punksV1, address traits)
-        CryptoPunkEscrowManager(punks, punksV1)
+        PunksEscrowManager(punks, punksV1)
         Offers(traits)
     {}
 

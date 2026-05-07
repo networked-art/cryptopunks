@@ -374,7 +374,7 @@ read masks.
 Recommended deployment order:
 
 1. `CryptoPunksAtlas` (or whatever name; the rich data contract).
-2. New `CryptoPunksAuctions` deployment pointing at `CryptoPunksAtlas`
+2. New `PunksAuction` deployment pointing at `CryptoPunksAtlas`
    and consuming mask predicates directly. The `Offer` struct, the
    `placeOffer` calldata, the events, and the `MockCryptoPunksTraits`
    test double are all updated as part of this step.

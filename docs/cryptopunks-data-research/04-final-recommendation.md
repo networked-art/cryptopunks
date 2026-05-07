@@ -28,7 +28,7 @@ The full set of accepted decisions is pinned in [decisions.md](./decisions.md).
 ## Suggested Architecture
 
 ```text
-CryptoPunksAuctions (this repo)
+PunksAuction (this repo)
   -> PunksData    (mask predicates, visual metrics)
 
 Third-party Punk-aware protocol

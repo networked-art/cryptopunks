@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "../interfaces/ICryptoPunksAuctions.sol";
+import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
 
 /// @title PunkVault
-/// @notice Per-user Punk custody box cloned by CryptoPunksEscrow.
+/// @notice Per-user Punk custody box cloned by PunksEscrow.
 contract PunkVault {
     address public immutable OWNER;
     ICryptoPunksMarket public immutable PUNKS;
@@ -14,7 +14,7 @@ contract PunkVault {
 
     constructor(address owner_, address punks_) {
         if (owner_ == address(0) || punks_ == address(0)) {
-            revert ICryptoPunksAuctions.ZeroAddress();
+            revert IPunksAuction.ZeroAddress();
         }
         OWNER = owner_;
         PUNKS = ICryptoPunksMarket(punks_);

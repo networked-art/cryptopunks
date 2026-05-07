@@ -3,14 +3,14 @@ pragma solidity 0.8.34;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
-import "../interfaces/ICryptoPunksAuctions.sol";
+import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
 import "../lib/PushPullEscrow.sol";
 import "./PunkVault.sol";
 
-/// @title CryptoPunksEscrow
+/// @title PunksEscrow
 /// @notice Custody intermediary for one CryptoPunks market.
-contract CryptoPunksEscrow {
+contract PunksEscrow {
     ICryptoPunksMarket public immutable PUNKS;
     address public immutable AUCTIONS;
     address public immutable VAULT_IMPLEMENTATION;
@@ -20,13 +20,13 @@ contract CryptoPunksEscrow {
     event VaultRegistered(address indexed user, address indexed vault);
 
     modifier onlyAuctions() {
-        if (msg.sender != AUCTIONS) revert ICryptoPunksAuctions.NotAuctions();
+        if (msg.sender != AUCTIONS) revert IPunksAuction.NotAuctions();
         _;
     }
 
     constructor(address punks, address auctions) {
         if (punks == address(0) || auctions == address(0)) {
-            revert ICryptoPunksAuctions.ZeroAddress();
+            revert IPunksAuction.ZeroAddress();
         }
         PUNKS = ICryptoPunksMarket(punks);
         AUCTIONS = auctions;
@@ -34,7 +34,7 @@ contract CryptoPunksEscrow {
     }
 
     receive() external payable {
-        if (msg.sender != address(PUNKS)) revert ICryptoPunksAuctions.UnexpectedEtherSender();
+        if (msg.sender != address(PUNKS)) revert IPunksAuction.UnexpectedEtherSender();
     }
 
     function predictVault(address user) public view returns (address) {
@@ -84,7 +84,7 @@ contract CryptoPunksEscrow {
     {
         vault = vaults[user];
         if (vault == address(0) || PUNKS.punkIndexToAddress(punkIndex) != vault) {
-            revert ICryptoPunksAuctions.PunkNotInVault();
+            revert IPunksAuction.PunkNotInVault();
         }
     }
 }

@@ -21,7 +21,7 @@ async function assignPunkV1(ctx: Ctx, to: any, punkId: bigint) {
 
 async function depositPunk(ctx: Ctx, owner: any, punkId: bigint) {
   const escrowAsOwner = await ctx.viem.getContractAt(
-    'CryptoPunksEscrow',
+    'PunksEscrow',
     ctx.escrow.address,
     { client: { wallet: owner } },
   )
@@ -41,7 +41,7 @@ async function depositPunk(ctx: Ctx, owner: any, punkId: bigint) {
 
 async function depositPunkV1(ctx: Ctx, owner: any, punkId: bigint) {
   const escrowAsOwner = await ctx.viem.getContractAt(
-    'CryptoPunksEscrow',
+    'PunksEscrow',
     ctx.escrowV1.address,
     { client: { wallet: owner } },
   )
@@ -67,7 +67,7 @@ async function createLot(
   expiresAt: bigint,
 ) {
   const auctionsAsSeller = await ctx.viem.getContractAt(
-    'CryptoPunksAuctions',
+    'PunksAuction',
     ctx.auctions.address,
     { client: { wallet: seller } },
   )
@@ -88,7 +88,7 @@ async function createLotV1(
   expiresAt: bigint,
 ) {
   const auctionsAsSeller = await ctx.viem.getContractAt(
-    'CryptoPunksAuctions',
+    'PunksAuction',
     ctx.auctions.address,
     { client: { wallet: seller } },
   )
@@ -108,7 +108,7 @@ async function openAuction(
   reserveWei: bigint,
 ) {
   const auctionsAsBidder = await ctx.viem.getContractAt(
-    'CryptoPunksAuctions',
+    'PunksAuction',
     ctx.auctions.address,
     { client: { wallet: bidder } },
   )
@@ -169,7 +169,7 @@ async function placeOffer(
   } = {},
 ) {
   const auctionsAsOfferer = await ctx.viem.getContractAt(
-    'CryptoPunksAuctions',
+    'PunksAuction',
     ctx.auctions.address,
     { client: { wallet: offerer } },
   )
@@ -185,7 +185,7 @@ async function placeOffer(
   return ctx.auctions.read.lastOfferId() as Promise<bigint>
 }
 
-describe('CryptoPunksAuctions', () => {
+describe('PunksAuction', () => {
   it('deploys canonical and V1 escrows with deterministic user vaults', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, escrow, escrowV1, punks, punksV1, seller, other } = ctx
@@ -209,7 +209,7 @@ describe('CryptoPunksAuctions', () => {
       seller.account.address,
     ])) as `0x${string}`
     const escrowAsOther = await ctx.viem.getContractAt(
-      'CryptoPunksEscrow',
+      'PunksEscrow',
       escrow.address,
       { client: { wallet: other } },
     )
@@ -228,7 +228,7 @@ describe('CryptoPunksAuctions', () => {
 
     const expiresAt = await futureTs(ctx.connection, WEEK)
     const auctionsAsSeller = await ctx.viem.getContractAt(
-      'CryptoPunksAuctions',
+      'PunksAuction',
       auctions.address,
       { client: { wallet: seller } },
     )
@@ -287,7 +287,7 @@ describe('CryptoPunksAuctions', () => {
     await createLot(ctx, seller, 101n, originalReserve, expiresAt)
 
     const auctionsAsSeller = await ctx.viem.getContractAt(
-      'CryptoPunksAuctions',
+      'PunksAuction',
       auctions.address,
       { client: { wallet: seller } },
     )
@@ -298,7 +298,7 @@ describe('CryptoPunksAuctions', () => {
     ])
 
     const auctionsAsBidder = await ctx.viem.getContractAt(
-      'CryptoPunksAuctions',
+      'PunksAuction',
       auctions.address,
       { client: { wallet: bidder1 } },
     )
@@ -324,7 +324,7 @@ describe('CryptoPunksAuctions', () => {
     await openAuction(ctx, bidder1, 1n, reserveWei)
 
     const auctionsAsBidder2 = await ctx.viem.getContractAt(
-      'CryptoPunksAuctions',
+      'PunksAuction',
       auctions.address,
       { client: { wallet: bidder2 } },
     )
@@ -515,7 +515,7 @@ describe('CryptoPunksAuctions', () => {
       assert.deepEqual(filters[2], [3])
 
       const auctionsAsOfferer = await ctx.viem.getContractAt(
-        'CryptoPunksAuctions',
+        'PunksAuction',
         auctions.address,
         { client: { wallet: bidder1 } },
       )
@@ -565,7 +565,7 @@ describe('CryptoPunksAuctions', () => {
       const settlerBefore = await publicClient.getBalance({ address: attacker.account.address })
 
       const auctionsAsSettler = await ctx.viem.getContractAt(
-        'CryptoPunksAuctions',
+        'PunksAuction',
         auctions.address,
         { client: { wallet: attacker } },
       )
@@ -678,7 +678,7 @@ describe('CryptoPunksAuctions', () => {
       const bidderBefore = await publicClient.getBalance({ address: bidder1.account.address })
 
       const auctionsAsSettler = await ctx.viem.getContractAt(
-        'CryptoPunksAuctions',
+        'PunksAuction',
         auctions.address,
         { client: { wallet: attacker } },
       )
@@ -716,7 +716,7 @@ describe('CryptoPunksAuctions', () => {
       const publicClient = await ctx.viem.getPublicClient()
       const bidderBefore = await publicClient.getBalance({ address: bidder1.account.address })
       const auctionsAsSeller = await ctx.viem.getContractAt(
-        'CryptoPunksAuctions',
+        'PunksAuction',
         auctions.address,
         { client: { wallet: seller } },
       )
@@ -758,7 +758,7 @@ describe('CryptoPunksAuctions', () => {
       })
 
       const auctionsAsSeller = await ctx.viem.getContractAt(
-        'CryptoPunksAuctions',
+        'PunksAuction',
         auctions.address,
         { client: { wallet: seller } },
       )

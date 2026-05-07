@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title ICryptoPunksAuctions
+/// @title IPunksAuction
 /// @notice Public types, events, errors, and core API for the zero-fee Punk auction house.
-interface ICryptoPunksAuctions {
+interface IPunksAuction {
     /// @notice Numeric values match NetworkedAuctions for punk standards.
     enum TokenStandard {
         ERC721,

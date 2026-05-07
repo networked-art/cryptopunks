@@ -24,7 +24,7 @@ pnpm typecheck
 
 ## Contract Shape
 
-`CryptoPunksAuctions` is a CryptoPunks-only auction contract inspired by
+`PunksAuction` is a CryptoPunks-only auction contract inspired by
 `NetworkedAuctions` in the sibling `../contracts` repository.
 
 The native ETH offer design is inspired by MouseDev's CryptoPunksBids,
