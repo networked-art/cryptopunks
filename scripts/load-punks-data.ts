@@ -6,7 +6,7 @@ import { bytesToHex, getAddress, type Address, type Hex } from 'viem'
 
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const CHUNK_SIZE = 24_575
-const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '100')
+const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '200')
 
 enum BlobId {
   TraitBitmaps,
