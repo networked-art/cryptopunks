@@ -1,0 +1,210 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { network } from 'hardhat'
+import { bytesToHex, getAddress, type Hex } from 'viem'
+
+const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
+const CHUNK_SIZE = 24_575
+const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '100')
+const HASH_BATCH = Number(process.env.PUNKS_DATA_HASH_BATCH ?? '111')
+
+const BLOB_TRAIT_BITMAPS = 1
+const BLOB_TRAIT_META = 2
+const BLOB_PALETTE = 3
+const BLOB_PIXEL_OFFSETS = 4
+const BLOB_COMPRESSED_PIXELS = 5
+const BLOB_COLOR_BITMAPS = 6
+const BLOB_PIXEL_COUNT_BITMAPS = 7
+const BLOB_COLOR_COUNT_BITMAPS = 8
+
+type Manifest = {
+  source: {
+    address: Hex
+  }
+  hashes: {
+    traitCatalogHash: Hex
+    punkMaskHash: Hex
+    paletteHash: Hex
+    indexedPixelsHash: Hex
+    compressedPixelsHash: Hex
+    datasetHash: Hex
+  }
+  files: Record<string, string>
+  traits: Array<{
+    id: number
+    kind: number
+    nameHash: Hex
+  }>
+}
+
+async function main() {
+  const manifest = JSON.parse(
+    await readFile(join(OUTPUT_DIR, 'manifest.json'), 'utf8'),
+  ) as Manifest
+
+  const { viem } = await network.create()
+  const publicClient = await viem.getPublicClient()
+  const [deployer] = await viem.getWalletClients()
+
+  const contract = process.env.PUNKS_DATA_ADDRESS
+    ? await viem.getContractAt('PunksData', getAddress(process.env.PUNKS_DATA_ADDRESS))
+    : await viem.deployContract('PunksData', [
+        manifest.source.address,
+        deployer.account.address,
+      ])
+
+  console.log(`PunksData ${contract.address}`)
+
+  await loadBlob(contract, publicClient, BLOB_TRAIT_BITMAPS, manifest.files.traitBitmaps)
+  await loadBlob(contract, publicClient, BLOB_TRAIT_META, manifest.files.traitMeta)
+  await loadBlob(contract, publicClient, BLOB_PALETTE, manifest.files.palette)
+  await loadBlob(contract, publicClient, BLOB_PIXEL_OFFSETS, manifest.files.pixelOffsets)
+  await loadBlob(contract, publicClient, BLOB_COMPRESSED_PIXELS, manifest.files.compressedPixels)
+  await loadBlob(contract, publicClient, BLOB_COLOR_BITMAPS, manifest.files.colorBitmaps)
+  await loadBlob(
+    contract,
+    publicClient,
+    BLOB_PIXEL_COUNT_BITMAPS,
+    manifest.files.pixelCountBitmaps,
+  )
+  await loadBlob(
+    contract,
+    publicClient,
+    BLOB_COLOR_COUNT_BITMAPS,
+    manifest.files.colorCountBitmaps,
+  )
+
+  await loadUint256Batches(
+    'trait mask pairs',
+    contract,
+    publicClient,
+    'loadTraitMaskPairs',
+    manifest.files.traitMaskPairs,
+  )
+  await loadUint256Batches(
+    'color masks',
+    contract,
+    publicClient,
+    'loadColorMasks',
+    manifest.files.colorMasks,
+  )
+  await loadUint256Batches(
+    'packed scalars',
+    contract,
+    publicClient,
+    'loadPackedScalars',
+    manifest.files.packedScalars,
+  )
+  await loadColorSupplies(contract, publicClient, manifest.files.colorSupplies)
+  await loadTraitNameHashes(contract, publicClient, manifest.traits)
+
+  await submit(
+    publicClient,
+    contract.write.seal([
+      manifest.hashes.traitCatalogHash,
+      manifest.hashes.punkMaskHash,
+      manifest.hashes.paletteHash,
+      manifest.hashes.indexedPixelsHash,
+      manifest.hashes.compressedPixelsHash,
+    ]),
+  )
+
+  const onchainHash = await contract.read.datasetHash()
+  if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
+    throw new Error(`datasetHash mismatch: ${onchainHash}`)
+  }
+
+  console.log(`sealed datasetHash ${onchainHash}`)
+}
+
+async function loadBlob(
+  contract: any,
+  publicClient: any,
+  blobId: number,
+  fileName: string,
+) {
+  const bytes = new Uint8Array(await readFile(join(OUTPUT_DIR, fileName)))
+  const chunks = Math.ceil(bytes.length / CHUNK_SIZE)
+  console.log(`loading blob ${blobId} ${fileName} (${bytes.length} bytes, ${chunks} chunks)`)
+  for (let index = 0; index < chunks; index++) {
+    const chunk = bytes.slice(index * CHUNK_SIZE, Math.min(bytes.length, (index + 1) * CHUNK_SIZE))
+    await submit(
+      publicClient,
+      contract.write.loadBlobChunk([blobId, index, bytesToHex(chunk)]),
+    )
+  }
+}
+
+async function loadUint256Batches(
+  label: string,
+  contract: any,
+  publicClient: any,
+  method: 'loadTraitMaskPairs' | 'loadColorMasks' | 'loadPackedScalars',
+  fileName: string,
+) {
+  const words = readUint256Words(new Uint8Array(await readFile(join(OUTPUT_DIR, fileName))))
+  console.log(`loading ${label} (${words.length} words)`)
+  for (let start = 0; start < words.length; start += STORAGE_BATCH) {
+    const batch = words.slice(start, start + STORAGE_BATCH)
+    await submit(publicClient, contract.write[method]([start, batch]))
+  }
+}
+
+async function loadColorSupplies(contract: any, publicClient: any, fileName: string) {
+  const bytes = new Uint8Array(await readFile(join(OUTPUT_DIR, fileName)))
+  const supplies: number[] = []
+  for (let offset = 0; offset < bytes.length; offset += 4) {
+    supplies.push(readUint32(bytes, offset))
+  }
+  console.log(`loading color supplies (${supplies.length})`)
+  for (let start = 0; start < supplies.length; start += STORAGE_BATCH) {
+    const batch = supplies.slice(start, start + STORAGE_BATCH)
+    await submit(publicClient, contract.write.loadColorSupplies([start, batch]))
+  }
+}
+
+async function loadTraitNameHashes(
+  contract: any,
+  publicClient: any,
+  traits: Manifest['traits'],
+) {
+  console.log(`loading trait name hashes (${traits.length})`)
+  for (let start = 0; start < traits.length; start += HASH_BATCH) {
+    const batch = traits.slice(start, start + HASH_BATCH)
+    await submit(
+      publicClient,
+      contract.write.loadTraitNameHashes([
+        batch.map((trait) => trait.nameHash),
+        batch.map((trait) => trait.kind),
+        batch.map((trait) => trait.id),
+      ]),
+    )
+  }
+}
+
+async function submit(publicClient: any, txPromise: Promise<Hex>) {
+  const hash = await txPromise
+  await publicClient.waitForTransactionReceipt({ hash })
+}
+
+function readUint256Words(bytes: Uint8Array): bigint[] {
+  if (bytes.length % 32 !== 0) throw new Error('uint256 file length is not word-aligned')
+  const words: bigint[] = []
+  for (let offset = 0; offset < bytes.length; offset += 32) {
+    let value = 0n
+    for (let i = 0; i < 32; i++) value = (value << 8n) | BigInt(bytes[offset + i])
+    words.push(value)
+  }
+  return words
+}
+
+function readUint32(bytes: Uint8Array, offset: number): number {
+  return (
+    bytes[offset] * 0x1000000 +
+    (bytes[offset + 1] << 16) +
+    (bytes[offset + 2] << 8) +
+    bytes[offset + 3]
+  )
+}
+
+await main()
