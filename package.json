@@ -8,7 +8,6 @@
     "load:punks-data": "hardhat run scripts/load-punks-data.ts --network mainnet",
     "test": "hardhat test",
     "test:gas": "hardhat --gas-stats test",
-    "test:foundry": "forge test",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

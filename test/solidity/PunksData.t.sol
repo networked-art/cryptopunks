@@ -3,8 +3,8 @@ pragma solidity 0.8.34;
 
 import {PunksData} from "../../contracts/PunksData.sol";
 
-/// @notice Minimal subset of forge's `Vm` cheat-code interface so this test
-/// stays self-contained (no forge-std dependency).
+/// @notice Minimal subset of the forge-style `Vm` cheat-code interface, used
+/// by Hardhat 3's native Solidity test runner. Self-contained.
 interface Vm {
     function expectRevert(bytes4 revertData) external;
     function assume(bool condition) external pure;

@@ -19,10 +19,6 @@
 # Typechain output
 /types
 
-# Foundry build artifacts
-/out-foundry
-/cache-foundry
-
 # Hardhat coverage reports
 /coverage
 
