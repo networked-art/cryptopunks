@@ -9,17 +9,17 @@ import "./lib/BytecodeBlob.sol";
 abstract contract PunksDataLoader is IPunksDataLoader {
     using BytecodeBlob for address;
 
-    uint16 public constant PUNK_COUNT = 10_000;
-    uint16 public constant TRAIT_COUNT = 111;
-    uint16 public constant BITMAP_WORD_COUNT = 40;
-    uint16 public constant MAX_COLOR_COUNT = 222;
-    uint16 public constant PIXEL_COUNT_MIN = 148;
-    uint16 public constant PIXEL_COUNT_MAX = 332;
-    uint8 public constant COLOR_COUNT_MIN = 2;
-    uint8 public constant COLOR_COUNT_MAX = 14;
-    uint8 public constant PUNK_WIDTH = 24;
-    uint8 public constant PUNK_HEIGHT = 24;
-    uint16 public constant PIXELS_PER_PUNK = 576;
+    uint16 internal constant PUNK_COUNT = 10_000;
+    uint16 internal constant TRAIT_COUNT = 111;
+    uint16 internal constant BITMAP_WORD_COUNT = 40;
+    uint16 internal constant MAX_COLOR_COUNT = 222;
+    uint16 internal constant PIXEL_COUNT_MIN = 148;
+    uint16 internal constant PIXEL_COUNT_MAX = 332;
+    uint8 internal constant COLOR_COUNT_MIN = 2;
+    uint8 internal constant COLOR_COUNT_MAX = 14;
+    uint8 internal constant PUNK_WIDTH = 24;
+    uint8 internal constant PUNK_HEIGHT = 24;
+    uint16 internal constant PIXELS_PER_PUNK = 576;
 
     uint256 internal constant CANONICAL_TRAIT_MASK = (uint256(1) << TRAIT_COUNT) - 1;
     uint256 internal constant CANONICAL_COLOR_MASK = (uint256(1) << MAX_COLOR_COUNT) - 1;
