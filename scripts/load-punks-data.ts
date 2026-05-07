@@ -6,10 +6,8 @@ import { bytesToHex, getAddress, type Hex } from 'viem'
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const CHUNK_SIZE = 24_575
 const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '100')
-const HASH_BATCH = Number(process.env.PUNKS_DATA_HASH_BATCH ?? '111')
 
 enum BlobId {
-  Invalid,
   TraitBitmaps,
   TraitMeta,
   Palette,
@@ -21,9 +19,6 @@ enum BlobId {
 }
 
 type Manifest = {
-  source: {
-    address: Hex
-  }
   hashes: {
     traitCatalogHash: Hex
     punkMaskHash: Hex
@@ -33,11 +28,6 @@ type Manifest = {
     datasetHash: Hex
   }
   files: Record<string, string>
-  traits: Array<{
-    id: number
-    kind: number
-    nameHash: Hex
-  }>
 }
 
 async function main() {
@@ -51,10 +41,7 @@ async function main() {
 
   const contract = process.env.PUNKS_DATA_ADDRESS
     ? await viem.getContractAt('PunksData', getAddress(process.env.PUNKS_DATA_ADDRESS))
-    : await viem.deployContract('PunksData', [
-        manifest.source.address,
-        deployer.account.address,
-      ])
+    : await viem.deployContract('PunksData', [deployer.account.address])
 
   console.log(`PunksData ${contract.address}`)
 
@@ -99,7 +86,6 @@ async function main() {
     manifest.files.packedScalars,
   )
   await loadColorSupplies(contract, publicClient, manifest.files.colorSupplies)
-  await loadTraitNameHashes(contract, publicClient, manifest.traits)
 
   await submit(
     publicClient,
@@ -165,27 +151,6 @@ async function loadColorSupplies(contract: any, publicClient: any, fileName: str
   for (let start = 0; start < supplies.length; start += STORAGE_BATCH) {
     const batch = supplies.slice(start, start + STORAGE_BATCH)
     await submit(publicClient, contract.write.loadColorSupplies([start, batch]))
-  }
-}
-
-async function loadTraitNameHashes(
-  contract: any,
-  publicClient: any,
-  traits: Manifest['traits'],
-) {
-  console.log(`loading trait name hashes (${traits.length})`)
-  for (let start = 0; start < traits.length; start += HASH_BATCH) {
-    const batch = traits.slice(start, start + HASH_BATCH)
-    await submit(
-      publicClient,
-      contract.write.loadTraitNameHashes([
-        batch.map((trait) => ({
-          nameHash: trait.nameHash,
-          kind: trait.kind,
-          traitId: trait.id,
-        })),
-      ]),
-    )
   }
 }
 

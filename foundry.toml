@@ -1,0 +1,14 @@
+[profile.default]
+src = "contracts"
+out = "out-foundry"
+test = "test/foundry"
+libs = []
+cache_path = "cache-foundry"
+solc = "0.8.34"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+
+[fuzz]
+runs = 256
