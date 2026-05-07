@@ -5,7 +5,6 @@ import {
   bytesToHex,
   encodeAbiParameters,
   keccak256,
-  zeroAddress,
   type Hex,
 } from 'viem'
 
@@ -45,7 +44,7 @@ type Ctx = Awaited<ReturnType<typeof deployLoadedPunksData>>
 describe('PunksData', () => {
   it('loads, seals, and removes loader authority', async () => {
     const ctx = await deployLoadedPunksData()
-    const { data, other, hashes } = ctx
+    const { data, deployer, other, hashes } = ctx
 
     const dataAsOther = await ctx.viem.getContractAt('PunksData', data.address, {
       client: { wallet: other },
@@ -71,7 +70,11 @@ describe('PunksData', () => {
       },
     ])
 
-    assert.equal(((await data.read.admin()) as string).toLowerCase(), zeroAddress)
+    assert.equal(await data.read.isSealed(), true)
+    assert.equal(
+      ((await data.read.admin()) as string).toLowerCase(),
+      deployer.account.address.toLowerCase(),
+    )
     assert.equal(
       ((await data.read.datasetHash()) as string).toLowerCase(),
       hashes.datasetHash.toLowerCase(),
@@ -79,7 +82,7 @@ describe('PunksData', () => {
 
     await assert.rejects(
       () => data.write.loadColorMasks([0, [0n]]),
-      /0x7bfa4b9f|NotAdmin/,
+      /0x423311c0|AlreadySealed/,
     )
   })
 
@@ -125,7 +128,7 @@ describe('PunksData', () => {
       'InvalidPunkId',
     )
 
-    assert.equal(await data.read.colorCount(), 222)
+    assert.equal(await data.read.paletteSize(), 222)
     assert.equal(await data.read.colorOf([1]), '0x112233ff')
     assert.equal(await data.read.colorSupply([0]), 428)
     assert.equal(await data.read.colorSupply([1]), 100)

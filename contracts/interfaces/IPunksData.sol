@@ -4,6 +4,13 @@ pragma solidity 0.8.34;
 /// @title IPunksDataTypes
 /// @notice Shared loader/read types for the Punk data contract family.
 interface IPunksDataTypes {
+    /// @notice Identifiers for the variable-length blob storage.
+    /// @dev The four bitmap blobs (TraitBitmaps, ColorBitmaps, PixelCountBitmaps,
+    ///      ColorCountBitmaps) share a row-major layout: each row spans
+    ///      `BITMAP_WORD_COUNT * 32` bytes, and `(row, wordIndex)` maps to byte
+    ///      offset `(row * BITMAP_WORD_COUNT + wordIndex) * 32`. Rows are indexed
+    ///      by traitId / colorId / pixelCount-offset / colorCount-offset
+    ///      respectively. Each bit position within the row corresponds to a punkId.
     enum BlobId {
         TraitBitmaps,
         TraitMeta,
@@ -21,6 +28,7 @@ interface IPunksDataTypes {
 interface IPunksDataErrors is IPunksDataTypes {
     error ZeroAddress();
     error NotAdmin();
+    error AlreadySealed();
     error InvalidChunkIndex();
     error InvalidLength();
     error InvalidHash();
@@ -33,7 +41,6 @@ interface IPunksDataErrors is IPunksDataTypes {
     error InvalidColorCount();
     error InvalidScalar();
     error InvalidMask();
-    error BlobReadOutOfBounds(BlobId blobId, uint256 offset, uint256 length);
     error MalformedPixelBlob();
 }
 
@@ -58,6 +65,9 @@ interface IPunksDataLoader is IPunksDataErrors {
     );
 
     function admin() external view returns (address);
+
+    /// @notice True after `seal` has been called; the loader is permanently locked.
+    function isSealed() external view returns (bool);
 
     function loadTraitMaskPairs(uint16 startPairIndex, uint256[] calldata packedPairs) external;
 
@@ -130,11 +140,13 @@ interface IPunksDataCriteria {
 }
 
 interface IPunksDataVisual {
-    function colorCount() external view returns (uint16);
+    /// @notice Size of the palette index space. Index 0 is reserved for transparency.
+    function paletteSize() external view returns (uint16);
     function colorOf(uint8 colorId) external view returns (bytes4 rgba);
     function colorSupply(uint8 colorId) external view returns (uint32 pixels);
 
     function colorMaskOf(uint16 punkId) external view returns (uint256);
+    /// @notice Returns false for `colorId == 0`; transparency is never recorded in the mask.
     function hasColor(uint16 punkId, uint8 colorId) external view returns (bool);
     function pixelCountOf(uint16 punkId) external view returns (uint16);
     function colorCountOf(uint16 punkId) external view returns (uint8);
