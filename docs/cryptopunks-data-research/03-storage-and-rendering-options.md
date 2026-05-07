@@ -4,9 +4,14 @@ Deployment cost is not the primary constraint. The right target is maximum
 public usefulness with clear immutability and practical read APIs.
 
 The useful data payload is still too large to put in one contract's runtime
-bytecode. EIP-170 caps runtime bytecode at `0x6000` bytes or 24,576 bytes. Any
-serious V2 needs either storage slots, bytecode-backed data chunks, or a
-combination.
+bytecode. EIP-170 caps runtime bytecode at `0x6000` bytes or 24,576 bytes.
+The new data contract therefore needs either storage slots, bytecode-backed
+data chunks, or a combination.
+
+This note is the original options analysis. The accepted decision is a
+mixed layout — storage mappings for hot per-Punk scalars, SSTORE2 chunks
+for large sequential blobs — pinned in [decisions.md](./decisions.md) and
+reflected in doc 04. The trade-offs below remain useful background.
 
 ## Data Size Estimates
 

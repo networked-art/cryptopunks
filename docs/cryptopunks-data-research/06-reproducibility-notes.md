@@ -14,6 +14,41 @@ RPC used for probes:
 https://ethereum-rpc.publicnode.com
 ```
 
+## Source Crawl Pin
+
+The crawl is pinned to a specific block and source-contract code hash so
+future verifiers can reproduce it deterministically. Pinning the
+`extcodehash` blocks fork-injection attacks: a future generator that only
+trusts the source address could otherwise be tricked by a redeployed
+attacker contract at the same address on a forked chain.
+
+```text
+chain ID:        1
+block height:    25044552
+block hash:      0x2185f56dcb307a56cb8b90c1e61d4fd7898be906eb28d79e14c01d15f5cabb9f
+block timestamp: 1778173655 (2026-05-07)
+source extcodehash:
+  0x52ab51c14a3f26a80eca178374e21027492fd276c7365f9ab234b737d34c6b60
+```
+
+To verify:
+
+```sh
+RPC=https://ethereum-rpc.publicnode.com
+ADDR=0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2
+
+cast block 25044552 --rpc-url $RPC --field hash
+# expect: 0x2185f56dcb307a56cb8b90c1e61d4fd7898be906eb28d79e14c01d15f5cabb9f
+
+cast keccak $(cast code $ADDR --block 25044552 --rpc-url $RPC)
+# expect: 0x52ab51c14a3f26a80eca178374e21027492fd276c7365f9ab234b737d34c6b60
+```
+
+The `PunksData` constructor records the source address; the generator
+artifact records chain ID, block height, block hash, and source
+`extcodehash`. The `DatasetCommitted` event indexes the source address
+for chain-side discovery.
+
 ## Live Samples
 
 ```sh

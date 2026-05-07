@@ -97,11 +97,12 @@ Why: Short, humble, and close enough to Larva Labs's original
 The plural `Punks` keeps it general; the absence of `CryptoPunksDataV2`
 avoids version confusion.
 
-### N2. Encoders — `CryptoPunksPng`, `CryptoPunksSvg`, `CryptoPunksMetadata`
+### N2. Encoders — `PunksPng`, `PunksSvg`, `PunksMetadata`
 
-Why: Format-per-contract, no version suffix.
+Why: Format-per-contract, no version suffix. Prefix-less to match
+`PunksData` and `punksdata.eth`.
 
-### N3. Compat shim — `CryptoPunksTraitsCompat`
+### N3. Compat shim — `PunksTraitsCompat`
 
 Why: Single-method `hasTrait(uint16,uint16)` for third-party protocols.
 Optional deployment, not used by this repo's `Offers`.
@@ -346,10 +347,10 @@ Name map:
 
 ```text
 punksdata.eth              -> PunksData
-png.punksdata.eth          -> CryptoPunksPng
-svg.punksdata.eth          -> CryptoPunksSvg
-metadata.punksdata.eth     -> CryptoPunksMetadata
-traits.punksdata.eth       -> CryptoPunksTraitsCompat, optional
+png.punksdata.eth          -> PunksPng
+svg.punksdata.eth          -> PunksSvg
+metadata.punksdata.eth     -> PunksMetadata
+traits.punksdata.eth       -> PunksTraitsCompat, optional
 renderer.punksdata.eth     -> optional aggregate/default renderer, only if
                               such a contract is deployed
 ```

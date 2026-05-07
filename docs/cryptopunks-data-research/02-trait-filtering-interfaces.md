@@ -1,8 +1,9 @@
 # Trait And Criteria Interfaces
 
 This note covers the predicate surface needed by trait bidding and filtering.
-After the expanded visual-metrics pass, this should be treated as one layer of
-`CryptoPunksDataV2`, not the whole data contract.
+This is one layer of the canonical `PunksData` contract, not the whole
+contract. Decisions that refine the original sketch in this note are pinned
+in [decisions.md](./decisions.md).
 
 The central criteria problem is to turn a display-oriented source contract into
 a predicate-oriented data surface.
@@ -48,24 +49,49 @@ The current matching semantics are:
 This is good enough for a first release if the external trait contract is
 trustworthy and immutable.
 
-## Recommended V2 Trait Namespace
+## Trait Namespace
 
 Treat `traitId` as a predicate ID, not just an accessory ID.
 
-Minimum namespace:
+Namespace:
 
-| Kind | Count | Purpose |
-| --- | ---: | --- |
-| Exact head variant | 11 | `Male 1`, `Female 4`, `Alien`, etc. |
-| Normalized type | 5 | `Male`, `Female`, `Zombie`, `Ape`, `Alien` |
-| Attribute count | 8 | `0 Attributes` through `7 Attributes` |
-| Accessory | 87 | `Hoodie`, `Beanie`, `Earring`, etc. |
+| Kind | Bit ID | Count | Purpose |
+| --- | --- | ---: | --- |
+| Normalized type | 0–4 | 5 | `Alien`, `Ape`, `Female`, `Male`, `Zombie` (alphabetical) |
+| Exact head variant | 5–15 | 11 | `Alien`, `Ape`, `Female 1..4`, `Male 1..4`, `Zombie` (alphabetical) |
+| Attribute count | 16–23 | 8 | `0 Attributes` through `7 Attributes` |
+| Accessory | 24–110 | 87 | source-cased accessory names alphabetical |
 
-This gives roughly 111 predicate IDs if rare types are duplicated in both
-`Exact head variant` and `Normalized type`, or roughly 108 IDs if exact rare
-head variants double as normalized rare types. Either fits in one `uint128`,
-but returning `uint256` leaves room for future non-canonical convenience
-predicates.
+111 bits total, fits in `uint128`. Masks are returned as `uint256`; bits
+0–127 are canonical, bits 128–255 are reserved for derived predicates added
+later in optional adapter contracts. The base data contract never sets bits
+≥ 128.
+
+Alien, Ape, and Zombie each get *both* a normalized-type bit (0–4) and an
+exact-head-variant bit (5–15) — the matching sets coincide today, but the
+predicate kinds are semantically different and downstream code should be
+able to distinguish them. The kind enum (below) handles disambiguation in
+name lookups.
+
+Accessories are pinned to source casing, including the `Tassle Hat` typo
+and `Pink With Hat`. No alias normalization in the base namespace; aliases
+live in optional taxonomy contracts.
+
+### Kind Enum
+
+```solidity
+uint8 constant KIND_HEAD_VARIANT    = 0;
+uint8 constant KIND_NORMALIZED_TYPE = 1;
+uint8 constant KIND_ATTRIBUTE_COUNT = 2;
+uint8 constant KIND_ACCESSORY       = 3;
+```
+
+### Name Hash
+
+`nameHash` for `traitIdByNameHash` is `keccak256(bytes(name))` over the
+*exact* source bytes — casing preserved, typos preserved, no trimming, no
+lowercasing, no normalization. Frontends build a static name → hash table
+at build time.
 
 Avoid subjective category predicates in the immutable base contract unless they
 are explicitly versioned. Examples: "hair", "hat", "glasses", "mouth", "beard".
@@ -89,10 +115,8 @@ color masks, and numeric bounds.
 
 ## Core Interface
 
-Use a compatibility surface plus a richer mask surface:
-
 ```solidity
-interface ICryptoPunksCriteriaV2 {
+interface IPunksDataCriteria {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function sourceDataContract() external view returns (address);
@@ -106,6 +130,7 @@ interface ICryptoPunksCriteriaV2 {
     ) external view returns (uint16 traitId, bool exists);
     function traitKind(uint16 traitId) external view returns (uint8);
     function traitSupply(uint16 traitId) external view returns (uint16);
+    function isValidTraitId(uint16 traitId) external view returns (bool);
 
     function hasTrait(uint16 punkId, uint16 traitId) external view returns (bool);
     function traitMaskOf(uint16 punkId) external view returns (uint256);
@@ -113,7 +138,8 @@ interface ICryptoPunksCriteriaV2 {
     function hasTraits(
         uint16 punkId,
         uint256 requiredMask,
-        uint256 forbiddenMask
+        uint256 forbiddenMask,
+        uint256 anyOfMask
     ) external view returns (bool);
 
     function headVariantOf(uint16 punkId) external view returns (uint8);
@@ -122,22 +148,48 @@ interface ICryptoPunksCriteriaV2 {
 }
 ```
 
-`hasTrait` keeps this repo compatible as-is. `traitMaskOf` and `hasTraits`
-enable a later auction version to store compact criteria:
+`hasTraits` semantics: returns true iff
+`(m & requiredMask) == requiredMask`
+AND `(m & forbiddenMask) == 0`
+AND (`anyOfMask == 0` OR `(m & anyOfMask) != 0`),
+where `m = traitMaskOf(punkId)`.
+
+The three-mask shape lets a single offer express *all of*, *none of*, and
+*any of* in one settlement-time check. Disjunction (`anyOfMask`) covers
+common bidder requests like "any sunglasses" or "any beard" without
+fragmenting liquidity across N offers. An offer that does not need
+disjunction passes `anyOfMask = 0`.
+
+`hasTrait(punkId, traitId)` is also exposed as a third-party convenience.
+This repo's `Offers` contract consumes the mask form directly.
+
+The auction-side filter shape is:
 
 ```solidity
 struct CompactTraitFilter {
     uint256 requiredMask;
     uint256 forbiddenMask;
+    uint256 anyOfMask;
 }
 ```
 
-That avoids storing and looping over dynamic `TraitFilter[]` arrays for the
-common all-of/none-of case.
+That replaces dynamic `TraitFilter[]` arrays. Settlement becomes one
+external call regardless of filter count.
 
-Invalid `punkId >= 10000` and invalid `traitId >= traitCount()` should revert.
-For bidding, silent false on invalid IDs is dangerous because it can hide a
-misconfigured offer or UI bug.
+Invalid `punkId >= 10000` and invalid `traitId >= traitCount()` revert.
+Silent false on invalid IDs would hide misconfigured offers and UI bugs.
+`isValidTraitId(uint16)` is provided so tooling can probe without
+catching reverts.
+
+ERC-165 interface IDs are split rather than bundled, so a minimal renderer
+or criteria-only adapter can advertise exactly what it supports:
+
+- `IPunksTraitsCompat` — `hasTrait(uint16,uint16)` only.
+- `IPunksDataCriteria` — mask predicates (this interface).
+- `IPunksDataVisual` — color and pixel views (see doc 07).
+- `IPunksDataIndexed` — `indexedPixelsOf`, `colorAt`, palette views.
+
+`bytes4` IDs are pinned in the spec before Solidity is written.
 
 ## Bitmap Interface For Frontends
 
@@ -160,7 +212,7 @@ A frontend can fetch 40 words for "Hoodie", 40 words for "Male", intersect the
 bitmaps locally, subtract forbidden bitmaps, and display the exact matching set
 without parsing strings or trusting a centralized API.
 
-Optional convenience views:
+Optional convenience view for fetching multiple words in one call:
 
 ```solidity
 function traitBitmapWords(
@@ -168,14 +220,12 @@ function traitBitmapWords(
     uint8 startWord,
     uint8 wordCount
 ) external view returns (uint256[] memory);
-
-function punksWithTrait(
-    uint16 traitId
-) external view returns (uint16[] memory);
 ```
 
-`punksWithTrait` is fine as an offchain view helper, but should not be used
-inside settlement paths because it loops.
+A `punksWithTrait(traitId) returns (uint16[])` helper is intentionally not
+exposed: bitmap reconstruction at the consumer scales fine, and an
+unbounded array return risks RPC blowups for high-supply traits like
+`Earring` (2,459 entries).
 
 ## Criteria Registry Option
 

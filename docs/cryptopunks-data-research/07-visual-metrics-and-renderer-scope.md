@@ -168,15 +168,15 @@ describe all colors used by a Punk.
 
 ## Renderer Scope
 
-The renderer should be a separate contract, but it should be a renderer over
-`CryptoPunksDataV2`, not over the old Larva Labs asset-composition contract.
+Encoders are split by output format and read primitives from `PunksData`
+via public views, not from the old Larva Labs asset-composition contract.
 
-Suggested renderer API:
+`PunksSvg` API:
 
 ```solidity
 enum BackgroundMode {
     Transparent,
-    Default,
+    Owned,         // #638596
     ForSale,
     HasBid,
     Transfer,
@@ -187,20 +187,38 @@ enum BackgroundMode {
 
 function punkSvg(uint16 punkId, BackgroundMode mode) external view returns (string memory);
 function punkSvgCustomBackground(uint16 punkId, bytes4 rgba) external view returns (string memory);
-function punkBitmap(uint16 punkId, BackgroundMode mode) external view returns (bytes memory);
-function punkRgba(uint16 punkId, BackgroundMode mode) external view returns (bytes memory);
-function tokenUriJson(uint16 punkId, BackgroundMode mode) external view returns (string memory);
-
 ```
 
-`punkBitmap` should be defined explicitly. It could mean indexed 24x24 bytes,
-raw 24x24 RGBA, or a BMP data URI. For contract consumers, indexed bytes are
-usually the best primitive. For marketplace display, SVG remains easier.
+`PunksMetadata` API:
 
-The full-composite PNG generator should be treated as a separate contract, not
-as part of the normal per-Punk renderer. If the goal is to match the official
-`punks.png` SHA-256 exactly, the composite renderer must reproduce the
-reference truecolor RGBA PNG and its exact zlib/DEFLATE stream. See
+```solidity
+function metadataJson(uint16 punkId, BackgroundMode mode) external view returns (string memory);
+```
+
+`PunksMetadata` returns OpenSea-shaped JSON and embeds image data from
+`PunksPng` or `PunksSvg`. Renamed from `tokenUriJson` so it does not
+claim to be the canonical `tokenURI` for any specific Punk token
+contract.
+
+`PunksPng` API (per-Punk + paged composite):
+
+```solidity
+function punkPng(uint16 punkId) external view returns (bytes memory);
+function punkPng(uint16 punkId, bytes4 backgroundRgba) external view returns (bytes memory);
+
+function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
+function mosaicRgbaRow(uint8 rowIndex) external view returns (bytes memory);
+function compositePngChunkCount() external pure returns (uint16);
+function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
+```
+
+For contract consumers wanting raw bytes, `mosaicIndexedRow` /
+`mosaicRgbaRow` (Layer 1) are the primitives. Per-Punk indexed bytes are
+already exposed by `PunksData.indexedPixelsOf(uint16)` directly.
+
+Concatenating `compositePngChunk(0..N-1)` is byte-equal to the canonical
+GitHub `punks.png`. Reproducing the reference truecolor RGBA PNG and its
+exact zlib/DEFLATE stream is the encoder's hard milestone — see
 [08 Full Composite PNG Generation](./08-full-composite-png-generation.md).
 
 ## Background Colors

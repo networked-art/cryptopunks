@@ -1,42 +1,63 @@
 # Final Recommendation
 
-Build the new data surface in three layers:
+Build the new data surface as a sealed primitive contract plus a set of
+format-specific encoder contracts, all reading from the data contract via
+public views:
 
-1. `CryptoPunksDataV2`: immutable canonical traits, visual metrics, color
-   catalog, indexed pixels, bitmaps, supplies, and dataset roots.
-2. `CryptoPunksCriteriaAdapter`: optional adapter for protocols that want a
-   small predicate interface, including this auction system.
-3. `CryptoPunksRendererV2`: renderer and metadata layer consuming
-   `CryptoPunksDataV2`.
-4. `CryptoPunksCompositeRenderer`: optional byte-exact `punks.png` generator
-   consuming `CryptoPunksDataV2`.
+1. `PunksData`: immutable canonical traits, visual metrics, color catalog,
+   indexed pixels, bitmaps, supplies, and dataset roots. Sealed after load,
+   no admin, no upgrade path.
+2. `PunksPng`: PNG encoder. Per-Punk PNG-8 plus paged byte-exact composite
+   `punks.png` generator. Reads `palette.bin` + `indexedPixelsOf(punkId)`
+   from `PunksData`.
+3. `PunksSvg`: SVG encoder with status-color background modes.
+4. `PunksMetadata`: OpenSea-shaped JSON metadata; embeds image data from
+   `PunksPng` or `PunksSvg`.
+5. `PunksTraitsCompat` (optional): single-method `hasTrait(uint16,uint16)`
+   shim for third-party protocols that want a minimal hook. Not used by
+   this repo's `Offers`.
 
-This is a change from the first draft. The main contract should not be bounded
-by the current auction interface. Trait bidding remains important, but it should
-be implemented as one use case of a richer canonical data surface.
+This is a change from the first draft. The data contract is not bounded by
+the auction interface. Trait bidding consumes the mask predicates on
+`PunksData` directly — there is no compat adapter on the critical path.
+Encoders are pluggable: anyone can deploy a better PNG/SVG/metadata
+encoder later against the same sealed data contract.
+
+The full set of accepted decisions is pinned in [decisions.md](./decisions.md).
 
 ## Suggested Architecture
 
 ```text
-CryptoPunksAuctions or other bidding protocol
-  -> CryptoPunksDataV2 / CriteriaAdapter
+CryptoPunksAuctions (this repo)
+  -> PunksData    (mask predicates, visual metrics)
 
-CryptoPunksDataV2
-  -> packed punk masks
-  -> trait bitmaps
+Third-party Punk-aware protocol
+  -> PunksTraitsCompat (optional hasTrait shim)
+       -> PunksData
+
+PunksData    (sealed, primitives only)
+  -> packed punk trait masks (storage)
+  -> trait bitmaps (SSTORE2)
   -> trait catalog and supplies
-  -> color catalog and color masks
-  -> visual metrics
-  -> indexed 24x24 image data
+  -> color catalog, color masks (storage)
+  -> visual metric scalars (storage, packed)
+  -> palette (SSTORE2)
+  -> indexed 24x24 image data (SSTORE2)
   -> dataset roots
 
-CryptoPunksRendererV2
-  -> transparent, backgrounded, SVG, bitmap, and metadata outputs
+PunksPng
+  -> reads PunksData palette + indexedPixelsOf
+  -> per-Punk PNG-8 (transparent + backgrounded)
+  -> paged byte-exact composite punks.png chunks
+  -> paged filtered mosaic chunks (predicate-gated)
 
-CryptoPunksCompositeRenderer
-  -> reads CryptoPunksDataV2 indexed pixels and palette
-  -> generates the full 100x100 punks.png artifact
-  -> aims for exact SHA-256 match to the Larva Labs reference PNG
+PunksSvg
+  -> reads PunksData primitives
+  -> per-Punk SVG with status-color background modes
+
+PunksMetadata
+  -> reads PunksData primitives
+  -> OpenSea-shaped JSON, embeds image from PunksPng or PunksSvg
 ```
 
 ## Core Data Scope
@@ -49,8 +70,10 @@ function traitMaskOf(uint16 punkId) external view returns (uint256);
 function hasTraits(
     uint16 punkId,
     uint256 requiredMask,
-    uint256 forbiddenMask
+    uint256 forbiddenMask,
+    uint256 anyOfMask
 ) external view returns (bool);
+function isValidTraitId(uint16 traitId) external view returns (bool);
 
 function colorAt(uint16 punkId, uint8 x, uint8 y) external view returns (uint8 colorId);
 function colorOf(uint8 colorId) external view returns (bytes4 rgba);
@@ -60,7 +83,15 @@ function pixelCountOf(uint16 punkId) external view returns (uint16);
 function colorCountOf(uint16 punkId) external view returns (uint8);
 function indexedPixelsOf(uint16 punkId) external view returns (bytes memory);
 function visiblePixelBitmapOf(uint16 punkId) external view returns (uint256 word0, uint256 word1, uint256 word2);
+
+function paletteRgbBytes() external view returns (bytes memory);   // 666 bytes
+function paletteAlphaBytes() external view returns (bytes memory); // 222 bytes
+function paletteRgbaBytes() external view returns (bytes memory);  // 888 bytes
 ```
+
+`paletteRgbBytes` and `paletteAlphaBytes` exist so PNG encoders can build
+PLTE and tRNS chunks without 222 individual `colorOf` calls. `paletteRgbaBytes`
+serves consumers that want raw RGBA in one call.
 
 Public-good functions:
 
@@ -91,100 +122,201 @@ instead of becoming an accidental "false" predicate.
 
 ## Trait ID Policy
 
-Use a deterministic versioned catalog, not ad hoc IDs.
+Bit assignment is alphabetical by kind, derivable from the CSV crawl alone:
 
-Recommended predicate groups:
+| Bits | Kind | Source |
+| --- | --- | --- |
+| 0–4 | normalized types alphabetical (Alien, Ape, Female, Male, Zombie) | derived |
+| 5–15 | exact head variants alphabetical (`Alien`, `Ape`, `Female 1..4`, `Male 1..4`, `Zombie`) | source CSV |
+| 16–23 | attribute count 0–7 | derived |
+| 24–110 | accessories alphabetical, exact source casing | source CSV |
 
-- exact head variants,
-- normalized type,
-- attribute count,
-- exact accessory names from the current contract.
+111 bits, fits `uint128`. Masks are returned as `uint256`; bits 128–255 are
+reserved for derived predicates added later in optional adapter contracts.
+The base data contract never sets bits ≥ 128.
 
-Do not silently fix historical spellings like `Tassle Hat`. Exact names should
-match the source data. If aliases are useful, put them in metadata, not in the
-settlement predicate namespace.
+Do not silently fix historical spellings: `Tassle Hat`, `Pink With Hat`,
+`Do-rag` are kept exactly as the source emits them. Aliases live in
+optional taxonomy contracts, never in the settlement predicate namespace.
+
+Alien / Ape / Zombie each get *both* a normalized-type bit and an exact
+head-variant bit. The matching sets coincide today, but the predicate
+*meaning* is different. Kind-aware lookups (`traitIdByNameHash(nameHash,
+kind)`) disambiguate.
+
+Name hash semantics for `traitIdByNameHash`: `keccak256(bytes(name))` over
+the exact source bytes. No casing, trimming, or normalization.
 
 ## Storage Choice
 
-Use bytecode-backed immutable blobs for packed masks, bitmaps, histograms, and
-indexed image data.
+Use a mixed layout: storage mappings for hot per-Punk scalars, SSTORE2
+bytecode chunks for large sequential blobs.
 
-Why:
+Storage mappings (one cold SLOAD ~2,100 / warm ~100):
 
-- Deployment cost is not the main constraint, but very large sequential data is
-  cleaner as sealed bytecode chunks than as many individual storage slots.
-- EIP-170 prevents putting the full dataset in one runtime bytecode object.
-- SSTORE2-style chunks are a proven pattern for large immutable data.
-- The data is static forever, so write-once code storage is appropriate.
+- `traitMaskOf(punkId)` — `mapping(uint16 => uint256)`. Hit on every
+  settlement; SLOAD is cheaper than EXTCODECOPY.
+- `colorMaskOf(punkId)` — `mapping(uint16 => uint256)`.
+- visual metric scalars (`pixelCountOf`, `colorCountOf`, packed
+  `visiblePixelBitmapOf`) — packed into 1–3 slots per Punk so hot lookups
+  are one SLOAD.
 
-Recommended payload:
+SSTORE2 bytecode chunks (cheaper at deploy for large sequential reads,
+EXTCODECOPY for retrieval):
 
-- `punkMasks.bin`: 10,000 packed `uint128` or `uint256` masks.
-- `traitBitmaps.bin`: 40 words per trait.
-- `traitMeta.bin`: kind, supply, and name offsets.
-- `palette.bin`: all RGBA colors, including transparent.
-- `indexedPixels.bin`: 576 color IDs per Punk.
-- `visualMetrics.bin`: pixel count, color count, color masks, histogram offsets.
+- `traitBitmaps.bin` — 40 words per trait, ~135 KB total.
+- `palette.bin` — 222 RGBA entries, 888 bytes.
+- `indexedPixels.bin` — 576 color IDs per Punk, ~5.76 MB.
+- `traitMeta.bin` — kind, supply, name offsets.
 
-## Auction Contract Follow-Up
+Why mixed: the per-Punk trait mask is read on every settlement-time call.
+A storage SLOAD is read-cheaper than an SSTORE2 EXTCODECOPY at the 32-byte
+size, and the readability cost compounds across the lifetime of the
+contract. Large sequential data has no settlement-path consumer, so the
+SSTORE2 deploy-cost win applies cleanly there.
 
-The current auction contract can use an adapter that exposes
-`ICryptoPunksTraits.hasTrait`, but future auction work should use the richer
-canonical interface directly.
+EIP-170 still caps any one bytecode object at 24,576 bytes, so SSTORE2
+blobs are chunked. EIP-3860's 49,152-byte init-code limit does not bind
+because each chunk is `runtime_data + ~24 byte wrapper` ≈ 24,600 bytes
+of init code.
 
-For a later `Offers` version, replace dynamic `TraitFilter[]` storage with:
+## Auction Contract Changes
+
+These contracts are pre-deployment. There is no live oracle to migrate
+from and no live offers to preserve, so `Offers.sol` consumes the rich
+predicate interface on `PunksData` directly.
+
+Replace dynamic `TraitFilter[]` storage with three mask slots:
 
 ```solidity
-uint256 requiredTraitMask;
-uint256 forbiddenTraitMask;
+struct CompactTraitFilter {
+    uint256 requiredMask;
+    uint256 forbiddenMask;
+    uint256 anyOfMask;
+}
 ```
 
-Then matching becomes:
+Settlement becomes one external call regardless of filter count:
 
 ```solidity
-if (!TRAITS.hasTraits(punkId, requiredTraitMask, forbiddenTraitMask)) {
+if (!PUNKS.hasTraits(punkId, f.requiredMask, f.forbiddenMask, f.anyOfMask)) {
     revert PunkTraitMismatch();
 }
 ```
 
-This reduces offer storage, event size, and settlement loops for common filters.
-Keep include and exclude token ID arrays for exact baskets, or move large
-baskets to Merkle roots if needed.
+Knock-on changes in this repo:
 
-## Renderer Follow-Up
+- `Offer.traitFilters` field replaced with the mask trio.
+- `placeOffer` calldata reshaped accordingly.
+- `OfferPlaced` event reshaped accordingly.
+- `_requireOfferMatchesPunk` becomes one external `hasTraits` call, not a
+  per-filter loop.
+- `MockCryptoPunksTraits` rewritten with `mapping(uint16 => uint256)
+  punkMask` + `setMask` helper.
+- `ICryptoPunksTraits` is replaced; the new interface is
+  `IPunksDataCriteria` (see doc 02).
 
-Renderer work should be second because it does not block trait bidding.
+`PunksTraitsCompat` is still worth shipping as a separately deployed
+contract for *external* protocols that want a minimal `hasTrait` hook,
+but it is not on this repo's critical path. Settlement here calls
+`PunksData` directly.
 
-Renderer scope:
+Include and exclude token ID arrays remain for exact baskets, or move
+large baskets to Merkle roots if needed (bound proof length to 14 for
+the 10,000-Punk tree).
 
-- `tokenURI(uint16)`-style JSON helper with OpenSea-compatible attributes.
-- transparent SVG and bitmap outputs.
-- official-status background modes: default, for sale, has bid, transfer,
-  wrapped, legacy wrapped, transparent, and custom.
-- `punkImageSvgOptimized(uint16)` using scanline rect merging or color-grouped
-  paths.
-- `rgbaPixelsOf(uint16)` for compatibility with the original raw image surface.
-- `indexedPixelsOf(uint16)` pass-through for efficient consumers.
+## Encoder Contracts
 
-The renderer should consume flattened indexed pixels from `CryptoPunksDataV2`.
-That is more useful than wrapping the old composition contract because rendering
-no longer pays the cost of reconstructing the Punk from assets.
+Encoders are split by output format. Each is a standalone contract that
+reads `PunksData` via public views.
 
-## Composite Renderer Follow-Up
+`PunksSvg`:
 
-The full composite `punks.png` generator should be a separate contract from
-both `CryptoPunksDataV2` and the normal per-Punk renderer. Its byte-exact PNG
-goal is specialized, expensive, and compression-sensitive. Keeping it separate
-protects the canonical data contract from renderer complexity while preserving
-the art/provenance feature.
+- `punkSvg(uint16 punkId, BackgroundMode mode) external view returns (string memory)`
+- `punkSvgCustomBackground(uint16 punkId, bytes4 rgba) external view returns (string memory)`
+- background modes: `Transparent`, `Owned` (`#638596`), `ForSale`,
+  `HasBid`, `Transfer`, `Wrapped`, `LegacyWrapped`, `Custom`.
+- scanline rect merging or color-grouped paths internally.
 
-Composite renderer scope:
+`PunksMetadata`:
 
-- `compositePng()` as a full-return art-piece convenience function.
-- chunked `compositePngChunk(uint16 chunkIndex)` output for practical reads.
-- exact RGBA scanline generation from `CryptoPunksDataV2`.
-- reference hash helpers for the final PNG, inflated scanlines, and IDAT
-  payload.
+- `metadataJson(uint16 punkId, BackgroundMode mode) external view returns (string memory)`
+- OpenSea-shaped attributes; embeds image data from `PunksPng` or
+  `PunksSvg`.
+- Renamed from `tokenUriJson` — does not claim to be the canonical
+  `tokenURI` for any specific Punk token contract.
+
+`PunksPng`: see the next section.
+
+Encoders consume flattened indexed pixels from `PunksData` rather than
+reconstructing Punks via the old asset-composition algorithm. Renderer
+views are for offchain display and `eth_call` consumption only — no
+auction or settlement function calls a renderer.
+
+## PunksPng Encoder
+
+PNG generation lives in `PunksPng`, a single encoder contract that handles
+both per-Punk PNG-8 and the paged composite mosaic. PNG goes in its own
+contract because the byte-exact composite goal is compression-sensitive
+and would bloat the data contract; per-Punk and composite share the same
+palette/CRC32/zlib machinery so there's no benefit to splitting them
+further.
+
+Per-Punk:
+
+```solidity
+function punkPng(uint16 punkId) external view returns (bytes memory);
+function punkPng(uint16 punkId, bytes4 backgroundRgba) external view returns (bytes memory);
+```
+
+First overload returns transparent-background PNG-8 (~600 bytes). Second
+flattens against an opaque background and returns alpha-255 throughout.
+
+Composite mosaic — Layer 1 (pixel generation):
+
+```solidity
+function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
+function mosaicRgbaRow(uint8 rowIndex)    external view returns (bytes memory);
+function mosaicPixelsHash() external view returns (bytes32); // 0xdb0e780a…
+```
+
+Composite mosaic — Layer 2 (paged byte-exact PNG):
+
+```solidity
+function compositePngChunkCount() external pure returns (uint16);
+function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
+function compositePngSha256() external pure returns (bytes32); // 0xac39af…
+function compositeIdatSha256() external pure returns (bytes32); // 0x7d080b…
+function referenceInflatedScanlinesSha256() external pure returns (bytes32); // 0x62a66b…
+```
+
+Concatenating `compositePngChunk(0..N)` is byte-equal to the GitHub
+`punks.png` file. Chunking is an RPC return-size requirement, not a
+different file format.
+
+Filtered mosaic — bonus:
+
+```solidity
+function compositePngChunkFiltered(
+    uint16 chunkIndex,
+    uint256 requiredMask,
+    uint256 forbiddenMask,
+    uint256 anyOfMask
+) external view returns (bytes memory);
+```
+
+Generates a mosaic with non-matching tiles transparent. Not part of the
+byte-exact reference target — these are new compositions, not the
+canonical GitHub image.
+
+Reproducing the exact zlib/DEFLATE stream is the encoder's hard
+milestone; doc 08 covers the constraints. The data contract does not
+depend on this work — `PunksData` ships first and `PunksPng` ships when
+the encoder is audited.
+
+Mosaic adler32 is `bytes4 immutable` precomputed at deploy. Pixel data
+is fixed forever; storing a four-byte commitment over fixed onchain data
+is not the same as storing the PNG.
 
 ## Tradeoff Summary
 
@@ -200,36 +332,48 @@ Composite renderer scope:
 
 ## Final Suggestion
 
-Ship `CryptoPunksDataV2` as an immutable, bytecode-backed canonical data
-contract with per-Punk trait masks, per-trait bitmaps, color masks, visual
-metrics, and 24x24 indexed pixels.
+Ship `PunksData` as an immutable canonical data contract with per-Punk
+trait masks (storage), per-trait bitmaps (SSTORE2), color masks
+(storage), visual metric scalars (storage, packed), palette and 24×24
+indexed pixels (SSTORE2). Seal at deploy; no admin, no upgrade path.
 
-This gives the auction system the most immediate leverage: bidders can express
-high-conviction demand over traits, colors, color count, and pixel count, while
-other consumers get a general-purpose Punk data layer. Rendering should be a
-separate contract, but it should use the V2 indexed-pixel data rather than
-rebuilding images through the old asset composition path.
+This gives the auction system the most immediate leverage: bidders can
+express high-conviction demand over traits, colors, color count, and
+pixel count, while other consumers get a general-purpose Punk data layer.
+Encoders are separate contracts that consume `PunksData` primitives —
+SVG, JSON, and PNG (per-Punk + byte-exact composite) — and are pluggable
+forever after.
 
 ## Concrete Next Steps
 
-1. Write a generator that reads all 10,000 `punkAttributes` strings from the
-   source contract and all 10,000 `punkImage` byte arrays, then emits:
-   - trait catalog,
-   - per-Punk masks,
+1. Re-crawl all 10,000 `punkAttributes` and `punkImage` outputs at the
+   pinned source block (see doc 06), and produce:
+   - trait catalog (alphabetical bit ordering per the table above),
+   - per-Punk trait masks,
    - per-trait bitmaps,
-   - color catalog,
+   - palette,
    - indexed pixels,
-   - color masks and histograms,
-   - pixel count and color count bitmaps,
+   - color masks and visible-pixel bitmaps,
+   - pixel-count and color-count bitmaps,
    - dataset hashes.
-2. Add a fork test that compares V2 attributes and expanded RGBA images against
-   the source contract for every Punk.
-3. Implement `CryptoPunksDataV2` with immutable blob pointers and no owner
-   after deployment.
-4. Build a small adapter or update the auction interface to consume the richer
-   criteria functions.
-5. Prototype `CryptoPunksRendererV2` over indexed pixels and benchmark SVG,
-   raw bitmap, and backgrounded outputs against the current `punkImageSvg`.
-6. Prototype `CryptoPunksCompositeRenderer` separately. First verify exact
-   inflated scanlines from `CryptoPunksDataV2`; only then attempt exact
-   zlib/DEFLATE reproduction for the reference PNG hash.
+2. Assert generator invariants before seal:
+   - `popcount(traitMaskOf(p)) == 2 + attributeCountOf(p)`,
+   - head variant ↔ normalized type consistency table,
+   - Σ popcount(traitMaskOf) == Σ traitSupply,
+   - palette alpha values ∈ {0x00, 0x80, 0xFF},
+   - `popcount(colorMaskOf(p)) == colorCountOf(p)`,
+   - visible-pixel-bitmap popcount == `pixelCountOf(p)`,
+   - palette-expanded indexed pixels byte-equal source `punkImage(p)`.
+3. Fork-test V2 against the source contract for every Punk.
+4. Implement `PunksData` with immutable blob pointers, sealed-initializer
+   pattern (`loadChunk` + one-shot `seal()` that emits
+   `DatasetCommitted`).
+5. Rewrite `Offers.sol` to consume `IPunksDataCriteria.hasTraits` directly
+   with the mask trio (`requiredMask`, `forbiddenMask`, `anyOfMask`).
+   Rewrite `MockCryptoPunksTraits` accordingly.
+6. Implement `PunksSvg` and `PunksMetadata` over `PunksData` indexed
+   pixels. Benchmark output sizes against the original `punkImageSvg`.
+7. Implement `PunksPng`. First verify exact inflated scanlines from
+   `PunksData` (`mosaicPixelsHash()` matches `0xdb0e780a…` and inflated
+   scanline hash matches `0x62a66b…`); only then attempt exact
+   zlib/DEFLATE reproduction for the reference PNG hash `0xac39af…`.

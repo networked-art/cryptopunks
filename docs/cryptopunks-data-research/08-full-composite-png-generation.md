@@ -1,11 +1,13 @@
 # Full Composite PNG Generation
 
-This note covers an optional renderer feature: generating the full 10,000 Punk
-composite image onchain.
+This note covers `PunksPng`'s composite-mosaic feature: generating the
+full 10,000 Punk composite image onchain.
 
-Updated requirement: the generated output should byte-match the canonical
-Larva Labs `punks.png`, so the SHA-256 hash is identical, without storing that
-PNG file byte-for-byte onchain.
+Requirement: the generated output must byte-match the canonical Larva Labs
+`punks.png`, so the SHA-256 hash is identical, without storing that PNG
+file byte-for-byte onchain. Per the [decisions sheet](./decisions.md), this
+is the encoder's hard milestone — `PunksData` ships first and `PunksPng`
+ships when the encoder reproduces the reference DEFLATE stream.
 
 Reference image:
 
@@ -66,7 +68,7 @@ All 2,400 scanlines use filter byte `0`.
 
 ## Feasibility
 
-Generating the full composite is feasible if `CryptoPunksDataV2` stores
+Generating the full composite is feasible because `PunksData` stores
 flattened indexed pixels:
 
 ```text
@@ -183,67 +185,98 @@ not a disguised copy of `IDAT`.
 
 ## Contract Boundary
 
-`punks.png` generation should live in a separate contract that reads from
-`CryptoPunksDataV2`.
+`punks.png` generation lives in `PunksPng`, a dedicated encoder contract
+that reads from `PunksData`.
 
 Reasons:
 
 - The byte-exact PNG goal is specialized and expensive.
 - Exact zlib/DEFLATE reproduction is compression logic, not canonical data.
 - The core data contract should remain small, immutable, and easy to trust.
-- The composite renderer can be iterated or replaced without changing the data
+- The encoder can be iterated or replaced without changing the data
   source.
-- Other renderers can still consume the same indexed pixels and palette.
+- Other encoders (`PunksSvg`, `PunksMetadata`, future PNG variants) can
+  still consume the same indexed pixels and palette.
 
-Suggested dependency direction:
+Per-Punk PNG-8 lives in the same `PunksPng` contract because per-Punk and
+composite share palette/CRC32/zlib machinery — splitting them buys
+nothing.
+
+Dependency direction:
 
 ```text
-CryptoPunksDataV2
+PunksData
   -> trait data
   -> visual metrics
-  -> palette
-  -> indexed pixels
+  -> palette (paletteRgbBytes, paletteAlphaBytes, paletteRgbaBytes)
+  -> indexed pixels (indexedPixelsOf)
 
-CryptoPunksCompositeRenderer
-  -> reads CryptoPunksDataV2
-  -> generates exact RGBA scanlines
-  -> generates byte-exact punks.png if DEFLATE can be reproduced
+PunksPng
+  -> reads PunksData via public views
+  -> per-Punk PNG-8 (transparent + flattened-background)
+  -> generates exact RGBA scanlines for the mosaic
+  -> generates byte-exact punks.png chunks once DEFLATE is reproduced
+  -> filtered mosaic (predicate-gated, not byte-exact)
 ```
 
-The composite renderer should not be on any settlement path.
+`PunksPng` is not on any settlement path.
 
-## Proposed API
+## Composite Mosaic API on `PunksPng`
 
-Expose chunked generation first and full-return generation as an art-piece
-convenience.
+Concatenating `compositePngChunk(0..N-1)` is byte-equal to the GitHub
+`punks.png` file. Chunking is an RPC return-size requirement, not a
+different file format.
 
 ```solidity
-interface ICryptoPunksCompositeRenderer {
-    function dataContract() external view returns (address);
+function dataContract() external view returns (address);
 
-    function compositePng() external view returns (bytes memory);
-
-    function compositePngHeader() external view returns (bytes memory);
-    function compositePngChunkCount() external pure returns (uint16);
-    function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
-    function compositePngFooter() external view returns (bytes memory);
-
-    function compositeIndexedRows(
-        uint16 startRow,
-        uint16 rowCount
-    ) external view returns (bytes memory);
-}
+function compositePngChunkCount() external pure returns (uint16);
+function compositePngChunk(uint16 chunkIndex) external view returns (bytes memory);
 ```
 
-`compositePng()` is conceptually clean, but many RPC providers will reject a
-multi-megabyte `eth_call` return. The chunked path is the practical interface.
+The full-return form `compositePng()` is omitted. EVM memory cost
+(`3·words + words² / 512`) makes a multi-megabyte single-call return
+prohibitively expensive regardless of fees, and most RPC providers reject
+returns of this size anyway.
 
-For exact reference generation, expose the expected hashes:
+Layer 1 (pixel-level views) for consumers that want bytes without the PNG
+container:
 
 ```solidity
-function referencePngSha256() external pure returns (bytes32);
+function mosaicIndexedRow(uint8 rowIndex) external view returns (bytes memory);
+function mosaicRgbaRow(uint8 rowIndex) external view returns (bytes memory);
+function mosaicPixelsHash() external view returns (bytes32);
+```
+
+`mosaicPixelsHash()` returns
+`0xdb0e780ac7553b5dd6a3bb02ed2bf8106c16659e15a36797294e01e8817286bf`,
+the SHA-256 over the concatenation of all 10,000 source `punkImage` outputs
+in row-major tile order. It's the verification anchor for any consumer
+that wants to confirm pixel correctness without trusting the PNG encoder.
+
+Reference hashes are exposed as `pure` views so consumers can verify the
+encoder targets without inspecting bytecode:
+
+```solidity
+function compositePngSha256() external pure returns (bytes32);
+// 0xac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b
+function compositeIdatSha256() external pure returns (bytes32);
+// 0x7d080b4bca3e4c8e19ed53254eb8dc1dd1c887c8b6b3560d3374436c19f9614f
 function referenceInflatedScanlinesSha256() external pure returns (bytes32);
-function referenceIdatSha256() external pure returns (bytes32);
+// 0x62a66b4618a72410d6d99b5fceee6013fabcb3574728ed5ce437b2a161da8673
+```
+
+A filtered-mosaic generator composes V2 trait masks with the mosaic
+surface, but it is *not* part of the byte-exact target — these are new
+compositions, not the canonical GitHub image:
+
+```solidity
+function compositePngChunkFiltered(
+    uint16 chunkIndex,
+    uint256 requiredMask,
+    uint256 forbiddenMask,
+    uint256 anyOfMask
+) external view returns (bytes memory);
 ```
 
 ## Generation Algorithm
@@ -300,18 +333,19 @@ Implementation notes:
 - Compute Adler-32 over the uncompressed scanline bytes.
 - Keep chunk sizes modest enough for RPC return limits.
 
-## Full Return vs Chunked Return
+## Why Chunked, Not Full Return
 
 The reference PNG is 848,174 bytes. That is not large by normal software
-standards, but it is large for EVM memory expansion and RPC return payloads.
+standards, but EVM memory cost (`3·words + words² / 512`) makes a single
+multi-megabyte return prohibitively expensive long before any RPC limit
+kicks in. Sample numbers for a one-shot 5.76 MB indexed mosaic return:
+~64 M gas just for memory expansion, regardless of who pays for it.
 
-Recommended API behavior:
+Public RPC providers also enforce per-call gas caps independent of
+caller fees, so there is no "spend more gas" path to a bigger return.
 
-- `compositePngChunk(index)`: primary public interface.
-- `compositePng()`: optional, documented as best-effort / art-piece.
-- `compositeIndexedRows(startRow, rowCount)`: useful for independent clients
-  that want to assemble or compress the image offchain from onchain source
-  data.
+Layer-1 pixel views and the chunked PNG bytestream both page on Punk-row
+boundaries. 100 calls reassemble the full mosaic offchain.
 
 ## Relationship To Reference `punks.png`
 
@@ -339,32 +373,42 @@ sha256(inflated generated scanlines) == 62a66b4618a72410d6d99b5fceee6013fabcb357
 sha256(generated IDAT payload) == 7d080b4bca3e4c8e19ed53254eb8dc1dd1c887c8b6b3560d3374436c19f9614f
 ```
 
-## Recommendation
+## Milestones
 
-Keep the full composite PNG generator as a separate renderer contract, but split
-the work into two milestones:
+Composite PNG work is split into two milestones inside `PunksPng`:
 
 ```text
-CryptoPunksDataV2
-  -> indexed pixel data
+PunksData
+  -> indexed pixel data, palette, trait masks
 
-CryptoPunksCompositeRenderer
-  -> RGBA scanline generation from indexed pixels
-  -> exact reference PNG generation if the DEFLATE stream can be reproduced
+PunksPng
+  -> Layer 1: paged indexed/RGBA mosaic rows from PunksData
+  -> Layer 2: paged byte-exact PNG chunks once DEFLATE is reproduced
 ```
 
-Milestone 1:
+Milestone 1 — pixel correctness:
 
-- Generate exact RGBA scanlines from V2 indexed pixels.
-- Prove the inflated scanline hash matches
-  `62a66b4618a72410d6d99b5fceee6013fabcb3574728ed5ce437b2a161da8673`.
+- Generate exact RGBA scanlines from `PunksData` indexed pixels.
+- Prove `mosaicPixelsHash() == 0xdb0e780a…` over concatenated source
+  `punkImage` outputs.
+- Prove inflated scanline hash matches
+  `0x62a66b4618a72410d6d99b5fceee6013fabcb3574728ed5ce437b2a161da8673`.
 
-Milestone 2:
+Milestone 2 — byte-exact PNG:
 
 - Reverse engineer or reproduce the reference zlib/DEFLATE stream.
+- Prove the IDAT payload hash matches
+  `0x7d080b4bca3e4c8e19ed53254eb8dc1dd1c887c8b6b3560d3374436c19f9614f`.
 - Prove the final PNG hash matches
-  `ac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b`.
+  `0xac39af4793119ee46bbff351d8cb6b5f23da60222126add4268e261199a2921b`.
 
-This fits the project as an onchain art/provenance feature, but exact byte
-reproduction should not block the core data contract. The hard part is not PNG
-assembly; it is reproducing the exact compressed stream.
+Milestone 2 is the encoder's hard problem and may take iteration. It does
+not block `PunksData` deployment. `PunksPng` ships when the encoder
+reproduces the stream; if a future encoder version improves on
+correctness or compression, it can be deployed alongside the first one
+against the same sealed data contract.
+
+The hard part is not PNG assembly; it is reproducing the exact compressed
+stream that produced the reference file. Different zlib versions and
+strategies produce different valid streams that all decode to the same
+pixels.
