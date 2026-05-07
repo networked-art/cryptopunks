@@ -31,15 +31,10 @@ interface IPunksDataCriteria {
         Accessory
     }
 
-    function sourceDataContract() external view returns (address);
     function datasetHash() external view returns (bytes32);
     function traitCount() external pure returns (uint16);
 
     function traitName(uint16 traitId) external view returns (string memory);
-    function traitIdByNameHash(
-        bytes32 nameHash,
-        TraitKind kind
-    ) external view returns (uint16 traitId, bool exists);
     function traitKind(uint16 traitId) external view returns (TraitKind);
     function traitSupply(uint16 traitId) external view returns (uint16);
     function isValidTraitId(uint16 traitId) external pure returns (bool);
@@ -94,39 +89,4 @@ interface IPunksDataIndexed {
     function paletteRgbBytes() external view returns (bytes memory);
     function paletteAlphaBytes() external view returns (bytes memory);
     function paletteRgbaBytes() external view returns (bytes memory);
-}
-
-interface IPunksDataDeployment {
-    enum BlobId {
-        Invalid,
-        TraitBitmaps,
-        TraitMeta,
-        Palette,
-        PixelOffsets,
-        CompressedPixels,
-        ColorBitmaps,
-        PixelCountBitmaps,
-        ColorCountBitmaps
-    }
-
-    struct TraitNameHash {
-        bytes32 nameHash;
-        IPunksDataCriteria.TraitKind kind;
-        uint16 traitId;
-    }
-
-    struct DatasetCommitment {
-        bytes32 traitCatalogHash;
-        bytes32 punkMaskHash;
-        bytes32 paletteHash;
-        bytes32 indexedPixelsHash;
-        bytes32 compressedPixelsHash;
-    }
-
-    function blobChunkCount(BlobId blobId) external view returns (uint256);
-    function blobLength(BlobId blobId) external view returns (uint256);
-
-    function loadTraitNameHashes(TraitNameHash[] calldata entries) external;
-    function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data) external;
-    function seal(DatasetCommitment calldata commitment) external;
 }

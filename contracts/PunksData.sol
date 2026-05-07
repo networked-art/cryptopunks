@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-
 import "./interfaces/IPunksData.sol";
 import "./lib/BytecodeBlob.sol";
 
 /// @title PunksData
 /// @notice Sealed primitive data surface for CryptoPunks traits and indexed pixels.
 contract PunksData is
-    ERC165,
     IPunksDataCriteria,
     IPunksDataVisual,
-    IPunksDataIndexed,
-    IPunksDataDeployment
+    IPunksDataIndexed
 {
     using BytecodeBlob for address;
 
@@ -28,13 +24,6 @@ contract PunksData is
     uint8 public constant PUNK_WIDTH = 24;
     uint8 public constant PUNK_HEIGHT = 24;
     uint16 public constant PIXELS_PER_PUNK = 576;
-
-    uint256 public constant SOURCE_CHAIN_ID = 1;
-    uint256 public constant SOURCE_BLOCK_NUMBER = 25_044_552;
-    bytes32 public constant SOURCE_BLOCK_HASH =
-        0x2185f56dcb307a56cb8b90c1e61d4fd7898be906eb28d79e14c01d15f5cabb9f;
-    bytes32 public constant SOURCE_EXTCODEHASH =
-        0x52ab51c14a3f26a80eca178374e21027492fd276c7365f9ab234b737d34c6b60;
 
     uint256 internal constant CANONICAL_TRAIT_MASK = (uint256(1) << TRAIT_COUNT) - 1;
     uint256 internal constant CANONICAL_COLOR_MASK = (uint256(1) << MAX_COLOR_COUNT) - 1;
@@ -59,16 +48,28 @@ contract PunksData is
     uint256 internal constant VISIBLE_BITMAP_BYTES = uint256(PIXELS_PER_PUNK) / BITS_PER_BYTE;
     uint256 internal constant COMPRESSED_PIXEL_HEADER_SIZE = 1 + VISIBLE_BITMAP_BYTES;
 
-    address public immutable sourceDataContract;
     address public admin;
-    bool public isSealed;
 
-    bytes32 private _datasetHash;
-    bytes32 public traitCatalogHash;
-    bytes32 public punkMaskHash;
-    bytes32 public paletteHash;
-    bytes32 public indexedPixelsHash;
-    bytes32 public compressedPixelsHash;
+    bytes32 public datasetHash;
+
+    enum BlobId {
+        TraitBitmaps,
+        TraitMeta,
+        Palette,
+        PixelOffsets,
+        CompressedPixels,
+        ColorBitmaps,
+        PixelCountBitmaps,
+        ColorCountBitmaps
+    }
+
+    struct DatasetCommitment {
+        bytes32 traitCatalogHash;
+        bytes32 punkMaskHash;
+        bytes32 paletteHash;
+        bytes32 indexedPixelsHash;
+        bytes32 compressedPixelsHash;
+    }
 
     struct Chunk {
         address pointer;
@@ -79,19 +80,9 @@ contract PunksData is
     mapping(uint16 punkId => uint256 mask) private _colorMasks;
     mapping(uint16 wordIndex => uint256 packedScalars) private _packedScalarWords;
     mapping(uint8 colorId => uint32 pixels) private _colorSupplies;
-    mapping(bytes32 nameHash => mapping(uint8 kind => uint16 traitIdPlusOne))
-        private _traitIdsByNameHash;
     mapping(BlobId blobId => Chunk[] chunks) private _blobChunks;
 
-    event BlobChunkLoaded(
-        BlobId indexed blobId,
-        uint16 indexed chunkIndex,
-        address pointer,
-        uint256 size,
-        bytes32 dataHash
-    );
     event DatasetCommitted(
-        address indexed sourceData,
         bytes32 traitCatalogHash,
         bytes32 punkMaskHash,
         bytes32 paletteHash,
@@ -101,10 +92,7 @@ contract PunksData is
     );
 
     error ZeroAddress();
-    error InvalidSource();
     error NotAdmin();
-    error AlreadySealed();
-    error InvalidBlobId();
     error InvalidChunkIndex();
     error InvalidLength();
     error InvalidHash();
@@ -125,104 +113,9 @@ contract PunksData is
         _;
     }
 
-    modifier onlyUnsealed() {
-        if (isSealed) revert AlreadySealed();
-        _;
-    }
-
-    constructor(address sourceData, address initialAdmin) {
-        if (sourceData == address(0) || initialAdmin == address(0)) revert ZeroAddress();
-        if (block.chainid == SOURCE_CHAIN_ID && sourceData.codehash != SOURCE_EXTCODEHASH) {
-            revert InvalidSource();
-        }
-        sourceDataContract = sourceData;
+    constructor(address initialAdmin) {
+        if (initialAdmin == address(0)) revert ZeroAddress();
         admin = initialAdmin;
-    }
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC165)
-        returns (bool)
-    {
-        return interfaceId == type(IPunksDataCriteria).interfaceId
-            || interfaceId == type(IPunksDataVisual).interfaceId
-            || interfaceId == type(IPunksDataIndexed).interfaceId
-            || interfaceId == type(IPunksDataDeployment).interfaceId
-            || super.supportsInterface(interfaceId);
-    }
-
-    function datasetHash() external view returns (bytes32) {
-        return _datasetHash;
-    }
-
-    function recomputeTraitCatalogHash() external view returns (bytes32) {
-        bytes memory blob = _readBlob(BlobId.TraitMeta, 0, _blobLength(BlobId.TraitMeta));
-
-        uint256 totalLen = TRAIT_COUNT;
-        for (uint256 i; i < TRAIT_COUNT;) {
-            totalLen += uint8(blob[i * TRAIT_META_RECORD_SIZE + 5]);
-            unchecked {
-                ++i;
-            }
-        }
-
-        bytes memory data = new bytes(totalLen);
-        uint256 cursor;
-        for (uint256 i; i < TRAIT_COUNT;) {
-            uint256 recordOffset = i * TRAIT_META_RECORD_SIZE;
-            uint256 nameOffset = (uint256(uint8(blob[recordOffset + 3])) << 8)
-                | uint8(blob[recordOffset + 4]);
-            uint256 nameLen = uint8(blob[recordOffset + 5]);
-            for (uint256 j; j < nameLen;) {
-                data[cursor + j] = blob[TRAIT_META_HEADER_SIZE + nameOffset + j];
-                unchecked {
-                    ++j;
-                }
-            }
-            cursor += nameLen;
-            data[cursor] = blob[recordOffset];
-            unchecked {
-                ++cursor;
-                ++i;
-            }
-        }
-
-        return keccak256(data);
-    }
-
-    function recomputePunkMaskHash() external view returns (bytes32) {
-        bytes memory data = new bytes(uint256(PUNK_COUNT) * WORD_BYTES);
-        uint256 dataPtr;
-        assembly ("memory-safe") {
-            dataPtr := add(data, 0x20)
-        }
-
-        for (uint256 punkId; punkId < PUNK_COUNT;) {
-            uint256 mask = _traitMaskOf(uint16(punkId));
-            assembly ("memory-safe") {
-                mstore(add(dataPtr, mul(punkId, 0x20)), mask)
-            }
-            unchecked {
-                ++punkId;
-            }
-        }
-        return keccak256(data);
-    }
-
-    function recomputePaletteHash() external view returns (bytes32) {
-        return keccak256(_readBlob(BlobId.Palette, 0, _blobLength(BlobId.Palette)));
-    }
-
-    function recomputeCompressedPixelsHash() external view returns (bytes32) {
-        uint256 offsetsLen = _blobLength(BlobId.PixelOffsets);
-        uint256 pixelsLen = _blobLength(BlobId.CompressedPixels);
-
-        bytes memory data = new bytes(offsetsLen + pixelsLen);
-        _copyBlobInto(BlobId.PixelOffsets, data, 0, offsetsLen);
-        _copyBlobInto(BlobId.CompressedPixels, data, offsetsLen, pixelsLen);
-
-        return keccak256(data);
     }
 
     function traitCount() external pure returns (uint16) {
@@ -233,20 +126,9 @@ contract PunksData is
         return traitId < TRAIT_COUNT;
     }
 
-    function blobChunkCount(BlobId blobId) external view returns (uint256) {
-        _requireBlobId(blobId);
-        return _blobChunks[blobId].length;
-    }
-
-    function blobLength(BlobId blobId) external view returns (uint256) {
-        _requireBlobId(blobId);
-        return _blobLength(blobId);
-    }
-
     function loadTraitMaskPairs(uint16 startPairIndex, uint256[] calldata packedPairs)
         external
         onlyAdmin
-        onlyUnsealed
     {
         uint256 len = packedPairs.length;
         if (uint256(startPairIndex) + len > PUNK_COUNT / 2) revert InvalidLength();
@@ -268,7 +150,6 @@ contract PunksData is
     function loadColorMasks(uint16 startPunkId, uint256[] calldata masks)
         external
         onlyAdmin
-        onlyUnsealed
     {
         uint256 len = masks.length;
         if (uint256(startPunkId) + len > PUNK_COUNT) revert InvalidLength();
@@ -286,7 +167,6 @@ contract PunksData is
     function loadPackedScalars(uint16 startWordIndex, uint256[] calldata words)
         external
         onlyAdmin
-        onlyUnsealed
     {
         uint256 len = words.length;
         uint256 wordCount = _scalarWordCount();
@@ -305,7 +185,6 @@ contract PunksData is
     function loadColorSupplies(uint8 startColorId, uint32[] calldata supplies)
         external
         onlyAdmin
-        onlyUnsealed
     {
         uint256 len = supplies.length;
         if (uint256(startColorId) + len > MAX_COLOR_COUNT) revert InvalidLength();
@@ -318,30 +197,10 @@ contract PunksData is
         }
     }
 
-    function loadTraitNameHashes(TraitNameHash[] calldata entries)
-        external
-        onlyAdmin
-        onlyUnsealed
-    {
-        uint256 len = entries.length;
-
-        for (uint256 i; i < len;) {
-            TraitNameHash calldata entry = entries[i];
-            uint16 traitId = entry.traitId;
-            _requireTraitId(traitId);
-            _traitIdsByNameHash[entry.nameHash][uint8(entry.kind)] = traitId + 1;
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data)
         external
         onlyAdmin
-        onlyUnsealed
     {
-        _requireBlobId(blobId);
         Chunk[] storage chunks = _blobChunks[blobId];
         if (chunkIndex != chunks.length) revert InvalidChunkIndex();
 
@@ -350,11 +209,9 @@ contract PunksData is
         uint256 newEnd = prevEnd + data.length;
         if (newEnd > type(uint32).max) revert InvalidLength();
         chunks.push(Chunk({pointer: pointer, endOffset: uint32(newEnd)}));
-
-        emit BlobChunkLoaded(blobId, chunkIndex, pointer, data.length, keccak256(data));
     }
 
-    function seal(DatasetCommitment calldata commitment) external onlyAdmin onlyUnsealed {
+    function seal(DatasetCommitment calldata commitment) external onlyAdmin {
         if (
             commitment.traitCatalogHash == bytes32(0) || commitment.punkMaskHash == bytes32(0)
                 || commitment.paletteHash == bytes32(0) || commitment.indexedPixelsHash == bytes32(0)
@@ -388,12 +245,7 @@ contract PunksData is
             (uint256(COLOR_COUNT_MAX) - COLOR_COUNT_MIN + 1) * BITMAP_WORD_COUNT * WORD_BYTES
         );
 
-        traitCatalogHash = commitment.traitCatalogHash;
-        punkMaskHash = commitment.punkMaskHash;
-        paletteHash = commitment.paletteHash;
-        indexedPixelsHash = commitment.indexedPixelsHash;
-        compressedPixelsHash = commitment.compressedPixelsHash;
-        _datasetHash = keccak256(
+        bytes32 committedDatasetHash = keccak256(
             abi.encode(
                 commitment.traitCatalogHash,
                 commitment.punkMaskHash,
@@ -403,17 +255,16 @@ contract PunksData is
             )
         );
 
-        isSealed = true;
+        datasetHash = committedDatasetHash;
         admin = address(0);
 
         emit DatasetCommitted(
-            sourceDataContract,
             commitment.traitCatalogHash,
             commitment.punkMaskHash,
             commitment.paletteHash,
             commitment.indexedPixelsHash,
             commitment.compressedPixelsHash,
-            _datasetHash
+            committedDatasetHash
         );
     }
 
@@ -423,18 +274,6 @@ contract PunksData is
         uint256 nameOffset = _readUint16(record, 3);
         uint256 nameLength = uint8(record[5]);
         return string(_readBlob(BlobId.TraitMeta, TRAIT_META_HEADER_SIZE + nameOffset, nameLength));
-    }
-
-    function traitIdByNameHash(bytes32 nameHash, TraitKind kind)
-        external
-        view
-        returns (uint16 traitId, bool exists)
-    {
-        uint16 traitIdPlusOne = _traitIdsByNameHash[nameHash][uint8(kind)];
-        if (traitIdPlusOne == 0) return (0, false);
-        unchecked {
-            return (traitIdPlusOne - 1, true);
-        }
     }
 
     function traitKind(uint16 traitId) external view returns (TraitKind) {
@@ -864,53 +703,8 @@ contract PunksData is
         return chunks[len - 1].endOffset;
     }
 
-    function _copyBlobInto(BlobId blobId, bytes memory dst, uint256 dstOffset, uint256 length)
-        private
-        view
-    {
-        if (length == 0) return;
-
-        Chunk[] storage chunks = _blobChunks[blobId];
-        uint256 chunkCount = chunks.length;
-        if (chunkCount == 0) revert BlobReadOutOfBounds(blobId, 0, length);
-
-        uint256 totalLength = chunks[chunkCount - 1].endOffset;
-        if (length > totalLength) revert BlobReadOutOfBounds(blobId, 0, length);
-
-        uint256 copied;
-        uint256 chunkStart;
-        uint256 lo;
-        while (copied < length) {
-            Chunk storage chunk = chunks[lo];
-            uint256 chunkEnd = chunk.endOffset;
-            uint256 chunkSize = chunkEnd - chunkStart;
-            uint256 remaining = length - copied;
-            uint256 readLength = chunkSize > remaining ? remaining : chunkSize;
-
-            address pointer = chunk.pointer;
-            assembly ("memory-safe") {
-                extcodecopy(
-                    pointer,
-                    add(add(dst, 0x20), add(dstOffset, copied)),
-                    1,
-                    readLength
-                )
-            }
-            copied += readLength;
-
-            chunkStart = chunkEnd;
-            unchecked {
-                ++lo;
-            }
-        }
-    }
-
     function _requireBlobLength(BlobId blobId, uint256 expected) private view {
         if (_blobLength(blobId) != expected) revert InvalidLength();
-    }
-
-    function _requireBlobId(BlobId blobId) private pure {
-        if (blobId == BlobId.Invalid) revert InvalidBlobId();
     }
 
     function _requirePunkId(uint16 punkId) private pure {
