@@ -95,10 +95,10 @@ where `m = traitMaskOf(punkId)`.
 The third arg defaults to zero for offers that do not need "any-of" — no cost
 penalty.
 
-For storage, the auction-side `CompactTraitFilter` becomes:
+For storage, the auction-side `OfferCriteria` becomes:
 
 ```solidity
-struct CompactTraitFilter {
+struct OfferCriteria {
     uint256 requiredMask;
     uint256 forbiddenMask;
     uint256 anyOfMask;

@@ -153,11 +153,6 @@ function colorCountOf(uint16 punkId) external view returns (uint8);
 function colorMaskOf(uint16 punkId) external view returns (uint256);
 function hasColor(uint16 punkId, uint8 colorId) external view returns (bool);
 
-function visiblePixelBitmapOf(uint16 punkId)
-    external
-    view
-    returns (uint256 word0, uint256 word1, uint256 word2);
-
 function colorBitmapWord(uint8 colorId, uint8 wordIndex) external view returns (uint256);
 function pixelCountBitmapWord(uint16 pixelCount, uint8 wordIndex) external view returns (uint256);
 function colorCountBitmapWord(uint8 colorCount, uint8 wordIndex) external view returns (uint256);
@@ -265,18 +260,21 @@ Accepted mixed layout:
 
 ```text
 Storage mappings / packed per-Punk storage
-  traitMaskOf(punkId)        uint256
+  traitMaskOf(punkId)        packed uint128 storage, uint256 API
   colorMaskOf(punkId)        uint256, visible colors only
   pixelCountOf(punkId)       packed scalar
   colorCountOf(punkId)       packed scalar, visible colors only
-  visiblePixelBitmapOf(id)   three packed bitmap words or equivalent
 
 SSTORE2 bytecode chunks
 palette.bin
   222 * 4 bytes
 
-indexedPixels.bin
-  10000 * 576 bytes
+pixelOffsets.bin
+  10001 * 3 bytes, uint24 offsets
+
+compressedPixels.bin
+  per-Punk sparse local-palette pixel blobs
+  indexedPixelsOf(punkId) decodes to 576 bytes
 
 traitBitmaps.bin
   traitCount * 40 * 32 bytes
@@ -291,5 +289,7 @@ colorHistograms.bin
 This is a bigger deployment than a traits-only oracle, but it is much more
 useful and still straightforward to verify. Hot settlement and filtering
 scalars stay in storage for cheap `SLOAD` reads; large sequential data stays in
-SSTORE2 chunks. The generator must prove that expanding each indexed image
-through `palette.bin` exactly reproduces the source `punkImage(uint16)` bytes.
+SSTORE2 chunks. Pixels are compressed for smallest deployed payload; views
+spend extra compute to decode. The generator must prove that decoding each
+compressed pixel blob, then expanding through `palette.bin`, exactly
+reproduces the source `punkImage(uint16)` bytes.

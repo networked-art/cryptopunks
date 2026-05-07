@@ -42,7 +42,7 @@ PunksData    (sealed, primitives only)
   -> color catalog, color masks (storage)
   -> visual metric scalars (storage, packed)
   -> palette (SSTORE2)
-  -> indexed 24x24 image data (SSTORE2)
+  -> compressed 24x24 indexed image data (SSTORE2)
   -> dataset roots
 
 PunksPng
@@ -82,7 +82,6 @@ function hasColor(uint16 punkId, uint8 colorId) external view returns (bool);
 function pixelCountOf(uint16 punkId) external view returns (uint16);
 function colorCountOf(uint16 punkId) external view returns (uint8);
 function indexedPixelsOf(uint16 punkId) external view returns (bytes memory);
-function visiblePixelBitmapOf(uint16 punkId) external view returns (uint256 word0, uint256 word1, uint256 word2);
 
 function paletteRgbBytes() external view returns (bytes memory);   // 666 bytes
 function paletteAlphaBytes() external view returns (bytes memory); // 222 bytes
@@ -110,8 +109,8 @@ function traitIdByNameHash(bytes32 nameHash, uint8 kind) external view returns (
 function traitKind(uint16 traitId) external view returns (uint8);
 function traitSupply(uint16 traitId) external view returns (uint16);
 function traitBitmapWord(uint16 traitId, uint8 wordIndex) external view returns (uint256);
-function headVariantOf(uint16 punkId) external view returns (uint8);
-function punkTypeOf(uint16 punkId) external view returns (uint8);
+function headVariantOf(uint16 punkId) external view returns (HeadVariant);
+function punkTypeOf(uint16 punkId) external view returns (PunkType);
 function attributeCountOf(uint16 punkId) external view returns (uint8);
 function colorSupply(uint8 colorId) external view returns (uint32 pixels);
 function colorBitmapWord(uint8 colorId, uint8 wordIndex) external view returns (uint256);
@@ -119,8 +118,17 @@ function pixelCountBitmapWord(uint16 pixelCount, uint8 wordIndex) external view 
 function colorCountBitmapWord(uint8 colorCount, uint8 wordIndex) external view returns (uint256);
 ```
 
-Use `uint256` masks even though the first version fits in 128 bits. That leaves
-room for stable derived predicates without a second mask type.
+The `HeadVariant` and `PunkType` enums are defined alongside
+`IPunksDataCriteria` in
+[doc 02](./02-trait-filtering-interfaces.md#core-interface). They ABI-encode as
+`uint8` and match local indices (head variant 0..10, type 0..4); the
+corresponding mask bit is `uint8(headVariantOf(p)) + 5` and
+`uint8(punkTypeOf(p))`.
+
+Public APIs use `uint256` masks even though the first version fits in 128
+bits. Base storage packs canonical per-Punk masks as `uint128`; callers still
+get and submit `uint256` masks so future adapters do not need a second mask
+type.
 
 Invalid Punk IDs and trait IDs should revert. A bad filter should fail loudly
 instead of becoming an accidental "false" predicate.
@@ -142,9 +150,10 @@ Bit assignment is alphabetical by kind, derivable from the CSV crawl alone:
 | 16–23 | attribute count 0–7 | derived |
 | 24–110 | accessories alphabetical, exact source casing | source CSV |
 
-111 bits, fits `uint128`. Masks are returned as `uint256`; bits 128–255 are
-reserved for derived predicates added later in optional adapter contracts.
-The base data contract never sets bits ≥ 128.
+111 bits, fits `uint128`. Base storage packs canonical per-Punk masks as
+`uint128`; masks are returned as `uint256`. Bits 128–255 are reserved for
+derived predicates added later in optional adapter contracts. The base data
+contract never sets bits ≥ 128.
 
 Do not silently fix historical spellings: `Tassle Hat`, `Pink With Hat`,
 `Do-rag` are kept exactly as the source emits them. Aliases live in
@@ -160,31 +169,36 @@ the exact source bytes. No casing, trimming, or normalization.
 
 ## Storage Choice
 
-Use a mixed layout: storage mappings for hot per-Punk scalars, SSTORE2
+Use a mixed layout: packed storage for hot per-Punk scalars, SSTORE2
 bytecode chunks for large sequential blobs.
 
 Storage mappings (one cold SLOAD ~2,100 / warm ~100):
 
-- `traitMaskOf(punkId)` — `mapping(uint16 => uint256)`. Hit on every
-  settlement; SLOAD is cheaper than EXTCODECOPY.
+- `traitMaskOf(punkId)` — packed `uint128` canonical masks. Hit on every
+  settlement; SLOAD plus unpacking is cheaper than EXTCODECOPY and halves
+  the base mask storage.
 - `colorMaskOf(punkId)` — `mapping(uint16 => uint256)`.
-- visual metric scalars (`pixelCountOf`, `colorCountOf`, packed
-  `visiblePixelBitmapOf`) — packed into 1–3 slots per Punk so hot lookups
-  are one SLOAD.
+- visual metric scalars (`pixelCountOf`, `colorCountOf`) — packed with
+  hot per-Punk storage where practical.
 
 SSTORE2 bytecode chunks (cheaper at deploy for large sequential reads,
 EXTCODECOPY for retrieval):
 
-- `traitBitmaps.bin` — 40 words per trait, ~135 KB total.
+- `traitBitmaps.bin` — 40 words per trait, ~142 KB for the 111-bit
+  canonical catalog. Keep the simple full-bitmap design.
 - `palette.bin` — 222 RGBA entries, 888 bytes.
-- `indexedPixels.bin` — 576 color IDs per Punk, ~5.76 MB.
+- `compressedPixels.bin` + `pixelOffsets.bin` — compressed per-Punk
+  indexed pixels. Public `indexedPixelsOf(punkId)` decodes to the canonical
+  576-byte image. The target sparse local-palette encoding is expected to be
+  materially smaller than raw 5.76 MB indexed tiles.
 - `traitMeta.bin` — kind, supply, name offsets.
 
 Why mixed: the per-Punk trait mask is read on every settlement-time call.
-A storage SLOAD is read-cheaper than an SSTORE2 EXTCODECOPY at the 32-byte
-size, and the readability cost compounds across the lifetime of the
-contract. Large sequential data has no settlement-path consumer, so the
-SSTORE2 deploy-cost win applies cleanly there.
+A storage SLOAD is read-cheaper than an SSTORE2 EXTCODECOPY at this size,
+and the readability cost compounds across the lifetime of the contract. Large
+sequential data has no settlement-path consumer, so the SSTORE2 deploy-cost
+win applies cleanly there. Pixel reads may spend extra compute to decompress;
+the storage target is smallest verified lossless pixel blobs.
 
 EIP-170 still caps any one bytecode object at 24,576 bytes, so SSTORE2
 blobs are chunked. EIP-3860's 49,152-byte init-code limit does not bind
@@ -197,15 +211,19 @@ These contracts are pre-deployment. There is no live oracle to migrate
 from and no live offers to preserve, so `Offers.sol` consumes the rich
 predicate interface on `PunksData` directly.
 
-Replace dynamic `TraitFilter[]` storage with three mask slots:
+Replace dynamic `TraitFilter[]` storage with three mask values:
 
 ```solidity
-struct CompactTraitFilter {
+struct OfferCriteria {
     uint256 requiredMask;
     uint256 forbiddenMask;
     uint256 anyOfMask;
 }
 ```
+
+`placeOffer` takes `requiredMask`, `forbiddenMask`, and `anyOfMask` directly
+instead of `TraitFilter[] calldata`. `includeIds` and `excludeIds` remain
+separate fields on the `Offer`, alongside the criteria.
 
 Settlement becomes one external call regardless of filter count:
 
@@ -218,7 +236,7 @@ if (!PUNKS.hasTraits(punkId, f.requiredMask, f.forbiddenMask, f.anyOfMask)) {
 Knock-on changes in this repo:
 
 - `Offer.traitFilters` field replaced with the mask trio.
-- `placeOffer` calldata reshaped accordingly.
+- `placeOffer` calldata reshaped to accept the mask trio directly.
 - `OfferPlaced` event reshaped accordingly.
 - `_requireOfferMatchesPunk` becomes one external `hasTraits` call, not a
   per-filter loop.
@@ -332,17 +350,17 @@ the encoder is audited.
 | String adapter around `punkAttributes` | Low | Low | None | Medium | Avoid |
 | Mask-only traits | High | Medium | None | Medium | Too narrow |
 | Masks plus trait bitmaps | High | High | None | Medium | Useful but incomplete |
-| Full data: traits plus colors plus indexed pixels | High | High | High | High | Best target |
+| Full data: traits plus colors plus compressed indexed pixels | High | High | High | High | Best target |
 | Merkle roots only | Medium | Low | None | High UX cost | Only for arbitrary baskets |
 | Renderer wrapper over Larva data | None | Medium | Medium | Medium | Interim only |
 | Renderer over indexed pixels | None | High | High | Medium | Best renderer target |
 
 ## Final Suggestion
 
-Ship `PunksData` as an immutable canonical data contract with per-Punk
-trait masks (storage), per-trait bitmaps (SSTORE2), color masks
-(storage), visual metric scalars (storage, packed), palette and 24×24
-indexed pixels (SSTORE2). Seal at deploy; no admin, no upgrade path.
+Ship `PunksData` as an immutable canonical data contract with packed
+per-Punk trait masks (storage), per-trait bitmaps (SSTORE2), color masks
+(storage), visual metric scalars (storage, packed), palette and compressed
+24×24 indexed pixels (SSTORE2). Seal at deploy; no admin, no upgrade path.
 
 This gives the auction system the most immediate leverage: bidders can
 express high-conviction demand over traits, colors, color count, and
@@ -359,18 +377,19 @@ forever after.
    - per-Punk trait masks,
    - per-trait bitmaps,
    - palette,
-   - indexed pixels,
-   - color masks and visible-pixel bitmaps,
+   - compressed pixel blobs plus decoded indexed-pixel hashes,
+   - color masks,
    - pixel-count and color-count bitmaps,
    - dataset hashes.
 2. Assert generator invariants before seal:
-   - `popcount(traitMaskOf(p)) == 2 + attributeCountOf(p)`,
+   - `popcount(traitMaskOf(p)) == 3 + attributeCountOf(p)`,
    - head variant ↔ normalized type consistency table,
    - Σ popcount(traitMaskOf) == Σ traitSupply,
    - palette alpha values ∈ {0x00, 0x80, 0xFF},
    - `popcount(colorMaskOf(p)) == colorCountOf(p)`,
-   - visible-pixel-bitmap popcount == `pixelCountOf(p)`,
-   - palette-expanded indexed pixels byte-equal source `punkImage(p)`.
+   - compressed pixels decode to exactly 576 indexed bytes per Punk,
+   - decoded visible-pixel count == `pixelCountOf(p)`,
+   - palette-expanded decoded indexed pixels byte-equal source `punkImage(p)`.
 3. Fork-test `PunksData` against the source contract for every Punk.
 4. Implement `PunksData` with immutable blob pointers, sealed-initializer
    pattern (`loadChunk` + one-shot `seal()` that emits

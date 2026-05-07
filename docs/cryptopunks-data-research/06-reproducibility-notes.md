@@ -172,6 +172,7 @@ A production generator should also assert:
 - each response is exactly 2,304 bytes,
 - each response has 576 RGBA pixels,
 - the global palette has 222 colors including transparent,
-- expanding indexed pixels through the generated palette exactly recreates each
-  source image,
+- each compressed pixel blob decodes to exactly 576 indexed color IDs,
+- expanding decoded indexed pixels through the generated palette exactly
+  recreates each source image,
 - all color masks and color histograms agree with the expanded image.

@@ -68,9 +68,9 @@ bit space; disjunction over individual bits is mechanical.
 
 ### A4. Storage shape — MIXED
 
-Storage mapping for hot per-Punk scalars (`traitMaskOf`, `colorMaskOf`,
+Packed storage for hot per-Punk scalars (`traitMaskOf`, `colorMaskOf`,
 packed `pixelCount`/`colorCount`); SSTORE2 for large sequential blobs
-(palette, indexed pixels, per-trait bitmaps).
+(palette, compressed pixels, per-trait bitmaps).
 
 Why: SLOAD is cheaper than EXTCODECOPY on the settlement hot path. Blob
 data has no settlement-path consumer.
@@ -78,6 +78,11 @@ data has no settlement-path consumer.
 Color predicates are visible non-transparent predicates. `colorMaskOf`,
 `hasColor`, and `colorCountOf` ignore transparent pixels; `hasColor` returns
 false for the transparent palette entry.
+
+Per-Punk trait masks are stored as packed `uint128` values because the
+canonical catalog uses only bits 0..110. Public predicate APIs still use
+`uint256` masks for ergonomic bit operations and future adapter
+compatibility.
 
 ### A5. Phased delivery — DATA ALL AT ONCE, EXACT MOSAIC SEPARATE
 
@@ -98,6 +103,36 @@ Why: Same encoder contract, ~10 lines of generator logic, zero new
 storage, big art-piece value. Composes `PunksData` trait masks with mosaic
 generation: "all 9 Aliens in canonical positions", "every 0-attribute
 Punk", etc.
+
+### A8. Pixel storage — COMPRESSED, DECODED AT READ TIME
+
+Pixels should be stored as efficiently as practical. Extra decode compute in
+views is acceptable.
+
+The target storage shape is a per-Punk sparse local-palette encoding:
+
+```text
+pixelOffsets.bin
+  10001 uint24 offsets into compressedPixels.bin
+
+compressedPixels.bin entry for each Punk
+  uint8 visibleColorCount
+  bytes72 visibleBitmap              // 1 = non-transparent pixel
+  uint8[visibleColorCount] paletteIds // visible global color IDs, sorted
+  bitpacked local color indexes      // visible pixels only, raster order
+```
+
+Transparent pixels are implicit and decode to the transparent palette ID.
+`indexedPixelsOf(punkId)` remains the public primitive and returns the
+canonical 576-byte indexed image. The compressed storage format is an
+implementation detail, but the generator must pin it byte-for-byte and prove
+that decoding every Punk reproduces the canonical indexed pixels.
+
+A quick pass over the reference mosaic put this shape around 1.65 MB
+including uint24 offsets, versus 5.76 MB for raw 576-byte indexed tiles. The
+final generator should benchmark this against other lossless encodings before
+Solidity is written, but the accepted direction is "smallest verified
+lossless pixel blob", not raw `indexedPixels.bin`.
 
 ## Naming
 
@@ -147,9 +182,17 @@ derived predicates in optional adapter contracts.
 
 ### P2. `nameHash` semantics — `keccak256(bytes(name))`
 
-Why: Exact source bytes, casing preserved, typos preserved. No trimming,
-no lowercasing, no normalization. Frontends build a static name → hash
-table at build time.
+Source-derived names use exact source bytes — casing preserved, typos
+preserved (`Tassle Hat`, `Pink With Hat`, `Do-rag`), no trimming, no
+lowercasing, no normalization. This covers head variants and accessories.
+
+Synthesized names are pinned to canonical literal strings:
+
+- Normalized types (kind 1): `Alien`, `Ape`, `Female`, `Male`, `Zombie`.
+- Attribute counts (kind 2): `0 Attributes`, `1 Attributes`, `2
+  Attributes`, ..., `7 Attributes` (always plural for code symmetry).
+
+Frontends build a static name → hash table at build time.
 
 ### P3. `traitIdByNameHash(nameHash, kind)` — kind enum
 
@@ -161,10 +204,14 @@ table at build time.
 Why: Resolves the Alien/Ape/Zombie collision between exact head variant
 and normalized type.
 
-### P4. Mask width — `uint256`
+### P4. Mask width — `uint256` API, `uint128` base storage
 
 Bits 0–127 canonical traits. Bits 128–255 reserved for derived predicates
 added later in adapter contracts. Base contract never sets bits ≥ 128.
+
+The base data contract stores per-Punk canonical masks packed as `uint128`
+values. `traitMaskOf` returns `uint256`, and `hasTraits` accepts `uint256`
+arguments, so callers and future adapters do not need a second mask type.
 
 ### P5. `datasetHash()` — keccak256 over sub-hashes
 
@@ -174,10 +221,15 @@ Construction:
 traitCatalogHash  = keccak256(forEach trait: utf8(name) || uint8(kind))
 punkMaskHash      = keccak256(forEach punk:  traitMaskOf(p))
 paletteHash       = keccak256(palette bytes)
-indexedPixelsHash = keccak256(forEach punk:  indexedPixelsOf(p))
+indexedPixelsHash = keccak256(forEach punk:  indexedPixelsOf(p)) // decoded 576-byte images
+compressedPixelsHash = keccak256(pixelOffsets.bin || compressedPixels.bin)
 
 datasetHash = keccak256(abi.encode(
-  traitCatalogHash, punkMaskHash, paletteHash, indexedPixelsHash
+  traitCatalogHash,
+  punkMaskHash,
+  paletteHash,
+  indexedPixelsHash,
+  compressedPixelsHash
 ))
 ```
 
@@ -322,12 +374,14 @@ event DatasetCommitted(
     bytes32 punkMaskHash,
     bytes32 paletteHash,
     bytes32 indexedPixelsHash,
+    bytes32 compressedPixelsHash,
     bytes32 datasetHash
 );
 ```
 
 Emitted exactly once at seal. Makes the dataset auditable from event logs
-alone.
+alone. `indexedPixelsHash` commits to the decoded canonical images;
+`compressedPixelsHash` commits to the deployed pixel blob bytes.
 
 ### L3. No ERC-4906 metadata update event
 
@@ -349,19 +403,27 @@ redundant. Frontends should normalize user intent before signing; for
 "any hat except Beanie", remove `Beanie` from `anyOfMask` and put it in
 `forbiddenMask`.
 
+Same posture for scalar-keyed bitmap views:
+`pixelCountBitmapWord(pc, …)` reverts for `pc` outside `[148, 332]`;
+`colorCountBitmapWord(cc, …)` reverts for `cc` outside `[2, 14]`;
+`colorBitmapWord(cid, …)` reverts for `cid >= colorCount()`. In-range
+values with no matching Punks return zero; reverts only on out-of-range
+keys.
+
 ### L5. Generator invariants (asserted before seal)
 
-- `popcount(traitMaskOf(p)) == 2 + attributeCountOf(p)` for every Punk
-  (one head variant + one normalized type + accessories).
+- `popcount(traitMaskOf(p)) == 3 + attributeCountOf(p)` for every Punk
+  (one head variant + one normalized type + one attribute-count + accessories).
 - Head variant bit ↔ normalized type bit consistency via hardcoded
   table.
 - `Σ popcount(traitMaskOf(p)) == Σ traitSupply(t)`.
 - All visible palette entries have alpha `0xFF` or `0x80`; one
   transparent entry has alpha `0x00`.
 - `popcount(colorMaskOf(p)) == colorCountOf(p)`.
-- visible-pixel-bitmap popcount equals `pixelCountOf(p)`.
-- Indexed pixels expand through palette to byte-equal source
+- compressed pixels decode to exactly 576 indexed bytes for every Punk.
+- decoded indexed pixels expand through palette to byte-equal source
   `punkImage(p)` for every Punk.
+- decoded visible-pixel popcount equals `pixelCountOf(p)`.
 
 ## Operational
 
@@ -423,6 +485,9 @@ Reference:
 
 - `Offer.traitFilters` (`TraitFilter[]`) replaced by `requiredMask` +
   `forbiddenMask` + `anyOfMask`.
+- `placeOffer` takes the mask trio directly:
+  `placeOffer(standard, amountWei, settlementWei, receiver, requiredMask,
+  forbiddenMask, anyOfMask, includeIds, excludeIds)`.
 - `_requireOfferMatchesPunk` becomes one external `hasTraits(...)` call
   per offer (not per filter).
 - `placeOffer` calldata + `OfferPlaced` event reshaped accordingly.

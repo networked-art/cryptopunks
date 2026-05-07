@@ -68,16 +68,16 @@ All 2,400 scanlines use filter byte `0`.
 
 ## Feasibility
 
-Generating the full composite is feasible because `PunksData` stores
+Generating the full composite is feasible because `PunksData` exposes
 flattened indexed pixels:
 
 ```text
-indexedPixels.bin
-  10000 * 576 bytes
+indexedPixelsOf(punkId)
+  decodes the compressed pixel blob to 576 bytes
 ```
 
-Each Punk is already a 24x24 indexed image. The composite generator only needs
-to tile those indexed images into a 2400x2400 image.
+Each decoded Punk is a 24x24 indexed image. The composite generator only
+needs to tile those indexed images into a 2400x2400 image.
 
 For pixel-equivalent generation, indexed PNG would be the better output format.
 For byte-identical generation, it cannot be used. The generator must expand
@@ -86,11 +86,11 @@ compressed output exactly.
 
 ## Indexed PNG vs Exact Reference PNG
 
-The collection's 222 colors make indexed storage excellent for the data
-contract:
+The collection's 222 colors make indexed pixels the right canonical
+primitive:
 
 ```text
-10000 Punks * 576 color IDs = 5,760,000 bytes
+raw baseline: 10000 Punks * 576 color IDs = 5,760,000 bytes
 ```
 
 But the reference PNG is RGBA:
@@ -100,8 +100,9 @@ But the reference PNG is RGBA:
 = 23,042,400 bytes before zlib and PNG chunk overhead
 ```
 
-So the data layer can remain indexed, but the exact-reference renderer must
-expand to RGBA scanlines before compression.
+So the data layer can expose decoded indexed pixels, but the exact-reference
+renderer must expand to RGBA scanlines before compression. The data contract's
+physical pixel storage should still be compressed for deployment efficiency.
 
 ## Compression Choice
 
@@ -214,7 +215,7 @@ PunksData
   -> trait data
   -> visual metrics
   -> palette (paletteRgbBytes, paletteAlphaBytes, paletteRgbaBytes)
-  -> indexed pixels (indexedPixelsOf)
+  -> compressed pixel blobs, exposed through indexedPixelsOf
 
 PunksPng
   -> reads PunksData via public views
@@ -392,7 +393,7 @@ Composite PNG work is split into two milestones inside `PunksPng`:
 
 ```text
 PunksData
-  -> indexed pixel data, palette, trait masks
+  -> compressed pixel data, palette, trait masks
 
 PunksPng
   -> Layer 1: paged indexed/RGBA mosaic rows from PunksData
@@ -401,7 +402,7 @@ PunksPng
 
 Milestone 1 — pixel correctness:
 
-- Generate exact RGBA scanlines from `PunksData` indexed pixels.
+- Generate exact RGBA scanlines from `PunksData` decoded indexed pixels.
 - Prove `mosaicPixelsHash() == 0xdb0e780a…` over concatenated source
   `punkImage` outputs.
 - Prove inflated scanline hash matches

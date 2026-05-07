@@ -21,7 +21,7 @@ what traits exist, what do they mean, how many Punks have them, and how can I
 quickly fetch membership sets?
 ```
 
-## Existing Repo Surface
+## Existing Repo Surface To Replace
 
 The current local interface is intentionally small:
 
@@ -46,8 +46,9 @@ The current matching semantics are:
 - Every forbidden filter must be absent.
 - Include IDs and exclude IDs are checked separately.
 
-This is good enough for a first release if the external trait contract is
-trustworthy and immutable.
+This was good enough for the first local sketch, but it is not the target
+format. The auction contract should move to the mask trio below before
+deployment.
 
 ## Trait Namespace
 
@@ -88,10 +89,21 @@ uint8 constant KIND_ACCESSORY       = 3;
 
 ### Name Hash
 
-`nameHash` for `traitIdByNameHash` is `keccak256(bytes(name))` over the
-*exact* source bytes — casing preserved, typos preserved, no trimming, no
-lowercasing, no normalization. Frontends build a static name → hash table
-at build time.
+`nameHash` for `traitIdByNameHash` is `keccak256(bytes(name))`.
+
+Source-derived names — head variants (e.g., `Female 1`) and accessories
+(e.g., `Tassle Hat`, `Pink With Hat`, `Do-rag`) — use the *exact* source
+bytes: casing preserved, typos preserved, no trimming, no lowercasing, no
+normalization.
+
+Synthesized names — kinds without a source CSV string — are pinned to
+canonical literals:
+
+- Normalized types (kind 1): `Alien`, `Ape`, `Female`, `Male`, `Zombie`.
+- Attribute counts (kind 2): `0 Attributes`, `1 Attributes`, `2
+  Attributes`, ..., `7 Attributes` (always plural for code symmetry).
+
+Frontends build a static name → hash table at build time.
 
 Avoid subjective category predicates in the immutable base contract unless they
 are explicitly versioned. Examples: "hair", "hat", "glasses", "mouth", "beard".
@@ -122,6 +134,28 @@ color masks, and numeric bounds.
 
 ```solidity
 interface IPunksDataCriteria {
+    enum PunkType {
+        Alien,    // mask bit 0
+        Ape,      // mask bit 1
+        Female,   // mask bit 2
+        Male,     // mask bit 3
+        Zombie    // mask bit 4
+    }
+
+    enum HeadVariant {
+        Alien,    // mask bit 5
+        Ape,      // mask bit 6
+        Female1,  // mask bit 7
+        Female2,  // mask bit 8
+        Female3,  // mask bit 9
+        Female4,  // mask bit 10
+        Male1,    // mask bit 11
+        Male2,    // mask bit 12
+        Male3,    // mask bit 13
+        Male4,    // mask bit 14
+        Zombie    // mask bit 15
+    }
+
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function sourceDataContract() external view returns (address);
@@ -147,11 +181,15 @@ interface IPunksDataCriteria {
         uint256 anyOfMask
     ) external view returns (bool);
 
-    function headVariantOf(uint16 punkId) external view returns (uint8);
-    function punkTypeOf(uint16 punkId) external view returns (uint8);
+    function headVariantOf(uint16 punkId) external view returns (HeadVariant);
+    function punkTypeOf(uint16 punkId) external view returns (PunkType);
     function attributeCountOf(uint16 punkId) external view returns (uint8);
 }
 ```
+
+Enum values match local indices (0–10 head variants alphabetical, 0–4
+types alphabetical); the corresponding mask bit is `uint8(headVariantOf(p))
++ 5` and `uint8(punkTypeOf(p))` respectively. ABI-encoded as `uint8`.
 
 `hasTraits` semantics: returns true iff
 `(m & requiredMask) == requiredMask`
@@ -182,15 +220,17 @@ This repo's `Offers` contract consumes the mask form directly.
 The auction-side filter shape is:
 
 ```solidity
-struct CompactTraitFilter {
+struct OfferCriteria {
     uint256 requiredMask;
     uint256 forbiddenMask;
     uint256 anyOfMask;
 }
 ```
 
-That replaces dynamic `TraitFilter[]` arrays. Settlement becomes one
-external call regardless of filter count.
+That replaces dynamic `TraitFilter[]` arrays. `placeOffer` takes
+`requiredMask`, `forbiddenMask`, and `anyOfMask` directly, alongside the
+existing `includeIds` and `excludeIds`. Settlement becomes one external call
+regardless of filter count.
 
 Invalid `punkId >= 10000` and invalid `traitId >= traitCount()` revert.
 Silent false on invalid IDs would hide misconfigured offers and UI bugs.

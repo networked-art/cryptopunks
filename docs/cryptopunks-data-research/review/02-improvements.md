@@ -240,9 +240,10 @@ Where it appears: `06-reproducibility-notes.md` lines 102–143.
 
 The current invariants list is good. Add:
 
-- `popcount(traitMaskOf(punkId)) == 1 + 1 + attributeCountOf(punkId)`
+- `popcount(traitMaskOf(punkId)) == 3 + attributeCountOf(punkId)`
   for every Punk: exactly one head variant bit, exactly one normalized
-  type bit, and as many accessory bits as the attribute count.
+  type bit, exactly one attribute-count bit, and as many accessory bits
+  as the attribute count.
 - For every Punk, the head variant bit is consistent with the normalized
   type bit (`Female 1..4` → `Female`, etc.). Hardcode the table; assert.
 - Sum over all 10,000 Punks of `popcount(traitMaskOf)` equals sum over

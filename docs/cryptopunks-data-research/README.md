@@ -32,11 +32,11 @@ awkward as a machine-readable data primitive: attributes are exposed as a
 display CSV string and SVG as an expensive string-building view.
 
 The broader goal is an immutable canonical Punk data contract — `PunksData`
-— that exposes traits, visual metrics, color data, and flattened indexed
-image data. Trait bidding is one consumer; SVG/JSON/PNG encoders are
-others.
+— that exposes traits, visual metrics, color data, and decoded flattened
+indexed image data. Pixels are stored compressed and decoded in views; trait
+bidding is one consumer; SVG/JSON/PNG encoders are others.
 
-The contract-facing primitives are cheap predicates over `uint256` masks:
+The contract-facing primitives are cheap views and predicates over `uint256` masks:
 
 ```solidity
 function hasTrait(uint16 punkId, uint16 traitId) external view returns (bool);

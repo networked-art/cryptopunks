@@ -20,23 +20,26 @@ For trait predicates:
 | Payload | Estimate |
 | --- | ---: |
 | 10,000 Punk masks, 128 bits each | 160,000 bytes |
-| 108 trait bitmaps, 10,000 bits each | 135,000 bytes |
+| 111 trait bitmaps, 10,000 bits each | 138,750 bytes raw bits / 142,080 bytes as 40 `uint256` words |
 | 98 exact-name trait bitmaps | 122,500 bytes |
 | 87 accessory-only bitmaps | 108,750 bytes |
 | Trait names and metadata | about 2 KB |
-| 10,000 indexed 24x24 images, 1 byte per pixel | 5,760,000 bytes |
+| 10,000 indexed 24x24 images, raw 1 byte per pixel | 5,760,000 bytes |
+| compressed pixels, sparse local-palette target | about 1.65 MB including uint24 offsets |
 | Global RGBA palette, 222 colors | 888 bytes |
-| 10,000 visible-pixel bitmaps, 576 bits each | 720,000 bytes |
+| 10,000 visible-pixel bitmaps, standalone | 720,000 bytes, rejected as duplicated surface |
 | 10,000 color masks, 256 bits each | 320,000 bytes |
 | Packed per-Punk color histograms | about 230,000 bytes |
 
-The most useful full trait package, masks plus bitmaps, is roughly 295 KB
-before ABI/chunk overhead.
+The most useful full trait package, masks plus simple full bitmaps, is roughly
+302 KB before ABI/chunk overhead.
 
 A maximally useful visual package is larger, but still tractable with chunked
 immutable data. The live crawl found 222 total RGBA colors including
-transparent, so every Punk image can be represented as a 576-byte indexed image
-rather than 2,304 bytes of raw RGBA.
+transparent, so every Punk image can be represented as indexed colors rather
+than 2,304 bytes of raw RGBA. The accepted design stores those indexed pixels
+compressed and decodes them in views; raw 576-byte tiles are a baseline, not
+the target.
 
 ## Option A: Plain Storage Mapping
 
@@ -103,7 +106,8 @@ traitMeta.bin
   compact table of name offsets, kind, supply
 ```
 
-With 295 KB total, this is about 13 chunks at 24 KB each.
+With roughly 302 KB total for 128-bit masks plus 111 simple full bitmaps,
+this is about 13 chunks at 24 KB each.
 
 Verdict: still the best fit for immutable public-good data. The reason is not
 only deployment cost. Bytecode chunks are a natural way to publish large,
@@ -111,15 +115,24 @@ sealed, sequential data like indexed images, bitmaps, and histograms.
 
 ## Option B2: Full Indexed Image Dataset
 
-Store fully flattened Punk images as palette indexes:
+Expose fully flattened Punk images as palette indexes, but store them in a
+compressed lossless encoding:
 
 ```text
 palette.bin
   222 RGBA colors, colorId 0 reserved for transparent
 
-indexedPixels.bin
-  offset = punkId * 576 + y * 24 + x
-  value  = uint8 colorId
+pixelOffsets.bin
+  10001 uint24 offsets into compressedPixels.bin
+
+compressedPixels.bin entry for each Punk
+  uint8 visibleColorCount
+  bytes72 visibleBitmap
+  uint8[visibleColorCount] local palette of global color IDs
+  bitpacked local color indexes for visible pixels in raster order
+
+indexedPixelsOf(punkId)
+  decodes to 576 uint8 global color IDs
 
 visualMetrics.bin
   pixel count, color count, color mask, optional histogram pointer
@@ -133,10 +146,12 @@ Pros:
 - Exact color predicates become first-class.
 - The original expensive composition algorithm does not need to run during
   rendering.
+- Pixel storage is much smaller than raw indexed tiles while preserving the
+  same public primitive.
 
 Cons:
 
-- Roughly 5.76 MB just for indexed pixels.
+- More decode logic in `indexedPixelsOf`, `colorAt`, and mosaic generation.
 - Requires many data chunks.
 - Needs a generator and exhaustive verification against the source
   `punkImage(uint16)` output.
@@ -301,10 +316,12 @@ For a public-good deployment:
 - Prefer constructor-time immutable roots or one-time loader plus `seal`.
 - Emit a `DatasetCommitted` event with:
   - source data contract address,
-  - attribute CSV hash,
   - trait catalog hash,
-  - mask blob hash,
-  - bitmap blob hash.
+  - punk mask hash,
+  - palette hash,
+  - decoded indexed-pixels hash,
+  - compressed pixel blob hash,
+  - dataset hash.
 - Keep an explicit `datasetHash()` view.
 - Publish a generator that reconstructs all blobs from the Larva Labs contract.
 - Fork-test every Punk against the source contract before deployment.
