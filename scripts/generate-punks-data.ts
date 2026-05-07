@@ -27,7 +27,11 @@ const PIXELS_PER_PUNK = 576
 const RGBA_BYTES_PER_PUNK = PIXELS_PER_PUNK * 4
 const TRANSPARENT_RGBA = '00000000'
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
-const CONCURRENCY = Number(process.env.PUNKS_DATA_CONCURRENCY ?? '12')
+const CONCURRENCY = readPositiveIntEnv('PUNKS_DATA_CONCURRENCY', 4)
+const RPC_RETRIES = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRIES', 8)
+const RPC_RETRY_BASE_MS = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRY_BASE_MS', 750)
+const RPC_RETRY_MAX_MS = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRY_MAX_MS', 30_000)
+const REQUEST_DELAY_MS = readNonNegativeIntEnv('PUNKS_DATA_REQUEST_DELAY_MS', 0)
 const RPC_URL =
   process.env.PUNKS_DATA_RPC_URL ??
   process.env.RPC_URL ??
@@ -97,24 +101,33 @@ async function main() {
   }
 
   console.log(`Using RPC ${redactRpcUrl(RPC_URL)}`)
+  console.log(
+    `RPC settings: concurrency=${CONCURRENCY}, retries=${RPC_RETRIES}, requestDelayMs=${REQUEST_DELAY_MS}`,
+  )
   console.log(`Reading ${PUNK_COUNT} Punk attribute/image pairs`)
   const rows = await mapLimit(
     Array.from({ length: PUNK_COUNT }, (_, id) => id),
     CONCURRENCY,
     async (id): Promise<PunkRow> => {
-      const attributes = await publicClient.readContract({
-        address: SOURCE_DATA,
-        abi: dataAbi,
-        functionName: 'punkAttributes',
-        args: [id],
-        blockNumber: SOURCE_BLOCK_NUMBER,
+      const attributes = await withRpcRetry(`punkAttributes(${id})`, async () => {
+        await sleep(REQUEST_DELAY_MS)
+        return publicClient.readContract({
+          address: SOURCE_DATA,
+          abi: dataAbi,
+          functionName: 'punkAttributes',
+          args: [id],
+          blockNumber: SOURCE_BLOCK_NUMBER,
+        })
       })
-      const imageHex = await publicClient.readContract({
-        address: SOURCE_DATA,
-        abi: dataAbi,
-        functionName: 'punkImage',
-        args: [id],
-        blockNumber: SOURCE_BLOCK_NUMBER,
+      const imageHex = await withRpcRetry(`punkImage(${id})`, async () => {
+        await sleep(REQUEST_DELAY_MS)
+        return publicClient.readContract({
+          address: SOURCE_DATA,
+          abi: dataAbi,
+          functionName: 'punkImage',
+          args: [id],
+          blockNumber: SOURCE_BLOCK_NUMBER,
+        })
       })
       const image = hexToBytes(imageHex)
       if (image.length !== RGBA_BYTES_PER_PUNK) {
@@ -637,11 +650,108 @@ function mustGet<K, V>(map: Map<K, V>, key: K): V {
   return value
 }
 
+async function withRpcRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= RPC_RETRIES; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      if (attempt === RPC_RETRIES) break
+
+      const delayMs = retryDelayMs(attempt, isRateLimitError(error))
+      console.warn(
+        `  retry ${label} in ${delayMs}ms (attempt ${attempt + 1}/${RPC_RETRIES}): ${shortError(error)}`,
+      )
+      await sleep(delayMs)
+    }
+  }
+  throw lastError
+}
+
+function retryDelayMs(attempt: number, rateLimited: boolean): number {
+  const exponential = RPC_RETRY_BASE_MS * 2 ** attempt
+  const capped = Math.min(exponential, RPC_RETRY_MAX_MS)
+  const floor = rateLimited ? Math.max(capped, 2_500) : capped
+  return floor + Math.floor(Math.random() * 250)
+}
+
+function shortError(error: unknown): string {
+  const text = errorText(error)
+  const status = statusCode(error)
+  if (status !== undefined) return `status ${status}`
+  return text.split('\n')[0].slice(0, 160)
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return statusCode(error) === 429 || /429|too many requests|rate limit/i.test(errorText(error))
+}
+
+function statusCode(error: unknown): number | undefined {
+  let current: unknown = error
+  while (current !== undefined && current !== null) {
+    if (typeof current === 'object' && 'status' in current) {
+      const status = Number((current as { status?: unknown }).status)
+      if (Number.isInteger(status)) return status
+    }
+    current = typeof current === 'object' && 'cause' in current
+      ? (current as { cause?: unknown }).cause
+      : undefined
+  }
+  return undefined
+}
+
+function errorText(error: unknown): string {
+  const parts: string[] = []
+  let current: unknown = error
+  while (current !== undefined && current !== null) {
+    if (current instanceof Error) parts.push(`${current.name}: ${current.message}`)
+    else parts.push(String(current))
+
+    if (typeof current === 'object' && 'details' in current) {
+      const details = (current as { details?: unknown }).details
+      if (typeof details === 'string') parts.push(details)
+    }
+
+    current = typeof current === 'object' && 'cause' in current
+      ? (current as { cause?: unknown }).cause
+      : undefined
+  }
+  return parts.join('\n')
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms === 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function readPositiveIntEnv(name: string, fallback: number): number {
+  const value = readNonNegativeIntEnv(name, fallback)
+  if (value === 0) throw new Error(`${name} must be greater than zero`)
+  return value
+}
+
+function readNonNegativeIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]
+  if (raw === undefined || raw === '') return fallback
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${name} must be a non-negative integer`)
+  }
+  return value
+}
+
 function redactRpcUrl(url: string): string {
   try {
     const parsed = new URL(url)
     if (parsed.username !== '') parsed.username = '...'
     if (parsed.password !== '') parsed.password = '...'
+    const pathSegments = parsed.pathname.split('/').filter(Boolean)
+    if (pathSegments.length > 1) {
+      parsed.pathname = `/${pathSegments[0]}/...`
+    } else if (pathSegments.length === 1 && pathSegments[0].length > 12) {
+      parsed.pathname = '/...'
+    }
     for (const key of parsed.searchParams.keys()) {
       parsed.searchParams.set(key, '...')
     }
@@ -662,14 +772,22 @@ async function mapLimit<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length)
   let next = 0
+  let stopped = false
   async function worker() {
-    for (;;) {
+    while (!stopped) {
       const index = next++
       if (index >= items.length) return
-      results[index] = await fn(items[index])
+      try {
+        results[index] = await fn(items[index])
+      } catch (error) {
+        stopped = true
+        throw error
+      }
     }
   }
-  await Promise.all(Array.from({ length: limit }, worker))
+  const settled = await Promise.allSettled(Array.from({ length: limit }, worker))
+  const failure = settled.find((result) => result.status === 'rejected')
+  if (failure !== undefined && failure.status === 'rejected') throw failure.reason
   return results
 }
 
