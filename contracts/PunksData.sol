@@ -253,40 +253,91 @@ contract PunksData is PunksDataLoader, IPunksData {
 
         uint256 bitsPerIndex = _bitsForPalette(visibleColorCount);
         uint256 indexesOffset = COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount;
-        uint256 visibleIndex;
         uint256 bitOffset;
+        uint256 visiblePixelCount;
         pixels = new bytes(PIXELS_PER_PUNK);
 
         for (uint256 byteIdx; byteIdx < VISIBLE_BITMAP_BYTES;) {
-            uint8 bitmapByte = uint8(entry[1 + byteIdx]);
-            if (bitmapByte != 0) {
-                for (uint256 b; b < BITS_PER_BYTE;) {
-                    if ((bitmapByte & (1 << (BITS_PER_BYTE - 1 - b))) != 0) {
-                        uint256 localIndex;
-                        if (bitsPerIndex != 0) {
-                            localIndex = _readBits(entry, indexesOffset, bitOffset, bitsPerIndex);
-                            bitOffset += bitsPerIndex;
-                        }
-                        if (localIndex >= visibleColorCount) revert MalformedPixelBlob();
-                        pixels[byteIdx * BITS_PER_BYTE + b] = localPalette[localIndex];
-                        unchecked {
-                            ++visibleIndex;
-                        }
-                    }
-                    unchecked {
-                        ++b;
-                    }
-                }
-            }
+            uint256 decodedInByte;
+            (bitOffset, decodedInByte) = _decodeVisiblePixelByte(
+                entry,
+                localPalette,
+                pixels,
+                indexesOffset,
+                bitsPerIndex,
+                byteIdx,
+                bitOffset
+            );
+            visiblePixelCount += decodedInByte;
             unchecked {
                 ++byteIdx;
             }
         }
 
         uint256 expectedIndexBytes = (bitOffset + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
-        if (entry.length != indexesOffset + expectedIndexBytes || visibleIndex == 0) {
+        if (entry.length != indexesOffset + expectedIndexBytes || visiblePixelCount == 0) {
             revert MalformedPixelBlob();
         }
+    }
+
+    function _decodeVisiblePixelByte(
+        bytes memory entry,
+        bytes memory localPalette,
+        bytes memory pixels,
+        uint256 indexesOffset,
+        uint256 bitsPerIndex,
+        uint256 byteIdx,
+        uint256 bitOffset
+    ) private pure returns (uint256 nextBitOffset, uint256 decodedCount) {
+        nextBitOffset = bitOffset;
+        uint8 bitmapByte = uint8(entry[1 + byteIdx]);
+        if (bitmapByte == 0) return (nextBitOffset, 0);
+
+        uint256 pixelBase = byteIdx * BITS_PER_BYTE;
+        for (uint256 bitIdx; bitIdx < BITS_PER_BYTE;) {
+            uint256 decoded;
+            (nextBitOffset, decoded) = _decodePixelIfVisible(
+                entry,
+                localPalette,
+                pixels,
+                indexesOffset,
+                bitsPerIndex,
+                bitmapByte,
+                pixelBase + bitIdx,
+                bitIdx,
+                nextBitOffset
+            );
+            decodedCount += decoded;
+            unchecked {
+                ++bitIdx;
+            }
+        }
+    }
+
+    function _decodePixelIfVisible(
+        bytes memory entry,
+        bytes memory localPalette,
+        bytes memory pixels,
+        uint256 indexesOffset,
+        uint256 bitsPerIndex,
+        uint8 bitmapByte,
+        uint256 pixelOffset,
+        uint256 bitIdx,
+        uint256 bitOffset
+    ) private pure returns (uint256 nextBitOffset, uint256 decoded) {
+        nextBitOffset = bitOffset;
+        uint256 pixelBit = uint256(1) << (BITS_PER_BYTE - 1 - bitIdx);
+        if ((bitmapByte & pixelBit) == 0) return (nextBitOffset, 0);
+
+        uint256 localIndex;
+        if (bitsPerIndex != 0) {
+            localIndex = _readBits(entry, indexesOffset, nextBitOffset, bitsPerIndex);
+            nextBitOffset += bitsPerIndex;
+        }
+        if (localIndex >= localPalette.length) revert MalformedPixelBlob();
+
+        pixels[pixelOffset] = localPalette[localIndex];
+        return (nextBitOffset, 1);
     }
 
     function _readBits(
