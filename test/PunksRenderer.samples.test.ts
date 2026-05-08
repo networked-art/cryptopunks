@@ -98,7 +98,7 @@ describe('PunksRenderer samples', () => {
       const attrs = snapshot.attributes[idx]
       const slug = `punk-${String(id).padStart(4, '0')}`
 
-      const svg = (await renderer.read.punkImageSvg([id])) as string
+      const svg = (await renderer.read.punkSvg([id])) as string
       const svgPath = join(OUTPUT_DIR, `${slug}.svg`)
       await writeFile(svgPath, svg)
       written.push(svgPath)

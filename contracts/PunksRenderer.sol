@@ -8,6 +8,7 @@ import "./interfaces/IReverseRegistrar.sol";
 import "./lib/Crc32.sol";
 import "./lib/Adler32.sol";
 import "./lib/PngEncoder.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
 /// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
 /// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
@@ -64,6 +65,11 @@ contract PunksRenderer is IPunksRenderer {
     uint256 private constant PIXELS = 576;
     uint256 private constant RGBA_LEN = 2304;
     uint256 private constant ROW_PIXELS = 24;
+    uint256 private constant PUNK_COUNT = 10_000;
+
+    uint16 private constant TRAIT_COUNT = 111;
+    uint16 private constant HEAD_VARIANT_TRAIT_OFFSET = 5;
+    uint16 private constant ACCESSORY_TRAIT_OFFSET = 24;
 
     // SVG buffer: header (134) + footer (6) + worst-case rect count.
     // Worst-case rect count per Punk is bounded by alternation: 24 rows × 12
@@ -104,6 +110,33 @@ contract PunksRenderer is IPunksRenderer {
     /// @inheritdoc IPunksRenderer
     function dataContract() external view returns (address) {
         return address(PUNKS_DATA);
+    }
+
+    /// @inheritdoc IPunksRenderer
+    function punkAttributes(uint16 punkId) public view returns (string memory csv) {
+        csv = PUNKS_DATA.traitName(
+            HEAD_VARIANT_TRAIT_OFFSET + uint16(uint8(PUNKS_DATA.headVariantOf(punkId)))
+        );
+
+        uint256 mask = PUNKS_DATA.traitMaskOf(punkId);
+        for (uint16 traitId = ACCESSORY_TRAIT_OFFSET; traitId < TRAIT_COUNT; ++traitId) {
+            if ((mask & (uint256(1) << traitId)) == 0) continue;
+            csv = string.concat(csv, ", ", PUNKS_DATA.traitName(traitId));
+        }
+    }
+
+    /// @inheritdoc IPunksRenderer
+    function metadataJson(uint16 punkId) public view returns (string memory) {
+        return _metadataJson(punkId, punkSvg(punkId));
+    }
+
+    /// @inheritdoc IPunksRenderer
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        uint16 punkId = _checkedPunkId(tokenId);
+        return string.concat(
+            "data:application/json;base64,",
+            Base64.encode(bytes(metadataJson(punkId)))
+        );
     }
 
     /// @inheritdoc IPunksRenderer
@@ -167,14 +200,14 @@ contract PunksRenderer is IPunksRenderer {
     }
 
     /// @inheritdoc IPunksRenderer
-    function punkImageSvg(uint16 punkId) external view returns (string memory) {
+    function punkSvg(uint16 punkId) public view returns (string memory) {
         bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
         bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
         return _buildSvg(ix, pal, BG_DEFAULT);
     }
 
     /// @inheritdoc IPunksRenderer
-    function punkMarketplaceSvg(uint16 punkId) external view returns (string memory) {
+    function punkMarketplaceSvg(uint16 punkId) public view returns (string memory) {
         bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
         bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
         return _buildSvg(ix, pal, backgroundOf(punkId));
@@ -258,6 +291,62 @@ contract PunksRenderer is IPunksRenderer {
         cursor = PngEncoder.writeChunk(png, cursor, crcTable, PngEncoder.TYPE_IEND, "");
 
         assembly ("memory-safe") { mstore(png, cursor) }
+    }
+
+    // ------------------ Internal: metadata ------------------
+
+    function _metadataJson(uint16 punkId, string memory imageSvg)
+        private
+        view
+        returns (string memory)
+    {
+        string memory id = _toString(punkId);
+        return string.concat(
+            '{"name":"CryptoPunk #',
+            id,
+            '","description":"CryptoPunk #',
+            id,
+            ' rendered fully onchain from sealed CryptoPunks pixel and trait data.",',
+            '"image":"data:image/svg+xml;base64,',
+            Base64.encode(bytes(imageSvg)),
+            '","attributes":',
+            _metadataAttributesJson(punkId),
+            "}"
+        );
+    }
+
+    function _metadataAttributesJson(uint16 punkId) private view returns (string memory json) {
+        uint8 punkType = uint8(PUNKS_DATA.punkTypeOf(punkId));
+        uint8 headVariant = uint8(PUNKS_DATA.headVariantOf(punkId));
+        uint8 attributeCount = PUNKS_DATA.attributeCountOf(punkId);
+        uint256 mask = PUNKS_DATA.traitMaskOf(punkId);
+
+        json = string.concat(
+            '[{"trait_type":"Type","value":"',
+            PUNKS_DATA.traitName(uint16(punkType)),
+            '"},{"trait_type":"Head Variant","value":"',
+            PUNKS_DATA.traitName(HEAD_VARIANT_TRAIT_OFFSET + uint16(headVariant)),
+            '"},{"display_type":"number","trait_type":"Attribute Count","value":',
+            _toString(attributeCount),
+            "}"
+        );
+
+        for (uint16 traitId = ACCESSORY_TRAIT_OFFSET; traitId < TRAIT_COUNT; ++traitId) {
+            if ((mask & (uint256(1) << traitId)) == 0) continue;
+            json = string.concat(
+                json,
+                ',{"trait_type":"Accessory","value":"',
+                PUNKS_DATA.traitName(traitId),
+                '"}'
+            );
+        }
+
+        json = string.concat(json, "]");
+    }
+
+    function _checkedPunkId(uint256 tokenId) private pure returns (uint16) {
+        if (tokenId >= PUNK_COUNT) revert InvalidTokenId();
+        return uint16(tokenId);
     }
 
     // ------------------ Internal: SVG ------------------
@@ -364,6 +453,25 @@ contract PunksRenderer is IPunksRenderer {
         out[cursor] = hexLut[b >> 4];
         out[cursor + 1] = hexLut[b & 0xf];
         return cursor + 2;
+    }
+
+    function _toString(uint256 value) private pure returns (string memory) {
+        if (value == 0) return "0";
+
+        uint256 digits;
+        uint256 tmp = value;
+        while (tmp != 0) {
+            ++digits;
+            tmp /= 10;
+        }
+
+        bytes memory out = new bytes(digits);
+        while (value != 0) {
+            --digits;
+            out[digits] = bytes1(uint8(0x30 + (value % 10)));
+            value /= 10;
+        }
+        return string(out);
     }
 }
 

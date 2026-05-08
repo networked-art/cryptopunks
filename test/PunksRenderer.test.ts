@@ -1,5 +1,6 @@
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -8,18 +9,27 @@ import { network } from 'hardhat'
 import { bytesToHex, type Hex } from 'viem'
 
 import {
+  ACCESSORY_COUNT,
   PIXELS_PER_PUNK,
   PUNK_COUNT,
   TRANSPARENT_RGBA,
+  asciiSort,
+  buildTraitCatalog,
   countVisiblePixels,
+  encodeTraitMeta,
   encodeSparseIndexed,
   hexToBytes,
+  KIND_ACCESSORY,
+  KIND_ATTRIBUTE_COUNT,
+  KIND_HEAD_VARIANT,
+  KIND_NORMALIZED_TYPE,
   parseAttributes,
   rgbaToIndexed,
   rgbaKey,
   sortedVisibleColors,
   HEAD_VARIANTS,
   NORMALIZED_TYPES,
+  type TraitRecord,
 } from '../scripts/lib/punks-builder.js'
 import {
   buildPngFlattened,
@@ -158,14 +168,59 @@ describe('PunksRenderer', () => {
     }
   })
 
-  it('punkImageSvg matches the offchain reference for every snapshot Punk', async () => {
+  it('punkSvg matches the offchain reference for every snapshot Punk', async () => {
     for (let i = 0; i < ctx.snapshot.snapshotIds.length; i++) {
       const id = ctx.snapshot.snapshotIds[i]
-      const onchain = (await ctx.renderer.read.punkImageSvg([id])) as string
+      const onchain = (await ctx.renderer.read.punkSvg([id])) as string
       const indexed = rgbaToIndexed(ctx.snapshot.images[i], ctx.colorIdByRgba)
       const expected = buildSvg(indexed, ctx.paletteRgba)
       assert.equal(onchain, expected, `Punk ${id}: SVG byte-equal`)
     }
+  })
+
+  it('punkAttributes returns CSV display traits in canonical trait order', async () => {
+    for (let i = 0; i < ctx.snapshot.snapshotIds.length; i++) {
+      const id = ctx.snapshot.snapshotIds[i]
+      const expected = expectedPunkAttributesCsv(
+        ctx.snapshot.attributes[i],
+        ctx.traitIdByKindAndName,
+        ctx.traits,
+      )
+      assert.equal(await ctx.renderer.read.punkAttributes([id]), expected)
+    }
+  })
+
+  it('metadataJson and tokenURI render ERC721-style metadata', async () => {
+    const id = 0
+    const metadata = JSON.parse((await ctx.renderer.read.metadataJson([id])) as string)
+    const expectedImagePrefix = 'data:image/svg+xml;base64,'
+
+    assert.equal(metadata.name, 'CryptoPunk #0')
+    assert.equal(
+      metadata.description,
+      'CryptoPunk #0 rendered fully onchain from sealed CryptoPunks pixel and trait data.',
+    )
+    assert.equal(metadata.image.startsWith(expectedImagePrefix), true)
+    assert.equal(
+      Buffer.from(metadata.image.slice(expectedImagePrefix.length), 'base64').toString('utf8'),
+      await ctx.renderer.read.punkSvg([id]),
+    )
+    assert.deepEqual(
+      metadata.attributes,
+      expectedMetadataAttributes(
+        ctx.snapshot.attributes[ctx.snapshot.snapshotIds.indexOf(id)],
+        ctx.traitIdByKindAndName,
+        ctx.traits,
+      ),
+    )
+
+    const tokenUriPrefix = 'data:application/json;base64,'
+    const uri = (await ctx.renderer.read.tokenURI([id])) as string
+    assert.equal(uri.startsWith(tokenUriPrefix), true)
+    assert.deepEqual(
+      JSON.parse(Buffer.from(uri.slice(tokenUriPrefix.length), 'base64').toString('utf8')),
+      metadata,
+    )
   })
 
   it('punkPng (transparent) is byte-equal to the offchain reference', async () => {
@@ -237,7 +292,17 @@ describe('PunksRenderer', () => {
       'InvalidPunkId',
     )
     await ctx.viem.assertions.revertWithCustomError(
-      ctx.renderer.read.punkImageSvg([10_000]),
+      ctx.renderer.read.punkSvg([10_000]),
+      ctx.data,
+      'InvalidPunkId',
+    )
+    await ctx.viem.assertions.revertWithCustomError(
+      ctx.renderer.read.punkAttributes([10_000]),
+      ctx.data,
+      'InvalidPunkId',
+    )
+    await ctx.viem.assertions.revertWithCustomError(
+      ctx.renderer.read.metadataJson([10_000]),
       ctx.data,
       'InvalidPunkId',
     )
@@ -250,6 +315,11 @@ describe('PunksRenderer', () => {
       ctx.renderer.read.punkPng([10_000, '0x000000ff' as Hex]),
       ctx.data,
       'InvalidPunkId',
+    )
+    await ctx.viem.assertions.revertWithCustomError(
+      ctx.renderer.read.tokenURI([10_000]),
+      ctx.renderer,
+      'InvalidTokenId',
     )
   })
 })
@@ -295,6 +365,10 @@ async function deployRendererFixture() {
   }
 
   const paletteBytes = encodePalette(palette)
+  const traits = buildTestTraitCatalog(snapshot)
+  const traitMeta = encodeTraitMeta(traits)
+  const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
+  const traitMaskPairGroups = buildTraitMaskPairGroups(snapshot, traitIdByKindAndName)
   const colorMaskGroups = buildColorMaskGroups(snapshot, colorIdByRgba)
   const packedScalarGroups = buildPackedScalarGroups(snapshot, colorIdByRgba)
 
@@ -303,10 +377,14 @@ async function deployRendererFixture() {
   const [deployer] = await viem.getWalletClients()
   const data = await viem.deployContract('PunksData', [deployer.account.address])
 
+  await loadBlob(data, BlobId.TraitMeta, traitMeta)
   await loadBlob(data, BlobId.Palette, paletteBytes)
   await loadBlob(data, BlobId.PixelOffsets, pixelOffsets)
   await loadBlob(data, BlobId.CompressedPixels, compressedPixels)
 
+  for (const { start, values } of traitMaskPairGroups) {
+    await data.write.loadTraitMaskPairs([start, values])
+  }
   for (const { start, values } of colorMaskGroups) {
     await data.write.loadColorMasks([start, values])
   }
@@ -316,7 +394,7 @@ async function deployRendererFixture() {
 
   // Tests run without a CryptoPunks market mock, so wire all marketplace
   // addresses to zero. `backgroundOf` short-circuits and returns BG_DEFAULT,
-  // matching the legacy `punkImageSvg` output.
+  // matching the legacy `punkSvg` output.
   const renderer = await viem.deployContract('PunksRenderer', [
     data.address,
     ZERO_ADDRESS,
@@ -330,7 +408,18 @@ async function deployRendererFixture() {
   // offchain encoders.
   const paletteRgba = encodePalette(palette)
 
-  return { connection, viem, data, renderer, snapshot, palette, paletteRgba, colorIdByRgba }
+  return {
+    connection,
+    viem,
+    data,
+    renderer,
+    snapshot,
+    palette,
+    paletteRgba,
+    colorIdByRgba,
+    traits,
+    traitIdByKindAndName,
+  }
 }
 
 async function loadSnapshot(): Promise<Snapshot> {
@@ -365,6 +454,50 @@ function buildSnapshotPalette(snapshot: Snapshot): string[] {
   }
   if (palette.length !== 222) throw new Error(`palette size ${palette.length}`)
   return palette
+}
+
+function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
+  const accessories = new Set<string>()
+  for (const attributes of snapshot.attributes) {
+    for (const accessory of parseAttributes(attributes).accessories) {
+      accessories.add(accessory)
+    }
+  }
+
+  const names = [...accessories]
+  let i = 0
+  while (names.length < ACCESSORY_COUNT) {
+    names.push(`zz Test Accessory ${String(i++).padStart(2, '0')}`)
+  }
+  names.sort(asciiSort)
+  return buildTraitCatalog(names)
+}
+
+function buildTraitIdByKindAndName(traits: TraitRecord[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const trait of traits) out.set(`${trait.kind}:${trait.name}`, trait.id)
+  return out
+}
+
+function buildTraitMaskPairGroups(
+  snapshot: Snapshot,
+  traitIdByKindAndName: Map<string, number>,
+): Array<{ start: number; values: bigint[] }> {
+  const packedByPair = new Map<number, bigint>()
+  const lowMask = (1n << 128n) - 1n
+
+  for (let i = 0; i < snapshot.snapshotIds.length; i++) {
+    const id = snapshot.snapshotIds[i]
+    const pairIndex = Math.floor(id / 2)
+    const mask = buildExpectedTraitMask(snapshot.attributes[i], traitIdByKindAndName)
+    const current = packedByPair.get(pairIndex) ?? 0n
+    const packed = id % 2 === 0
+      ? (current & ~lowMask) | mask
+      : (current & lowMask) | (mask << 128n)
+    packedByPair.set(pairIndex, packed)
+  }
+
+  return [...packedByPair.entries()].map(([start, value]) => ({ start, values: [value] }))
 }
 
 function buildColorMaskGroups(
@@ -480,4 +613,71 @@ function concat(parts: Uint8Array[]): Uint8Array {
     offset += part.length
   }
   return out
+}
+
+function expectedPunkAttributesCsv(
+  attributes: string,
+  traitIdByKindAndName: Map<string, number>,
+  traits: TraitRecord[],
+): string {
+  const parsed = parseAttributes(attributes)
+  const accessoryNames = accessoryTraitIds(parsed.accessories, traitIdByKindAndName)
+    .map((id) => traits[id].name)
+  return [parsed.headVariant, ...accessoryNames].join(', ')
+}
+
+function expectedMetadataAttributes(
+  attributes: string,
+  traitIdByKindAndName: Map<string, number>,
+  traits: TraitRecord[],
+): Array<Record<string, number | string>> {
+  const parsed = parseAttributes(attributes)
+  return [
+    { trait_type: 'Type', value: parsed.normalizedType },
+    { trait_type: 'Head Variant', value: parsed.headVariant },
+    { display_type: 'number', trait_type: 'Attribute Count', value: parsed.accessories.length },
+    ...accessoryTraitIds(parsed.accessories, traitIdByKindAndName).map((id) => ({
+      trait_type: 'Accessory',
+      value: traits[id].name,
+    })),
+  ]
+}
+
+function buildExpectedTraitMask(
+  attributes: string,
+  traitIdByKindAndName: Map<string, number>,
+): bigint {
+  const parsed = parseAttributes(attributes)
+  let mask = 0n
+  mask |= 1n << BigInt(
+    mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`),
+  )
+  mask |= 1n << BigInt(
+    mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${parsed.headVariant}`),
+  )
+  mask |= 1n << BigInt(
+    mustGet(
+      traitIdByKindAndName,
+      `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+    ),
+  )
+  for (const id of accessoryTraitIds(parsed.accessories, traitIdByKindAndName)) {
+    mask |= 1n << BigInt(id)
+  }
+  return mask
+}
+
+function accessoryTraitIds(
+  accessories: string[],
+  traitIdByKindAndName: Map<string, number>,
+): number[] {
+  return accessories
+    .map((name) => mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${name}`))
+    .sort((a, b) => a - b)
+}
+
+function mustGet<K, V>(map: Map<K, V>, key: K): V {
+  const value = map.get(key)
+  if (value === undefined) throw new Error(`Missing key ${String(key)}`)
+  return value
 }

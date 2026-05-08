@@ -15,14 +15,30 @@ interface IPunksRenderer {
     ///         the failure rather than emitting visually wrong PNGs.
     error InvalidBackground();
 
+    /// @notice Reverts when an ERC721-style token id is outside 0..9999.
+    error InvalidTokenId();
+
     /// @notice Address of the `PunksData` contract this renderer reads from.
     function dataContract() external view returns (address);
+
+    /// @notice Comma-separated display attributes: head variant, then
+    ///         accessories in canonical trait-id order.
+    function punkAttributes(uint16 punkId) external view returns (string memory);
+
+    /// @notice OpenSea-shaped metadata JSON. The `image` field embeds the
+    ///         default-background SVG as a base64 data URI.
+    /// @dev    This is raw JSON, not a URI. Use `tokenURI` for ERC721-style
+    ///         data-URI metadata.
+    function metadataJson(uint16 punkId) external view returns (string memory);
+
+    /// @notice ERC721-compatible metadata URI for Punk ids 0..9999.
+    function tokenURI(uint256 tokenId) external view returns (string memory);
 
     /// @notice 2304-byte RGBA expansion of a Punk image (24x24 x 4 bytes).
     function punkImage(uint16 punkId) external view returns (bytes memory);
 
     /// @notice Run-length SVG over a Larva-compatible `#638596` background.
-    function punkImageSvg(uint16 punkId) external view returns (string memory);
+    function punkSvg(uint16 punkId) external view returns (string memory);
 
     /// @notice PNG-8 indexed (PLTE + tRNS), transparent where the source is.
     function punkPng(uint16 punkId) external view returns (bytes memory);
