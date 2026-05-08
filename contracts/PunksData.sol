@@ -5,8 +5,13 @@ import "./PunksDataLoader.sol";
 import "./interfaces/IPunksData.sol";
 import "./lib/BlobStorage.sol";
 
-/// @title PunksData
-/// @notice Sealed primitive data surface for CryptoPunks traits and indexed pixels.
+/// @title  PunksData
+///
+/// @notice Onchain, sealed data surface for CryptoPunks attributes and pixel art.
+///         This contract was inspired by the original CryptoPunksData contract
+///         at 0x16F5A35647D6F03D5D3da7b35409D65ba03aF3B2.
+///
+/// @author 1001
 contract PunksData is PunksDataLoader, IPunksData {
     using BlobStorage for BlobStorage.Chunk[];
 
@@ -487,3 +492,85 @@ contract PunksData is PunksDataLoader, IPunksData {
         ) revert InvalidMask();
     }
 }
+
+
+
+
+
+
+
+
+
+///
+/// data is beautiful
+///
+
+
+
+/// 10,000 punks
+///
+///   9,879 humans
+///      88 zombies
+///      24 apes
+///       9 aliens
+
+
+
+/// 221 colors
+///
+///   3,668,906 transparent
+///   2,082,868 opaque
+///       8,226 semi
+
+
+
+/// visible pixels per punk
+///
+///   148 minimum (female)
+///   191 minimum (male)
+///   209 mean
+///   332 maximum
+///
+///     2 across the 24 plainest punks
+///    14 across punks 4067 and 7334
+
+
+
+/// every punk fits in 576 indexed bytes
+
+
+
+/// every compressed blob decodes
+/// through the shared palette
+/// to exactly recreate
+/// the source image
+
+
+
+/// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ ■ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ □ □ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+/// ■ ■ ■ ■ ■ ■ ■ □ □ □ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
+///
+///                                     - jalil.eth
+///                                     earth, 2026

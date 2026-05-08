@@ -5,7 +5,7 @@ import "./interfaces/IPunksData.sol";
 import "./lib/BlobStorage.sol";
 
 /// @title PunksDataLoader
-/// @notice Write-side mixin for loading and sealing the Punk data blobs.
+/// @notice Write-side mixin for loading and sealing the punks data blobs.
 /// @dev One-shot lifecycle: an `admin` loads chunks until `seal` flips
 ///      `isSealed`, after which all loader entrypoints revert with
 ///      `AlreadySealed`. The original admin address is preserved as an
