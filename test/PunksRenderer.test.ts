@@ -192,6 +192,8 @@ describe('PunksRenderer', () => {
 
   it('metadataJson and tokenURI render ERC721-style metadata', async () => {
     const id = 0
+    const snapshotIndex = ctx.snapshot.snapshotIds.indexOf(id)
+    const indexed = rgbaToIndexed(ctx.snapshot.images[snapshotIndex], ctx.colorIdByRgba)
     const metadata = JSON.parse((await ctx.renderer.read.metadataJson([id])) as string)
     const expectedImagePrefix = 'data:image/svg+xml;base64,'
 
@@ -208,7 +210,9 @@ describe('PunksRenderer', () => {
     assert.deepEqual(
       metadata.attributes,
       expectedMetadataAttributes(
-        ctx.snapshot.attributes[ctx.snapshot.snapshotIds.indexOf(id)],
+        ctx.snapshot.attributes[snapshotIndex],
+        countVisiblePixels(indexed),
+        sortedVisibleColors(indexed).length,
         ctx.traitIdByKindAndName,
         ctx.traits,
       ),
@@ -628,6 +632,8 @@ function expectedPunkAttributesCsv(
 
 function expectedMetadataAttributes(
   attributes: string,
+  pixelCount: number,
+  colorCount: number,
   traitIdByKindAndName: Map<string, number>,
   traits: TraitRecord[],
 ): Array<Record<string, number | string>> {
@@ -636,6 +642,8 @@ function expectedMetadataAttributes(
     { trait_type: 'Type', value: parsed.normalizedType },
     { trait_type: 'Head Variant', value: parsed.headVariant },
     { display_type: 'number', trait_type: 'Attribute Count', value: parsed.accessories.length },
+    { display_type: 'number', trait_type: 'Color Count', value: colorCount },
+    { display_type: 'number', trait_type: 'Pixel Count', value: pixelCount },
     ...accessoryTraitIds(parsed.accessories, traitIdByKindAndName).map((id) => ({
       trait_type: 'Accessory',
       value: traits[id].name,

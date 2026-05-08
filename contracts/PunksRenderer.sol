@@ -318,6 +318,8 @@ contract PunksRenderer is IPunksRenderer {
         uint8 punkType = uint8(PUNKS_DATA.punkTypeOf(punkId));
         uint8 headVariant = uint8(PUNKS_DATA.headVariantOf(punkId));
         uint8 attributeCount = PUNKS_DATA.attributeCountOf(punkId);
+        uint8 colorCount = PUNKS_DATA.colorCountOf(punkId);
+        uint16 pixelCount = PUNKS_DATA.pixelCountOf(punkId);
         uint256 mask = PUNKS_DATA.traitMaskOf(punkId);
 
         json = string.concat(
@@ -327,6 +329,10 @@ contract PunksRenderer is IPunksRenderer {
             PUNKS_DATA.traitName(HEAD_VARIANT_TRAIT_OFFSET + uint16(headVariant)),
             '"},{"display_type":"number","trait_type":"Attribute Count","value":',
             _toString(attributeCount),
+            '},{"display_type":"number","trait_type":"Color Count","value":',
+            _toString(colorCount),
+            '},{"display_type":"number","trait_type":"Pixel Count","value":',
+            _toString(pixelCount),
             "}"
         );
 
