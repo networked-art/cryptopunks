@@ -36,6 +36,7 @@ const PLACEHOLDER_COLOR_COUNT = 2
 const SNAPSHOT_DIR = 'test/fixtures'
 const SNAPSHOT_JSON = join(SNAPSHOT_DIR, 'source-snapshot.json')
 const SNAPSHOT_BIN = join(SNAPSHOT_DIR, 'source-snapshot.bin')
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 enum BlobId {
   TraitBitmaps,
@@ -59,6 +60,58 @@ type Snapshot = {
 type Ctx = Awaited<ReturnType<typeof deployRendererFixture>>
 
 const SNAPSHOT_PRESENT = existsSync(SNAPSHOT_JSON) && existsSync(SNAPSHOT_BIN)
+
+describe('PunksRenderer ENS reverse name', () => {
+  it('sets the configured ENS reverse name during deployment', async () => {
+    const connection: any = await network.create()
+    const { viem } = connection
+    const registrar = await viem.deployContract('ReverseRegistrarMock')
+    const renderer = await viem.deployContract('PunksRenderer', [
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      registrar.address,
+      'renderer.punksdata.eth',
+    ])
+
+    assert.equal(await registrar.read.calls(), 1n)
+    assert.equal(
+      ((await registrar.read.lastCaller()) as string).toLowerCase(),
+      renderer.address.toLowerCase(),
+    )
+    assert.equal(await registrar.read.lastName(), 'renderer.punksdata.eth')
+  })
+
+  it('skips ENS reverse-name setup when the registrar or name is unset', async () => {
+    const connection: any = await network.create()
+    const { viem } = connection
+    const registrar = await viem.deployContract('ReverseRegistrarMock')
+
+    await viem.deployContract('PunksRenderer', [
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      registrar.address,
+      '',
+    ])
+    assert.equal(await registrar.read.calls(), 0n)
+
+    const renderer = await viem.deployContract('PunksRenderer', [
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      'renderer.punksdata.eth',
+    ])
+    assert.equal(
+      ((await renderer.read.dataContract()) as string).toLowerCase(),
+      ZERO_ADDRESS,
+    )
+  })
+})
 
 describe('PunksRenderer', () => {
   if (!SNAPSHOT_PRESENT) {
@@ -266,9 +319,11 @@ async function deployRendererFixture() {
   // matching the legacy `punkImageSvg` output.
   const renderer = await viem.deployContract('PunksRenderer', [
     data.address,
-    '0x0000000000000000000000000000000000000000',
-    '0x0000000000000000000000000000000000000000',
-    '0x0000000000000000000000000000000000000000',
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    '',
   ])
 
   // Convert the padded palette hex strings into a single Uint8Array for the

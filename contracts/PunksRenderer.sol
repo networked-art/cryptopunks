@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import "./interfaces/IPunksRenderer.sol";
 import "./interfaces/IPunksData.sol";
 import "./interfaces/IPunksMarket.sol";
+import "./interfaces/IReverseRegistrar.sol";
 import "./lib/Crc32.sol";
 import "./lib/Adler32.sol";
 import "./lib/PngEncoder.sol";
@@ -55,17 +56,24 @@ contract PunksRenderer is IPunksRenderer {
 
     /// @notice Sets the immutable references. Pass `address(0)` for any of
     ///         `punksMarket`, `wrapper`, or `c721Wrapper` to opt out of the
-    ///         corresponding marketplace check.
+    ///         corresponding marketplace check. Pass `address(0)` or an empty
+    ///         name to skip ENS reverse-name setup.
     constructor(
         address punksData,
         address punksMarket,
         address wrapper,
-        address c721Wrapper
+        address c721Wrapper,
+        address reverseRegistrar,
+        string memory reverseName
     ) {
         PUNKS_DATA = IPunksData(punksData);
         PUNKS_MARKET = IPunksMarket(punksMarket);
         WRAPPER = wrapper;
         C721_WRAPPER = c721Wrapper;
+
+        if (reverseRegistrar != address(0) && bytes(reverseName).length != 0) {
+            IReverseRegistrar(reverseRegistrar).setName(reverseName);
+        }
     }
 
     /// @inheritdoc IPunksRenderer
