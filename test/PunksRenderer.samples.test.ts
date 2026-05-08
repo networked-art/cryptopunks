@@ -183,7 +183,12 @@ async function deployFixture() {
     await data.write.loadPackedScalars([start, values])
   }
 
-  const renderer = await viem.deployContract('PunksRenderer', [data.address])
+  const renderer = await viem.deployContract('PunksRenderer', [
+    data.address,
+    '0x0000000000000000000000000000000000000000',
+    '0x0000000000000000000000000000000000000000',
+    '0x0000000000000000000000000000000000000000',
+  ])
 
   return { connection, viem, data, renderer, snapshot, palette, colorIdByRgba }
 }

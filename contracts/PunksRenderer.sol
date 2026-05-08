@@ -3,6 +3,7 @@ pragma solidity 0.8.34;
 
 import "./interfaces/IPunksRenderer.sol";
 import "./interfaces/IPunksData.sol";
+import "./interfaces/IPunksMarket.sol";
 import "./lib/Crc32.sol";
 import "./lib/Adler32.sol";
 import "./lib/PngEncoder.sol";
@@ -12,33 +13,85 @@ import "./lib/PngEncoder.sol";
 /// @notice Pluggable per-Punk visual encoder. Reads sealed primitives from a
 ///         single `PunksData` contract and emits RGBA bytes, run-length SVG,
 ///         transparent PNG-8, and flattened PNG-8 with caller-supplied opaque
-///         background.
+///         background. The `punkMarketplace*` variants additionally read the
+///         original CryptoPunks market and pick a background reflecting the
+///         Punk's live marketplace status.
 ///
 /// @author 1001
 contract PunksRenderer is IPunksRenderer {
     /// @notice Underlying sealed primitives source.
     IPunksData public immutable PUNKS_DATA;
 
+    /// @notice Original CryptoPunks market contract. `address(0)` disables
+    ///         marketplace-aware background resolution; `backgroundOf` then
+    ///         always returns the Larva default.
+    IPunksMarket public immutable PUNKS_MARKET;
+
+    /// @notice Legacy wrapper contract. Punks owned by this address render
+    ///         with a semi-transparent green background (`#75a4755e`).
+    address public immutable LEGACY_WRAPPER;
+
+    /// @notice New wrapper contract. Punks owned by this address render with
+    ///         an opaque green background (`#75a475ff`).
+    address public immutable NEW_WRAPPER;
+
     uint256 private constant PIXELS = 576;
     uint256 private constant RGBA_LEN = 2304;
     uint256 private constant ROW_PIXELS = 24;
 
-    // SVG buffer: header (134) + footer (6) + worst-case rect count.
+    // SVG buffer: header (~136) + footer (6) + worst-case rect count.
     // Worst-case rect count per Punk is bounded by alternation: 24 rows × 12
     // alternating runs = 288 rects. With max 77 bytes per semi-transparent
     // rect, the worst-case body is ~22 KB. Allocate 24 KB so under-allocation
     // can't corrupt neighboring memory under viaIR.
     uint256 private constant MAX_SVG_BYTES = 24576;
 
-    /// @notice Sets the immutable `PunksData` reference.
-    /// @param  punksData Address of a deployed `PunksData` contract.
-    constructor(address punksData) {
+    // Marketplace backgrounds. Bytes4 packed as RGBA, MSB-first.
+    bytes4 private constant BG_DEFAULT            = hex"638596ff";
+    bytes4 private constant BG_FOR_SALE           = hex"8c5851ff";
+    bytes4 private constant BG_BID                = hex"8970b1ff";
+    bytes4 private constant BG_WRAPPED            = hex"75a475ff";
+    bytes4 private constant BG_WRAPPED_LEGACY     = hex"75a4755e";
+    // Pre-computed "over-white" composite of `#75a475` at alpha `0x5e/0xff`,
+    // used as the opaque PNG substitute for the legacy-wrapped state. PNG-8
+    // can't carry a semi-transparent flat background, so the math is baked in.
+    bytes4 private constant BG_WRAPPED_LEGACY_PNG = hex"ccddccff";
+
+    /// @notice Sets the immutable references. Pass `address(0)` for any of
+    ///         `punksMarket`, `legacyWrapper`, or `newWrapper` to opt out of
+    ///         the corresponding marketplace check.
+    constructor(
+        address punksData,
+        address punksMarket,
+        address legacyWrapper,
+        address newWrapper
+    ) {
         PUNKS_DATA = IPunksData(punksData);
+        PUNKS_MARKET = IPunksMarket(punksMarket);
+        LEGACY_WRAPPER = legacyWrapper;
+        NEW_WRAPPER = newWrapper;
     }
 
     /// @inheritdoc IPunksRenderer
     function dataContract() external view returns (address) {
         return address(PUNKS_DATA);
+    }
+
+    /// @inheritdoc IPunksRenderer
+    function backgroundOf(uint16 punkId) public view returns (bytes4) {
+        if (address(PUNKS_MARKET) == address(0)) return BG_DEFAULT;
+
+        (bool isForSale,,,,) = PUNKS_MARKET.punksOfferedForSale(punkId);
+        if (isForSale) return BG_FOR_SALE;
+
+        (bool hasBid,,,) = PUNKS_MARKET.punkBids(punkId);
+        if (hasBid) return BG_BID;
+
+        address owner = PUNKS_MARKET.punkIndexToAddress(punkId);
+        if (owner == NEW_WRAPPER) return BG_WRAPPED;
+        if (owner == LEGACY_WRAPPER) return BG_WRAPPED_LEGACY;
+
+        return BG_DEFAULT;
     }
 
     /// @inheritdoc IPunksRenderer
@@ -78,10 +131,31 @@ contract PunksRenderer is IPunksRenderer {
     }
 
     /// @inheritdoc IPunksRenderer
+    function punkMarketplacePng(uint16 punkId) external view returns (bytes memory) {
+        bytes4 bg = backgroundOf(punkId);
+        if (uint8(uint32(bg)) != 0xff) {
+            // Only the legacy-wrapped state has alpha != 0xff. PNG-8 indexed
+            // can't carry a semi-transparent flat background; substitute the
+            // pre-computed over-white composite.
+            bg = BG_WRAPPED_LEGACY_PNG;
+        }
+        bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
+        bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
+        return _buildPngFlattened(ix, pal, bg);
+    }
+
+    /// @inheritdoc IPunksRenderer
     function punkImageSvg(uint16 punkId) external view returns (string memory) {
         bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
         bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
-        return _buildSvg(ix, pal);
+        return _buildSvg(ix, pal, BG_DEFAULT);
+    }
+
+    /// @inheritdoc IPunksRenderer
+    function punkMarketplaceSvg(uint16 punkId) external view returns (string memory) {
+        bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
+        bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
+        return _buildSvg(ix, pal, backgroundOf(punkId));
     }
 
     // ------------------ Internal: PNG ------------------
@@ -166,7 +240,7 @@ contract PunksRenderer is IPunksRenderer {
 
     // ------------------ Internal: SVG ------------------
 
-    function _buildSvg(bytes memory ix, bytes memory pal)
+    function _buildSvg(bytes memory ix, bytes memory pal, bytes4 bg)
         private
         pure
         returns (string memory)
@@ -179,10 +253,17 @@ contract PunksRenderer is IPunksRenderer {
             out,
             cursor,
             bytes(
-                // Larva-compatible default `#638596` background.
-                "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n<rect width='24' height='24' fill='#638596'/>\n"
+                "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n<rect width='24' height='24' fill='#"
             )
         );
+        cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 24));
+        cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 16));
+        cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 8));
+        uint8 bgAlpha = uint8(uint32(bg));
+        if (bgAlpha != 0xff) {
+            cursor = _writeHex2(out, cursor, hexLut, bgAlpha);
+        }
+        cursor = _writeBytes(out, cursor, bytes("'/>\n"));
 
         for (uint256 y = 0; y < ROW_PIXELS; ++y) {
             uint256 x = 0;

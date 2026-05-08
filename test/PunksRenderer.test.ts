@@ -261,7 +261,15 @@ async function deployRendererFixture() {
     await data.write.loadPackedScalars([start, values])
   }
 
-  const renderer = await viem.deployContract('PunksRenderer', [data.address])
+  // Tests run without a CryptoPunks market mock, so wire all marketplace
+  // addresses to zero. `backgroundOf` short-circuits and returns BG_DEFAULT,
+  // matching the legacy `punkImageSvg` output.
+  const renderer = await viem.deployContract('PunksRenderer', [
+    data.address,
+    '0x0000000000000000000000000000000000000000',
+    '0x0000000000000000000000000000000000000000',
+    '0x0000000000000000000000000000000000000000',
+  ])
 
   // Convert the padded palette hex strings into a single Uint8Array for the
   // offchain encoders.

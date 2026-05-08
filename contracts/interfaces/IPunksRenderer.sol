@@ -5,6 +5,10 @@ pragma solidity 0.8.34;
 /// @notice Per-Punk visual encoders: RGBA bytes, run-length SVG, PNG-8.
 /// @dev    All views read sealed primitives from `PunksData`. Renderer is
 ///         stateless and admin-less — see `decisions.md` §Architecture.
+///
+///         The `punkMarketplace*` variants additionally read live state from
+///         the original CryptoPunks market contract and pick a background
+///         color reflecting the Punk's current marketplace status.
 interface IPunksRenderer {
     /// @notice Reverts when a flattened-PNG background has alpha != 0xFF.
     /// @dev    A non-opaque background produces ambiguous compositing. Define
@@ -30,4 +34,24 @@ interface IPunksRenderer {
         external
         view
         returns (bytes memory);
+
+    /// @notice Marketplace-aware RGBA background for a Punk. Resolution order:
+    ///         offered for sale > active bid > wrapped (legacy or new) >
+    ///         Larva default.
+    /// @dev    Returns `0x638596ff` when no marketplace contract is configured
+    ///         or none of the conditions match. The legacy-wrapped state is
+    ///         the only case with non-opaque alpha (`0x75a4755e`).
+    function backgroundOf(uint16 punkId) external view returns (bytes4 rgba);
+
+    /// @notice Run-length SVG with a marketplace-aware background. Honors the
+    ///         alpha channel of `backgroundOf`, so legacy-wrapped Punks render
+    ///         a semi-transparent green rect (`#75a4755e`).
+    function punkMarketplaceSvg(uint16 punkId) external view returns (string memory);
+
+    /// @notice PNG-8 indexed flattened against the marketplace-aware
+    ///         background. Legacy-wrapped (alpha `0x5e`) is substituted with
+    ///         `#ccddccff` — the standard "over-white" composite of `#75a475`
+    ///         at alpha `0x5e/0xff` — since PNG-8 cannot represent a
+    ///         semi-transparent flat background.
+    function punkMarketplacePng(uint16 punkId) external view returns (bytes memory);
 }
