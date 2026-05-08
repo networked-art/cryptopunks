@@ -1,5 +1,20 @@
 # Offers Redesign — Mask-Based Filtering Over PunksData
 
+> **Superseded.** This research was merged into
+> [`docs/punks-auction-redesign/`](../punks-auction-redesign/). The auction
+> contracts are immutable; designing single-Punk offers separately from
+> bundle lots would either lock out V1+V2 pairs and curated multi-Punk lots
+> forever, or ship parallel single+bundle code paths that double the
+> auditable surface. The merged design unifies offers around N-slot
+> structure where N=1 is the singleton case. See
+> [`punks-auction-redesign/01-design.md`](../punks-auction-redesign/01-design.md)
+> and
+> [`02-implementation-plan.md`](../punks-auction-redesign/02-implementation-plan.md).
+>
+> The body below is preserved for historical context — the trait mask trio
+> + color count range scope locked in this doc carries over verbatim into
+> the merged spec.
+
 ## Context
 
 The current `contracts/offers/Offers.sol` (inspired by
