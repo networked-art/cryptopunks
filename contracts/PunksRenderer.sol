@@ -37,28 +37,21 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 ///
 /// @title  PunksRenderer
 ///
-/// @notice Renders CryptoPunks from the `PunksData` contract. Callers can get
-///         a Punk as raw RGBA bytes, SVG, transparent PNG, or PNG flattened onto
-///         an opaque background. The `punkMarketplace*` functions use the
-///         original CryptoPunks market to choose a background for the Punk's
-///         current status.
+/// @notice Renders CryptoPunks from `PunksData` as RGBA, SVG, PNG, and metadata.
+///         Marketplace variants choose backgrounds from CryptoPunks market state.
 ///
 /// @author 1001
 contract PunksRenderer is IPunksRenderer {
     /// @notice `PunksData` contract this renderer reads from.
     IPunksData public immutable PUNKS_DATA;
 
-    /// @notice Original CryptoPunks market contract. If unset, marketplace
-    ///         backgrounds are disabled and `backgroundOf` returns the Larva
-    ///         default.
+    /// @notice Optional CryptoPunks market used for marketplace backgrounds.
     IPunksMarket public immutable PUNKS_MARKET;
 
-    /// @notice "Wrapped CryptoPunks" contract. Punks owned by this address get
-    ///         a green background (`#66a670ff`).
+    /// @notice Wrapped CryptoPunks contract; owned Punks use `#66a670ff`.
     address public immutable WRAPPER;
 
-    /// @notice "C721" wrapper contract. Punks owned by this address get a
-    ///         green background (`#75a475ff`).
+    /// @notice C721 wrapper contract; owned Punks use `#75a475ff`.
     address public immutable C721_WRAPPER;
 
     uint256 private constant PIXELS = 576;
@@ -71,11 +64,8 @@ contract PunksRenderer is IPunksRenderer {
     uint16 private constant ATTRIBUTE_COUNT_TRAIT_OFFSET = 16;
     uint16 private constant ACCESSORY_TRAIT_OFFSET = 24;
 
-    // SVG buffer: header (134) + footer (6) + worst-case rect count.
-    // Worst-case rect count per Punk is bounded by alternation: 24 rows × 12
-    // alternating runs = 288 rects. With max 77 bytes per semi-transparent
-    // rect, the worst-case body is ~22 KB. Allocate 24 KB so under-allocation
-    // can't corrupt neighboring memory under viaIR.
+    // SVG buffer: header/footer plus up to 288 rects (~22 KB body).
+    // Allocate 24 KB to avoid under-allocation corrupting memory under viaIR.
     uint256 private constant MAX_SVG_BYTES = 24576;
 
     // Marketplace backgrounds. All opaque; bytes4 packed as RGBA, MSB-first.
@@ -85,10 +75,7 @@ contract PunksRenderer is IPunksRenderer {
     bytes4 private constant BG_WRAPPED      = hex"66a670ff";
     bytes4 private constant BG_WRAPPED_C721 = hex"75a475ff";
 
-    /// @notice Sets the contracts this renderer reads from. Use `address(0)`
-    ///         for `punksMarket`, `wrapper`, or `c721Wrapper` to skip that
-    ///         marketplace check. Use `address(0)` or an empty name to skip ENS
-    ///         reverse-name setup.
+    /// @notice Sets renderer dependencies; zero optional addresses disable checks.
     constructor(
         address punksData,
         address punksMarket,
@@ -244,9 +231,8 @@ contract PunksRenderer is IPunksRenderer {
         bytes memory pal,
         bytes4 bg
     ) private pure returns (bytes memory png) {
-        // Compact local palette: index 0 = bg, indices 1..N = visible colors
-        // in raster first-occurrence order. ColorCountOf is at most 14, so the
-        // local palette holds at most 15 entries (45 bytes).
+        // Compact palette: bg at 0, visible colors in raster order.
+        // `colorCountOf` is <= 14, so the palette has at most 15 entries.
         bytes memory plte = new bytes(15 * 3);
         bytes memory remapped = new bytes(PIXELS);
         bytes memory localOf = new bytes(256);
@@ -258,7 +244,7 @@ contract PunksRenderer is IPunksRenderer {
 
         for (uint256 i = 0; i < PIXELS; ++i) {
             uint8 c = uint8(ix[i]);
-            if (c == 0) continue; // remapped[i] already 0 → bg
+            if (c == 0) continue; // remapped[i] stays bg
             uint256 li = uint8(localOf[c]);
             if (li == 0) {
                 li = localCount;
@@ -419,8 +405,7 @@ contract PunksRenderer is IPunksRenderer {
                 "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n<rect width='24' height='24' fill='#"
             )
         );
-        // Background is always opaque (`backgroundOf` and `BG_DEFAULT` both
-        // guarantee alpha = 0xff); drop the alpha byte from the hex literal.
+        // Backgrounds are opaque; omit alpha from the SVG hex color.
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 24));
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 16));
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 8));
@@ -457,8 +442,7 @@ contract PunksRenderer is IPunksRenderer {
                 if (uint8(pal[palOff + 3]) == 0xff) {
                     cursor = _writeBytes(out, cursor, bytes("'/>\n"));
                 } else {
-                    // Per palette invariant: the only non-0xff/0x00 alpha is
-                    // 0x80. Transparent (0x00) is broken on by run logic.
+                    // Palette invariant: only alpha 0x80 reaches this branch.
                     cursor = _writeBytes(out, cursor, bytes("' fill-opacity='.5'/>\n"));
                 }
             }
