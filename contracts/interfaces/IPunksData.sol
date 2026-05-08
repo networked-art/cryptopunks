@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title IPunksDataTypes
+/// @title  IPunksDataTypes
 /// @notice Shared loader/read types for the Punk data contract family.
 interface IPunksDataTypes {
     /// @notice Identifiers for the variable-length blob storage.

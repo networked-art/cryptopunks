@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title PushPullEscrow
+/// @title  PushPullEscrow
 /// @notice Pushes ETH with capped gas and falls back to pull-credit accounting.
 abstract contract PushPullEscrow is ReentrancyGuard {
     uint256 internal constant PUSH_GAS = 95_000;

@@ -3,11 +3,11 @@ pragma solidity 0.8.34;
 
 import "./BytecodeBlob.sol";
 
-/// @title BlobStorage
+/// @title  BlobStorage
 /// @notice Append-only chunked storage for variable-size byte blobs, backed by SSTORE2-style bytecode pointers.
-/// @dev Each chunk records its bytecode pointer and the cumulative end offset.
-///      `read` performs a binary search on cumulative offsets and copies bytes
-///      directly from bytecode into the output via `extcodecopy` (no intermediate allocation).
+/// @dev    Each chunk records its bytecode pointer and the cumulative end offset.
+///         `read` performs a binary search on cumulative offsets and copies bytes
+///         directly from bytecode into the output via `extcodecopy` (no intermediate allocation).
 library BlobStorage {
     struct Chunk {
         address pointer;

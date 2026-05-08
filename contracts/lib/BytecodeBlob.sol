@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 /// @notice Minimal SSTORE2-style bytecode blob storage.
-/// @dev Runtime code is `STOP || data`; reads skip the leading STOP byte.
+/// @dev    Runtime code is `STOP || data`; reads skip the leading STOP byte.
 library BytecodeBlob {
     uint256 internal constant MAX_DATA_SIZE = 24_575;
 
