@@ -28,7 +28,7 @@ contract PunksRenderer is IPunksRenderer {
     IPunksMarket public immutable PUNKS_MARKET;
 
     /// @notice Legacy wrapper contract. Punks owned by this address render
-    ///         with a semi-transparent green background (`#75a4755e`).
+    ///         with a darker green background (`#66a670ff`).
     address public immutable LEGACY_WRAPPER;
 
     /// @notice New wrapper contract. Punks owned by this address render with
@@ -39,23 +39,19 @@ contract PunksRenderer is IPunksRenderer {
     uint256 private constant RGBA_LEN = 2304;
     uint256 private constant ROW_PIXELS = 24;
 
-    // SVG buffer: header (~136) + footer (6) + worst-case rect count.
+    // SVG buffer: header (134) + footer (6) + worst-case rect count.
     // Worst-case rect count per Punk is bounded by alternation: 24 rows × 12
     // alternating runs = 288 rects. With max 77 bytes per semi-transparent
     // rect, the worst-case body is ~22 KB. Allocate 24 KB so under-allocation
     // can't corrupt neighboring memory under viaIR.
     uint256 private constant MAX_SVG_BYTES = 24576;
 
-    // Marketplace backgrounds. Bytes4 packed as RGBA, MSB-first.
-    bytes4 private constant BG_DEFAULT            = hex"638596ff";
-    bytes4 private constant BG_FOR_SALE           = hex"8c5851ff";
-    bytes4 private constant BG_BID                = hex"8970b1ff";
-    bytes4 private constant BG_WRAPPED            = hex"75a475ff";
-    bytes4 private constant BG_WRAPPED_LEGACY     = hex"75a4755e";
-    // Pre-computed "over-white" composite of `#75a475` at alpha `0x5e/0xff`,
-    // used as the opaque PNG substitute for the legacy-wrapped state. PNG-8
-    // can't carry a semi-transparent flat background, so the math is baked in.
-    bytes4 private constant BG_WRAPPED_LEGACY_PNG = hex"ccddccff";
+    // Marketplace backgrounds. All opaque; bytes4 packed as RGBA, MSB-first.
+    bytes4 private constant BG_DEFAULT        = hex"638596ff";
+    bytes4 private constant BG_FOR_SALE       = hex"8c5851ff";
+    bytes4 private constant BG_BID            = hex"8970b1ff";
+    bytes4 private constant BG_WRAPPED        = hex"75a475ff";
+    bytes4 private constant BG_WRAPPED_LEGACY = hex"66a670ff";
 
     /// @notice Sets the immutable references. Pass `address(0)` for any of
     ///         `punksMarket`, `legacyWrapper`, or `newWrapper` to opt out of
@@ -132,16 +128,9 @@ contract PunksRenderer is IPunksRenderer {
 
     /// @inheritdoc IPunksRenderer
     function punkMarketplacePng(uint16 punkId) external view returns (bytes memory) {
-        bytes4 bg = backgroundOf(punkId);
-        if (uint8(uint32(bg)) != 0xff) {
-            // Only the legacy-wrapped state has alpha != 0xff. PNG-8 indexed
-            // can't carry a semi-transparent flat background; substitute the
-            // pre-computed over-white composite.
-            bg = BG_WRAPPED_LEGACY_PNG;
-        }
         bytes memory ix = PUNKS_DATA.indexedPixelsOf(punkId);
         bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
-        return _buildPngFlattened(ix, pal, bg);
+        return _buildPngFlattened(ix, pal, backgroundOf(punkId));
     }
 
     /// @inheritdoc IPunksRenderer
@@ -256,13 +245,11 @@ contract PunksRenderer is IPunksRenderer {
                 "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n<rect width='24' height='24' fill='#"
             )
         );
+        // Background is always opaque (`backgroundOf` and `BG_DEFAULT` both
+        // guarantee alpha = 0xff); drop the alpha byte from the hex literal.
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 24));
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 16));
         cursor = _writeHex2(out, cursor, hexLut, uint8(uint32(bg) >> 8));
-        uint8 bgAlpha = uint8(uint32(bg));
-        if (bgAlpha != 0xff) {
-            cursor = _writeHex2(out, cursor, hexLut, bgAlpha);
-        }
         cursor = _writeBytes(out, cursor, bytes("'/>\n"));
 
         for (uint256 y = 0; y < ROW_PIXELS; ++y) {

@@ -38,20 +38,18 @@ interface IPunksRenderer {
     /// @notice Marketplace-aware RGBA background for a Punk. Resolution order:
     ///         offered for sale > active bid > wrapped (legacy or new) >
     ///         Larva default.
-    /// @dev    Returns `0x638596ff` when no marketplace contract is configured
-    ///         or none of the conditions match. The legacy-wrapped state is
-    ///         the only case with non-opaque alpha (`0x75a4755e`).
+    /// @dev    All returned colors are opaque (alpha `0xff`). Returns
+    ///         `0x638596ff` when no marketplace contract is configured or
+    ///         none of the conditions match.
     function backgroundOf(uint16 punkId) external view returns (bytes4 rgba);
 
-    /// @notice Run-length SVG with a marketplace-aware background. Honors the
-    ///         alpha channel of `backgroundOf`, so legacy-wrapped Punks render
-    ///         a semi-transparent green rect (`#75a4755e`).
+    /// @notice Run-length SVG with a marketplace-aware background. The Punk's
+    ///         current marketplace state (for sale, bid, wrapped, default)
+    ///         drives the background color.
     function punkMarketplaceSvg(uint16 punkId) external view returns (string memory);
 
     /// @notice PNG-8 indexed flattened against the marketplace-aware
-    ///         background. Legacy-wrapped (alpha `0x5e`) is substituted with
-    ///         `#ccddccff` — the standard "over-white" composite of `#75a475`
-    ///         at alpha `0x5e/0xff` — since PNG-8 cannot represent a
-    ///         semi-transparent flat background.
+    ///         background. The Punk's current marketplace state (for sale,
+    ///         bid, wrapped, default) drives the background color.
     function punkMarketplacePng(uint16 punkId) external view returns (bytes memory);
 }
