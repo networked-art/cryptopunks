@@ -1,5 +1,6 @@
-// Generates a handful of PNGs and SVGs from the renderer to disk for manual
-// inspection. Outputs land in `scripts/output/renderer-samples/` (gitignored).
+// Generates a handful of PNGs, SVGs, and metadata JSON files from the renderer
+// to disk for manual inspection. Outputs land in `scripts/output/renderer-samples/`
+// (gitignored).
 //
 // Run with: `npx hardhat test test/PunksRenderer.samples.test.ts`
 //
@@ -16,10 +17,14 @@ import { network } from 'hardhat'
 import { bytesToHex, type Hex } from 'viem'
 
 import {
+  ACCESSORY_COUNT,
   PUNK_COUNT,
   TRANSPARENT_RGBA,
+  asciiSort,
+  buildTraitCatalog,
   countVisiblePixels,
   encodeSparseIndexed,
+  encodeTraitMeta,
   hexToBytes,
   parseAttributes,
   rgbaToIndexed,
@@ -27,6 +32,11 @@ import {
   sortedVisibleColors,
   HEAD_VARIANTS,
   NORMALIZED_TYPES,
+  KIND_ACCESSORY,
+  KIND_ATTRIBUTE_COUNT,
+  KIND_HEAD_VARIANT,
+  KIND_NORMALIZED_TYPE,
+  type TraitRecord,
 } from '../scripts/lib/punks-builder.js'
 
 const SNAPSHOT_DIR = 'test/fixtures'
@@ -42,10 +52,14 @@ const PLACEHOLDER_COLOR_COUNT = 2
 
 const SAMPLE_IDS = [0, 31, 117, 281, 372, 635, 4067, 8348] as const
 
+// Mirrors the BG_* constants in PunksRenderer.sol — the five marketplace
+// backgrounds the renderer can pick via `backgroundOf`.
 const BACKGROUNDS: ReadonlyArray<{ name: string; rgba: Hex }> = [
-  { name: 'owned', rgba: '0x638596ff' },     // Larva default Owned
-  { name: 'forsale', rgba: '0xc8fbfbff' },   // ForSale teal
-  { name: 'white', rgba: '0xffffffff' },
+  { name: 'default', rgba: '0x638596ff' },        // BG_DEFAULT (Larva owned)
+  { name: 'forsale', rgba: '0x8c5851ff' },        // BG_FOR_SALE
+  { name: 'bid', rgba: '0x8970b1ff' },            // BG_BID
+  { name: 'wrapped', rgba: '0x66a670ff' },        // BG_WRAPPED
+  { name: 'wrapped-c721', rgba: '0x75a475ff' },   // BG_WRAPPED_C721
 ]
 
 enum BlobId {
@@ -88,14 +102,13 @@ describe('PunksRenderer samples', () => {
     { timeout: 120_000 },
   )
 
-  it(`writes SVG + transparent PNG + flattened PNG for ${SAMPLE_IDS.length} curated Punks`, async () => {
+  it(`writes SVG + transparent PNG + per-background flattened PNGs + JSON + CSV for ${SAMPLE_IDS.length} curated Punks`, async () => {
     const written: string[] = []
     for (const id of SAMPLE_IDS) {
       const idx = snapshot.snapshotIds.indexOf(id)
       if (idx < 0) {
         throw new Error(`Punk ${id} not present in the snapshot fixture`)
       }
-      const attrs = snapshot.attributes[idx]
       const slug = `punk-${String(id).padStart(4, '0')}`
 
       const svg = (await renderer.read.punkSvg([id])) as string
@@ -119,7 +132,17 @@ describe('PunksRenderer samples', () => {
         written.push(path)
       }
 
-      console.log(`  ${slug}: ${attrs}`)
+      const json = (await renderer.read.metadataJson([id])) as string
+      const jsonPath = join(OUTPUT_DIR, `${slug}.json`)
+      await writeFile(jsonPath, json)
+      written.push(jsonPath)
+
+      const csv = (await renderer.read.punkAttributes([id])) as string
+      const csvPath = join(OUTPUT_DIR, `${slug}.csv`)
+      await writeFile(csvPath, csv)
+      written.push(csvPath)
+
+      console.log(`  ${slug}: ${csv}`)
     }
     console.log(`Wrote ${written.length} files into ${OUTPUT_DIR}/`)
   })
@@ -164,6 +187,10 @@ async function deployFixture() {
   }
 
   const paletteBytes = encodePalette(palette)
+  const traits = buildTestTraitCatalog(snapshot)
+  const traitMeta = encodeTraitMeta(traits)
+  const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
+  const traitMaskPairGroups = buildTraitMaskPairGroups(snapshot, traitIdByKindAndName)
   const colorMaskGroups = buildColorMaskGroups(snapshot, colorIdByRgba)
   const packedScalarGroups = buildPackedScalarGroups(snapshot, colorIdByRgba)
 
@@ -172,10 +199,14 @@ async function deployFixture() {
   const [deployer] = await viem.getWalletClients()
   const data = await viem.deployContract('PunksData', [deployer.account.address])
 
+  await loadBlob(data, BlobId.TraitMeta, traitMeta)
   await loadBlob(data, BlobId.Palette, paletteBytes)
   await loadBlob(data, BlobId.PixelOffsets, pixelOffsets)
   await loadBlob(data, BlobId.CompressedPixels, compressedPixels)
 
+  for (const { start, values } of traitMaskPairGroups) {
+    await data.write.loadTraitMaskPairs([start, values])
+  }
   for (const { start, values } of colorMaskGroups) {
     await data.write.loadColorMasks([start, values])
   }
@@ -319,4 +350,77 @@ function concat(parts: Uint8Array[]): Uint8Array {
     offset += part.length
   }
   return out
+}
+
+function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
+  const accessories = new Set<string>()
+  for (const attributes of snapshot.attributes) {
+    for (const accessory of parseAttributes(attributes).accessories) {
+      accessories.add(accessory)
+    }
+  }
+  const names = [...accessories]
+  let i = 0
+  while (names.length < ACCESSORY_COUNT) {
+    names.push(`zz Test Accessory ${String(i++).padStart(2, '0')}`)
+  }
+  names.sort(asciiSort)
+  return buildTraitCatalog(names)
+}
+
+function buildTraitIdByKindAndName(traits: TraitRecord[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const trait of traits) out.set(`${trait.kind}:${trait.name}`, trait.id)
+  return out
+}
+
+function buildTraitMaskPairGroups(
+  snapshot: Snapshot,
+  traitIdByKindAndName: Map<string, number>,
+): Array<{ start: number; values: bigint[] }> {
+  const packedByPair = new Map<number, bigint>()
+  const lowMask = (1n << 128n) - 1n
+
+  for (let i = 0; i < snapshot.snapshotIds.length; i++) {
+    const id = snapshot.snapshotIds[i]
+    const pairIndex = Math.floor(id / 2)
+    const mask = buildExpectedTraitMask(snapshot.attributes[i], traitIdByKindAndName)
+    const current = packedByPair.get(pairIndex) ?? 0n
+    const packed = id % 2 === 0
+      ? (current & ~lowMask) | mask
+      : (current & lowMask) | (mask << 128n)
+    packedByPair.set(pairIndex, packed)
+  }
+
+  return [...packedByPair.entries()].map(([start, value]) => ({ start, values: [value] }))
+}
+
+function buildExpectedTraitMask(
+  attributes: string,
+  traitIdByKindAndName: Map<string, number>,
+): bigint {
+  const parsed = parseAttributes(attributes)
+  let mask = 0n
+  mask |= 1n << BigInt(
+    mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`),
+  )
+  mask |= 1n << BigInt(
+    mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${parsed.headVariant}`),
+  )
+  mask |= 1n << BigInt(
+    mustGet(
+      traitIdByKindAndName,
+      `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+    ),
+  )
+  for (const accessory of parsed.accessories) {
+    mask |= 1n << BigInt(mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
+  }
+  return mask
+}
+
+function mustGet<K, V>(map: Map<K, V>, key: K): V {
+  const value = map.get(key)
+  if (value === undefined) throw new Error(`Missing key ${String(key)}`)
+  return value
 }
