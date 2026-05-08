@@ -27,13 +27,13 @@ contract PunksRenderer is IPunksRenderer {
     ///         always returns the Larva default.
     IPunksMarket public immutable PUNKS_MARKET;
 
-    /// @notice Legacy wrapper contract. Punks owned by this address render
-    ///         with a darker green background (`#66a670ff`).
-    address public immutable LEGACY_WRAPPER;
+    /// @notice Original (pre-ERC-721) wrapper contract. Punks owned by this
+    ///         address render with a darker green background (`#66a670ff`).
+    address public immutable WRAPPER;
 
-    /// @notice New wrapper contract. Punks owned by this address render with
-    ///         an opaque green background (`#75a475ff`).
-    address public immutable NEW_WRAPPER;
+    /// @notice ERC-721 wrapper contract. Punks owned by this address render
+    ///         with a green background (`#75a475ff`).
+    address public immutable C721_WRAPPER;
 
     uint256 private constant PIXELS = 576;
     uint256 private constant RGBA_LEN = 2304;
@@ -47,25 +47,25 @@ contract PunksRenderer is IPunksRenderer {
     uint256 private constant MAX_SVG_BYTES = 24576;
 
     // Marketplace backgrounds. All opaque; bytes4 packed as RGBA, MSB-first.
-    bytes4 private constant BG_DEFAULT        = hex"638596ff";
-    bytes4 private constant BG_FOR_SALE       = hex"8c5851ff";
-    bytes4 private constant BG_BID            = hex"8970b1ff";
-    bytes4 private constant BG_WRAPPED        = hex"75a475ff";
-    bytes4 private constant BG_WRAPPED_LEGACY = hex"66a670ff";
+    bytes4 private constant BG_DEFAULT      = hex"638596ff";
+    bytes4 private constant BG_FOR_SALE     = hex"8c5851ff";
+    bytes4 private constant BG_BID          = hex"8970b1ff";
+    bytes4 private constant BG_WRAPPED      = hex"66a670ff";
+    bytes4 private constant BG_WRAPPED_C721 = hex"75a475ff";
 
     /// @notice Sets the immutable references. Pass `address(0)` for any of
-    ///         `punksMarket`, `legacyWrapper`, or `newWrapper` to opt out of
-    ///         the corresponding marketplace check.
+    ///         `punksMarket`, `wrapper`, or `c721Wrapper` to opt out of the
+    ///         corresponding marketplace check.
     constructor(
         address punksData,
         address punksMarket,
-        address legacyWrapper,
-        address newWrapper
+        address wrapper,
+        address c721Wrapper
     ) {
         PUNKS_DATA = IPunksData(punksData);
         PUNKS_MARKET = IPunksMarket(punksMarket);
-        LEGACY_WRAPPER = legacyWrapper;
-        NEW_WRAPPER = newWrapper;
+        WRAPPER = wrapper;
+        C721_WRAPPER = c721Wrapper;
     }
 
     /// @inheritdoc IPunksRenderer
@@ -84,8 +84,8 @@ contract PunksRenderer is IPunksRenderer {
         if (hasBid) return BG_BID;
 
         address owner = PUNKS_MARKET.punkIndexToAddress(punkId);
-        if (owner == NEW_WRAPPER) return BG_WRAPPED;
-        if (owner == LEGACY_WRAPPER) return BG_WRAPPED_LEGACY;
+        if (owner == C721_WRAPPER) return BG_WRAPPED_C721;
+        if (owner == WRAPPER) return BG_WRAPPED;
 
         return BG_DEFAULT;
     }
