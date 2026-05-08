@@ -217,6 +217,10 @@ describe('PunksRenderer', () => {
         ctx.traits,
       ),
     )
+    assert.deepEqual(
+      metadata.colors,
+      sortedVisibleColors(indexed).map((colorId) => `#${ctx.palette[colorId]}`),
+    )
 
     const tokenUriPrefix = 'data:application/json;base64,'
     const uri = (await ctx.renderer.read.tokenURI([id])) as string

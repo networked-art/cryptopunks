@@ -310,6 +310,8 @@ contract PunksRenderer is IPunksRenderer {
             Base64.encode(bytes(imageSvg)),
             '","attributes":',
             _metadataAttributesJson(punkId),
+            ',"colors":',
+            _metadataColorsJson(punkId),
             "}"
         );
     }
@@ -347,6 +349,42 @@ contract PunksRenderer is IPunksRenderer {
         }
 
         json = string.concat(json, "]");
+    }
+
+    function _metadataColorsJson(uint16 punkId) private view returns (string memory) {
+        uint256 mask = PUNKS_DATA.colorMaskOf(punkId);
+        uint16 paletteSize = PUNKS_DATA.paletteSize();
+        bytes memory pal = PUNKS_DATA.paletteRgbaBytes();
+        bytes memory hexLut = bytes("0123456789abcdef");
+        bytes memory out = new bytes(2 + uint256(paletteSize) * 12);
+        uint256 cursor;
+        bool first = true;
+
+        out[cursor++] = 0x5b; // [
+        for (uint16 colorId = 1; colorId < paletteSize; ++colorId) {
+            if ((mask & (uint256(1) << colorId)) == 0) continue;
+
+            if (first) {
+                first = false;
+            } else {
+                out[cursor++] = 0x2c; // ,
+            }
+
+            out[cursor++] = 0x22; // "
+            out[cursor++] = 0x23; // #
+
+            uint256 palOff = uint256(colorId) * 4;
+            cursor = _writeHex2(out, cursor, hexLut, uint8(pal[palOff]));
+            cursor = _writeHex2(out, cursor, hexLut, uint8(pal[palOff + 1]));
+            cursor = _writeHex2(out, cursor, hexLut, uint8(pal[palOff + 2]));
+            cursor = _writeHex2(out, cursor, hexLut, uint8(pal[palOff + 3]));
+
+            out[cursor++] = 0x22; // "
+        }
+        out[cursor++] = 0x5d; // ]
+
+        assembly ("memory-safe") { mstore(out, cursor) }
+        return string(out);
     }
 
     function _checkedPunkId(uint256 tokenId) private pure returns (uint16) {

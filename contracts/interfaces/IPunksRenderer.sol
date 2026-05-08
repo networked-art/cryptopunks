@@ -26,7 +26,8 @@ interface IPunksRenderer {
     function punkAttributes(uint16 punkId) external view returns (string memory);
 
     /// @notice OpenSea-shaped metadata JSON. The `image` field embeds the
-    ///         default-background SVG as a base64 data URI.
+    ///         default-background SVG as a base64 data URI, and the top-level
+    ///         `colors` field lists visible RGBA palette colors as hex strings.
     /// @dev    This is raw JSON, not a URI. Use `tokenURI` for ERC721-style
     ///         data-URI metadata.
     function metadataJson(uint16 punkId) external view returns (string memory);
