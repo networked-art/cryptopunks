@@ -28,11 +28,11 @@ contract PunksRenderer is IPunksRenderer {
     ///         always returns the Larva default.
     IPunksMarket public immutable PUNKS_MARKET;
 
-    /// @notice Original (pre-ERC-721) wrapper contract. Punks owned by this
-    ///         address render with a darker green background (`#66a670ff`).
+    /// @notice "Wrapped CryptoPunks" contract. Punks owned by this address
+    ///         render with a green background (`#66a670ff`).
     address public immutable WRAPPER;
 
-    /// @notice ERC-721 wrapper contract. Punks owned by this address render
+    /// @notice "C721" wrapper contract. Punks owned by this address render
     ///         with a green background (`#75a475ff`).
     address public immutable C721_WRAPPER;
 
