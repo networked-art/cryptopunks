@@ -51,7 +51,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         return _datasetHash;
     }
 
-    // ---------------- Criteria ----------------
+    // ------------------ Criteria ------------------
 
     /// @notice Returns the number of supported traits.
     function traitCount() external pure returns (uint16) {
@@ -132,7 +132,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         return _readPackedScalar(punkId).attributeCount;
     }
 
-    // ---------------- Visual ----------------
+    // ------------------ Visual ------------------
 
     /// @notice Returns the number of palette entries.
     /// @dev Palette id zero is reserved for transparent pixels.
@@ -221,7 +221,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         );
     }
 
-    // ---------------- Indexed pixels ----------------
+    // ------------------ Indexed pixels ------------------
 
     /// @notice Returns all palette indexes for one Punk image.
     function indexedPixelsOf(uint16 punkId) external view returns (bytes memory) {
@@ -276,7 +276,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         return _paletteBytes();
     }
 
-    // ---------------- Internal: typed readers ----------------
+    // ------------------ Internal: typed readers ------------------
 
     function _traitMaskOf(uint16 punkId) private view returns (uint256) {
         _requirePunkId(punkId);
@@ -326,7 +326,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         return _blobs[BlobId.Palette].read(0, _blobs[BlobId.Palette].totalLength());
     }
 
-    // ---------------- Internal: indexed pixel decoder ----------------
+    // ------------------ Internal: indexed pixel decoder ------------------
 
     /// @dev Compressed entry layout:
     ///      visibleColorCount (u8) | visible bitmap | local palette | packed local color indexes.
@@ -460,7 +460,7 @@ contract PunksData is PunksDataLoader, IPunksData {
         return (uint16(uint8(data[offset])) << 8) | uint8(data[offset + 1]);
     }
 
-    // ---------------- Internal: validators ----------------
+    // ------------------ Internal: validators ------------------
 
     function _requirePunkId(uint16 punkId) private pure {
         if (punkId >= PUNK_COUNT) revert InvalidPunkId();
