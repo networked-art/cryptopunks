@@ -6,7 +6,7 @@ import "../interfaces/ICryptoPunksMarket.sol";
 import "../interfaces/ICryptoPunksTraits.sol";
 import "../lib/PushPullEscrow.sol";
 
-/// @title Offers
+/// @title  Offers
 /// @notice Native ETH offers for CryptoPunks.
 ///         Inspired by MouseDev's CryptoPunksBids, concept by
 ///         mousedev.eth and kilo.
