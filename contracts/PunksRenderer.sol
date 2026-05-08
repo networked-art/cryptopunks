@@ -68,6 +68,7 @@ contract PunksRenderer is IPunksRenderer {
 
     uint16 private constant TRAIT_COUNT = 111;
     uint16 private constant HEAD_VARIANT_TRAIT_OFFSET = 5;
+    uint16 private constant ATTRIBUTE_COUNT_TRAIT_OFFSET = 16;
     uint16 private constant ACCESSORY_TRAIT_OFFSET = 24;
 
     // SVG buffer: header (134) + footer (6) + worst-case rect count.
@@ -300,26 +301,34 @@ contract PunksRenderer is IPunksRenderer {
         returns (string memory)
     {
         string memory id = _toString(punkId);
+        uint8 attributeCount = PUNKS_DATA.attributeCountOf(punkId);
         return string.concat(
-            '{"name":"CryptoPunk #',
+            '{"name":"CryptoPunk ',
             id,
-            '","description":"CryptoPunk #',
-            id,
-            ' rendered fully onchain from sealed CryptoPunks pixel and trait data.",',
+            '","description":"This Punk has ',
+            _toString(attributeCount),
+            " attributes, one of ",
+            _toString(PUNKS_DATA.traitSupply(
+                ATTRIBUTE_COUNT_TRAIT_OFFSET + uint16(attributeCount)
+            )),
+            ' with that many.",',
             '"image":"data:image/svg+xml;base64,',
             Base64.encode(bytes(imageSvg)),
             '","attributes":',
-            _metadataAttributesJson(punkId),
+            _metadataAttributesJson(punkId, attributeCount),
             ',"colors":',
             _metadataColorsJson(punkId),
             "}"
         );
     }
 
-    function _metadataAttributesJson(uint16 punkId) private view returns (string memory json) {
+    function _metadataAttributesJson(uint16 punkId, uint8 attributeCount)
+        private
+        view
+        returns (string memory json)
+    {
         uint8 punkType = uint8(PUNKS_DATA.punkTypeOf(punkId));
         uint8 headVariant = uint8(PUNKS_DATA.headVariantOf(punkId));
-        uint8 attributeCount = PUNKS_DATA.attributeCountOf(punkId);
         uint8 colorCount = PUNKS_DATA.colorCountOf(punkId);
         uint16 pixelCount = PUNKS_DATA.pixelCountOf(punkId);
         uint256 mask = PUNKS_DATA.traitMaskOf(punkId);

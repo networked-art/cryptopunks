@@ -43,6 +43,8 @@ const PIXEL_OFFSETS_BYTES = (PUNK_COUNT + 1) * 3
 const SCALARS_PER_WORD = 5
 const PLACEHOLDER_PIXEL_COUNT = 148
 const PLACEHOLDER_COLOR_COUNT = 2
+const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
+const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [8, 333, 3560, 4501, 1420, 166, 11, 1] as const
 const SNAPSHOT_DIR = 'test/fixtures'
 const SNAPSHOT_JSON = join(SNAPSHOT_DIR, 'source-snapshot.json')
 const SNAPSHOT_BIN = join(SNAPSHOT_DIR, 'source-snapshot.bin')
@@ -193,14 +195,21 @@ describe('PunksRenderer', () => {
   it('metadataJson and tokenURI render ERC721-style metadata', async () => {
     const id = 0
     const snapshotIndex = ctx.snapshot.snapshotIds.indexOf(id)
+    const parsed = parseAttributes(ctx.snapshot.attributes[snapshotIndex])
+    const attributeCountSupply = ctx.traits[
+      mustGet(
+        ctx.traitIdByKindAndName,
+        `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+      )
+    ].supply
     const indexed = rgbaToIndexed(ctx.snapshot.images[snapshotIndex], ctx.colorIdByRgba)
     const metadata = JSON.parse((await ctx.renderer.read.metadataJson([id])) as string)
     const expectedImagePrefix = 'data:image/svg+xml;base64,'
 
-    assert.equal(metadata.name, 'CryptoPunk #0')
+    assert.equal(metadata.name, 'CryptoPunk 0')
     assert.equal(
       metadata.description,
-      'CryptoPunk #0 rendered fully onchain from sealed CryptoPunks pixel and trait data.',
+      `This Punk has ${parsed.accessories.length} attributes, one of ${attributeCountSupply} with that many.`,
     )
     assert.equal(metadata.image.startsWith(expectedImagePrefix), true)
     assert.equal(
@@ -478,7 +487,18 @@ function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
     names.push(`zz Test Accessory ${String(i++).padStart(2, '0')}`)
   }
   names.sort(asciiSort)
-  return buildTraitCatalog(names)
+  const traits = buildTraitCatalog(names)
+  const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
+  for (const attributes of snapshot.attributes) {
+    const mask = buildExpectedTraitMask(attributes, traitIdByKindAndName)
+    for (let traitId = 0; traitId < traits.length; traitId++) {
+      if (((mask >> BigInt(traitId)) & 1n) !== 0n) traits[traitId].supply += 1
+    }
+  }
+  for (let i = 0; i < CANONICAL_ATTRIBUTE_COUNT_SUPPLIES.length; i++) {
+    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply = CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
+  }
+  return traits
 }
 
 function buildTraitIdByKindAndName(traits: TraitRecord[]): Map<string, number> {

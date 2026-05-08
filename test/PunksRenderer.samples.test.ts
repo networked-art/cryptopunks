@@ -50,6 +50,8 @@ const PIXEL_OFFSETS_BYTES = (PUNK_COUNT + 1) * 3
 const SCALARS_PER_WORD = 5
 const PLACEHOLDER_PIXEL_COUNT = 148
 const PLACEHOLDER_COLOR_COUNT = 2
+const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
+const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [8, 333, 3560, 4501, 1420, 166, 11, 1] as const
 
 const SAMPLE_IDS = [0, 31, 117, 281, 372, 635, 4067, 6980, 8348] as const
 
@@ -366,7 +368,18 @@ function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
     names.push(`zz Test Accessory ${String(i++).padStart(2, '0')}`)
   }
   names.sort(asciiSort)
-  return buildTraitCatalog(names)
+  const traits = buildTraitCatalog(names)
+  const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
+  for (const attributes of snapshot.attributes) {
+    const mask = buildExpectedTraitMask(attributes, traitIdByKindAndName)
+    for (let traitId = 0; traitId < traits.length; traitId++) {
+      if (((mask >> BigInt(traitId)) & 1n) !== 0n) traits[traitId].supply += 1
+    }
+  }
+  for (let i = 0; i < CANONICAL_ATTRIBUTE_COUNT_SUPPLIES.length; i++) {
+    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply = CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
+  }
+  return traits
 }
 
 function buildTraitIdByKindAndName(traits: TraitRecord[]): Map<string, number> {
