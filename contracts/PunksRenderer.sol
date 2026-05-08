@@ -286,9 +286,9 @@ contract PunksRenderer is IPunksRenderer {
         cursor = _writeBytes(out, cursor, bytes("'/>\n"));
 
         for (uint256 y = 0; y < ROW_PIXELS; ++y) {
+            uint256 base = y * ROW_PIXELS;
             uint256 x = 0;
             while (x < ROW_PIXELS) {
-                uint256 base = y * ROW_PIXELS;
                 uint8 c = uint8(ix[base + x]);
                 if (c == 0) {
                     unchecked { ++x; }
