@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title ICryptoPunksAuctions
+/// @title  IPunksAuction
 /// @notice Public types, events, errors, and core API for the zero-fee Punk auction house.
-interface ICryptoPunksAuctions {
+interface IPunksAuction {
     /// @notice Numeric values match NetworkedAuctions for punk standards.
     enum TokenStandard {
         ERC721,
@@ -148,6 +148,7 @@ interface ICryptoPunksAuctions {
     error AuctionNotComplete();
     error MinimumBidNotMet();
 
+    /// @notice Creates a lot that can be opened as an auction.
     function createLot(
         address tokenContract,
         uint256 tokenId,
@@ -156,21 +157,28 @@ interface ICryptoPunksAuctions {
         uint40 expiresAt
     ) external returns (uint256 lotId);
 
+    /// @notice Updates the reserve price and expiry for your lot.
     function updateLot(uint256 lotId, uint96 reserveWei, uint40 expiresAt) external;
 
+    /// @notice Cancels your lot.
     function cancelLot(uint256 lotId) external;
 
+    /// @notice Clears one lot that is expired or no longer valid.
     function clearStaleLot(uint256 lotId) external;
 
+    /// @notice Clears several lots that are expired or no longer valid.
     function clearStaleLots(uint256[] calldata lotIds) external;
 
+    /// @notice Opens a lot as a live auction with your first bid.
     function openAuction(uint256 lotId, uint96 expectedReserveWei)
         external
         payable
         returns (uint256 auctionId);
 
+    /// @notice Places a bid on a live auction.
     function bid(uint256 auctionId) external payable;
 
+    /// @notice Places an ETH offer for Punks that match your filters.
     function placeOffer(
         TokenStandard standard,
         uint96 amountWei,
@@ -181,26 +189,32 @@ interface ICryptoPunksAuctions {
         uint16[] calldata excludeIds
     ) external payable returns (uint256 offerId);
 
+    /// @notice Cancels your active offer and refunds its ETH.
     function cancelOffer(uint256 offerId) external;
 
+    /// @notice Increases or decreases the offer amount.
     function adjustOfferAmount(
         uint256 offerId,
         uint96 weiToAdjust,
         bool increase
     ) external payable;
 
+    /// @notice Increases or decreases the seller settlement amount.
     function adjustOfferSettlement(
         uint256 offerId,
         uint96 weiToAdjust,
         bool increase
     ) external payable;
 
+    /// @notice Accepts an offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external;
 
+    /// @notice Starts an auction by using an existing offer as the first bid.
     function startAuctionFromOffer(uint256 offerId, uint16 punkId)
         external
         returns (uint256 auctionId);
 
+    /// @notice Returns the filters saved for an offer.
     function getOfferFilters(uint256 offerId)
         external
         view
@@ -210,11 +224,15 @@ interface ICryptoPunksAuctions {
             uint16[] memory excludeIds
         );
 
+    /// @notice Settles a completed auction.
     function settle(uint256 auctionId) external;
 
+    /// @notice Returns the minimum bid needed for an auction.
     function currentMinBidWei(uint256 auctionId) external view returns (uint96);
 
+    /// @notice Checks whether an auction is still open.
     function auctionActive(uint256 auctionId) external view returns (bool);
 
+    /// @notice Returns when an auction ends.
     function endTimestampOf(uint256 auctionId) external view returns (uint40);
 }

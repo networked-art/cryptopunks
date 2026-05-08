@@ -11,10 +11,14 @@ contract MockCryptoPunksMarket {
         address onlySellTo;
     }
 
+    /// @notice Returns the owner set for a Punk.
     mapping(uint256 => address) public punkIndexToAddress;
+    /// @notice Returns sale details set for a Punk.
     mapping(uint256 => Offer) public punksOfferedForSale;
+    /// @notice Returns ETH that an address can withdraw.
     mapping(address => uint256) public pendingWithdrawals;
 
+    /// @notice Returns whether mock Punk purchases should fail.
     bool public breakBuyPunk;
 
     event PunkTransfer(address indexed from, address indexed to, uint256 punkIndex);
@@ -27,14 +31,17 @@ contract MockCryptoPunksMarket {
     );
     event PunkNoLongerForSale(uint256 indexed punkIndex);
 
+    /// @notice Sets whether mock Punk purchases should fail.
     function setBreakBuyPunk(bool v) external {
         breakBuyPunk = v;
     }
 
+    /// @notice Sets the starting owner for a Punk.
     function setInitialOwner(address to, uint256 punkIndex) external {
         punkIndexToAddress[punkIndex] = to;
     }
 
+    /// @notice Offers a Punk for sale to one address.
     function offerPunkForSaleToAddress(
         uint256 punkIndex,
         uint256 minSalePriceInWei,
@@ -51,12 +58,14 @@ contract MockCryptoPunksMarket {
         emit PunkOffered(punkIndex, minSalePriceInWei, toAddress);
     }
 
+    /// @notice Removes a Punk sale offer.
     function punkNoLongerForSale(uint256 punkIndex) external {
         require(punkIndexToAddress[punkIndex] == msg.sender, "not owner");
         delete punksOfferedForSale[punkIndex];
         emit PunkNoLongerForSale(punkIndex);
     }
 
+    /// @notice Buys a Punk that is offered for sale.
     function buyPunk(uint256 punkIndex) external payable {
         require(!breakBuyPunk, "buy broken");
         Offer memory offer = punksOfferedForSale[punkIndex];
@@ -74,6 +83,7 @@ contract MockCryptoPunksMarket {
         emit PunkBought(punkIndex, msg.value, seller, msg.sender);
     }
 
+    /// @notice Transfers a Punk to another address.
     function transferPunk(address to, uint256 punkIndex) external {
         require(punkIndexToAddress[punkIndex] == msg.sender, "not owner");
         punkIndexToAddress[punkIndex] = to;
@@ -81,6 +91,7 @@ contract MockCryptoPunksMarket {
         emit PunkTransfer(msg.sender, to, punkIndex);
     }
 
+    /// @notice Withdraws pending ETH from the mock market.
     function withdraw() external {
         uint256 amount = pendingWithdrawals[msg.sender];
         pendingWithdrawals[msg.sender] = 0;

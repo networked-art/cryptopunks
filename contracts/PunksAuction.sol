@@ -1,37 +1,46 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./escrow/CryptoPunkEscrowManager.sol";
-import "./interfaces/ICryptoPunksAuctions.sol";
+import "./escrow/PunksEscrowManager.sol";
+import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./offers/Offers.sol";
 
-/// @title CryptoPunksAuctions
+/// @title PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks.
-contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, Offers {
+contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
     uint40 internal constant AUCTION_DURATION = 24 hours;
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
 
+    /// @notice Returns the last lot id that was created.
     uint256 public lastLotId;
+    /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
 
+    /// @notice Returns public details for a lot.
     mapping(uint256 => Lot) public lots;
+    /// @notice Returns public details for an auction.
     mapping(uint256 => Auction) public auctions;
+    /// @notice Returns the receiver set for an auction winner.
     mapping(uint256 => address) public winnerReceivers;
 
+    /// @notice Returns the version used to expire old lots for a seller Punk.
     mapping(bytes32 => uint64) public sellerTokenVersion;
 
+    /// @notice Creates the auction house for the canonical and V1 Punk markets.
     constructor(address punks, address punksV1, address traits)
-        CryptoPunkEscrowManager(punks, punksV1)
+        PunksEscrowManager(punks, punksV1)
         Offers(traits)
     {}
 
+    /// @notice Receives ETH from trusted Punk market flows.
     receive() external payable {
         if (!_isPunkReceiveSender(msg.sender)) revert UnexpectedEtherSender();
     }
 
+    /// @notice Creates a lot that can be opened as an auction.
     function createLot(
         address tokenContract,
         uint256 tokenId,
@@ -57,6 +66,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit LotCreated(id, msg.sender, tokenContract, tokenId, standard, reserveWei, expiresAt);
     }
 
+    /// @notice Updates the reserve price and expiry for your lot.
     function updateLot(uint256 id, uint96 reserveWei, uint40 expiresAt) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -70,6 +80,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit LotUpdated(id, reserveWei, expiresAt);
     }
 
+    /// @notice Cancels your lot.
     function cancelLot(uint256 id) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -79,10 +90,12 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit LotCancelled(id);
     }
 
+    /// @notice Clears one lot that is expired or no longer valid.
     function clearStaleLot(uint256 id) external {
         _clearStaleLot(id);
     }
 
+    /// @notice Clears several lots that are expired or no longer valid.
     function clearStaleLots(uint256[] calldata ids) external {
         uint256 len = ids.length;
         for (uint256 i; i < len;) {
@@ -93,6 +106,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         }
     }
 
+    /// @notice Opens a lot as a live auction with your first bid.
     function openAuction(
         uint256 id,
         uint96 expectedReserveWei
@@ -118,6 +132,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         auctionId = _createAuction(lot, msg.sender, bidWei, address(0));
     }
 
+    /// @notice Places a bid on a live auction.
     function bid(uint256 auctionId) external payable nonReentrant {
         Auction storage auction = auctions[auctionId];
         if (auction.endTimestamp == 0) revert AuctionDoesNotExist();
@@ -143,6 +158,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit Bid(auctionId, msg.sender, bidWei);
     }
 
+    /// @notice Starts an auction by using an existing offer as the first bid.
     function startAuctionFromOffer(uint256 offerId, uint16 punkId)
         external
         nonReentrant
@@ -187,19 +203,23 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         );
     }
 
+    /// @notice Returns the minimum bid needed for an auction.
     function currentMinBidWei(uint256 auctionId) external view returns (uint96) {
         return _currentMinBidWei(auctions[auctionId].latestBidWei);
     }
 
+    /// @notice Checks whether an auction is still open.
     function auctionActive(uint256 auctionId) external view returns (bool) {
         Auction storage auction = auctions[auctionId];
         return auction.endTimestamp != 0 && block.timestamp <= auction.endTimestamp;
     }
 
+    /// @notice Returns when an auction ends.
     function endTimestampOf(uint256 auctionId) external view returns (uint40) {
         return auctions[auctionId].endTimestamp;
     }
 
+    /// @notice Settles a completed auction.
     function settle(uint256 auctionId) external nonReentrant {
         Auction storage storedAuction = auctions[auctionId];
         Auction memory auction = storedAuction;
@@ -228,6 +248,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         );
     }
 
+    /// @dev Creates auction storage, pulls the Punk into custody, and emits the first bid.
     function _createAuction(
         Lot memory lot,
         address initialBidder,
@@ -267,6 +288,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
+    /// @dev Removes a stale lot and bumps the seller token version when custody changed.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -289,6 +311,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         emit LotCleared(id, msg.sender);
     }
 
+    /// @dev Validates lot inputs and custody before storing a lot.
     function _validateLotArgs(
         address seller,
         address tokenContract,
@@ -305,16 +328,19 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         _maybeRequirePunkInVault(standard, seller, tokenId);
     }
 
+    /// @dev Reverts when the Punk standard is not supported by the auction flow.
     function _requireSupportedPunkStandard(TokenStandard standard) internal pure {
         if (!_isSupportedPunkStandard(standard)) {
             revert UnsupportedStandard();
         }
     }
 
+    /// @dev Returns true for supported Punk standards.
     function _isSupportedPunkStandard(TokenStandard standard) internal pure returns (bool) {
         return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
     }
 
+    /// @dev Resolves the Punk market used by the offer flow.
     function _offerMarket(TokenStandard standard)
         internal
         view
@@ -324,6 +350,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         return _punkMarketFor(standard);
     }
 
+    /// @dev Resolves the Punk token contract used by the offer flow.
     function _offerTokenContract(TokenStandard standard)
         internal
         view
@@ -333,6 +360,7 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         return address(_punkMarketFor(standard));
     }
 
+    /// @dev Buys a listed Punk while handling the V1 market accounting bug.
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
@@ -353,11 +381,13 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         }
     }
 
+    /// @dev Returns the custom receiver for a winner, or the bidder when none is set.
     function _auctionRecipient(uint256 auctionId, address bidder) internal view returns (address) {
         address receiver = winnerReceivers[auctionId];
         return receiver == address(0) ? bidder : receiver;
     }
 
+    /// @dev Extends an auction when a bid arrives inside the grace period.
     function _maybeExtend(uint256 auctionId, Auction storage auction) internal {
         uint40 nowTs = uint40(block.timestamp);
         uint40 timeRemaining = auction.endTimestamp - nowTs;
@@ -368,16 +398,19 @@ contract CryptoPunksAuctions is ICryptoPunksAuctions, CryptoPunkEscrowManager, O
         }
     }
 
+    /// @dev Calculates the next bid using the configured basis point increase.
     function _currentMinBidWei(uint96 prevWei) internal pure returns (uint96) {
         uint256 next = (uint256(prevWei) * (BPS + BID_INCREASE_BPS) + BPS - 1) / BPS;
         return next > type(uint96).max ? type(uint96).max : uint96(next);
     }
 
+    /// @dev Casts an ETH amount to uint96 after checking the upper bound.
     function _checkedUint96(uint256 value) internal pure returns (uint96) {
         if (value > type(uint96).max) revert TooManyTokens();
         return uint96(value);
     }
 
+    /// @dev Builds the key used to version a seller's Punk lot.
     function _tokenKey(
         address seller,
         address tokenContract,
