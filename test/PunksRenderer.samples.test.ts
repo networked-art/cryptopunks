@@ -6,7 +6,8 @@
 //
 // The chosen Punks span the dataset's edges: baseline (0), min visible pixels
 // (31), each rare head variant (Alien/Ape/Zombie), zero-attribute (281), max
-// attribute count (8348), and max color count (4067).
+// attribute count (8348), and max color count (4067). Punk 6980 is included
+// as an additional manually-curated example.
 
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
@@ -50,7 +51,7 @@ const SCALARS_PER_WORD = 5
 const PLACEHOLDER_PIXEL_COUNT = 148
 const PLACEHOLDER_COLOR_COUNT = 2
 
-const SAMPLE_IDS = [0, 31, 117, 281, 372, 635, 4067, 8348] as const
+const SAMPLE_IDS = [0, 31, 117, 281, 372, 635, 4067, 6980, 8348] as const
 
 // Mirrors the BG_* constants in PunksRenderer.sol — the five marketplace
 // backgrounds the renderer can pick via `backgroundOf`.

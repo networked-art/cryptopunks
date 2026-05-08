@@ -54,6 +54,7 @@ const SNAPSHOT_IDS: readonly number[] = [
   4067,
   5000,
   6487,
+  6980,
   7334,
   8348,
   8888,

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-07T21:26:16.419Z",
+  "generatedAt": "2026-05-08T04:38:07.659Z",
   "source": {
     "address": "0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2",
     "chainId": 1,
@@ -36,6 +36,7 @@
     4067,
     5000,
     6487,
+    6980,
     7334,
     8348,
     8888,
@@ -69,6 +70,7 @@
     "Female 3, Earring, Bandana, Cigarette, Horned Rim Glasses",
     "Female 3, Hot Lipstick, Wild White Hair, Green Eye Shadow",
     "Female 4",
+    "Male 4, Stringy Hair, Small Shades",
     "Male 3, Shadow Beard, Earring, Bandana, Cigarette, Big Shades",
     "Male 2, Buck Teeth, Mole, Big Beard, Earring, Top Hat, Cigarette, Classic Shades",
     "Female 1, Red Mohawk, Eye Mask",
@@ -102,12 +104,13 @@
     "ef5c6c39341c3d6d26a1763c3286620558add21c400444803bbafc585add0fcf",
     "b6858e3d87893e611697db060aaa8406fb12a2b31b3cccd61289b3fa7d2aaa0e",
     "4036c1c5b684f3f431cd87917154e902b32dc58c4cc9738b24c227ee4529c221",
+    "38a0bdbaae7705a0dbfbe81de6e816a67f20541969ef2fc244a33f030e88cd59",
     "e4aa74001c5bbde170cda6f7a3e3d74e6d0bae0041b75641f0a5f20a39f2bcfd",
     "f729477e344b303b33c2a5b41fc251e58ba4d2c136733b9e261558ed8fc335c8",
     "9e7347e10be1786d00de3d30bc5c882fe94be2a58beddbf5b2f85dd0e80c5a4b",
     "c931cae7345de27c6f571814fac9ff09deeecf3c623b2fbfa474641cedb9762c",
     "b4b1770ba21b36b9eaffb62ea9856fc4dd34dc12874b6830b6a2b0cda36fb92c"
   ],
-  "imagesSha256": "ee4fecea7adb03dffeb251d1a28b6bbf63e0b583ca8fceb3c4599aa6bf262c0b",
+  "imagesSha256": "1b6066d283ab7d9c930eae7b6c9f26a245c812c86f592e5650f69247e703a72c",
   "imageBlobFile": "source-snapshot.bin"
 }
