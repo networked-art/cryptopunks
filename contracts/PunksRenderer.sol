@@ -37,29 +37,28 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 ///
 /// @title  PunksRenderer
 ///
-/// @notice Pluggable per-Punk visual encoder. Reads sealed primitives from a
-///         single `PunksData` contract and emits RGBA bytes, run-length SVG,
-///         transparent PNG-8, and flattened PNG-8 with caller-supplied opaque
-///         background. The `punkMarketplace*` variants additionally read the
-///         original CryptoPunks market and pick a background reflecting the
-///         Punk's live marketplace status.
+/// @notice Renders CryptoPunks from the `PunksData` contract. Callers can get
+///         a Punk as raw RGBA bytes, SVG, transparent PNG, or PNG flattened onto
+///         an opaque background. The `punkMarketplace*` functions use the
+///         original CryptoPunks market to choose a background for the Punk's
+///         current status.
 ///
 /// @author 1001
 contract PunksRenderer is IPunksRenderer {
-    /// @notice Underlying sealed primitives source.
+    /// @notice `PunksData` contract this renderer reads from.
     IPunksData public immutable PUNKS_DATA;
 
-    /// @notice Original CryptoPunks market contract. `address(0)` disables
-    ///         marketplace-aware background resolution; `backgroundOf` then
-    ///         always returns the Larva default.
+    /// @notice Original CryptoPunks market contract. If unset, marketplace
+    ///         backgrounds are disabled and `backgroundOf` returns the Larva
+    ///         default.
     IPunksMarket public immutable PUNKS_MARKET;
 
-    /// @notice "Wrapped CryptoPunks" contract. Punks owned by this address
-    ///         render with a green background (`#66a670ff`).
+    /// @notice "Wrapped CryptoPunks" contract. Punks owned by this address get
+    ///         a green background (`#66a670ff`).
     address public immutable WRAPPER;
 
-    /// @notice "C721" wrapper contract. Punks owned by this address render
-    ///         with a green background (`#75a475ff`).
+    /// @notice "C721" wrapper contract. Punks owned by this address get a
+    ///         green background (`#75a475ff`).
     address public immutable C721_WRAPPER;
 
     uint256 private constant PIXELS = 576;
@@ -85,10 +84,10 @@ contract PunksRenderer is IPunksRenderer {
     bytes4 private constant BG_WRAPPED      = hex"66a670ff";
     bytes4 private constant BG_WRAPPED_C721 = hex"75a475ff";
 
-    /// @notice Sets the immutable references. Pass `address(0)` for any of
-    ///         `punksMarket`, `wrapper`, or `c721Wrapper` to opt out of the
-    ///         corresponding marketplace check. Pass `address(0)` or an empty
-    ///         name to skip ENS reverse-name setup.
+    /// @notice Sets the contracts this renderer reads from. Use `address(0)`
+    ///         for `punksMarket`, `wrapper`, or `c721Wrapper` to skip that
+    ///         marketplace check. Use `address(0)` or an empty name to skip ENS
+    ///         reverse-name setup.
     constructor(
         address punksData,
         address punksMarket,
