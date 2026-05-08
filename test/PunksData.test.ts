@@ -348,6 +348,20 @@ describe('PunksData', () => {
           visibleBits: [],
         }),
       },
+      {
+        // Visible bitmap claims one visible pixel, but the index-bytes tail is
+        // empty. _readBits hits its endByte > data.length branch before the
+        // outer entry-length check would catch it.
+        label: 'truncated index tail (less bytes than visible bits require)',
+        entry: (() => {
+          const out = new Uint8Array(1 + VISIBLE_BITMAP_BYTES + 2)
+          out[0] = 2
+          out[1] = 0x80
+          out[1 + VISIBLE_BITMAP_BYTES] = 1
+          out[1 + VISIBLE_BITMAP_BYTES + 1] = 2
+          return out
+        })(),
+      },
     ]
 
     for (const { label, entry } of cases) {
