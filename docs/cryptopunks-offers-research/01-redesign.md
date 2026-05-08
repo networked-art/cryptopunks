@@ -247,7 +247,7 @@ still revalidates via `hasTraits`'s own checks.
    `criteriaSource` (role-based). _Default: `punksData`._
 3. **Optional vs required PunksData address** — current `Offers` accepts
    `address(0)`. Switch to required-non-zero, since rich-predicate consumption
-   is the entire point of the rewrite. _Default: required._
+   is the entire point of the rewrite. _Default: required._ Decision: PunksData address is hardcoded at contract deployment and immutable...
 
 ## Out of scope (revisitable)
 
