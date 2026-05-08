@@ -42,11 +42,11 @@ contract PunksData is PunksDataLoader, IPunksData {
         uint256 bitOffset;
     }
 
-    /// @notice Creates the data contract and sets the loader admin.
-    constructor(address initialAdmin) PunksDataLoader(initialAdmin) {}
+    /// @notice Creates the data contract and sets the temporary data supplier.
+    constructor(address x1001) PunksDataLoader(x1001) {}
 
     /// @notice Returns the hash of the sealed Punk data set.
-    /// @dev The hash is zero until the admin seals the data.
+    /// @dev The hash is zero until i seal the data.
     function datasetHash() public view returns (bytes32) {
         return _datasetHash;
     }

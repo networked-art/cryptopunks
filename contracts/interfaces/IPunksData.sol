@@ -27,7 +27,7 @@ interface IPunksDataTypes {
 /// @notice Shared custom errors for loader and read surfaces.
 interface IPunksDataErrors is IPunksDataTypes {
     error ZeroAddress();
-    error NotAdmin();
+    error NotOwner();
     error AlreadySealed();
     error InvalidChunkIndex();
     error InvalidLength();
@@ -64,8 +64,8 @@ interface IPunksDataLoader is IPunksDataErrors {
         bytes32 datasetHash
     );
 
-    /// @notice Returns the account that can load and seal the data.
-    function admin() external view returns (address);
+    /// @notice Returns the account that can load, name, and seal the data before seal.
+    function owner() external view returns (address);
 
     /// @notice True after `seal` has been called; the loader is permanently locked.
     function isSealed() external view returns (bool);

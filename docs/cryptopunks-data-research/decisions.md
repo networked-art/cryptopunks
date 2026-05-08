@@ -356,13 +356,13 @@ approach.
 
 ### L1. Deployer seals the data contract
 
-- Constructor records `address admin`.
-- `loadBlobChunk(BlobId blobId, index, bytes)` admin-only, accumulates
+- Constructor records temporary `address owner`.
+- `loadBlobChunk(BlobId blobId, index, bytes)` owner-only, accumulates
   SSTORE2 pointers.
 - `loadTraitNameHashes(TraitNameHash[] entries)` loads name lookup keys as
   named tuples, not parallel arrays.
 - `seal(DatasetCommitment commitment)` called once: writes `datasetHash`,
-  emits `DatasetCommitted`, sets `admin = address(0)`. All loader functions
+  emits `DatasetCommitted`, sets `owner = address(0)`. All loader functions
   revert post-seal.
 - No proxy. No upgrade. No emergency override.
 
@@ -437,7 +437,7 @@ keys.
 
 ### O1. Deployer / owner / mirrorer
 
-Flag: choose the deployer/admin address before deployment. That address loads
+Flag: choose the deployer/owner address before deployment. That address loads
 the dataset and must call `seal(DatasetCommitment)`. After seal, it has no
 authority.
 
@@ -466,12 +466,21 @@ For each deployed contract, configure both directions:
 Deployment flow:
 
 1. Register/control `punksdata.eth` from the deployer Safe.
-2. Deploy contracts with temporary admin/owner authority where needed.
-3. Set forward records for `punksdata.eth` and subnames.
-4. Set reverse primary names through the Reverse Registrar while the deployer
-   or temporary owner is still authorized.
-5. Call `seal(DatasetCommitment)` on `PunksData`; after seal, the data
-   contract has no admin.
+2. Deploy contracts with temporary owner authority where needed. `PunksData`
+   exposes `owner()` before seal, so ENS Reverse Registrars can recognize the
+   deployer Safe as authorized without adding ENS-specific constructor calls.
+3. Load `PunksData` without sealing it:
+   `npm run load:punks-data`. The loader intentionally does not call
+   `seal()` unless `PUNKS_DATA_SEAL=1` is set.
+4. Set forward records for `punksdata.eth` and subnames. A primary name only
+   reverse-resolves cleanly if the forward ENS record also resolves back to
+   the deployed contract address.
+5. Set reverse primary names through the Reverse Registrar while the deployer
+   Safe or temporary owner is still authorized. On mainnet, use
+   `setNameForAddr(contract, owner, defaultResolver, name)`; on supported L2s,
+   use the chain's Reverse Registrar argument shape.
+6. Call `seal(DatasetCommitment)` on `PunksData` with
+   `npm run seal:punks-data`; after seal, `owner()` returns `address(0)`.
 
 ENS is a discovery layer, not the security root. The canonical trust anchors
 remain the deployed addresses, verified source, `DatasetCommitted`, and

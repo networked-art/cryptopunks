@@ -46,12 +46,17 @@ describe('PunksData', () => {
     const ctx = await deployLoadedPunksData()
     const { data, deployer, other, hashes } = ctx
 
+    assert.equal(
+      ((await data.read.owner()) as string).toLowerCase(),
+      deployer.account.address.toLowerCase(),
+    )
+
     const dataAsOther = await ctx.viem.getContractAt('PunksData', data.address, {
       client: { wallet: other },
     })
     await assert.rejects(
       () => dataAsOther.write.loadColorMasks([0, [0n]]),
-      /0x7bfa4b9f|NotAdmin/,
+      /0x30cd7471|NotOwner/,
     )
 
     await ctx.viem.assertions.revertWithCustomError(
@@ -72,8 +77,8 @@ describe('PunksData', () => {
 
     assert.equal(await data.read.isSealed(), true)
     assert.equal(
-      ((await data.read.admin()) as string).toLowerCase(),
-      deployer.account.address.toLowerCase(),
+      ((await data.read.owner()) as string).toLowerCase(),
+      '0x0000000000000000000000000000000000000000',
     )
     assert.equal(
       ((await data.read.datasetHash()) as string).toLowerCase(),

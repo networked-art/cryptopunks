@@ -6,10 +6,10 @@ import "./lib/BlobStorage.sol";
 
 /// @title  PunksDataLoader
 /// @notice Write-side mixin for loading and sealing the punks data blobs.
-/// @dev    One-shot lifecycle: an `admin` loads chunks until `seal` flips
+/// @dev    One-shot lifecycle: an `owner` loads chunks until `seal` flips
 ///         `isSealed`, after which all loader entrypoints revert with
-///         `AlreadySealed`. The original admin address is preserved as an
-///         audit trail and remains queryable via `admin()`.
+///         `AlreadySealed`. `owner()` is also the hook ENS Reverse Registrars
+///         use to authorize contract primary-name setup before seal.
 abstract contract PunksDataLoader is IPunksDataLoader {
     using BlobStorage for BlobStorage.Chunk[];
 
@@ -121,8 +121,8 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     // -----------------------------------------------------------------
     // Storage
     // -----------------------------------------------------------------
-    /// @notice Returns the account that can load and seal the data.
-    address public admin;
+    /// @notice Returns the account that can load, name, and seal the data before seal.
+    address public owner;
     /// @notice Returns true after the data has been sealed.
     bool public isSealed;
     bytes32 internal _datasetHash;
@@ -138,22 +138,22 @@ abstract contract PunksDataLoader is IPunksDataLoader {
         _;
     }
 
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert NotAdmin();
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
-    /// @notice Sets the first data loader admin.
-    constructor(address initialAdmin) {
-        if (initialAdmin == address(0)) revert ZeroAddress();
-        admin = initialAdmin;
+    /// @notice Sets the temporary data loader owner.
+    constructor(address initialOwner) {
+        if (initialOwner == address(0)) revert ZeroAddress();
+        owner = initialOwner;
     }
 
     /// @notice Loads packed trait masks for a range of Punks.
     function loadTraitMaskPairs(uint16 startPairIndex, uint256[] calldata packedPairs)
         external
         whenUnsealed
-        onlyAdmin
+        onlyOwner
     {
         uint256 len = packedPairs.length;
         if (uint256(startPairIndex) + len > PUNK_COUNT / 2) revert InvalidLength();
@@ -176,7 +176,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     function loadColorMasks(uint16 startPunkId, uint256[] calldata masks)
         external
         whenUnsealed
-        onlyAdmin
+        onlyOwner
     {
         uint256 len = masks.length;
         if (uint256(startPunkId) + len > PUNK_COUNT) revert InvalidLength();
@@ -195,7 +195,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     function loadPackedScalars(uint16 startWordIndex, uint256[] calldata words)
         external
         whenUnsealed
-        onlyAdmin
+        onlyOwner
     {
         uint256 len = words.length;
         if (uint256(startWordIndex) + len > _scalarWordCount()) revert InvalidLength();
@@ -214,7 +214,7 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     function loadColorSupplies(uint8 startColorId, uint32[] calldata supplies)
         external
         whenUnsealed
-        onlyAdmin
+        onlyOwner
     {
         uint256 len = supplies.length;
         if (uint256(startColorId) + len > PALETTE_SIZE) revert InvalidLength();
@@ -231,19 +231,20 @@ abstract contract PunksDataLoader is IPunksDataLoader {
     function loadBlobChunk(BlobId blobId, uint16 chunkIndex, bytes calldata data)
         external
         whenUnsealed
-        onlyAdmin
+        onlyOwner
     {
         _blobs[blobId].append(chunkIndex, data);
     }
 
     /// @notice Seals the data set so it can no longer be changed.
-    function seal(DatasetCommitment calldata commitment) external whenUnsealed onlyAdmin {
+    function seal(DatasetCommitment calldata commitment) external whenUnsealed onlyOwner {
         _requireNonZeroCommitment(commitment);
         _requireDatasetShape();
 
         bytes32 committedDatasetHash = _commitmentHash(commitment);
         _datasetHash = committedDatasetHash;
         isSealed = true;
+        owner = address(0);
 
         emit DatasetCommitted(
             commitment.traitCatalogHash,

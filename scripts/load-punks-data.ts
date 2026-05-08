@@ -7,6 +7,7 @@ import { bytesToHex, getAddress, type Address, type Hex } from 'viem'
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const CHUNK_SIZE = 24_575
 const STORAGE_BATCH = Number(process.env.PUNKS_DATA_STORAGE_BATCH ?? '200')
+const SEAL_AFTER_LOAD = parseBoolEnv(process.env.PUNKS_DATA_SEAL)
 
 enum BlobId {
   TraitBitmaps,
@@ -55,9 +56,12 @@ async function main() {
   const chainId = await publicClient.getChainId()
   const contract = await viem.getContractAt('PunksData', address)
   const state = await loadOrInitState(address, chainId)
+  state.sealed = await contract.read.isSealed()
+  await saveState(state)
 
   console.log(`PunksData ${contract.address} (chain ${chainId})`)
   console.log(`progress state ${stateFilePath(chainId)}`)
+  console.log(`seal after load: ${SEAL_AFTER_LOAD ? 'yes' : 'no'}`)
 
   await loadBlob(state, contract, publicClient, BlobId.TraitBitmaps, manifest.files.traitBitmaps)
   await loadBlob(state, contract, publicClient, BlobId.TraitMeta, manifest.files.traitMeta)
@@ -109,7 +113,7 @@ async function main() {
   )
   await loadColorSupplies(state, contract, publicClient, manifest.files.colorSupplies)
 
-  if (!state.sealed) {
+  if (SEAL_AFTER_LOAD && !state.sealed) {
     await submit(
       publicClient,
       contract.write.seal([
@@ -126,12 +130,17 @@ async function main() {
     await saveState(state)
   }
 
-  const onchainHash = await contract.read.datasetHash()
-  if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
-    throw new Error(`datasetHash mismatch: ${onchainHash}`)
+  if (SEAL_AFTER_LOAD || state.sealed) {
+    const onchainHash = await contract.read.datasetHash()
+    if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
+      throw new Error(`datasetHash mismatch: ${onchainHash}`)
+    }
+    console.log(`sealed datasetHash ${onchainHash}`)
+  } else {
+    console.log('data loaded but not sealed')
+    console.log('set ENS forward and reverse records before sealing')
+    console.log('rerun with PUNKS_DATA_SEAL=1 to seal the dataset')
   }
-
-  console.log(`sealed datasetHash ${onchainHash}`)
 }
 
 async function loadBlob(
@@ -311,6 +320,14 @@ function readUint32(bytes: Uint8Array, offset: number): number {
     (bytes[offset + 2] << 8) +
     bytes[offset + 3]
   )
+}
+
+function parseBoolEnv(value: string | undefined): boolean {
+  if (value === undefined || value === '') return false
+  const normalized = value.toLowerCase()
+  if (['1', 'true', 'yes'].includes(normalized)) return true
+  if (['0', 'false', 'no'].includes(normalized)) return false
+  throw new Error(`Invalid PUNKS_DATA_SEAL value: ${value}`)
 }
 
 await main()
