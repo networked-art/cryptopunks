@@ -69,12 +69,12 @@ At default settings (`STORAGE_BATCH=200`) the full load runs in ~187 transaction
 
 Environment variables read by the load script:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PUNKS_DATA_OUTPUT` | `scripts/output/punks-data` | Source directory for `manifest.json` and `.bin` blobs. |
-| `PUNKS_DATA_ADDRESS` | (Ignition lookup) | Override the resolved contract address. |
-| `PUNKS_DATA_DEPLOYMENT_ID` | `chain-<chainId>` | Override the Ignition deployment folder used for address resolution. |
-| `PUNKS_DATA_STORAGE_BATCH` | `200` | Items per `loadTraitMaskPairs` / `loadColorMasks` / `loadPackedScalars` / `loadColorSupplies` call. Higher cuts tx count; bounded by block gas. |
+| Variable                   | Default                     | Purpose                                                                                                                                         |
+| -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUNKS_DATA_OUTPUT`        | `scripts/output/punks-data` | Source directory for `manifest.json` and `.bin` blobs.                                                                                          |
+| `PUNKS_DATA_ADDRESS`       | (Ignition lookup)           | Override the resolved contract address.                                                                                                         |
+| `PUNKS_DATA_DEPLOYMENT_ID` | `chain-<chainId>`           | Override the Ignition deployment folder used for address resolution.                                                                            |
+| `PUNKS_DATA_STORAGE_BATCH` | `200`                       | Items per `loadTraitMaskPairs` / `loadColorMasks` / `loadPackedScalars` / `loadColorSupplies` call. Higher cuts tx count; bounded by block gas. |
 
 ### Resumability
 
