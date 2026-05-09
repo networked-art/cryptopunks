@@ -46,6 +46,8 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     }
 
     /// @notice Creates a lot of one or more Punks that can be opened as an auction.
+    /// @dev    Idempotently registers the seller's vault so first-time sellers
+    ///         do not need a separate `ensureVault` transaction.
     function createLot(
         LotItem[] calldata items,
         uint96 reserveWei,
@@ -53,6 +55,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     ) external returns (uint256 id) {
         if (reserveWei == 0) revert InvalidAmount();
         if (expiresAt <= block.timestamp) revert InvalidExpiry();
+        _ensureSellerVault(msg.sender);
         _validateLotItems(items);
 
         uint8 itemCount = uint8(items.length);
@@ -199,7 +202,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
             bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
             if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
-            _maybeRequirePunkInVault(item.standard, lot.seller, item.punkId);
+            _requirePunkInVault(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
             }
@@ -216,7 +219,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             unchecked {
                 ++sellerTokenVersion[key];
             }
-            _pullPunk(item.standard, _tokenContractFor(item.standard), lot.seller, item.punkId);
+            _pullPunk(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
             }
@@ -261,7 +264,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
             bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
             if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
-            _maybeRequirePunkInVault(item.standard, lot.seller, item.punkId);
+            _requirePunkInVault(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
             }
@@ -342,13 +345,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
                 ? totalWei - uint96(allocated)
                 : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
             allocated += itemWei;
-            _deliverPunk(
-                item.standard,
-                _tokenContractFor(item.standard),
-                item.punkId,
-                recipient,
-                itemWei
-            );
+            _deliverPunk(item.standard, item.punkId, recipient, itemWei);
             emit AuctionItemDelivered(
                 auctionId,
                 uint8(i),
@@ -411,7 +408,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             unchecked {
                 ++sellerTokenVersion[key];
             }
-            _pullPunk(item.standard, _tokenContractFor(item.standard), seller, item.punkId);
+            _pullPunk(item.standard, seller, item.punkId);
             unchecked {
                 ++i;
             }
@@ -509,7 +506,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         }
 
         for (uint256 i; i < n;) {
-            _maybeRequirePunkInVault(items[i].standard, msg.sender, items[i].punkId);
+            _requirePunkInVault(items[i].standard, msg.sender, items[i].punkId);
             unchecked {
                 ++i;
             }
@@ -527,7 +524,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             LotItem memory item = items[i];
             bytes32 key = _tokenKey(seller, _tokenContractFor(item.standard), item.punkId);
             if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
-            _maybeRequirePunkInVault(item.standard, seller, item.punkId);
+            _requirePunkInVault(item.standard, seller, item.punkId);
             unchecked {
                 ++i;
             }
@@ -548,13 +545,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
                 ? totalWei - uint96(allocated)
                 : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
             allocated += itemWei;
-            _deliverPunk(
-                item.standard,
-                _tokenContractFor(item.standard),
-                item.punkId,
-                recipient,
-                itemWei
-            );
+            _deliverPunk(item.standard, item.punkId, recipient, itemWei);
             unchecked {
                 ++i;
             }
@@ -568,17 +559,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         override
         returns (ICryptoPunksMarket)
     {
-        return _punkMarketFor(standard);
-    }
-
-    /// @dev Resolves the Punk token contract used by the offer flow.
-    function _offerTokenContract(TokenStandard standard)
-        internal
-        view
-        override
-        returns (address)
-    {
-        return _tokenContractFor(standard);
+        return _marketFor(standard);
     }
 
     /// @dev Buys a listed Punk while handling the V1 market accounting bug.

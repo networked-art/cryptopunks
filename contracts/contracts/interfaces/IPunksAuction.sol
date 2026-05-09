@@ -158,7 +158,6 @@ interface IPunksAuction {
     error InvalidAmount();
     error InvalidExpiry();
     error TooManyTokens();
-    error PunkContractMismatch();
     error PunkNotInVault();
     error NotAuctions();
     error IncorrectPayment();

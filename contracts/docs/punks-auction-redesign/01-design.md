@@ -460,24 +460,19 @@ function _settleBundleDelivery(
             ? totalWei - uint96(allocated)
             : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
         allocated += itemWei;
-        _deliverPunk(
-            item.standard,
-            _tokenContractFor(item.standard),
-            item.punkId,
-            recipient,
-            itemWei
-        );
+        _deliverPunk(item.standard, item.punkId, recipient, itemWei);
         unchecked { ++i; }
     }
     // assert allocated == totalWei (always true for well-formed weightBps)
 }
 ```
 
-`_deliverPunk` is the existing primitive in `escrow/PunksEscrowManager.sol`
-— it offers the Punk from escrow to the auction contract, buys it back at
-`itemWei` (so the CryptoPunks market emits a sale event with that price),
-sweeps the proceeds, and transfers to the recipient. The V1 path additionally
-runs the V1 `withdraw()` workaround.
+`_deliverPunk` is the primitive in `escrow/PunksEscrowManager.sol` — it
+asks the unified `PUNKS_ESCROW` to offer the Punk to the auction contract,
+buys it back at `itemWei` (so the CryptoPunks market emits a sale event with
+that price), sweeps the proceeds, and transfers to the recipient. The V1
+path additionally runs the V1 `withdraw()` workaround. See §11 for the
+escrow topology.
 
 The seller is paid via the escrow's `sweepProceeds()` (canonical) or the
 auction contract's `_pushOrCredit` after V1 `withdraw()`. The total paid to
@@ -492,13 +487,14 @@ the seller equals `Σ itemWei == totalWei` exactly.
 
 ### 6.3 V1 + V2 mixed bundles
 
-Each item's standard determines which market is used. A V1+V2 pair of #4156
-runs two sequential `_deliverPunk` calls:
+Each item's standard determines which market is used. The same escrow
+brokers both items because vault custody is unified across standards (§11).
+A V1+V2 pair of #4156 runs two sequential `_deliverPunk` calls:
 
-1. V1 #4156: escrow_v1 offers, contract buys at `itemWei[0]`, V1 withdraw,
-   V1 transferPunk.
-2. V2 #4156: escrow offers, contract buys at `itemWei[1]`, sweepProceeds, V2
-   transferPunk.
+1. V1 #4156: escrow offers on the V1 market, contract buys at `itemWei[0]`,
+   V1 withdraw, V1 transferPunk.
+2. V2 #4156: escrow offers on the canonical market, contract buys at
+   `itemWei[1]`, sweepProceeds, V2 transferPunk.
 
 The two market sale events recorded onchain will have the seller's chosen
 `weightBps` allocation as their per-item prices.
@@ -722,7 +718,7 @@ settlement well under the L1 mainnet 30M block limit.
 
 Per V1 item via `_deliverPunk`:
 
-- `PUNKS_ESCROW_V1.offerToAuctions(tokenId, hammerWei)` ~50k
+- `PUNKS_ESCROW.offerToAuctions(CRYPTOPUNKS_V1, tokenId, hammerWei)` ~50k
 - `PUNKS_V1.buyPunk{value: hammerWei}(tokenId)` ~30k
 - `PUNKS_V1.withdraw()` ~30k
 - `PUNKS_V1.transferPunk(to, tokenId)` ~25k
@@ -772,7 +768,67 @@ optimistic — say worst-case settlement creeps toward 20M+ — MAX should be
 tightened (likely to 64 or 80). That is a contract change, so this bound must
 be re-validated against measured numbers before mainnet.
 
-## 11. Out of scope
+## 11. Escrow & vault topology
+
+The auction house owns one `PunksEscrow` that brokers custody for both
+canonical CryptoPunks and CryptoPunks V1. Each user has exactly one
+`PunkVault` clone, deployed deterministically at `predictVault(user)`,
+that holds Punks of either standard.
+
+```
+PunksAuction
+   │   immutables: PUNKS, PUNKS_V1, PUNKS_ESCROW
+   │
+   └── PunksEscrow                         (one per deployment)
+          │   immutables: PUNKS, PUNKS_V1, AUCTIONS, VAULT_IMPLEMENTATION
+          │   storage:    mapping(user => PunkVault)
+          │
+          └── PunkVault                    (one EIP-1167 clone per user)
+                immutable: OWNER (the escrow)
+                only entry: transfer(market, punkIndex, to)  -- onlyOwner
+```
+
+Three properties make the topology safe and ergonomic:
+
+1. **One vault address per user, both standards.** The vault is
+   market-agnostic — the escrow names the market on every `transfer` call.
+   This eliminates the historical footgun where a user could accidentally
+   send a V1 Punk to a canonical-only vault address (or vice versa) and
+   strand it forever.
+
+2. **Deterministic-deposit-then-register.** `predictVault(user)` returns
+   the eventual clone address even before the clone is deployed. Users may
+   deposit by calling `transferPunk(predictVault(user), punkId)` on either
+   market; the clone is materialised lazily by either `ensureVault`,
+   `createLot` (which auto-registers the seller's vault), or `reclaim`
+   (which auto-registers on first reclaim).
+
+3. **Tight trust boundary.** The vault accepts calls only from `OWNER`
+   (the escrow). The escrow accepts state-changing custody calls only
+   from `AUCTIONS` (`pullFromVault`, `offerToAuctions`, `sweepProceeds`).
+   The escrow's `receive()` accepts ETH only from the canonical Punk
+   market — V1 settlement proceeds route directly to the auction house
+   instead, because the V1 `buyPunk` accounting bug credits the buyer
+   (here: the auction house), not the seller.
+
+The escrow exposes a small typed surface keyed by `TokenStandard`:
+
+```solidity
+function predictVault(address user) external view returns (address);
+function ensureVault(address user)  external returns (address);
+function reclaim(TokenStandard standard, uint256 punkIndex) external;
+
+// auction-only:
+function pullFromVault(TokenStandard, address seller, uint256 punkIndex) external;
+function offerToAuctions(TokenStandard, uint256 punkIndex, uint256 priceWei) external;
+function sweepProceeds() external;  // canonical-only; V1 settles to auctions
+```
+
+Lots may freely mix V1 and canonical items because each item carries its
+own standard and the unified vault holds both. Sellers do not need to
+maintain separate custody addresses for the two markets.
+
+## 12. Out of scope
 
 These remain explicitly deferred. The unified design does not preclude any of
 them; they're simply not in v1.

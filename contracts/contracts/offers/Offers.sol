@@ -335,9 +335,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         virtual
         returns (ICryptoPunksMarket);
 
-    /// @dev Resolves the token contract for an offer standard.
-    function _offerTokenContract(TokenStandard standard) internal view virtual returns (address);
-
     /// @dev Buys a listed Punk and sends it to the final recipient.
     function _buyListedOfferPunk(
         TokenStandard standard,

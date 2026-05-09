@@ -89,10 +89,6 @@ export async function deployAuctionStack() {
     'PunksEscrow',
     (await auctions.read.PUNKS_ESCROW()) as `0x${string}`,
   )
-  const escrowV1 = await viem.getContractAt(
-    'PunksEscrow',
-    (await auctions.read.PUNKS_ESCROW_V1()) as `0x${string}`,
-  )
 
   return {
     connection,
@@ -102,7 +98,6 @@ export async function deployAuctionStack() {
     punksData,
     auctions,
     escrow,
-    escrowV1,
     deployer,
     seller,
     bidder1,
