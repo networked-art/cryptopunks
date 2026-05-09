@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "test": "pnpm --filter @cryptopunks/contracts test && pnpm --filter @cryptopunks/punks-data-sdk test",
+    "test": "pnpm --filter @networked-art/punks-contracts test && pnpm --filter @networked-art/punks-sdk test",
     "typecheck": "pnpm -r typecheck",
     "docs:dev": "pnpm --filter @cryptopunks/docs dev",
     "docs:build": "pnpm --filter @cryptopunks/docs build",

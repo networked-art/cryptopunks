@@ -1,5 +1,5 @@
 {
-  "name": "@cryptopunks/punks-data-sdk",
+  "name": "@networked-art/punks-sdk",
   "version": "0.0.1",
   "description": "TypeScript SDK for reading and searching the PunksData contract",
   "type": "module",

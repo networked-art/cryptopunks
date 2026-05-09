@@ -1,6 +1,6 @@
 # PunksData TypeScript SDK
 
-`@cryptopunks/punks-data-sdk` is the TypeScript read layer for
+`@networked-art/punks-sdk` is the TypeScript read layer for
 `PunksData.sol`. It uses viem for RPC calls, keeps viem as a peer dependency,
 and builds higher-level catalog, palette, bitmap, search, Punk summary, and
 pixel helpers on top of the contract read API.
@@ -8,7 +8,7 @@ pixel helpers on top of the contract read API.
 Install it with viem:
 
 ```sh
-pnpm add @cryptopunks/punks-data-sdk viem
+pnpm add @networked-art/punks-sdk viem
 ```
 
 Create a client from any viem public client:
@@ -19,7 +19,7 @@ import { mainnet } from 'viem/chains'
 import {
   createPunksDataClient,
   PUNKS_DATA_ADDRESS,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 
 const publicClient = createPublicClient({
   chain: mainnet,
@@ -40,7 +40,7 @@ The SDK exports the canonical mainnet address and dataset hash:
 import {
   PUNKS_DATA_ADDRESS,
   PUNKS_DATA_DATASET_HASH,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 ```
 
 Use `assertCanonicalDataset` before trusting a configurable address:
@@ -125,7 +125,7 @@ where bit `punkId % 256` in word `Math.floor(punkId / 256)` corresponds to a
 Punk id.
 
 ```ts
-import { bitmapToPunkIds } from '@cryptopunks/punks-data-sdk'
+import { bitmapToPunkIds } from '@networked-art/punks-sdk'
 
 const hoodieBitmap = await punksData.getTraitBitmap({
   name: 'Hoodie',
@@ -144,7 +144,7 @@ import {
   punkBitmapFromIds,
   subtractPunkBitmaps,
   unionPunkBitmaps,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 ```
 
 Use them when you want to compose cached rows yourself instead of using
@@ -240,7 +240,7 @@ const a = rgba[offset + 3]
 If you already have palette bytes, use the pure helper:
 
 ```ts
-import { indexedPixelsToRgba } from '@cryptopunks/punks-data-sdk'
+import { indexedPixelsToRgba } from '@networked-art/punks-sdk'
 
 const palette = await punksData.getPaletteRgbaBytes()
 const rgba = indexedPixelsToRgba(indexed, palette)

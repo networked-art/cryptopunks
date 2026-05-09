@@ -1,5 +1,5 @@
 {
-  "name": "@cryptopunks/contracts",
+  "name": "@networked-art/punks-contracts",
   "version": "0.0.1",
   "type": "module",
   "scripts": {

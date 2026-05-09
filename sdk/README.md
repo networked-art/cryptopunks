@@ -1,4 +1,4 @@
-# @cryptopunks/punks-data-sdk
+# @networked-art/punks-sdk
 
 TypeScript SDK for reading and searching the `PunksData.sol` contract.
 
@@ -10,7 +10,7 @@ expansion.
 ## Install
 
 ```sh
-pnpm add @cryptopunks/punks-data-sdk viem
+pnpm add @networked-art/punks-sdk viem
 ```
 
 `viem` is a peer dependency so applications can choose their own viem version,
@@ -24,7 +24,7 @@ import { mainnet } from 'viem/chains'
 import {
   PUNKS_DATA_ADDRESS,
   createPunksDataClient,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 
 const publicClient = createPublicClient({
   chain: mainnet,
@@ -128,7 +128,7 @@ const rgba = await punksData.getRgbaPixels(8348)
 Or expand manually when you already have the palette:
 
 ```ts
-import { indexedPixelsToRgba } from '@cryptopunks/punks-data-sdk'
+import { indexedPixelsToRgba } from '@networked-art/punks-sdk'
 
 const indexed = await punksData.getIndexedPixels(8348)
 const palette = await punksData.getPaletteRgbaBytes()
@@ -186,7 +186,7 @@ import {
   punkBitmapFromIds,
   subtractPunkBitmaps,
   unionPunkBitmaps,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 ```
 
 These work on `bigint[]` bitmaps with 40 words. Tail bits above Punk id `9999`
@@ -226,7 +226,7 @@ import {
   PUNK_COUNT,
   TRAIT_COUNT,
   PALETTE_SIZE,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 ```
 
 The canonical mainnet deployment is:
@@ -250,7 +250,7 @@ For direct viem usage:
 import {
   punksDataAbi,
   punksDataReadAbi,
-} from '@cryptopunks/punks-data-sdk'
+} from '@networked-art/punks-sdk'
 ```
 
 `punksDataReadAbi` contains the read surface and read-side custom errors used
@@ -259,7 +259,7 @@ by the SDK.
 ## Development
 
 ```sh
-pnpm --filter @cryptopunks/punks-data-sdk typecheck
-pnpm --filter @cryptopunks/punks-data-sdk test
-pnpm --filter @cryptopunks/punks-data-sdk build
+pnpm --filter @networked-art/punks-sdk typecheck
+pnpm --filter @networked-art/punks-sdk test
+pnpm --filter @networked-art/punks-sdk build
 ```
