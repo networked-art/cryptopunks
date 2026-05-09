@@ -11,6 +11,11 @@ Drop:
 
 - `struct TraitFilter`.
 - `error TraitsUnavailable`.
+- `enum TokenStandard` variants `ERC721` and `ERC1155`. The enum collapses to
+  `{ CRYPTOPUNKS, CRYPTOPUNKS_V1 }`.
+- `error UnsupportedStandard`. With the enum exhaustively valid, the
+  Solidity-generated bounds check on enum decoding replaces the runtime
+  rejection.
 
 Add:
 
@@ -71,7 +76,7 @@ Add errors:
 
 Keep errors:
 
-- `InvalidAmount`, `InvalidExpiry`, `UnsupportedStandard`, `TooManyTokens`,
+- `InvalidAmount`, `InvalidExpiry`, `TooManyTokens`,
   `IncorrectPayment`, `NotOfferer`, `OfferNotActive`,
   `NegativeAdjustmentHigherThanCurrentOffer`, `ListingNotValid`,
   `ListingPriceTooHigh`, `PunkNotIncluded`, `PunkExcluded`,
@@ -171,8 +176,8 @@ expiresAt)`.
 `_offerTokenContract` and the escrow router). Hoist to a shared util used by
 both lot validation and per-item delivery.
 
-`_isSupportedPunkStandard` — unchanged; still
-`CRYPTOPUNKS || CRYPTOPUNKS_V1`.
+`_isSupportedPunkStandard` — deleted. With the enum collapsed to the two
+Punks variants, every value is supported by construction.
 
 Internal helpers added:
 
@@ -269,8 +274,8 @@ Drop:
 
 - `_storeOfferFilters` (per-filter push loop).
 - `_requireOfferMatchesPunk` (replaced by per-slot match).
-- `_requireSupportedOfferStandard` if it becomes redundant once standard is
-  per-slot.
+- `_requireSupportedOfferStandard` — obsolete with the enum collapsed to
+  Punks-only variants.
 - `_offerMarket(standard)` and `_offerTokenContract(standard)` virtuals
   remain (still resolved against `PunksAuction` for the market path).
 
@@ -366,7 +371,7 @@ New coverage:
 - Place-time mask validation: bits beyond canonical, required/forbidden
   overlap, forbidden/anyOf overlap.
 - Place-time `weightBps` validation: zero weight, sum != 10_000.
-- Bundle createLot with V1+V2 pair, six-Punk equal-weight, 40-Punk max.
+- Bundle createLot with V1+V2 pair, six-Punk equal-weight, 100-Punk max.
 - Bundle openAuction pulls every Punk; bundle settle delivers every Punk;
   per-item market sale events recorded with weighted prices.
 - Per-item version cascading: opening a lot containing item X invalidates
@@ -431,26 +436,28 @@ pending pull balance, which they sweep separately. No accounting drift.
 
 ### 5.4 MAX_LOT_ITEMS tightening
 
-If post-implementation gas measurements reveal real overhead beyond the
-estimates in 01-design §10, MAX should be reduced. Better to ship at 24 or
-32 with measured headroom than to ship at 40 and have settlement transactions
-fail under congestion. Profile before mainnet.
+`MAX_LOT_ITEMS = 100` is chosen for use-case coverage; the design margin
+against 30M is real but slimmer than the original 40-item proposal. If
+post-implementation gas measurements reveal real overhead beyond the
+estimates in 01-design §10, MAX should be reduced (likely to 64 or 80).
+Better to ship with measured headroom than to ship at 100 and have settlement
+transactions fail under congestion. Profile before mainnet.
 
 ### 5.5 Per-item version array storage
 
 `mapping(uint256 => uint64[]) lotItemVersions` adds one storage write per
-item at lot creation. For 40-item lots that's 40 SSTOREs at lot creation
+item at lot creation. For 100-item lots that's 100 SSTOREs at lot creation
 versus the current single SSTORE for `lot.version`. Worth confirming that
 this isn't a meaningful UX regression for the singleton case (one extra
 SSTORE vs current).
 
 If measured cost is too high, a tighter alternative: pack 4 versions per
-slot (4×uint64 = 256 bits) so a 40-item lot uses 10 slots instead of 40.
-Saves ~600k gas at create time. Worth measuring before deciding.
+slot (4×uint64 = 256 bits) so a 100-item lot uses 25 slots instead of 100.
+Saves ~1.5M gas at create time. Worth measuring before deciding.
 
 ### 5.6 Offer deletion gas
 
-Deleting an `Offer` with 40 slots iterates 40 dynamic-storage clears.
+Deleting an `Offer` with 100 slots iterates 100 dynamic-storage clears.
 Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
 
 ## 6. Done definition
@@ -458,9 +465,9 @@ Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
 - All listed contract files compile with the new interfaces.
 - All existing test cases pass after migration to `MockPunksData` and
   `OfferSlot[]`.
-- New bundle test cases pass (V1+V2 pair, 6-Punk lot, 40-Punk lot,
+- New bundle test cases pass (V1+V2 pair, 6-Punk lot, 100-Punk lot,
   cascading version invalidation, atomic delivery revert).
-- Gas profile output recorded against MAX_LOT_ITEMS=40 worst case;
+- Gas profile output recorded against MAX_LOT_ITEMS=100 worst case;
   decision to keep or tighten the bound documented.
 - `docs/punks-auction-redesign/02-implementation-plan.md` updated with any
   spec deviations discovered during implementation.

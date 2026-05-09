@@ -30,22 +30,25 @@ This document specifies the unified N-item / N-slot redesign.
 
 ```solidity
 enum TokenStandard {
-    ERC721,
-    ERC1155,
     CRYPTOPUNKS,
     CRYPTOPUNKS_V1
 }
 ```
 
-Existing enum, unchanged. Lots and offers only support `CRYPTOPUNKS` and
-`CRYPTOPUNKS_V1`; the other variants are reserved for future expansion of the
-auction protocol and are rejected at validation.
+`PunksAuction` is Punks-only by design. The enum collapses to the two Punks
+variants — `ERC721` and `ERC1155` are removed. Any future support for other
+token standards is a separate contract, not a future variant of this one.
+
+Removing the placeholder variants also removes the runtime
+`UnsupportedStandard` check: every value the enum can hold is a valid Punks
+standard, so the Solidity-generated bounds check on enum decoding is the only
+validation needed.
 
 ### 2.2 Lot items
 
 ```solidity
 struct LotItem {
-    TokenStandard standard;   // CRYPTOPUNKS or CRYPTOPUNKS_V1
+    TokenStandard standard;
     uint16        punkId;
     uint16        weightBps;  // 1..10_000; Σ across lot must equal 10_000
 }
@@ -143,7 +146,7 @@ this constant rather than expanding `IPunksDataVisual` to expose bounds.
 ```solidity
 struct OfferSlot {
     OfferCriteria criteria;
-    TokenStandard standard;       // explicit; no "any" sentinel
+    TokenStandard standard;       // CRYPTOPUNKS or CRYPTOPUNKS_V1; no "any" sentinel
     uint16[] includeIds;
     uint16[] excludeIds;
 }
@@ -177,7 +180,7 @@ its own. The singleton-fast-path `acceptOffer(offerId, punkId)` uses
 ### 2.6 Constants
 
 ```solidity
-uint8  internal constant MAX_LOT_ITEMS    = 40;
+uint8  internal constant MAX_LOT_ITEMS    = 100;
 uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
 uint8  internal constant COLOR_COUNT_MAX  = 14;
 uint16 internal constant BPS              = 10_000;
@@ -201,7 +204,6 @@ function createLot(
 Validation:
 
 - `items.length` ∈ `[1, MAX_LOT_ITEMS]`.
-- Every `item.standard` is `CRYPTOPUNKS` or `CRYPTOPUNKS_V1`.
 - No duplicate `(standard, punkId)` within the lot.
 - Every `item.weightBps > 0` and Σ `weightBps == TOTAL_WEIGHT_BPS`.
 - Every Punk is in the seller vault for its standard. (Vault ownership is the
@@ -335,7 +337,6 @@ Validation:
 - `amountWei > 0`.
 - `msg.value == amountWei + settlementWei`.
 - `slots.length` ∈ `[1, MAX_LOT_ITEMS]`.
-- For every slot: `slot.standard` is `CRYPTOPUNKS` or `CRYPTOPUNKS_V1`.
 - For every slot: criteria masks pass `_requireValidCriteria` (canonical bit
   range, no required/forbidden overlap, no forbidden/anyOf overlap, color
   count range valid if enabled).
@@ -520,7 +521,6 @@ match against.
 | Check | Where | Error |
 | --- | --- | --- |
 | `items.length` ∈ `[1, MAX_LOT_ITEMS]` | createLot | `InvalidItemCount` |
-| Every standard is supported Punk | createLot, openAuction | `UnsupportedStandard` |
 | No duplicate `(standard, punkId)` | createLot | `DuplicateLotItem` |
 | Σ `weightBps == TOTAL_WEIGHT_BPS` and every weight > 0 | createLot | `InvalidWeights` |
 | Every Punk in seller vault | createLot, openAuction, clearStaleLot | `PunkNotInVault` |
@@ -534,7 +534,6 @@ match against.
 | Check | Where | Error |
 | --- | --- | --- |
 | `slots.length` ∈ `[1, MAX_LOT_ITEMS]` | placeOffer | `InvalidSlotCount` |
-| Every slot's standard supported | placeOffer | `UnsupportedStandard` |
 | Mask validity per slot | placeOffer | `InvalidTraitMask` |
 | Color count range valid per slot | placeOffer | `InvalidColorCountRange` |
 | `includeIds.length <= MAX_INCLUDE_IDS` | placeOffer | `TooManyIds` |
@@ -715,10 +714,11 @@ between forbidden and anyOf.
 
 ## 10. Gas analysis
 
-`MAX_LOT_ITEMS = 40` is chosen so that worst-case settlement and openAuction
-fit comfortably within L1 mainnet block limits.
+`MAX_LOT_ITEMS = 100` is chosen to cover plausible curated baskets (large
+artist collections, exchange treasury bundles) while keeping worst-case
+settlement well under the L1 mainnet 30M block limit.
 
-### 10.1 Settlement (worst case: 40 V1 items)
+### 10.1 Settlement (worst case: 100 V1 items)
 
 Per V1 item via `_deliverPunk`:
 
@@ -728,43 +728,49 @@ Per V1 item via `_deliverPunk`:
 - `PUNKS_V1.transferPunk(to, tokenId)` ~25k
 - Auction-contract bookkeeping per item ~15k
 
-Per item: ~150k gas. 40 × 150k = ~6M gas.
+Per item: ~150k gas. 100 × 150k = ~15M.
 
 Plus auction state read/write, seller payment, settled-flag flip, top-level
 events: ~1M.
 
-Total: ~7M gas. Within a 30M block limit, leaving ~23M of headroom.
+Total: ~16M gas. Within a 30M block limit, leaving ~14M of headroom.
 
-### 10.2 Settlement (mixed canonical-only)
+### 10.2 Settlement (canonical-only)
 
 Canonical V2 path is cheaper (~110k per item; no `withdraw()`):
 
-- 40 × 110k = ~4.4M plus ~1M overhead = ~5.4M.
+- 100 × 110k = ~11M plus ~1M overhead = ~12M.
 
-### 10.3 openAuction (40-item pull)
+### 10.3 openAuction (100-item pull)
 
-Per item: `_pullPunk` ~60–80k (V1 higher than V2). 40 × 80k = ~3.2M plus
-~1M overhead = ~4.2M.
+Per item: `_pullPunk` ~60–80k (V1 higher than V2). 100 × 80k = ~8M plus
+~1M overhead = ~9M.
 
-### 10.4 placeOffer (40-slot offer)
+### 10.4 placeOffer (100-slot offer)
 
-Per slot: ~25k (storage of OfferSlot + small dynamic arrays). 40 × 25k =
-~1M plus ~50k overhead = ~1.05M.
+Per slot: ~25k (storage of OfferSlot + small dynamic arrays). 100 × 25k =
+~2.5M plus ~50k overhead = ~2.55M.
 
-### 10.5 createLot (40-item lot)
+### 10.5 createLot (100-item lot)
 
 Per item: ~25k storage + ~10k validation + ~3k version snapshot = ~38k.
-40 × 38k = ~1.5M plus ~100k overhead = ~1.6M.
+100 × 38k = ~3.8M plus ~100k overhead = ~3.9M.
 
 ### 10.6 Conclusion
 
-Worst case at MAX_LOT_ITEMS=40 fits in well under half a block. Bidder gas
-cost rises linearly in N; acceptable for the bundle use case where the
-buyer is choosing to acquire many Punks atomically.
+At MAX_LOT_ITEMS=100, worst-case settlement (~16M) is roughly half a block.
+That is fine in normal conditions but leaves less headroom under congestion
+than a smaller bound would. The trade-off is deliberate: 100 covers larger
+curated collections that 40 would exclude, and bidders for large bundles
+can afford to time their settlement.
 
-If post-implementation gas profiling shows comfortable headroom, MAX could be
-raised. If unexpected overhead emerges, MAX can be tightened — but that is a
-contract change, so prefer to ship 40 unless measurements demand otherwise.
+Bidder gas cost rises linearly in N; acceptable for the bundle use case
+where the buyer is choosing to acquire many Punks atomically.
+
+If post-implementation gas profiling shows the per-item estimates above are
+optimistic — say worst-case settlement creeps toward 20M+ — MAX should be
+tightened (likely to 64 or 80). That is a contract change, so this bound must
+be re-validated against measured numbers before mainnet.
 
 ## 11. Out of scope
 
