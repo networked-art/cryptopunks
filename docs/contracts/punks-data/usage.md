@@ -29,6 +29,10 @@ if (hoodie === undefined) throw new Error('Missing Hoodie trait')
 const requiredMask = 1n << BigInt(hoodie)
 ```
 
+The TypeScript SDK wraps this pattern with cached catalog reads and kind-aware
+lookup helpers. See [TypeScript SDK](/contracts/punks-data/sdk) for the
+offchain read/search surface.
+
 ## Match An Offer Or Filter
 
 For contracts, store compact masks and call `hasTraits` during settlement:
@@ -123,4 +127,3 @@ produce RGBA, SVG, PNG, and metadata outputs.
 
 The research notes behind this design are in
 `contracts/docs/cryptopunks-data-research/`, especially the decisions sheet.
-
