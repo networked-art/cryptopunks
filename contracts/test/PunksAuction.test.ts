@@ -1243,6 +1243,29 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('rejects starting an auction from an offer below the lot reserve', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 952n)
+      await depositPunk(ctx, seller, 952n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 952n, parseEther('2'), expiresAt)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        settlementWei: 0n,
+        slots: [punkSlot(952)],
+      })
+
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.startAuctionFromOffer([offerId, 1n]),
+        auctions,
+        'ReserveNotMet',
+      )
+    })
+
     it('accepts a V1+V2 pair offer against a stored lot and pays seller the offer amount', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punks, punksV1, seller, bidder1, attacker } = ctx
@@ -1300,6 +1323,29 @@ describe('PunksAuction', () => {
       assert.equal(
         ((await punksV1.read.punkIndexToAddress([1000n])) as string).toLowerCase(),
         bidder1.account.address.toLowerCase(),
+      )
+    })
+
+    it('rejects accepting an offer below the lot reserve', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 1001n)
+      await depositPunk(ctx, seller, 1001n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 1001n, parseEther('2'), expiresAt)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        settlementWei: 0n,
+        slots: [punkSlot(1001)],
+      })
+
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.acceptOfferFromLot([offerId, 1n]),
+        auctions,
+        'ReserveNotMet',
       )
     })
 

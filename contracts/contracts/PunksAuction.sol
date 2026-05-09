@@ -187,6 +187,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
         if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
         uint64[] memory versions = lotItemVersions[lotId];
@@ -248,6 +249,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
         if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
         uint64[] memory versions = lotItemVersions[lotId];
