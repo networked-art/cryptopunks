@@ -3,11 +3,21 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'CryptoPunks',
   description: 'CryptoPunks documentation',
-  themeConfig: {
-    nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Contracts', link: '/contracts/punks-data' },
+  appearance: false,
+  head: [
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap',
+      },
     ],
+  ],
+  themeConfig: {
+    aside: false,
+    outline: false,
     sidebar: [
       {
         text: 'Introduction',

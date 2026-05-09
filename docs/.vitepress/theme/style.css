@@ -1,0 +1,233 @@
+:root {
+  --vp-font-family-base: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono',
+    Consolas, 'Liberation Mono', Menlo, monospace;
+  --vp-font-family-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono',
+    Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --vp-c-white: #ffffff;
+  --vp-c-black: #000000;
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #ffffff;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #f7f7f7;
+  --vp-c-text-1: #050505;
+  --vp-c-text-2: #3d3d3d;
+  --vp-c-text-3: #737373;
+  --vp-c-divider: #d7d7d7;
+  --vp-c-border: #d7d7d7;
+  --vp-c-gutter: #d7d7d7;
+
+  --vp-c-brand-1: #000000;
+  --vp-c-brand-2: #2f2f2f;
+  --vp-c-brand-3: #616161;
+  --vp-c-brand-soft: #f0f0f0;
+
+  --vp-button-brand-bg: #000000;
+  --vp-button-brand-border: #000000;
+  --vp-button-brand-hover-bg: #2f2f2f;
+  --vp-button-brand-hover-border: #2f2f2f;
+  --vp-button-brand-text: #ffffff;
+
+  --vp-layout-max-width: 1180px;
+  --vp-sidebar-width: 248px;
+  --vp-code-font-size: 0.88em;
+}
+
+html {
+  background: #ffffff;
+}
+
+body {
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+}
+
+::selection {
+  color: #ffffff;
+  background: #000000;
+}
+
+.VPNav {
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.VPNavBar {
+  border-bottom: 0;
+}
+
+.VPNavBar.has-sidebar .content {
+  border-bottom: 0;
+}
+
+.VPNavBarTitle .title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.VPSidebar {
+  border-right: 1px solid var(--vp-c-divider);
+  background: #ffffff;
+}
+
+.VPSidebarItem.level-0 {
+  padding-bottom: 18px;
+}
+
+.VPSidebarItem.level-0 > .item > .text {
+  color: #000000;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.VPSidebarItem.level-1 > .item {
+  min-height: 30px;
+}
+
+.VPSidebarItem.level-1 > .item > .link > .text {
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.VPSidebarItem.level-1.is-active > .item > .link > .text {
+  color: #000000;
+  font-weight: 700;
+}
+
+.VPDoc {
+  padding-top: 52px;
+}
+
+.VPDoc.has-sidebar .content-container,
+.VPDoc:not(.has-sidebar) .content-container {
+  max-width: 760px;
+}
+
+.VPDoc .aside {
+  display: none;
+}
+
+.vp-doc {
+  line-height: 1.75;
+}
+
+.vp-doc h1 {
+  max-width: 11ch;
+  margin-bottom: 34px;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.vp-doc h2 {
+  margin-top: 48px;
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 18px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.vp-doc h3 {
+  margin-top: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.vp-doc p,
+.vp-doc li {
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc strong {
+  color: #000000;
+}
+
+.vp-doc a {
+  color: #000000;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.vp-doc blockquote {
+  border-left: 1px solid #000000;
+  padding-left: 18px;
+}
+
+.vp-doc blockquote > p {
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+  font-size: 12px;
+}
+
+.vp-doc th,
+.vp-doc td {
+  border-color: var(--vp-c-divider);
+}
+
+.vp-doc tr:nth-child(2n) {
+  background: transparent;
+}
+
+.vp-doc div[class*='language-'],
+.vp-doc :not(pre) > code {
+  border-radius: 0;
+}
+
+.vp-doc div[class*='language-'] {
+  border: 1px solid var(--vp-c-divider);
+  background: #fbfbfb;
+}
+
+.vp-doc :not(pre) > code {
+  border: 1px solid var(--vp-c-divider);
+  padding: 1px 5px;
+  color: #000000;
+  background: #f7f7f7;
+}
+
+.vp-doc .custom-block {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 0;
+}
+
+.pager-link {
+  border-radius: 0 !important;
+}
+
+@media (min-width: 960px) {
+  .VPDoc.has-sidebar .container {
+    max-width: calc(var(--vp-layout-max-width) - var(--vp-sidebar-width));
+  }
+}
+
+@media (max-width: 767px) {
+  .VPDoc {
+    padding-top: 32px;
+  }
+
+  .vp-doc h1 {
+    max-width: 100%;
+    font-size: 42px;
+  }
+
+  .vp-doc table {
+    display: block;
+  }
+}
