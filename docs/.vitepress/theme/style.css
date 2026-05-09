@@ -49,16 +49,29 @@ body {
   background: #000000;
 }
 
-.VPNav {
-  border-bottom: 1px solid var(--vp-c-divider);
+.VPNavBar {
+  border-bottom: 0;
 }
 
-.VPNavBar {
+.VPNavBar.screen-open {
   border-bottom: 0;
 }
 
 .VPNavBar.has-sidebar .content {
   border-bottom: 0;
+}
+
+.VPNavBar .divider {
+  padding-left: 0 !important;
+}
+
+.VPNavBar .divider-line {
+  background-color: var(--vp-c-divider) !important;
+}
+
+.VPNavBarHamburger,
+.VPNavScreen {
+  display: none !important;
 }
 
 .VPNavBarTitle .title {
@@ -68,13 +81,17 @@ body {
   text-transform: uppercase;
 }
 
+.VPNavBarTitle.has-sidebar .title {
+  border-bottom: 0 !important;
+}
+
 .VPSidebar {
-  border-right: 1px solid var(--vp-c-divider);
+  border-right: 0;
   background: #ffffff;
 }
 
 .VPSidebarItem.level-0 {
-  padding-bottom: 18px;
+  padding: 18px 0;
 }
 
 .VPSidebarItem.level-0 > .item > .text {
@@ -212,8 +229,25 @@ body {
 }
 
 @media (min-width: 960px) {
+  .VPSidebar::after {
+    position: fixed;
+    top: var(--vp-nav-height);
+    bottom: 0;
+    left: calc(var(--vp-sidebar-width) - 1px);
+    width: 1px;
+    background: var(--vp-c-divider);
+    content: '';
+    pointer-events: none;
+  }
+
   .VPDoc.has-sidebar .container {
     max-width: calc(var(--vp-layout-max-width) - var(--vp-sidebar-width));
+  }
+}
+
+@media (min-width: 1440px) {
+  .VPSidebar::after {
+    left: calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width) - 1px);
   }
 }
 
