@@ -186,6 +186,7 @@ interface IPunksAuction {
     error LotExpired();
     error LotNotStale();
     error NotSeller();
+    error PunkAlreadyInLot(uint256 lotId);
     error ReserveMismatch(uint96 expectedReserveWei, uint96 actualReserveWei);
     error ReserveNotMet();
 

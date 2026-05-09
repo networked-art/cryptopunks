@@ -844,41 +844,169 @@ describe('PunksAuction', () => {
       assert.equal(observed, totalWei)
     })
 
-    it('cascades the seller token version across lots that share an item', async () => {
+    it('rejects creating a lot whose Punk is already in another active lot', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, seller, bidder1 } = ctx
+      const { auctions, seller } = ctx
       await assignPunk(ctx, seller, 70n)
       await depositPunk(ctx, seller, 70n)
       await assignPunk(ctx, seller, 71n)
       await depositPunk(ctx, seller, 71n)
 
       const expiresAt = await futureTs(ctx.connection, WEEK)
-      // lot #1: just punk 70
       await createSinglePunkLot(ctx, seller, 70n, parseEther('1'), expiresAt)
-      // lot #2: bundle of punk 70 + punk 71
-      await createLotWith(
-        ctx,
-        seller,
-        [lotItem(70, 5_000), lotItem(71, 5_000)],
-        parseEther('2'),
-        expiresAt,
-      )
 
-      // Open lot #1 first; it bumps the version of punk 70.
-      await openAuction(ctx, bidder1, 1n, parseEther('1'))
-
-      // lot #2 still has punk 70 but with a stale version snapshot.
-      const auctionsAsBidder = await ctx.viem.getContractAt(
+      // A second lot that re-uses Punk 70 reverts up front, naming the active lot.
+      const auctionsAsSeller = await ctx.viem.getContractAt(
         'PunksAuction',
         auctions.address,
-        { client: { wallet: bidder1 } },
+        { client: { wallet: seller } },
       )
-      await ctx.viem.assertions.revertWithCustomError(
-        auctionsAsBidder.write.openAuction([2n, parseEther('2')], {
-          value: parseEther('2'),
-        }),
+      await ctx.viem.assertions.revertWithCustomErrorWithArgs(
+        auctionsAsSeller.write.createLot([
+          [lotItem(70, 5_000), lotItem(71, 5_000)],
+          parseEther('2'),
+          expiresAt,
+        ]),
         auctions,
-        'LotExpired',
+        'PunkAlreadyInLot',
+        [1n],
+      )
+    })
+
+    it('frees a Punk slot on cancelLot so the seller can re-list it', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      await assignPunk(ctx, seller, 80n)
+      await depositPunk(ctx, seller, 80n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 80n, parseEther('1'), expiresAt)
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          80,
+        ]),
+        1n,
+      )
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await auctionsAsSeller.write.cancelLot([1n])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          80,
+        ]),
+        0n,
+      )
+
+      // Re-listing the same Punk now succeeds.
+      await createSinglePunkLot(ctx, seller, 80n, parseEther('2'), expiresAt)
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          80,
+        ]),
+        2n,
+      )
+    })
+
+    it('frees a Punk slot when an expired lot is cleared', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      await assignPunk(ctx, seller, 81n)
+      await depositPunk(ctx, seller, 81n)
+
+      const expiresAt = await futureTs(ctx.connection, DAY)
+      await createSinglePunkLot(ctx, seller, 81n, parseEther('1'), expiresAt)
+
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+      await auctions.write.clearStaleLot([1n])
+
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          81,
+        ]),
+        0n,
+      )
+      // Re-listing succeeds now that the slot is free.
+      const newExpiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 81n, parseEther('2'), newExpiresAt)
+    })
+
+    it('frees a Punk slot when a lot is cleared after the seller reclaims the Punk', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, seller } = ctx
+      await assignPunk(ctx, seller, 82n)
+      await depositPunk(ctx, seller, 82n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 82n, parseEther('1'), expiresAt)
+
+      // Seller pulls the Punk back out of the vault, invalidating the lot.
+      const escrowAsSeller = await ctx.viem.getContractAt(
+        'PunksEscrow',
+        escrow.address,
+        { client: { wallet: seller } },
+      )
+      await escrowAsSeller.write.reclaim([Standard.CRYPTOPUNKS, 82n])
+
+      // Anyone can now clear the stale lot, which frees the slot.
+      await auctions.write.clearStaleLot([1n])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          82,
+        ]),
+        0n,
+      )
+    })
+
+    it('clearStaleLot reverts when the lot is still valid', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      await assignPunk(ctx, seller, 83n)
+      await depositPunk(ctx, seller, 83n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 83n, parseEther('1'), expiresAt)
+
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.clearStaleLot([1n]),
+        auctions,
+        'LotNotStale',
+      )
+    })
+
+    it('frees a Punk slot when an auction opens, allowing the seller to list other Punks', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+      await assignPunk(ctx, seller, 84n)
+      await depositPunk(ctx, seller, 84n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 84n, parseEther('1'), expiresAt)
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
+
+      // Once auction opens, the lot slot is released. (The Punk itself is now
+      // in escrow custody, so re-listing the same Punk would revert at the
+      // vault-custody check.)
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          84,
+        ]),
+        0n,
       )
     })
   })

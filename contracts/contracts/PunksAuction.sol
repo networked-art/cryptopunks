@@ -27,11 +27,12 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     /// @notice Returns the receiver set for an auction winner.
     mapping(uint256 => address) public winnerReceivers;
 
-    /// @notice Returns the version used to expire old lots for a seller's Punk.
-    mapping(bytes32 => uint64) public sellerTokenVersion;
+    /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
+    /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
+    ///         entry reserves that Punk for one lot at a time — first-wins.
+    mapping(bytes32 => uint256) public lotForPunk;
 
     mapping(uint256 => LotItem[]) internal lotItems;
-    mapping(uint256 => uint64[]) internal lotItemVersions;
     mapping(uint256 => LotItem[]) internal auctionItems;
 
     /// @notice Creates the auction house wired to the canonical and V1 Punk markets.
@@ -76,12 +77,11 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, expiresAt);
 
         LotItem[] storage storedItems = lotItems[id];
-        uint64[] storage versions = lotItemVersions[id];
         for (uint256 i; i < itemCount;) {
             LotItem calldata item = items[i];
             storedItems.push(item);
             bytes32 key = _tokenKey(msg.sender, _tokenContractFor(item.standard), item.punkId);
-            versions.push(sellerTokenVersion[key]);
+            lotForPunk[key] = id;
             emit LotItemDetail(id, uint8(i), item.standard, item.punkId, item.weightBps);
             unchecked {
                 ++i;
@@ -109,9 +109,9 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (lot.seller == address(0)) revert LotNotFound();
         if (lot.seller != msg.sender) revert NotSeller();
 
+        _releaseLotSlots(lot.seller, lotItems[id]);
         delete lots[id];
         delete lotItems[id];
-        delete lotItemVersions[id];
 
         emit LotCancelled(id);
     }
@@ -148,12 +148,10 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (bidWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[id];
-        uint64[] memory versions = lotItemVersions[id];
-        _requireLotItemsValidForOpen(lot.seller, items, versions);
+        _requireLotItemsValidForOpen(lot.seller, items);
 
         delete lots[id];
         delete lotItems[id];
-        delete lotItemVersions[id];
 
         auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei, address(0));
     }
@@ -193,15 +191,12 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
-        uint64[] memory versions = lotItemVersions[lotId];
         if (offer.slots.length != items.length) revert SlotItemCountMismatch();
 
         uint256 itemCount = items.length;
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
             _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
-            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
-            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
             _requirePunkInVault(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
@@ -211,14 +206,10 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         delete offers[offerId];
         delete lots[lotId];
         delete lotItems[lotId];
-        delete lotItemVersions[lotId];
 
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
-            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
-            unchecked {
-                ++sellerTokenVersion[key];
-            }
+            delete lotForPunk[_tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId)];
             _pullPunk(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
@@ -255,15 +246,12 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
-        uint64[] memory versions = lotItemVersions[lotId];
         if (offer.slots.length != items.length) revert SlotItemCountMismatch();
 
         uint256 itemCount = items.length;
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
             _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
-            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
-            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
             _requirePunkInVault(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
@@ -273,7 +261,6 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         delete offers[offerId];
         delete lots[lotId];
         delete lotItems[lotId];
-        delete lotItemVersions[lotId];
 
         _refundOfferSettlement(offer);
 
@@ -321,6 +308,15 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     /// @notice Returns the items stored on an auction.
     function getAuctionItems(uint256 auctionId) external view returns (LotItem[] memory) {
         return auctionItems[auctionId];
+    }
+
+    /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
+    function activeLotFor(address seller, TokenStandard standard, uint16 punkId)
+        external
+        view
+        returns (uint256)
+    {
+        return lotForPunk[_tokenKey(seller, _tokenContractFor(standard), punkId)];
     }
 
     /// @notice Settles a completed auction.
@@ -404,10 +400,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
             storedItems.push(item);
-            bytes32 key = _tokenKey(seller, _tokenContractFor(item.standard), item.punkId);
-            unchecked {
-                ++sellerTokenVersion[key];
-            }
+            delete lotForPunk[_tokenKey(seller, _tokenContractFor(item.standard), item.punkId)];
             _pullPunk(item.standard, seller, item.punkId);
             unchecked {
                 ++i;
@@ -418,61 +411,36 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Removes a stale lot and bumps the seller token version when custody changed.
+    /// @dev Removes a lot that is expired or whose custody slipped out of the vault.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        uint64[] memory versions = lotItemVersions[id];
-        uint256 itemCount = items.length;
-
-        bool versionStale;
-        bool[] memory itemLeftVault = new bool[](itemCount);
-        bool anyLeftVault;
-        for (uint256 i; i < itemCount;) {
-            LotItem memory item = items[i];
-            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
-            if (versions[i] != sellerTokenVersion[key]) versionStale = true;
-            if (!_punkStillInSellerVault(item.standard, lot.seller, item.punkId)) {
-                itemLeftVault[i] = true;
-                anyLeftVault = true;
-            }
-            unchecked {
-                ++i;
-            }
-        }
-
-        bool expired = block.timestamp >= lot.expiresAt;
-        if (!versionStale && !expired && !anyLeftVault) revert LotNotStale();
-
-        delete lots[id];
-        delete lotItems[id];
-        delete lotItemVersions[id];
-
-        if (anyLeftVault) {
+        bool stale = block.timestamp >= lot.expiresAt;
+        if (!stale) {
+            uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
-                if (itemLeftVault[i]) {
-                    LotItem memory item = items[i];
-                    bytes32 key = _tokenKey(
-                        lot.seller,
-                        _tokenContractFor(item.standard),
-                        item.punkId
-                    );
-                    unchecked {
-                        ++sellerTokenVersion[key];
-                    }
+                if (!_punkStillInSellerVault(items[i].standard, lot.seller, items[i].punkId)) {
+                    stale = true;
+                    break;
                 }
                 unchecked {
                     ++i;
                 }
             }
         }
+        if (!stale) revert LotNotStale();
+
+        _releaseLotSlots(lot.seller, items);
+        delete lots[id];
+        delete lotItems[id];
 
         emit LotCleared(id, msg.sender);
     }
 
-    /// @dev Validates lot items at create time: count, weights, duplicates, vault custody.
+    /// @dev Validates lot items at create time: count, weights, duplicates,
+    ///      vault custody, and per-item slot availability (one lot per Punk).
     function _validateLotItems(LotItem[] calldata items) internal view {
         uint256 n = items.length;
         if (n == 0 || n > MAX_LOT_ITEMS) revert InvalidItemCount();
@@ -506,25 +474,39 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         }
 
         for (uint256 i; i < n;) {
-            _requirePunkInVault(items[i].standard, msg.sender, items[i].punkId);
+            LotItem calldata item = items[i];
+            bytes32 key = _tokenKey(msg.sender, _tokenContractFor(item.standard), item.punkId);
+            uint256 existingLot = lotForPunk[key];
+            if (existingLot != 0) revert PunkAlreadyInLot(existingLot);
+            _requirePunkInVault(item.standard, msg.sender, item.punkId);
             unchecked {
                 ++i;
             }
         }
     }
 
-    /// @dev Checks per-item version snapshots and vault custody at open/accept/start time.
-    function _requireLotItemsValidForOpen(
-        address seller,
-        LotItem[] memory items,
-        uint64[] memory versions
-    ) internal view {
+    /// @dev Checks vault custody at open/accept/start time. The lot's existence
+    ///      already implies its slot reservations are intact (first-wins).
+    function _requireLotItemsValidForOpen(address seller, LotItem[] memory items) internal view {
         uint256 n = items.length;
         for (uint256 i; i < n;) {
             LotItem memory item = items[i];
-            bytes32 key = _tokenKey(seller, _tokenContractFor(item.standard), item.punkId);
-            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
             _requirePunkInVault(item.standard, seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @dev Frees the per-Punk lot slots held by an items array, so the seller
+    ///      can list those Punks again. Safe to call regardless of current
+    ///      slot value: with first-wins, `lotForPunk[key]` for these items is
+    ///      always either 0 or the lot being released.
+    function _releaseLotSlots(address seller, LotItem[] memory items) private {
+        uint256 n = items.length;
+        for (uint256 i; i < n;) {
+            LotItem memory item = items[i];
+            delete lotForPunk[_tokenKey(seller, _tokenContractFor(item.standard), item.punkId)];
             unchecked {
                 ++i;
             }
@@ -610,7 +592,8 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         return uint96(value);
     }
 
-    /// @dev Builds the key used to version a seller's Punk lot membership.
+    /// @dev Builds the key that identifies a seller's holding of one Punk
+    ///      across the `lotForPunk` reservation mapping.
     function _tokenKey(
         address seller,
         address tokenContract,

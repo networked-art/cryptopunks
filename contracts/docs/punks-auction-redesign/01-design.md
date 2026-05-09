@@ -94,17 +94,19 @@ one for active auctions) so the public `lots(id)` / `auctions(id)`
 auto-getters return clean scalar fields. `itemHash` commits to the exact item
 ordering for offchain consumers.
 
-Per-item versioning continues to use the existing `sellerTokenVersion`
-mapping keyed by `keccak256(seller, tokenContract, tokenId)`. Bumping the
-version of any item invalidates *every* lot that contains that exact
-`(seller, tokenContract, tokenId)` triple — single-Punk and bundle lots alike.
+A Punk can be in at most one active lot at a time. The `lotForPunk` mapping,
+keyed by `keccak256(seller, tokenContract, tokenId)`, holds the active lot id
+or 0. `createLot` writes the entry; `cancelLot`, `clearStaleLot`, `openAuction`,
+`acceptOfferFromLot`, and `startAuctionFromOffer` clear it. Trying to create
+a lot whose Punk is already reserved reverts with `PunkAlreadyInLot(lotId)` —
+the seller must `cancelLot(lotId)` (or wait for `clearStaleLot`) before
+re-listing the same Punk.
 
 ```solidity
-mapping(bytes32 => uint64) public sellerTokenVersion;
+mapping(bytes32 => uint256) public lotForPunk;     // (seller, contract, tokenId) → lotId
 
 mapping(uint256 => Lot)         public  lots;
 mapping(uint256 => LotItem[])   internal lotItems;
-mapping(uint256 => uint64[])    internal lotItemVersions;
 
 mapping(uint256 => Auction)     public  auctions;
 mapping(uint256 => LotItem[])   internal auctionItems;
@@ -116,7 +118,12 @@ Public accessors:
 ```solidity
 function getLotItems(uint256 lotId) external view returns (LotItem[] memory);
 function getAuctionItems(uint256 auctionId) external view returns (LotItem[] memory);
+function activeLotFor(address seller, TokenStandard standard, uint16 punkId)
+    external view returns (uint256);
 ```
+
+`activeLotFor` is the typed read of `lotForPunk` for UIs and indexers that
+prefer not to compute the key offchain.
 
 ### 2.4 Offer criteria
 
@@ -209,6 +216,8 @@ Validation:
 - Every Punk is in the seller vault for its standard. (Vault ownership is the
   authoritative source: for canonical Punks the seller must hold the Punk;
   for V1 the seller must hold the V1 Punk.)
+- For every item: `lotForPunk[key]` is 0. Otherwise revert
+  `PunkAlreadyInLot(existingLotId)`.
 - `reserveWei > 0` and `expiresAt > block.timestamp`.
 
 State changes:
@@ -216,7 +225,7 @@ State changes:
 - Allocate `lotId = ++lastLotId`.
 - Store `Lot { seller, reserveWei, expiresAt, itemCount, itemHash }`.
 - Store `lotItems[lotId] = items`.
-- Snapshot `lotItemVersions[lotId][i] = sellerTokenVersion[key(items[i])]`.
+- For every item: `lotForPunk[key(items[i])] = lotId`.
 
 Events: see §8.
 
@@ -229,15 +238,15 @@ function clearStaleLot(uint256 lotId) external;
 function clearStaleLots(uint256[] calldata lotIds) external;
 ```
 
+`cancelLot` (seller-only) and `clearStaleLot` (anyone) both `delete
+lotForPunk[key]` for every item in the lot, releasing those Punks for
+re-listing.
+
 Stale conditions (any one):
 
 - `block.timestamp >= expiresAt`.
-- For any item: `lotItemVersions[lotId][i] != sellerTokenVersion[key(items[i])]`.
-- For any item: the Punk is no longer in the seller vault.
-
-Clearing a lot whose items moved out of vault bumps `sellerTokenVersion` for
-every affected item; this cascades to other lots that referenced the same
-items.
+- For any item: the Punk is no longer in the seller vault (custody slipped
+  externally — typically a `reclaim` from the escrow).
 
 ### 3.3 openAuction
 
@@ -250,17 +259,17 @@ function openAuction(uint256 lotId, uint96 expectedReserveWei)
 
 Validation:
 
-- Lot exists, not stale.
+- Lot exists, not expired.
 - `lot.reserveWei == expectedReserveWei` (frontend protection against reserve
   changes between read and submit).
 - `msg.value >= lot.reserveWei` (cast to `uint96` with overflow check).
-- For every item: `lotItemVersions[lotId][i] == sellerTokenVersion[key(items[i])]`.
 - For every item: the Punk is in the seller vault.
 
 State changes (in order):
 
 1. Delete the lot (so external custody moves can't re-enter into stale state).
-2. For every item: `++sellerTokenVersion[key(item)]` (cascades stale).
+2. For every item: `delete lotForPunk[key(item)]` (Punks are now in escrow,
+   not in any lot).
 3. For every item: `_pullPunk(item.standard, ...)` from seller vault into
    escrow custody.
 4. Allocate `auctionId = ++lastAuctionId`.
@@ -303,7 +312,7 @@ State changes:
 
 1. Delete offer; refund `offer.settlementWei` to `offer.offerer`.
 2. Delete lot.
-3. For every item: bump `sellerTokenVersion` and `_pullPunk`.
+3. For every item: `delete lotForPunk[key(item)]` and `_pullPunk`.
 4. Create auction with `latestBidder = offer.offerer`,
    `latestBidWei = offer.amountWei`, `winnerReceivers[auctionId] = offer.receiver`
    if non-zero.
@@ -415,15 +424,13 @@ Validation:
 - `offer.slots.length == lot.itemCount`.
 - For every i: `lot.items[i]` matches `offer.slots[i]` per §5.2 (with
   `standard = lot.items[i].standard` and `punkId = lot.items[i].punkId`).
-- For every item: `lotItemVersions[lotId][i] == sellerTokenVersion[key]`.
 - For every item: the Punk is in the seller vault.
 
 State changes:
 
 1. Delete the offer.
-2. Delete the lot.
-3. For every item: bump `sellerTokenVersion` and `_pullPunk` (so escrow holds
-   the Punks for delivery).
+2. Delete the lot and `delete lotForPunk[key(item)]` for every item.
+3. For every item: `_pullPunk` (so escrow holds the Punks for delivery).
 4. Per-item delivery loop (§6) using `offer.amountWei` as the total, splitting
    per `weightBps`. Recipient is `offer.receiver` (or offerer).
 5. Pay msg.sender `offer.settlementWei`.
@@ -520,10 +527,10 @@ match against.
 | No duplicate `(standard, punkId)` | createLot | `DuplicateLotItem` |
 | Σ `weightBps == TOTAL_WEIGHT_BPS` and every weight > 0 | createLot | `InvalidWeights` |
 | Every Punk in seller vault | createLot, openAuction, clearStaleLot | `PunkNotInVault` |
+| Every Punk free of another lot | createLot | `PunkAlreadyInLot(otherLotId)` |
 | `reserveWei > 0`, `expiresAt > now` | createLot, updateLot | `InvalidAmount`, `InvalidExpiry` |
 | `expectedReserveWei` matches | openAuction | `ReserveMismatch(expected, actual)` |
 | `msg.value >= reserveWei` | openAuction | `ReserveNotMet` |
-| Item versions match snapshot | openAuction, acceptOfferFromLot, startAuctionFromOffer | `LotExpired` |
 
 ### 7.2 Offer validation
 
@@ -749,7 +756,7 @@ Per slot: ~25k (storage of OfferSlot + small dynamic arrays). 100 × 25k =
 
 ### 10.5 createLot (100-item lot)
 
-Per item: ~25k storage + ~10k validation + ~3k version snapshot = ~38k.
+Per item: ~25k storage + ~10k validation + ~3k slot reservation = ~38k.
 100 × 38k = ~3.8M plus ~100k overhead = ~3.9M.
 
 ### 10.6 Conclusion

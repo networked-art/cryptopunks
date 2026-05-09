@@ -113,40 +113,38 @@ constructor(address punks, address punksV1, address punksData)
 Storage adds:
 
 ```solidity
+mapping(bytes32 => uint256)     public  lotForPunk;     // (seller, contract, tokenId) → lotId
 mapping(uint256 => LotItem[])   internal lotItems;
-mapping(uint256 => uint64[])    internal lotItemVersions;
 mapping(uint256 => LotItem[])   internal auctionItems;
 ```
 
-Storage removes:
-
-- `mapping(uint256 => uint64) sellerTokenVersion` already exists keyed on
-  `keccak256(seller, tokenContract, tokenId)`. Keep it as the single source
-  of truth for per-item versioning.
+A Punk can be in at most one active lot at a time — `lotForPunk` reserves
+the slot. See 01-design §2.3 for the single-listing constraint.
 
 `createLot`:
 
 - Take `LotItem[] calldata items` instead of `(tokenContract, tokenId,
   standard)`.
-- Validate item count, weights sum, no duplicates, every Punk in vault.
-- Snapshot per-item versions into `lotItemVersions[lotId]`.
+- Validate item count, weights sum, no duplicates, every Punk in vault, and
+  every Punk free of another lot (revert `PunkAlreadyInLot(otherLotId)`).
+- For every item: `lotForPunk[key(item)] = lotId`.
 - Emit `LotCreated` plus one `LotItemDetail` per item.
 
-`updateLot`, `cancelLot` — straightforward; no item-level changes.
+`updateLot` — straightforward; no item-level changes.
+
+`cancelLot` — release every item's `lotForPunk` slot, then delete the lot.
 
 `clearStaleLot`, `_clearStaleLot`:
 
-- A lot is stale if expired, OR any item version stale, OR any Punk left
-  the seller vault.
-- If any Punk left the vault, bump that item's `sellerTokenVersion` so
-  cascading lots also clear.
+- A lot is stale if expired OR any Punk left the seller vault.
+- Release every item's `lotForPunk` slot, then delete the lot.
 
 `openAuction`:
 
-- Validate every item still in vault and version matches.
-- Delete lot; bump every item's version.
-- For every item: `_pullPunk(item.standard, _tokenContractFor(item.standard),
-  lot.seller, item.punkId)`.
+- Validate every item still in the seller's vault.
+- Delete lot.
+- For every item: `delete lotForPunk[key(item)]` and
+  `_pullPunk(item.standard, lot.seller, item.punkId)`.
 - Allocate auctionId; copy items into `auctionItems[auctionId]`; create
   `Auction` with itemHash/itemCount.
 - Emit `AuctionInitialised` plus implicit `Bid`.
@@ -184,7 +182,7 @@ Internal helpers added:
 - `_validateLotItems(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`.
 - `_validateLotItemNoDuplicates(LotItem[] calldata items)` — O(N²); for N≤40
   this is bounded and clean.
-- `_snapshotItemVersions(uint256 lotId, LotItem[] memory items)`.
+- `_releaseLotSlots(address seller, LotItem[] memory items)`.
 - `_settleBundleDelivery(LotItem[] memory items, uint96 totalWei, address recipient)`.
 
 ### 2.2 `contracts/offers/Offers.sol` — major rewrite
@@ -443,17 +441,13 @@ estimates in 01-design §10, MAX should be reduced (likely to 64 or 80).
 Better to ship with measured headroom than to ship at 100 and have settlement
 transactions fail under congestion. Profile before mainnet.
 
-### 5.5 Per-item version array storage
+### 5.5 Per-item lot reservation storage
 
-`mapping(uint256 => uint64[]) lotItemVersions` adds one storage write per
-item at lot creation. For 100-item lots that's 100 SSTOREs at lot creation
-versus the current single SSTORE for `lot.version`. Worth confirming that
-this isn't a meaningful UX regression for the singleton case (one extra
-SSTORE vs current).
-
-If measured cost is too high, a tighter alternative: pack 4 versions per
-slot (4×uint64 = 256 bits) so a 100-item lot uses 25 slots instead of 100.
-Saves ~1.5M gas at create time. Worth measuring before deciding.
+`mapping(bytes32 => uint256) lotForPunk` reserves a Punk for one lot at a
+time (see 01-design §2.3). Lot creation writes one SSTORE per item;
+consumption (openAuction, acceptOfferFromLot, cancelLot, clearStaleLot)
+clears them with refund-eligible deletes. For 100-item lots that's 100
+SSTOREs at create + 100 deletes at consume.
 
 ### 5.6 Offer deletion gas
 
@@ -466,7 +460,7 @@ Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
 - All existing test cases pass after migration to `MockPunksData` and
   `OfferSlot[]`.
 - New bundle test cases pass (V1+V2 pair, 6-Punk lot, 100-Punk lot,
-  cascading version invalidation, atomic delivery revert).
+  single-listing rejection on overlap, atomic delivery revert).
 - Gas profile output recorded against MAX_LOT_ITEMS=100 worst case;
   decision to keep or tighten the bound documented.
 - `docs/punks-auction-redesign/02-implementation-plan.md` updated with any
