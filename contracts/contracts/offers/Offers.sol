@@ -3,67 +3,77 @@ pragma solidity 0.8.34;
 
 import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
-import "../interfaces/ICryptoPunksTraits.sol";
+import "../interfaces/IPunksData.sol";
 import "../lib/PushPullEscrow.sol";
 
 /// @title  Offers
-/// @notice Native ETH offers for CryptoPunks.
-///         Inspired by MouseDev's CryptoPunksBids, concept by
-///         mousedev.eth and kilo.
+/// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
+///         Inspired by MouseDev's CryptoPunksBids, concept by mousedev.eth and kilo.
 abstract contract Offers is IPunksAuction, PushPullEscrow {
+    /// @notice Maximum slots per offer. Mirrors the lot item bound.
+    uint8 internal constant MAX_LOT_ITEMS = 100;
+    /// @notice Maximum entries in `OfferSlot.includeIds` per slot.
+    uint8 internal constant MAX_INCLUDE_IDS = 64;
+    /// @notice Maximum entries in `OfferSlot.excludeIds` per slot.
+    uint8 internal constant MAX_EXCLUDE_IDS = 64;
+    /// @notice Sealed-dataset upper bound for the per-Punk color count.
+    uint8 internal constant COLOR_COUNT_MAX = 14;
+
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
 
-    /// @notice Returns public details for an offer.
+    /// @notice Returns the scalar fields of an offer (the dynamic `slots` are read via `getOfferSlots`).
     mapping(uint256 => Offer) public offers;
 
-    /// @notice Returns the trait lookup contract used for offer filters.
-    ICryptoPunksTraits public immutable TRAITS;
+    /// @notice Returns the trait predicate contract used for offer matching.
+    IPunksDataCriteria public immutable PUNKS_CRITERIA;
+    /// @notice Returns the visual predicate contract used for offer matching.
+    IPunksDataVisual public immutable PUNKS_VISUAL;
 
-    /// @notice Creates the offer module with an optional trait lookup contract.
-    constructor(address traits) {
-        TRAITS = ICryptoPunksTraits(traits);
+    /// @notice Creates the offer module bound to a `PunksData` deployment.
+    constructor(address punksData) {
+        if (punksData == address(0)) revert ZeroAddress();
+        PUNKS_CRITERIA = IPunksDataCriteria(punksData);
+        PUNKS_VISUAL = IPunksDataVisual(punksData);
     }
 
-    /// @notice Places an ETH offer for Punks that match your filters.
+    /// @notice Places an ETH offer for one or more Punks that match the slot criteria.
     function placeOffer(
-        TokenStandard standard,
         uint96 amountWei,
         uint96 settlementWei,
         address receiver,
-        TraitFilter[] calldata traitFilters,
-        uint16[] calldata includeIds,
-        uint16[] calldata excludeIds
+        OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId) {
-        _requireSupportedOfferStandard(standard);
         if (amountWei == 0) revert InvalidAmount();
-        if (traitFilters.length > 0 && address(TRAITS) == address(0)) revert TraitsUnavailable();
         if (msg.value != uint256(amountWei) + uint256(settlementWei)) revert IncorrectPayment();
 
-        unchecked {
-            offerId = ++lastOfferId;
+        uint256 slotCount = slots.length;
+        if (slotCount == 0 || slotCount > MAX_LOT_ITEMS) revert InvalidSlotCount();
+
+        uint16 traitCount = PUNKS_CRITERIA.traitCount();
+        for (uint256 i; i < slotCount;) {
+            _requireValidSlot(slots[i], traitCount);
+            unchecked { ++i; }
         }
 
-        Offer storage storedOffer = offers[offerId];
-        storedOffer.amountWei = amountWei;
-        storedOffer.settlementWei = settlementWei;
-        storedOffer.offerer = msg.sender;
-        storedOffer.receiver = receiver;
-        storedOffer.standard = standard;
+        unchecked { offerId = ++lastOfferId; }
 
-        _storeOfferFilters(storedOffer, traitFilters, includeIds, excludeIds);
+        Offer storage stored = offers[offerId];
+        stored.amountWei = amountWei;
+        stored.settlementWei = settlementWei;
+        stored.offerer = msg.sender;
+        stored.receiver = receiver;
+        _storeOfferSlots(stored, slots);
 
         emit OfferPlaced(
             offerId,
-            standard,
             msg.sender,
             receiver,
             amountWei,
             settlementWei,
-            traitFilters,
-            includeIds,
-            excludeIds
+            uint8(slotCount)
         );
+        _emitOfferSlotDetails(offerId, slots);
     }
 
     /// @notice Cancels your active offer and refunds its ETH.
@@ -121,20 +131,22 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferSettlementAdjusted(offerId, offer.settlementWei);
     }
 
-    /// @notice Accepts an offer for a listed Punk.
+    /// @notice Accepts a single-slot offer for a marketplace-listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
-        _requireOfferMatchesPunk(offer, punkId);
+        if (offer.slots.length != 1) revert MultiSlotOfferRequiresLot();
 
-        ICryptoPunksMarket market = _offerMarket(offer.standard);
-        (address seller, uint256 listingWei) = _requireAcceptableListing(
-            market, punkId, offer.amountWei
-        );
+        OfferSlot memory slot = offer.slots[0];
+        TokenStandard standard = slot.standard;
+        _requireSlotMatchesPunk(slot, standard, punkId);
+
+        ICryptoPunksMarket market = _offerMarket(standard);
+        (address seller, uint256 listingWei) = _requireAcceptableListing(market, punkId, offer.amountWei);
 
         delete offers[offerId];
 
         address recipient = _offerRecipient(offer);
-        _buyListedOfferPunk(offer.standard, punkId, listingWei, seller, recipient);
+        _buyListedOfferPunk(standard, punkId, listingWei, seller, recipient);
 
         _pushOrCredit(msg.sender, offer.settlementWei);
 
@@ -143,7 +155,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
 
         emit OfferAccepted(
             offerId,
-            offer.standard,
             punkId,
             seller,
             offer.offerer,
@@ -153,36 +164,18 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         );
     }
 
-    /// @notice Returns the filters saved for an offer.
-    function getOfferFilters(uint256 offerId)
-        external
-        view
-        returns (
-            TraitFilter[] memory traitFilters,
-            uint16[] memory includeIds,
-            uint16[] memory excludeIds
-        )
-    {
-        Offer storage offer = offers[offerId];
-        return (offer.traitFilters, offer.includeIds, offer.excludeIds);
+    /// @notice Returns the slots stored on an offer.
+    function getOfferSlots(uint256 offerId) external view returns (OfferSlot[] memory) {
+        return offers[offerId].slots;
     }
 
-    /// @dev Consumes an active offer after checking that it matches the Punk.
-    function _consumeOfferForAuction(uint256 offerId, uint16 punkId)
-        internal
-        returns (Offer memory offer)
-    {
-        offer = _activeOffer(offerId);
-        _requireOfferMatchesPunk(offer, punkId);
-        delete offers[offerId];
-    }
-
-    /// @dev Loads an active offer and reverts if it is missing.
+    /// @dev Loads an active offer copy and reverts if it is missing.
     function _activeOffer(uint256 offerId) internal view returns (Offer memory offer) {
         offer = offers[offerId];
         if (offer.offerer == address(0)) revert OfferNotActive();
     }
 
+    /// @dev Loads the offer storage struct, ensuring the caller is the offerer.
     function _offerForOfferer(uint256 offerId)
         private
         view
@@ -193,73 +186,117 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         if (offer.offerer != msg.sender) revert NotOfferer();
     }
 
-    function _storeOfferFilters(
-        Offer storage storedOffer,
-        TraitFilter[] calldata traitFilters,
-        uint16[] calldata includeIds,
-        uint16[] calldata excludeIds
-    ) private {
-        uint256 len = traitFilters.length;
-        for (uint256 i; i < len;) {
-            storedOffer.traitFilters.push(traitFilters[i]);
-            unchecked {
-                ++i;
-            }
+    /// @dev Validates a slot's masks, color range, and id-list bounds at place time.
+    function _requireValidSlot(OfferSlot calldata slot, uint16 traitCount) private pure {
+        OfferCriteria calldata c = slot.criteria;
+
+        uint256 canonicalMask = traitCount >= 256
+            ? type(uint256).max
+            : ((uint256(1) << traitCount) - 1);
+        if ((c.requiredTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
+        if ((c.forbiddenTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
+        if ((c.anyOfTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
+        if ((c.requiredTraitMask & c.forbiddenTraitMask) != 0) revert InvalidTraitMask();
+        if ((c.forbiddenTraitMask & c.anyOfTraitMask) != 0) revert InvalidTraitMask();
+
+        if (c.maxColorCount != 0) {
+            if (c.minColorCount > c.maxColorCount) revert InvalidColorCountRange();
+            if (c.maxColorCount > COLOR_COUNT_MAX) revert InvalidColorCountRange();
+        } else if (c.minColorCount != 0) {
+            revert InvalidColorCountRange();
         }
 
-        len = includeIds.length;
-        for (uint256 i; i < len;) {
-            storedOffer.includeIds.push(includeIds[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        if (slot.includeIds.length > MAX_INCLUDE_IDS) revert TooManyIds();
+        if (slot.excludeIds.length > MAX_EXCLUDE_IDS) revert TooManyIds();
+    }
 
-        len = excludeIds.length;
-        for (uint256 i; i < len;) {
-            storedOffer.excludeIds.push(excludeIds[i]);
-            unchecked {
-                ++i;
+    /// @dev Copies offer slots from calldata into storage.
+    function _storeOfferSlots(Offer storage stored, OfferSlot[] calldata slots) private {
+        uint256 n = slots.length;
+        for (uint256 i; i < n;) {
+            OfferSlot calldata src = slots[i];
+            OfferSlot storage dst = stored.slots.push();
+            dst.criteria = src.criteria;
+            dst.standard = src.standard;
+            uint256 incLen = src.includeIds.length;
+            for (uint256 j; j < incLen;) {
+                dst.includeIds.push(src.includeIds[j]);
+                unchecked { ++j; }
             }
+            uint256 excLen = src.excludeIds.length;
+            for (uint256 j; j < excLen;) {
+                dst.excludeIds.push(src.excludeIds[j]);
+                unchecked { ++j; }
+            }
+            unchecked { ++i; }
         }
     }
 
-    /// @dev Checks include, exclude, and trait filters for a Punk.
-    function _requireOfferMatchesPunk(Offer memory offer, uint16 punkId) internal view {
-        uint256 len = offer.includeIds.length;
-        if (len > 0) {
+    /// @dev Emits one OfferSlotDetail per slot at place time.
+    function _emitOfferSlotDetails(uint256 offerId, OfferSlot[] calldata slots) private {
+        uint256 n = slots.length;
+        for (uint256 i; i < n;) {
+            OfferSlot calldata s = slots[i];
+            emit OfferSlotDetail(
+                offerId,
+                uint8(i),
+                s.standard,
+                s.criteria.requiredTraitMask,
+                s.criteria.forbiddenTraitMask,
+                s.criteria.anyOfTraitMask,
+                s.criteria.minColorCount,
+                s.criteria.maxColorCount,
+                s.includeIds,
+                s.excludeIds
+            );
+            unchecked { ++i; }
+        }
+    }
+
+    /// @dev Reverts unless the slot matches `(standard, punkId)`.
+    function _requireSlotMatchesPunk(
+        OfferSlot memory slot,
+        TokenStandard standard,
+        uint16 punkId
+    ) internal view {
+        if (slot.standard != standard) revert OfferStandardMismatch();
+
+        uint256 includeLen = slot.includeIds.length;
+        if (includeLen > 0) {
             bool included;
-            for (uint256 i; i < len;) {
-                if (offer.includeIds[i] == punkId) {
+            for (uint256 i; i < includeLen;) {
+                if (slot.includeIds[i] == punkId) {
                     included = true;
                     break;
                 }
-                unchecked {
-                    ++i;
-                }
+                unchecked { ++i; }
             }
             if (!included) revert PunkNotIncluded();
         }
 
-        len = offer.excludeIds.length;
-        for (uint256 i; i < len;) {
-            if (offer.excludeIds[i] == punkId) revert PunkExcluded();
-            unchecked {
-                ++i;
+        uint256 excludeLen = slot.excludeIds.length;
+        for (uint256 i; i < excludeLen;) {
+            if (slot.excludeIds[i] == punkId) revert PunkExcluded();
+            unchecked { ++i; }
+        }
+
+        OfferCriteria memory c = slot.criteria;
+        if ((c.requiredTraitMask | c.forbiddenTraitMask | c.anyOfTraitMask) != 0) {
+            if (
+                !PUNKS_CRITERIA.hasTraits(
+                    punkId,
+                    c.requiredTraitMask,
+                    c.forbiddenTraitMask,
+                    c.anyOfTraitMask
+                )
+            ) {
+                revert PunkTraitMismatch();
             }
         }
 
-        len = offer.traitFilters.length;
-        if (len == 0) return;
-        if (address(TRAITS) == address(0)) revert TraitsUnavailable();
-
-        for (uint256 i; i < len;) {
-            TraitFilter memory filter = offer.traitFilters[i];
-            bool hasTrait = TRAITS.hasTrait(punkId, filter.traitId);
-            if (filter.required != hasTrait) revert PunkTraitMismatch();
-            unchecked {
-                ++i;
-            }
+        if (c.maxColorCount != 0) {
+            uint8 cc = PUNKS_VISUAL.colorCountOf(punkId);
+            if (cc < c.minColorCount || cc > c.maxColorCount) revert PunkVisualMismatch();
         }
     }
 
@@ -289,17 +326,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @dev Refunds the settlement amount to the offerer.
     function _refundOfferSettlement(Offer memory offer) internal {
         _pushOrCredit(offer.offerer, offer.settlementWei);
-    }
-
-    /// @dev Reverts when the Punk standard is not supported by offers.
-    function _requireSupportedOfferStandard(TokenStandard standard) internal pure {
-        if (!_isSupportedOfferStandard(standard)) {
-            revert UnsupportedStandard();
-        }
-    }
-
-    function _isSupportedOfferStandard(TokenStandard standard) private pure returns (bool) {
-        return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
     }
 
     /// @dev Resolves the Punk market for an offer standard.

@@ -29,6 +29,15 @@ abstract contract PunksEscrowManager {
         PUNKS_ESCROW_V1 = new PunksEscrow(punksV1, address(this));
     }
 
+    /// @dev Returns the Punk market contract for a Punk standard.
+    function _tokenContractFor(IPunksAuction.TokenStandard standard)
+        internal
+        view
+        returns (address)
+    {
+        return address(_punkMarketFor(standard));
+    }
+
     /// @dev Reverts when a token contract does not match the selected Punk standard.
     function _requirePunkContract(
         IPunksAuction.TokenStandard standard,
@@ -86,13 +95,11 @@ abstract contract PunksEscrowManager {
             PUNKS.buyPunk{value: hammerWei}(tokenId);
             PUNKS_ESCROW.sweepProceeds();
             PUNKS.transferPunk(to, tokenId);
-        } else if (standard == IPunksAuction.TokenStandard.CRYPTOPUNKS_V1) {
+        } else {
             PUNKS_ESCROW_V1.offerToAuctions(tokenId, hammerWei);
             PUNKS_V1.buyPunk{value: hammerWei}(tokenId);
             PUNKS_V1.withdraw();
             PUNKS_V1.transferPunk(to, tokenId);
-        } else {
-            revert IPunksAuction.UnsupportedStandard();
         }
     }
 
@@ -101,7 +108,7 @@ abstract contract PunksEscrowManager {
         return account == address(PUNKS_ESCROW) || account == address(PUNKS_V1);
     }
 
-    /// @dev Returns the market for a supported Punk standard.
+    /// @dev Returns the market for a Punk standard.
     function _punkMarketFor(IPunksAuction.TokenStandard standard)
         internal
         view
@@ -118,10 +125,7 @@ abstract contract PunksEscrowManager {
         if (standard == IPunksAuction.TokenStandard.CRYPTOPUNKS) {
             return (PUNKS, PUNKS_ESCROW);
         }
-        if (standard == IPunksAuction.TokenStandard.CRYPTOPUNKS_V1) {
-            return (PUNKS_V1, PUNKS_ESCROW_V1);
-        }
-        revert IPunksAuction.UnsupportedStandard();
+        return (PUNKS_V1, PUNKS_ESCROW_V1);
     }
 
     function _requirePunkInSellerVault(

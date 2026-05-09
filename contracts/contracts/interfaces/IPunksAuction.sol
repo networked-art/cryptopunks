@@ -4,37 +4,48 @@ pragma solidity 0.8.34;
 /// @title  IPunksAuction
 /// @notice Public types, events, errors, and core API for the zero-fee Punk auction house.
 interface IPunksAuction {
-    /// @notice Numeric values match NetworkedAuctions for punk standards.
+    /// @notice Punks-only standards. ERC721/ERC1155 placeholders are not part of this contract.
     enum TokenStandard {
-        ERC721,
-        ERC1155,
         CRYPTOPUNKS,
         CRYPTOPUNKS_V1
     }
 
-    struct TraitFilter {
-        bool required;
-        uint16 traitId;
+    struct LotItem {
+        TokenStandard standard;
+        uint16 punkId;
+        uint16 weightBps;
+    }
+
+    struct OfferCriteria {
+        uint256 requiredTraitMask;
+        uint256 forbiddenTraitMask;
+        uint256 anyOfTraitMask;
+        uint8 minColorCount;
+        uint8 maxColorCount;
+    }
+
+    struct OfferSlot {
+        OfferCriteria criteria;
+        TokenStandard standard;
+        uint16[] includeIds;
+        uint16[] excludeIds;
     }
 
     struct Lot {
         address seller;
-        address tokenContract;
-        uint256 tokenId;
-        TokenStandard standard;
         uint96 reserveWei;
         uint40 expiresAt;
-        uint64 version;
+        uint8 itemCount;
+        bytes32 itemHash;
     }
 
     struct Auction {
         address seller;
-        address tokenContract;
-        uint256 tokenId;
-        TokenStandard standard;
         address latestBidder;
         uint96 latestBidWei;
         uint40 endTimestamp;
+        uint8 itemCount;
+        bytes32 itemHash;
         bool settled;
     }
 
@@ -43,20 +54,23 @@ interface IPunksAuction {
         uint96 settlementWei;
         address offerer;
         address receiver;
-        TokenStandard standard;
-        TraitFilter[] traitFilters;
-        uint16[] includeIds;
-        uint16[] excludeIds;
+        OfferSlot[] slots;
     }
 
     event LotCreated(
         uint256 indexed lotId,
         address indexed seller,
-        address indexed tokenContract,
-        uint256 tokenId,
-        TokenStandard standard,
+        bytes32 indexed itemHash,
+        uint8 itemCount,
         uint96 reserveWei,
         uint40 expiresAt
+    );
+    event LotItemDetail(
+        uint256 indexed lotId,
+        uint8 indexed itemIndex,
+        TokenStandard standard,
+        uint16 punkId,
+        uint16 weightBps
     );
     event LotCancelled(uint256 indexed lotId);
     event LotCleared(uint256 indexed lotId, address indexed cleaner);
@@ -64,14 +78,21 @@ interface IPunksAuction {
 
     event AuctionInitialised(
         uint256 indexed auctionId,
-        address indexed tokenContract,
-        uint256 indexed tokenId,
-        address seller,
-        TokenStandard standard,
+        address indexed seller,
+        bytes32 indexed itemHash,
+        uint8 itemCount,
         uint40 endTimestamp
     );
     event Bid(uint256 indexed auctionId, address indexed bidder, uint256 amountWei);
     event AuctionExtended(uint256 indexed auctionId, uint40 endTimestamp);
+    event AuctionItemDelivered(
+        uint256 indexed auctionId,
+        uint8 indexed itemIndex,
+        TokenStandard standard,
+        uint16 punkId,
+        address recipient,
+        uint96 itemWei
+    );
     event AuctionSettled(
         uint256 indexed auctionId,
         address indexed winner,
@@ -83,12 +104,21 @@ interface IPunksAuction {
 
     event OfferPlaced(
         uint256 indexed offerId,
-        TokenStandard indexed standard,
         address indexed offerer,
-        address receiver,
+        address indexed receiver,
         uint96 amountWei,
         uint96 settlementWei,
-        TraitFilter[] traitFilters,
+        uint8 slotCount
+    );
+    event OfferSlotDetail(
+        uint256 indexed offerId,
+        uint8 indexed slotIndex,
+        TokenStandard standard,
+        uint256 requiredTraitMask,
+        uint256 forbiddenTraitMask,
+        uint256 anyOfTraitMask,
+        uint8 minColorCount,
+        uint8 maxColorCount,
         uint16[] includeIds,
         uint16[] excludeIds
     );
@@ -97,29 +127,36 @@ interface IPunksAuction {
     event OfferSettlementAdjusted(uint256 indexed offerId, uint96 newSettlementWei);
     event OfferAccepted(
         uint256 indexed offerId,
-        TokenStandard indexed standard,
         uint256 indexed punkId,
-        address seller,
+        address indexed seller,
         address offerer,
         address receiver,
         uint256 listingWei,
         uint256 settlementWei
     );
+    event OfferAcceptedFromLot(
+        uint256 indexed offerId,
+        uint256 indexed lotId,
+        address indexed seller,
+        address offerer,
+        address receiver,
+        uint96 amountWei,
+        uint96 settlementWei
+    );
     event OfferAuctionInitialised(
         uint256 indexed offerId,
         uint256 indexed auctionId,
-        uint256 indexed punkId,
+        uint256 indexed lotId,
         address seller,
         address offerer,
         address receiver,
-        uint256 amountWei
+        uint96 amountWei
     );
 
     error ZeroAddress();
     error UnexpectedEtherSender();
     error InvalidAmount();
     error InvalidExpiry();
-    error UnsupportedStandard();
     error TooManyTokens();
     error PunkContractMismatch();
     error PunkNotInVault();
@@ -132,8 +169,19 @@ interface IPunksAuction {
     error ListingPriceTooHigh();
     error PunkNotIncluded();
     error PunkExcluded();
-    error TraitsUnavailable();
     error PunkTraitMismatch();
+    error PunkVisualMismatch();
+
+    error InvalidItemCount();
+    error DuplicateLotItem();
+    error InvalidWeights();
+    error InvalidSlotCount();
+    error SlotItemCountMismatch();
+    error MultiSlotOfferRequiresLot();
+    error OfferStandardMismatch();
+    error InvalidTraitMask();
+    error InvalidColorCountRange();
+    error TooManyIds();
 
     error LotNotFound();
     error LotExpired();
@@ -148,11 +196,9 @@ interface IPunksAuction {
     error AuctionNotComplete();
     error MinimumBidNotMet();
 
-    /// @notice Creates a lot that can be opened as an auction.
+    /// @notice Creates a lot of one or more Punks that can be opened as an auction.
     function createLot(
-        address tokenContract,
-        uint256 tokenId,
-        TokenStandard standard,
+        LotItem[] calldata items,
         uint96 reserveWei,
         uint40 expiresAt
     ) external returns (uint256 lotId);
@@ -178,15 +224,12 @@ interface IPunksAuction {
     /// @notice Places a bid on a live auction.
     function bid(uint256 auctionId) external payable;
 
-    /// @notice Places an ETH offer for Punks that match your filters.
+    /// @notice Places an ETH offer for Punks that match a list of slot criteria.
     function placeOffer(
-        TokenStandard standard,
         uint96 amountWei,
         uint96 settlementWei,
         address receiver,
-        TraitFilter[] calldata traitFilters,
-        uint16[] calldata includeIds,
-        uint16[] calldata excludeIds
+        OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId);
 
     /// @notice Cancels your active offer and refunds its ETH.
@@ -206,23 +249,25 @@ interface IPunksAuction {
         bool increase
     ) external payable;
 
-    /// @notice Accepts an offer for a listed Punk.
+    /// @notice Accepts a single-slot offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external;
 
-    /// @notice Starts an auction by using an existing offer as the first bid.
-    function startAuctionFromOffer(uint256 offerId, uint16 punkId)
+    /// @notice Accepts an offer against a stored lot.
+    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external;
+
+    /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
+    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
         external
         returns (uint256 auctionId);
 
-    /// @notice Returns the filters saved for an offer.
-    function getOfferFilters(uint256 offerId)
-        external
-        view
-        returns (
-            TraitFilter[] memory traitFilters,
-            uint16[] memory includeIds,
-            uint16[] memory excludeIds
-        );
+    /// @notice Returns the items stored on a lot.
+    function getLotItems(uint256 lotId) external view returns (LotItem[] memory);
+
+    /// @notice Returns the items stored on an auction.
+    function getAuctionItems(uint256 auctionId) external view returns (LotItem[] memory);
+
+    /// @notice Returns the slots stored on an offer.
+    function getOfferSlots(uint256 offerId) external view returns (OfferSlot[] memory);
 
     /// @notice Settles a completed auction.
     function settle(uint256 auctionId) external;

@@ -7,10 +7,11 @@ import "./interfaces/ICryptoPunksMarket.sol";
 import "./offers/Offers.sol";
 
 /// @title PunksAuction
-/// @notice Zero-fee auction house for CryptoPunks.
+/// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
 contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
+    uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
     uint40 internal constant AUCTION_DURATION = 24 hours;
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
 
@@ -19,20 +20,24 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
 
-    /// @notice Returns public details for a lot.
+    /// @notice Returns the scalar fields of a lot (items via `getLotItems`).
     mapping(uint256 => Lot) public lots;
-    /// @notice Returns public details for an auction.
+    /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
     mapping(uint256 => Auction) public auctions;
     /// @notice Returns the receiver set for an auction winner.
     mapping(uint256 => address) public winnerReceivers;
 
-    /// @notice Returns the version used to expire old lots for a seller Punk.
+    /// @notice Returns the version used to expire old lots for a seller's Punk.
     mapping(bytes32 => uint64) public sellerTokenVersion;
 
-    /// @notice Creates the auction house for the canonical and V1 Punk markets.
-    constructor(address punks, address punksV1, address traits)
+    mapping(uint256 => LotItem[]) internal lotItems;
+    mapping(uint256 => uint64[]) internal lotItemVersions;
+    mapping(uint256 => LotItem[]) internal auctionItems;
+
+    /// @notice Creates the auction house wired to the canonical and V1 Punk markets.
+    constructor(address punks, address punksV1, address punksData)
         PunksEscrowManager(punks, punksV1)
-        Offers(traits)
+        Offers(punksData)
     {}
 
     /// @notice Receives ETH from trusted Punk market flows.
@@ -40,30 +45,45 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (!_isPunkReceiveSender(msg.sender)) revert UnexpectedEtherSender();
     }
 
-    /// @notice Creates a lot that can be opened as an auction.
+    /// @notice Creates a lot of one or more Punks that can be opened as an auction.
     function createLot(
-        address tokenContract,
-        uint256 tokenId,
-        TokenStandard standard,
+        LotItem[] calldata items,
         uint96 reserveWei,
         uint40 expiresAt
     ) external returns (uint256 id) {
-        _validateLotArgs(msg.sender, tokenContract, tokenId, standard, reserveWei, expiresAt);
+        if (reserveWei == 0) revert InvalidAmount();
+        if (expiresAt <= block.timestamp) revert InvalidExpiry();
+        _validateLotItems(items);
+
+        uint8 itemCount = uint8(items.length);
+        bytes32 itemHash = keccak256(abi.encode(items));
 
         unchecked {
             id = ++lastLotId;
         }
+
         lots[id] = Lot({
             seller: msg.sender,
-            tokenContract: tokenContract,
-            tokenId: tokenId,
-            standard: standard,
             reserveWei: reserveWei,
             expiresAt: expiresAt,
-            version: sellerTokenVersion[_tokenKey(msg.sender, tokenContract, tokenId)]
+            itemCount: itemCount,
+            itemHash: itemHash
         });
 
-        emit LotCreated(id, msg.sender, tokenContract, tokenId, standard, reserveWei, expiresAt);
+        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, expiresAt);
+
+        LotItem[] storage storedItems = lotItems[id];
+        uint64[] storage versions = lotItemVersions[id];
+        for (uint256 i; i < itemCount;) {
+            LotItem calldata item = items[i];
+            storedItems.push(item);
+            bytes32 key = _tokenKey(msg.sender, _tokenContractFor(item.standard), item.punkId);
+            versions.push(sellerTokenVersion[key]);
+            emit LotItemDetail(id, uint8(i), item.standard, item.punkId, item.weightBps);
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @notice Updates the reserve price and expiry for your lot.
@@ -87,6 +107,9 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (lot.seller != msg.sender) revert NotSeller();
 
         delete lots[id];
+        delete lotItems[id];
+        delete lotItemVersions[id];
+
         emit LotCancelled(id);
     }
 
@@ -118,18 +141,18 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
             revert ReserveMismatch(expectedReserveWei, lot.reserveWei);
         }
 
-        bytes32 tokenKey = _tokenKey(lot.seller, lot.tokenContract, lot.tokenId);
-        if (lot.version != sellerTokenVersion[tokenKey]) revert LotExpired();
-
         uint96 bidWei = _checkedUint96(msg.value);
         if (bidWei < lot.reserveWei) revert ReserveNotMet();
 
-        delete lots[id];
-        unchecked {
-            ++sellerTokenVersion[tokenKey];
-        }
+        LotItem[] memory items = lotItems[id];
+        uint64[] memory versions = lotItemVersions[id];
+        _requireLotItemsValidForOpen(lot.seller, items, versions);
 
-        auctionId = _createAuction(lot, msg.sender, bidWei, address(0));
+        delete lots[id];
+        delete lotItems[id];
+        delete lotItemVersions[id];
+
+        auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei, address(0));
     }
 
     /// @notice Places a bid on a live auction.
@@ -158,35 +181,101 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         emit Bid(auctionId, msg.sender, bidWei);
     }
 
-    /// @notice Starts an auction by using an existing offer as the first bid.
-    function startAuctionFromOffer(uint256 offerId, uint16 punkId)
+    /// @notice Accepts an offer against a stored lot.
+    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external nonReentrant {
+        Offer memory offer = _activeOffer(offerId);
+        Lot memory lot = lots[lotId];
+        if (lot.seller == address(0)) revert LotNotFound();
+        if (block.timestamp >= lot.expiresAt) revert LotExpired();
+
+        LotItem[] memory items = lotItems[lotId];
+        uint64[] memory versions = lotItemVersions[lotId];
+        if (offer.slots.length != items.length) revert SlotItemCountMismatch();
+
+        uint256 itemCount = items.length;
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
+            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
+            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
+            _maybeRequirePunkInVault(item.standard, lot.seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+
+        delete offers[offerId];
+        delete lots[lotId];
+        delete lotItems[lotId];
+        delete lotItemVersions[lotId];
+
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
+            unchecked {
+                ++sellerTokenVersion[key];
+            }
+            _pullPunk(item.standard, _tokenContractFor(item.standard), lot.seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+
+        address recipient = _offerRecipient(offer);
+        _settleBundleDelivery(items, offer.amountWei, recipient);
+
+        _pushOrCredit(lot.seller, offer.amountWei);
+        _pushOrCredit(msg.sender, offer.settlementWei);
+
+        emit OfferAcceptedFromLot(
+            offerId,
+            lotId,
+            lot.seller,
+            offer.offerer,
+            recipient,
+            offer.amountWei,
+            offer.settlementWei
+        );
+    }
+
+    /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
+    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
         external
         nonReentrant
         returns (uint256 auctionId)
     {
-        Offer memory offer = _consumeOfferForAuction(offerId, punkId);
+        Offer memory offer = _activeOffer(offerId);
+        Lot memory lot = lots[lotId];
+        if (lot.seller == address(0)) revert LotNotFound();
+        if (block.timestamp >= lot.expiresAt) revert LotExpired();
 
-        address tokenContract = _offerTokenContract(offer.standard);
-        _maybeRequirePunkInVault(offer.standard, msg.sender, punkId);
+        LotItem[] memory items = lotItems[lotId];
+        uint64[] memory versions = lotItemVersions[lotId];
+        if (offer.slots.length != items.length) revert SlotItemCountMismatch();
+
+        uint256 itemCount = items.length;
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
+            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
+            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
+            _maybeRequirePunkInVault(item.standard, lot.seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+
+        delete offers[offerId];
+        delete lots[lotId];
+        delete lotItems[lotId];
+        delete lotItemVersions[lotId];
 
         _refundOfferSettlement(offer);
 
-        bytes32 tokenKey = _tokenKey(msg.sender, tokenContract, punkId);
-        unchecked {
-            ++sellerTokenVersion[tokenKey];
-        }
-
         address recipient = _offerRecipient(offer);
-        auctionId = _createAuction(
-            Lot({
-                seller: msg.sender,
-                tokenContract: tokenContract,
-                tokenId: punkId,
-                standard: offer.standard,
-                reserveWei: offer.amountWei,
-                expiresAt: uint40(block.timestamp),
-                version: 0
-            }),
+        auctionId = _createAuctionFromItems(
+            lot.seller,
+            items,
             offer.offerer,
             offer.amountWei,
             recipient
@@ -195,8 +284,8 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         emit OfferAuctionInitialised(
             offerId,
             auctionId,
-            punkId,
-            msg.sender,
+            lotId,
+            lot.seller,
             offer.offerer,
             recipient,
             offer.amountWei
@@ -219,6 +308,16 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         return auctions[auctionId].endTimestamp;
     }
 
+    /// @notice Returns the items stored on a lot.
+    function getLotItems(uint256 lotId) external view returns (LotItem[] memory) {
+        return lotItems[lotId];
+    }
+
+    /// @notice Returns the items stored on an auction.
+    function getAuctionItems(uint256 auctionId) external view returns (LotItem[] memory) {
+        return auctionItems[auctionId];
+    }
+
     /// @notice Settles a completed auction.
     function settle(uint256 auctionId) external nonReentrant {
         Auction storage storedAuction = auctions[auctionId];
@@ -229,28 +328,54 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
 
         storedAuction.settled = true;
 
-        _deliverPunk(
-            auction.standard,
-            auction.tokenContract,
-            auction.tokenId,
-            _auctionRecipient(auctionId, auction.latestBidder),
-            uint256(auction.latestBidWei)
-        );
-        _pushOrCredit(auction.seller, auction.latestBidWei);
+        LotItem[] memory items = auctionItems[auctionId];
+        uint96 totalWei = auction.latestBidWei;
+        address recipient = _auctionRecipient(auctionId, auction.latestBidder);
+
+        uint256 itemCount = items.length;
+        uint256 allocated;
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            uint96 itemWei = i == itemCount - 1
+                ? totalWei - uint96(allocated)
+                : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
+            allocated += itemWei;
+            _deliverPunk(
+                item.standard,
+                _tokenContractFor(item.standard),
+                item.punkId,
+                recipient,
+                itemWei
+            );
+            emit AuctionItemDelivered(
+                auctionId,
+                uint8(i),
+                item.standard,
+                item.punkId,
+                recipient,
+                itemWei
+            );
+            unchecked {
+                ++i;
+            }
+        }
+
+        _pushOrCredit(auction.seller, totalWei);
 
         emit AuctionSettled(
             auctionId,
             auction.latestBidder,
             auction.seller,
-            auction.latestBidWei,
-            auction.latestBidWei,
+            uint256(totalWei),
+            uint256(totalWei),
             0
         );
     }
 
-    /// @dev Creates auction storage, pulls the Punk into custody, and emits the first bid.
-    function _createAuction(
-        Lot memory lot,
+    /// @dev Creates auction storage, pulls the items into custody, and emits the first bid.
+    function _createAuctionFromItems(
+        address seller,
+        LotItem[] memory items,
         address initialBidder,
         uint96 bidWei,
         address receiver
@@ -260,31 +385,37 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         }
 
         uint40 endTimestamp = uint40(block.timestamp) + AUCTION_DURATION;
+        uint8 itemCount = uint8(items.length);
+        bytes32 itemHash = keccak256(abi.encode(items));
 
         auctions[auctionId] = Auction({
-            seller: lot.seller,
-            tokenContract: lot.tokenContract,
-            tokenId: lot.tokenId,
-            standard: lot.standard,
+            seller: seller,
             latestBidder: initialBidder,
             latestBidWei: bidWei,
             endTimestamp: endTimestamp,
+            itemCount: itemCount,
+            itemHash: itemHash,
             settled: false
         });
         if (receiver != address(0) && receiver != initialBidder) {
             winnerReceivers[auctionId] = receiver;
         }
 
-        _pullPunk(lot.standard, lot.tokenContract, lot.seller, lot.tokenId);
+        LotItem[] storage storedItems = auctionItems[auctionId];
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            storedItems.push(item);
+            bytes32 key = _tokenKey(seller, _tokenContractFor(item.standard), item.punkId);
+            unchecked {
+                ++sellerTokenVersion[key];
+            }
+            _pullPunk(item.standard, _tokenContractFor(item.standard), seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
 
-        emit AuctionInitialised(
-            auctionId,
-            lot.tokenContract,
-            lot.tokenId,
-            lot.seller,
-            lot.standard,
-            endTimestamp
-        );
+        emit AuctionInitialised(auctionId, seller, itemHash, itemCount, endTimestamp);
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
@@ -293,51 +424,139 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
 
-        bytes32 tokenKey = _tokenKey(lot.seller, lot.tokenContract, lot.tokenId);
-        bool versionStale = lot.version != sellerTokenVersion[tokenKey];
-        bool sellerStillOwns = _punkStillInSellerVault(lot.standard, lot.seller, lot.tokenId);
-        bool expired = block.timestamp >= lot.expiresAt;
+        LotItem[] memory items = lotItems[id];
+        uint64[] memory versions = lotItemVersions[id];
+        uint256 itemCount = items.length;
 
-        if (!versionStale && !expired && sellerStillOwns) revert LotNotStale();
+        bool versionStale;
+        bool[] memory itemLeftVault = new bool[](itemCount);
+        bool anyLeftVault;
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            bytes32 key = _tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId);
+            if (versions[i] != sellerTokenVersion[key]) versionStale = true;
+            if (!_punkStillInSellerVault(item.standard, lot.seller, item.punkId)) {
+                itemLeftVault[i] = true;
+                anyLeftVault = true;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        bool expired = block.timestamp >= lot.expiresAt;
+        if (!versionStale && !expired && !anyLeftVault) revert LotNotStale();
 
         delete lots[id];
+        delete lotItems[id];
+        delete lotItemVersions[id];
 
-        if (!sellerStillOwns) {
-            unchecked {
-                ++sellerTokenVersion[tokenKey];
+        if (anyLeftVault) {
+            for (uint256 i; i < itemCount;) {
+                if (itemLeftVault[i]) {
+                    LotItem memory item = items[i];
+                    bytes32 key = _tokenKey(
+                        lot.seller,
+                        _tokenContractFor(item.standard),
+                        item.punkId
+                    );
+                    unchecked {
+                        ++sellerTokenVersion[key];
+                    }
+                }
+                unchecked {
+                    ++i;
+                }
             }
         }
 
         emit LotCleared(id, msg.sender);
     }
 
-    /// @dev Validates lot inputs and custody before storing a lot.
-    function _validateLotArgs(
-        address seller,
-        address tokenContract,
-        uint256 tokenId,
-        TokenStandard standard,
-        uint96 reserveWei,
-        uint40 expiresAt
-    ) internal view {
-        if (tokenContract == address(0)) revert ZeroAddress();
-        if (reserveWei == 0) revert InvalidAmount();
-        if (expiresAt <= block.timestamp) revert InvalidExpiry();
-        _requireSupportedPunkStandard(standard);
-        _requirePunkContract(standard, tokenContract);
-        _maybeRequirePunkInVault(standard, seller, tokenId);
-    }
+    /// @dev Validates lot items at create time: count, weights, duplicates, vault custody.
+    function _validateLotItems(LotItem[] calldata items) internal view {
+        uint256 n = items.length;
+        if (n == 0 || n > MAX_LOT_ITEMS) revert InvalidItemCount();
 
-    /// @dev Reverts when the Punk standard is not supported by the auction flow.
-    function _requireSupportedPunkStandard(TokenStandard standard) internal pure {
-        if (!_isSupportedPunkStandard(standard)) {
-            revert UnsupportedStandard();
+        uint256 weightSum;
+        for (uint256 i; i < n;) {
+            uint16 w = items[i].weightBps;
+            if (w == 0) revert InvalidWeights();
+            weightSum += w;
+            unchecked {
+                ++i;
+            }
+        }
+        if (weightSum != TOTAL_WEIGHT_BPS) revert InvalidWeights();
+
+        for (uint256 i; i < n;) {
+            for (uint256 j = i + 1; j < n;) {
+                if (
+                    items[i].standard == items[j].standard
+                        && items[i].punkId == items[j].punkId
+                ) {
+                    revert DuplicateLotItem();
+                }
+                unchecked {
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        for (uint256 i; i < n;) {
+            _maybeRequirePunkInVault(items[i].standard, msg.sender, items[i].punkId);
+            unchecked {
+                ++i;
+            }
         }
     }
 
-    /// @dev Returns true for supported Punk standards.
-    function _isSupportedPunkStandard(TokenStandard standard) internal pure returns (bool) {
-        return standard == TokenStandard.CRYPTOPUNKS || standard == TokenStandard.CRYPTOPUNKS_V1;
+    /// @dev Checks per-item version snapshots and vault custody at open/accept/start time.
+    function _requireLotItemsValidForOpen(
+        address seller,
+        LotItem[] memory items,
+        uint64[] memory versions
+    ) internal view {
+        uint256 n = items.length;
+        for (uint256 i; i < n;) {
+            LotItem memory item = items[i];
+            bytes32 key = _tokenKey(seller, _tokenContractFor(item.standard), item.punkId);
+            if (versions[i] != sellerTokenVersion[key]) revert LotExpired();
+            _maybeRequirePunkInVault(item.standard, seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @dev Per-item delivery loop with weighted ETH allocation.
+    function _settleBundleDelivery(
+        LotItem[] memory items,
+        uint96 totalWei,
+        address recipient
+    ) internal {
+        uint256 itemCount = items.length;
+        uint256 allocated;
+        for (uint256 i; i < itemCount;) {
+            LotItem memory item = items[i];
+            uint96 itemWei = i == itemCount - 1
+                ? totalWei - uint96(allocated)
+                : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
+            allocated += itemWei;
+            _deliverPunk(
+                item.standard,
+                _tokenContractFor(item.standard),
+                item.punkId,
+                recipient,
+                itemWei
+            );
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @dev Resolves the Punk market used by the offer flow.
@@ -357,7 +576,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         override
         returns (address)
     {
-        return address(_punkMarketFor(standard));
+        return _tokenContractFor(standard);
     }
 
     /// @dev Buys a listed Punk while handling the V1 market accounting bug.
@@ -371,13 +590,11 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         if (standard == TokenStandard.CRYPTOPUNKS) {
             PUNKS.buyPunk{value: listingWei}(punkId);
             PUNKS.transferPunk(recipient, punkId);
-        } else if (standard == TokenStandard.CRYPTOPUNKS_V1) {
+        } else {
             PUNKS_V1.buyPunk{value: listingWei}(punkId);
             PUNKS_V1.withdraw();
             PUNKS_V1.transferPunk(recipient, punkId);
             _pushOrCredit(seller, listingWei);
-        } else {
-            revert UnsupportedStandard();
         }
     }
 
@@ -410,7 +627,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         return uint96(value);
     }
 
-    /// @dev Builds the key used to version a seller's Punk lot.
+    /// @dev Builds the key used to version a seller's Punk lot membership.
     function _tokenKey(
         address seller,
         address tokenContract,

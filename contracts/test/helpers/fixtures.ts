@@ -4,11 +4,65 @@ export const DAY = 24 * 60 * 60
 export const WEEK = 7 * DAY
 
 export const Standard = {
-  ERC721: 0,
-  ERC1155: 1,
-  CRYPTOPUNKS: 2,
-  CRYPTOPUNKS_V1: 3,
+  CRYPTOPUNKS: 0,
+  CRYPTOPUNKS_V1: 1,
 } as const
+
+export const TOTAL_WEIGHT_BPS = 10_000
+
+export type LotItemInput = {
+  standard: number
+  punkId: number
+  weightBps: number
+}
+
+export type OfferCriteriaInput = {
+  requiredTraitMask: bigint
+  forbiddenTraitMask: bigint
+  anyOfTraitMask: bigint
+  minColorCount: number
+  maxColorCount: number
+}
+
+export type OfferSlotInput = {
+  criteria: OfferCriteriaInput
+  standard: number
+  includeIds: number[]
+  excludeIds: number[]
+}
+
+export const emptyCriteria = (): OfferCriteriaInput => ({
+  requiredTraitMask: 0n,
+  forbiddenTraitMask: 0n,
+  anyOfTraitMask: 0n,
+  minColorCount: 0,
+  maxColorCount: 0,
+})
+
+export const punkSlot = (
+  punkId: number,
+  standard: number = Standard.CRYPTOPUNKS,
+): OfferSlotInput => ({
+  criteria: emptyCriteria(),
+  standard,
+  includeIds: [punkId],
+  excludeIds: [],
+})
+
+export const wildcardSlot = (
+  standard: number = Standard.CRYPTOPUNKS,
+): OfferSlotInput => ({
+  criteria: emptyCriteria(),
+  standard,
+  includeIds: [],
+  excludeIds: [],
+})
+
+export const lotItem = (
+  punkId: number,
+  weightBps: number = TOTAL_WEIGHT_BPS,
+  standard: number = Standard.CRYPTOPUNKS,
+): LotItemInput => ({ standard, punkId, weightBps })
 
 export async function futureTs(connection: any, seconds: number): Promise<bigint> {
   const publicClient = await connection.viem.getPublicClient()
@@ -24,11 +78,11 @@ export async function deployAuctionStack() {
 
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
-  const traits = await viem.deployContract('MockCryptoPunksTraits')
+  const punksData = await viem.deployContract('MockPunksData')
   const auctions = await viem.deployContract('PunksAuction', [
     punks.address,
     punksV1.address,
-    traits.address,
+    punksData.address,
   ])
 
   const escrow = await viem.getContractAt(
@@ -45,7 +99,7 @@ export async function deployAuctionStack() {
     viem,
     punks,
     punksV1,
-    traits,
+    punksData,
     auctions,
     escrow,
     escrowV1,
