@@ -17,6 +17,9 @@ export default defineConfig({
   ],
   themeConfig: {
     aside: false,
+    nav: [
+      { text: 'punksdata.eth', link: 'https://evm.now/address/punksdata.eth' },
+    ],
     outline: false,
     sidebar: [
       {
