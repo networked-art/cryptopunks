@@ -65,6 +65,7 @@ export {
   normalizeTraitKind,
   rgbaHexToParts,
   validateBitmapWordIndex,
+  validateColorMask,
   validateColorCount,
   validateColorCriteriaMasks,
   validateColorId,

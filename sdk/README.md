@@ -216,6 +216,11 @@ await punksData.getDatasetStatus({ cache: false })
 punksData.clearCache()
 ```
 
+Failed cached reads are evicted automatically, so transient RPC failures can be
+retried without clearing the whole client. If you are reading from an unsealed
+or actively loading `PunksData` deployment, prefer `{ cache: false }` or clear
+the cache after sealing.
+
 ## Dataset Constants
 
 ```ts

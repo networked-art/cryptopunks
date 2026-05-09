@@ -5,6 +5,7 @@ import {
   countPunkBitmap,
   fullPunkBitmap,
   intersectPunkBitmaps,
+  PunksDataValidationError,
   punkBitmapFromIds,
   punkBitmapHasId,
   subtractPunkBitmaps,
@@ -40,5 +41,16 @@ describe('bitmap utilities', () => {
       9984, 9985, 9986, 9987, 9988, 9989, 9990, 9991, 9992, 9993,
       9994, 9995, 9996, 9997, 9998, 9999,
     ])
+  })
+
+  it('returns an empty page for a zero limit', () => {
+    assert.deepEqual(bitmapToPunkIds(fullPunkBitmap(), { limit: 0 }), [])
+  })
+
+  it('rejects malformed external bitmap words', () => {
+    assert.throws(() => countPunkBitmap([-1n]), PunksDataValidationError)
+    assert.throws(() => countPunkBitmap([1n << 256n]), PunksDataValidationError)
+    assert.throws(() => countPunkBitmap([1]), PunksDataValidationError)
+    assert.throws(() => countPunkBitmap(null), PunksDataValidationError)
   })
 })

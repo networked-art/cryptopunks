@@ -3,9 +3,13 @@
   "version": "0.0.1",
   "description": "TypeScript SDK for reading and searching the PunksData contract",
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "exports": {
     ".": {
@@ -14,7 +18,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "pnpm clean && tsc -p tsconfig.build.json && vite build",
     "test": "pnpm build && node --test test/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },

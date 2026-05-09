@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   PUNKS_DATA_ADDRESS,
+  PUNKS_DATA_DATASET_HASH,
+  PunksDataValidationError,
   TraitKind,
   bitmapToPunkIds,
   bytesToHex,
@@ -68,6 +70,60 @@ describe('PunksDataClient', () => {
 
     const rgba = await sdk.getRgbaPixels(10)
     assert.deepEqual([...rgba.slice(0, 4)], [0x11, 0x11, 0x11, 0xff])
+  })
+
+  it('validates read options before starting RPC reads', async () => {
+    let reads = 0
+    const sdk = createPunksDataClient({
+      publicClient: {
+        readContract: async () => {
+          reads++
+          return PUNKS_DATA_DATASET_HASH
+        },
+      },
+    })
+
+    await assert.rejects(
+      () => sdk.getDatasetHash({ blockNumber: 1n, blockTag: 'latest' }),
+      PunksDataValidationError,
+    )
+    await assert.rejects(
+      () => sdk.getDatasetHash({ blockNumber: -1n }),
+      PunksDataValidationError,
+    )
+    await assert.rejects(
+      () => sdk.getDatasetHash({ blockTag: 'unsafe' }),
+      PunksDataValidationError,
+    )
+    await assert.rejects(
+      () => sdk.getDatasetHash(null),
+      PunksDataValidationError,
+    )
+    assert.equal(reads, 0)
+  })
+
+  it('validates search query shape before starting RPC reads', async () => {
+    const sdk = createPunksDataClient({ publicClient: makeFakePublicClient() })
+
+    await assert.rejects(() => sdk.search(null), PunksDataValidationError)
+    await assert.rejects(() => sdk.searchBitmap(null), PunksDataValidationError)
+  })
+
+  it('evicts failed cached reads so transient failures can be retried', async () => {
+    let reads = 0
+    const sdk = createPunksDataClient({
+      publicClient: {
+        readContract: async () => {
+          reads++
+          if (reads === 1) throw new Error('temporary rpc failure')
+          return PUNKS_DATA_DATASET_HASH
+        },
+      },
+    })
+
+    await assert.rejects(() => sdk.getDatasetHash(), /temporary rpc failure/)
+    assert.equal(await sdk.getDatasetHash(), PUNKS_DATA_DATASET_HASH)
+    assert.equal(reads, 2)
   })
 })
 

@@ -81,12 +81,14 @@ export function validateCoordinate(x: number, y: number): void {
 }
 
 export function validateTraitMask(mask: bigint, label = 'trait mask'): void {
+  assertBigintMask(mask, label)
   if (mask < 0n || (mask & ~CANONICAL_TRAIT_MASK) !== 0n) {
     throw new PunksDataValidationError(`${label} contains bits outside the trait catalog`)
   }
 }
 
 export function validateColorMask(mask: bigint, label = 'color mask'): void {
+  assertBigintMask(mask, label)
   if (mask < 0n || (mask & ~CANONICAL_COLOR_MASK) !== 0n) {
     throw new PunksDataValidationError(`${label} contains bits outside the palette`)
   }
@@ -125,6 +127,8 @@ export function validateColorCriteriaMasks(
 }
 
 export function idsFromMask(mask: bigint, maxExclusive: number): number[] {
+  assertBigintMask(mask, 'mask')
+  if (mask < 0n) throw new PunksDataValidationError('mask must be non-negative')
   const ids: number[] = []
   for (let id = 0; id < maxExclusive; id++) {
     if (((mask >> BigInt(id)) & 1n) === 1n) ids.push(id)
@@ -149,7 +153,13 @@ export function normalizeTraitKind(kind: TraitKindInput): TraitKindValue {
     return kind as TraitKindValue
   }
 
-  if (kind in TraitKind) return TraitKind[kind as keyof typeof TraitKind]
+  if (typeof kind !== 'string') {
+    throw new PunksDataValidationError('trait kind must be a known kind id or name')
+  }
+
+  if (Object.prototype.hasOwnProperty.call(TraitKind, kind)) {
+    return TraitKind[kind as keyof typeof TraitKind]
+  }
 
   const normalized = kind.replaceAll(/\s|_/g, '').toLowerCase()
   const index = traitKindNames.findIndex(
@@ -160,9 +170,15 @@ export function normalizeTraitKind(kind: TraitKindInput): TraitKindValue {
 }
 
 export function hexToBytes(hex: Hex): Uint8Array {
+  if (typeof hex !== 'string') {
+    throw new PunksDataValidationError('hex byte string must be a string')
+  }
   const clean = stripHexPrefix(hex)
   if (clean.length % 2 !== 0) {
     throw new PunksDataValidationError('hex byte string must have an even length')
+  }
+  if (!/^[0-9a-fA-F]*$/.test(clean)) {
+    throw new PunksDataValidationError('hex byte string contains non-hex characters')
   }
   const out = new Uint8Array(clean.length / 2)
   for (let i = 0; i < out.length; i++) {
@@ -178,6 +194,9 @@ export function bytesToHex(bytes: Uint8Array): Hex {
 }
 
 export function normalizeRgbaHex(value: string): Hex {
+  if (typeof value !== 'string') {
+    throw new PunksDataValidationError('color hex must be a string')
+  }
   let clean = stripHexPrefix(value.trim())
   if (clean.startsWith('#')) clean = clean.slice(1)
   clean = clean.toLowerCase()
@@ -196,6 +215,9 @@ export function rgbaHexToParts(rgba: Hex): {
   rgb: Hex
   alpha: number
 } {
+  if (typeof rgba !== 'string') {
+    throw new PunksDataValidationError('rgba hex must be a string')
+  }
   const clean = stripHexPrefix(rgba)
   if (!/^[0-9a-fA-F]{8}$/.test(clean)) {
     throw new PunksDataValidationError('rgba hex must be four bytes')
@@ -227,6 +249,10 @@ export function normalizeNumericRange(
     return [range]
   }
 
+  if (typeof range !== 'object' || range === null || Array.isArray(range)) {
+    throw new PunksDataValidationError(`${label} must be a number or range object`)
+  }
+
   if (range.eq !== undefined && (range.min !== undefined || range.max !== undefined)) {
     throw new PunksDataValidationError(`${label} cannot combine eq with min or max`)
   }
@@ -253,4 +279,10 @@ export function assertIndexedPixels(pixels: Uint8Array): void {
 
 function stripHexPrefix(value: string): string {
   return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
+}
+
+function assertBigintMask(mask: bigint, label: string): void {
+  if (typeof mask !== 'bigint') {
+    throw new PunksDataValidationError(`${label} must be a bigint`)
+  }
 }

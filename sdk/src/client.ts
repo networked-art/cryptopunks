@@ -22,6 +22,7 @@ import {
   emptyPunkBitmap,
   fullPunkBitmap,
   intersectPunkBitmaps,
+  normalizePunkBitmap,
   punkBitmapFromIds,
   subtractPunkBitmaps,
   unionPunkBitmaps,
@@ -34,6 +35,7 @@ import type {
   PunkBitmap,
   PunkSummary,
   PunkSummaryOptions,
+  PunksDataBlockTag,
   PunksDataClientConfig,
   PunksDataReadOptions,
   PunksSearchQuery,
@@ -46,6 +48,7 @@ import type {
 import {
   PunksDataDatasetMismatchError,
   PunksDataValidationError,
+  assertIntegerInRange,
   assertIndexedPixels,
   bytesToHex,
   hexToBytes,
@@ -83,6 +86,14 @@ type BitmapFunctionName =
   | 'colorCountBitmapWord'
 
 type Cacheable<T> = Promise<T>
+
+const READ_BLOCK_TAGS = new Set<PunksDataBlockTag>([
+  'latest',
+  'earliest',
+  'pending',
+  'safe',
+  'finalized',
+])
 
 export class PunksDataClient {
   readonly publicClient: PublicClient
@@ -396,21 +407,33 @@ export class PunksDataClient {
   }
 
   async getPaletteRgbaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
-    return this.cached('paletteRgbaBytes', options, async () =>
-      hexToBytes(await this.read<Hex>('paletteRgbaBytes', [], options)),
-    )
+    return this.cached('paletteRgbaBytes', options, async () => {
+      const bytes = hexToBytes(await this.read<Hex>('paletteRgbaBytes', [], options))
+      if (bytes.length !== PALETTE_SIZE * 4) {
+        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} RGBA colors`)
+      }
+      return bytes
+    })
   }
 
   async getPaletteRgbBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
-    return this.cached('paletteRgbBytes', options, async () =>
-      hexToBytes(await this.read<Hex>('paletteRgbBytes', [], options)),
-    )
+    return this.cached('paletteRgbBytes', options, async () => {
+      const bytes = hexToBytes(await this.read<Hex>('paletteRgbBytes', [], options))
+      if (bytes.length !== PALETTE_SIZE * 3) {
+        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} RGB colors`)
+      }
+      return bytes
+    })
   }
 
   async getPaletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
-    return this.cached('paletteAlphaBytes', options, async () =>
-      hexToBytes(await this.read<Hex>('paletteAlphaBytes', [], options)),
-    )
+    return this.cached('paletteAlphaBytes', options, async () => {
+      const bytes = hexToBytes(await this.read<Hex>('paletteAlphaBytes', [], options))
+      if (bytes.length !== PALETTE_SIZE) {
+        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} alpha values`)
+      }
+      return bytes
+    })
   }
 
   async getPalette(
@@ -492,8 +515,14 @@ export class PunksDataClient {
       return trait.id
     }
 
-    const name = typeof trait === 'string' ? trait : trait.name
-    if (!name) throw new PunksDataValidationError('trait reference needs an id or name')
+    if (typeof trait !== 'string' && (typeof trait !== 'object' || trait === null)) {
+      throw new PunksDataValidationError('trait reference needs an id or name')
+    }
+    const rawName = typeof trait === 'string' ? trait : trait.name
+    if (typeof rawName !== 'string' || rawName.trim() === '') {
+      throw new PunksDataValidationError('trait reference needs an id or name')
+    }
+    const name = rawName.trim()
     const kind =
       typeof trait === 'object' && trait.kind !== undefined
         ? normalizeTraitKind(trait.kind)
@@ -547,6 +576,9 @@ export class PunksDataClient {
       validateColorId(color)
       return color
     }
+    if (typeof color !== 'string') {
+      throw new PunksDataValidationError('color reference must be a color id or hex string')
+    }
     const rgba = normalizeRgbaHex(color)
     const palette = await this.getPalette(options)
     const match = palette.find((entry) => entry.rgba.toLowerCase() === rgba.toLowerCase())
@@ -584,6 +616,7 @@ export class PunksDataClient {
     query: PunksSearchQuery = {},
     options?: PunksDataReadOptions,
   ): Promise<PunkBitmap> {
+    validateSearchQuery(query)
     let bitmap = fullPunkBitmap()
 
     if (query.traits !== undefined) {
@@ -643,6 +676,7 @@ export class PunksDataClient {
   }
 
   async search(query: PunksSearchQuery = {}, options?: PunksDataReadOptions): Promise<number[]> {
+    validatePagination(query)
     const bitmap = await this.searchBitmap(query, options)
     return bitmapToPunkIds(bitmap, {
       offset: query.offset,
@@ -699,6 +733,16 @@ export class PunksDataClient {
       const attributeCount = Number(values[cursor++])
       const punkType = Number(values[cursor++]) as PunkTypeValue
       const headVariant = Number(values[cursor++]) as HeadVariantValue
+      const punkTypeName = punkTypeNames[punkType]
+      const headVariantName = headVariantNames[headVariant]
+      if (punkTypeName === undefined) {
+        throw new PunksDataValidationError(`unknown punk type ${punkType} for punk ${punkId}`)
+      }
+      if (headVariantName === undefined) {
+        throw new PunksDataValidationError(
+          `unknown head variant ${headVariant} for punk ${punkId}`,
+        )
+      }
       const traitIds = idsFromMask(traitMask, TRAIT_COUNT)
       const colorIds = idsFromMask(colorMask, PALETTE_SIZE)
       const indexedPixels = summaryOptions.includePixels
@@ -716,9 +760,9 @@ export class PunksDataClient {
         colorCount,
         attributeCount,
         punkType,
-        punkTypeName: punkTypeNames[punkType],
+        punkTypeName,
         headVariant,
-        headVariantName: headVariantNames[headVariant],
+        headVariantName,
         traits: catalog === undefined ? undefined : traitIds.map((id) => catalog[id]),
         colors: palette === undefined ? undefined : colorIds.map((id) => palette[id]),
         indexedPixels,
@@ -787,7 +831,7 @@ export class PunksDataClient {
       const words = await this.readMany<bigint>(calls, options)
       let cursor = 0
       for (const rowId of missing) {
-        const row = words.slice(cursor, cursor + BITMAP_WORD_COUNT)
+        const row = normalizePunkBitmap(words.slice(cursor, cursor + BITMAP_WORD_COUNT))
         cursor += BITMAP_WORD_COUNT
         rows.set(rowId, row)
         this.setCached(`${cachePrefix}:${rowId}`, options, Promise.resolve(row))
@@ -861,7 +905,11 @@ export class PunksDataClient {
 
   private setCached<T>(key: string, options: PunksDataReadOptions | undefined, promise: Promise<T>): void {
     if (!this.shouldCache(options)) return
-    this.cache.set(cacheKey(key, options), promise)
+    const resolvedKey = cacheKey(key, options)
+    this.cache.set(resolvedKey, promise)
+    promise.catch(() => {
+      if (this.cache.get(resolvedKey) === promise) this.cache.delete(resolvedKey)
+    })
   }
 
   private shouldCache(options?: PunksDataReadOptions): boolean {
@@ -946,18 +994,52 @@ function blockParams(options?: PunksDataReadOptions): {
   blockNumber?: bigint
   blockTag?: PunksDataReadOptions['blockTag']
 } {
-  if (options?.blockNumber !== undefined && options.blockTag !== undefined) {
-    throw new PunksDataValidationError('use blockNumber or blockTag, not both')
-  }
+  validateReadOptions(options)
   if (options?.blockNumber !== undefined) return { blockNumber: options.blockNumber }
   if (options?.blockTag !== undefined) return { blockTag: options.blockTag }
   return {}
 }
 
 function cacheKey(key: string, options?: PunksDataReadOptions): string {
+  validateReadOptions(options)
   if (options?.blockNumber !== undefined) return `${key}@${options.blockNumber.toString()}`
   if (options?.blockTag !== undefined) return `${key}@${options.blockTag}`
   return `${key}@default`
+}
+
+function validateReadOptions(options?: PunksDataReadOptions): void {
+  if (options === undefined) return
+  if (typeof options !== 'object' || options === null) {
+    throw new PunksDataValidationError('read options must be an object')
+  }
+  if (options.blockNumber !== undefined && options.blockTag !== undefined) {
+    throw new PunksDataValidationError('use blockNumber or blockTag, not both')
+  }
+  if (options.blockNumber !== undefined) {
+    if (typeof options.blockNumber !== 'bigint' || options.blockNumber < 0n) {
+      throw new PunksDataValidationError('blockNumber must be a non-negative bigint')
+    }
+  }
+  if (options.blockTag !== undefined && !READ_BLOCK_TAGS.has(options.blockTag)) {
+    throw new PunksDataValidationError(
+      'blockTag must be latest, earliest, pending, safe, or finalized',
+    )
+  }
+}
+
+function validatePagination(query: PunksSearchQuery): void {
+  validateSearchQuery(query)
+  if (query.offset !== undefined) {
+    assertIntegerInRange('offset', query.offset, 0, Number.MAX_SAFE_INTEGER)
+  }
+  if (query.limit === undefined || query.limit === Number.POSITIVE_INFINITY) return
+  assertIntegerInRange('limit', query.limit, 0, Number.MAX_SAFE_INTEGER)
+}
+
+function validateSearchQuery(query: PunksSearchQuery): void {
+  if (typeof query !== 'object' || query === null) {
+    throw new PunksDataValidationError('search query must be an object')
+  }
 }
 
 function validateBitmapRowId(cachePrefix: string, rowId: number): void {
