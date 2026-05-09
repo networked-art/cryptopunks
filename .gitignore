@@ -1,37 +1,5 @@
-# Node modules
-/node_modules
-
-# Compilation output
-/dist
-
-# pnpm deploy output
-/bundle
-
-# Hardhat Build Artifacts
-/artifacts
-
-# Hardhat deployments
-/ignition/deployments/chain-31337
-
-# Hardhat compilation support directory
-/cache
-
-# Typechain output
-/types
-
-# Hardhat coverage reports
-/coverage
-
-# Hardhat gas reports
-/gas-stats.json
-
-# Script output
-/scripts/output
-
-# Slither / Python venv
-/.venv
-/slither-report.*
-/crytic-export
+node_modules
+.DS_Store
 
 # AI
 .codex

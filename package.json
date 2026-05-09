@@ -1,23 +1,12 @@
 {
-  "name": "@networked-art/cryptopunks-auctions",
-  "version": "0.0.1",
-  "type": "module",
+  "name": "@networked/cryptopunks",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "generate:punks-data": "hardhat run scripts/generate-punks-data.ts",
-    "snapshot:source": "hardhat run scripts/snapshot-source.ts",
-    "load:punks-data": "hardhat run scripts/load-punks-data.ts --network mainnet",
-    "seal:punks-data": "PUNKS_DATA_SEAL=1 hardhat run scripts/load-punks-data.ts --network mainnet",
-    "test": "hardhat test",
-    "test:gas": "hardhat --gas-stats test",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@nomicfoundation/hardhat-ignition": "^3.1.5",
-    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.5",
-    "@openzeppelin/contracts": "^5.6.1",
-    "@types/node": "^22.19.11",
-    "hardhat": "^3.4.5",
-    "typescript": "~5.8.3",
-    "viem": "^2.48.11"
+    "test": "pnpm --filter @cryptopunks/contracts test",
+    "typecheck": "pnpm -r typecheck",
+    "docs:dev": "pnpm --filter @cryptopunks/docs dev",
+    "docs:build": "pnpm --filter @cryptopunks/docs build",
+    "docs:preview": "pnpm --filter @cryptopunks/docs preview"
   }
 }
