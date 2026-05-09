@@ -31,7 +31,19 @@ export default defineConfig({
       {
         text: 'Contracts',
         items: [
-          { text: 'PunksData', link: '/contracts/punks-data' },
+          {
+            text: 'PunksData',
+            link: '/contracts/punks-data',
+            collapsed: false,
+            items: [
+              { text: 'Core Concepts', link: '/contracts/punks-data/core-concepts' },
+              { text: 'Criteria API', link: '/contracts/punks-data/criteria' },
+              { text: 'Visual API', link: '/contracts/punks-data/visual' },
+              { text: 'Indexed Pixels API', link: '/contracts/punks-data/indexed-pixels' },
+              { text: 'Loader And Storage API', link: '/contracts/punks-data/loader-storage' },
+              { text: 'Usage And Integration', link: '/contracts/punks-data/usage' },
+            ],
+          },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
         ],
       },

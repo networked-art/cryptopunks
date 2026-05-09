@@ -109,10 +109,28 @@ body {
 .VPSidebarItem.level-1 > .item > .link > .text {
   color: var(--vp-c-text-2);
   font-size: 12px;
+  font-weight: 500;
   line-height: 1.35;
 }
 
+.VPSidebarItem.level-1.has-active > .item > .link > .text,
 .VPSidebarItem.level-1.is-active > .item > .link > .text {
+  color: #000000;
+  font-weight: 700;
+}
+
+.VPSidebarItem.level-2 > .item {
+  min-height: 24px;
+}
+
+.VPSidebarItem.level-2 > .item > .link > .text {
+  color: var(--vp-c-text-3);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.VPSidebarItem.level-2.is-active > .item > .link > .text {
   color: #000000;
   font-weight: 700;
 }
