@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'CryptoPunks',
+  title: 'ONCHAIN CRYPTOPUNKS DATA',
   description: 'CryptoPunks documentation',
   appearance: false,
   head: [
