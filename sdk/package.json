@@ -1,0 +1,30 @@
+{
+  "name": "@cryptopunks/punks-data-sdk",
+  "version": "0.0.1",
+  "description": "TypeScript SDK for reading and searching the PunksData contract",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "test": "pnpm build && node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "viem": "^2.48.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "typescript": "~5.8.3",
+    "vite": "^5.4.21",
+    "viem": "^2.48.11"
+  }
+}
