@@ -34,10 +34,8 @@ caches the result:
 
 ```ts
 const catalog = await punksData.getTraitCatalog()
-const hoodieId = await punksData.resolveTraitId({
-  name: 'Hoodie',
-  kind: 'Accessory',
-})
+const hoodie = await punksData.resolveTrait('Hoodie')
+hoodie.id
 ```
 
 Color helpers work with palette ids or RGB/RGBA hex strings:
@@ -55,12 +53,12 @@ ascending Punk ids from that bitmap and supports `offset` and `limit`.
 
 ```ts
 const ids = await punksData.search({
-  traits: {
-    required: [{ name: 'Male', kind: 'NormalizedType' }],
-    forbidden: [{ name: 'Cigarette', kind: 'Accessory' }],
+  attributes: {
+    required: ['Male'],
+    forbidden: ['Cigarette'],
     anyOf: [
-      { name: 'Hoodie', kind: 'Accessory' },
-      { name: 'Beanie', kind: 'Accessory' },
+      'Hoodie',
+      'Beanie',
     ],
   },
   colors: { required: [12] },
@@ -85,6 +83,27 @@ range:
 await punksData.search({ pixelCount: 209 })
 await punksData.search({ colorCount: { min: 2, max: 5 } })
 ```
+
+## Offline Text Search
+
+Use the offline subpath for bundled, RPC-free search across the full canonical
+dataset:
+
+```ts
+import { createOfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
+
+const offline = createOfflinePunksDataClient()
+
+const ids = offline.searchSync({
+  text: 'zombie mohawk OR ape "3d glasses"',
+})
+```
+
+Offline `text` search uses a prebuilt trait bitmap index. Whitespace terms are
+ANDed, `OR` or `||` unions groups, and quoted phrases are exact attribute-name
+matches. The same offline query can be combined with `punkType`, `headVariant`,
+`attributeCount`, colors, pixel counts, include/exclude ids, sorting, facets,
+and pagination.
 
 ## Punk Summaries
 

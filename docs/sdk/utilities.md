@@ -51,14 +51,8 @@ import {
 Use them when you want to compose cached bitmap rows yourself:
 
 ```ts
-const hoodie = await punksData.getTraitBitmap({
-  name: 'Hoodie',
-  kind: 'Accessory',
-})
-const beanie = await punksData.getTraitBitmap({
-  name: 'Beanie',
-  kind: 'Accessory',
-})
+const hoodie = await punksData.getTraitBitmap('Hoodie')
+const beanie = await punksData.getTraitBitmap('Beanie')
 
 const ids = bitmapToPunkIds(unionPunkBitmaps([hoodie, beanie]), {
   limit: 100,

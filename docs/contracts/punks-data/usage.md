@@ -32,24 +32,39 @@ offchain read/search surface.
 
 ## Match An Offer Or Filter
 
-For contracts, store compact masks and call `hasTraits` during settlement:
+The `Punks` library packages trait masks, color masks, and visual-metric
+ranges into one validated `Filter` type. Consumer contracts store the filter
+once and call `matches` per Punk during settlement:
 
 ```solidity
-struct Criteria {
-    uint256 requiredMask;
-    uint256 forbiddenMask;
-    uint256 anyOfMask;
-}
+import {Punks} from "punks-contracts/lib/Punks.sol";
+import {IPunksData} from "punks-contracts/interfaces/IPunksData.sol";
 
-function accepts(uint16 punkId, Criteria memory c) external view returns (bool) {
-    return PUNKS_DATA.hasTraits(
-        punkId,
-        c.requiredMask,
-        c.forbiddenMask,
-        c.anyOfMask
-    );
+contract MyConsumer {
+    using Punks for Punks.Filter;
+
+    IPunksData public immutable PUNKS_DATA;
+
+    constructor(address punksData) {
+        PUNKS_DATA = IPunksData(punksData);
+    }
+
+    function place(Punks.Filter calldata f) external {
+        f.validate();           // Mirrors PunksData's canonical mask checks.
+        // ...persist f wherever it belongs.
+    }
+
+    function accepts(uint16 punkId, Punks.Filter memory f) external view returns (bool) {
+        return f.matches(PUNKS_DATA, punkId);
+    }
 }
 ```
+
+`Filter` covers all four dimensions — trait masks (required/forbidden/anyOf),
+color masks (same shape), pixel-count range, and color-count range. Set a
+range's `max` to `0` to disable it. `matches` short-circuits in cost order
+(traits → colors → pixel range → color count range) so partial filters pay
+only for what they query.
 
 This avoids dynamic arrays of trait filters and keeps settlement gas bounded.
 

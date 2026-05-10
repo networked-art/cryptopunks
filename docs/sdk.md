@@ -51,8 +51,8 @@ Search through `PunksData` and render through `PunksRenderer`:
 await punksData.assertCanonicalDataset()
 
 const hoodiePunks = await punksData.search({
-  traits: {
-    required: [{ name: 'Hoodie', kind: 'Accessory' }],
+  attributes: {
+    required: ['Hoodie'],
   },
   limit: 25,
 })
