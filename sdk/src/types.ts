@@ -1,4 +1,4 @@
-import type { Address, Hex, PublicClient } from 'viem'
+import type { Hex, PublicClient } from 'viem'
 import type {
   HeadVariantName,
   HeadVariantValue,
@@ -18,7 +18,6 @@ export type PunksDataReadOptions = {
 
 export type PunksDataClientConfig = {
   publicClient: PublicClient
-  address?: Address
   cache?: boolean
   multicallBatchSize?: number
 }

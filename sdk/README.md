@@ -21,10 +21,7 @@ transport, chain config, and batching behavior.
 ```ts
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
-import {
-  PUNKS_DATA_ADDRESS,
-  createPunksDataClient,
-} from '@networked-art/punks-sdk'
+import { createPunksDataClient } from '@networked-art/punks-sdk'
 
 const publicClient = createPublicClient({
   chain: mainnet,
@@ -33,7 +30,6 @@ const publicClient = createPublicClient({
 
 const punksData = createPunksDataClient({
   publicClient,
-  address: PUNKS_DATA_ADDRESS,
 })
 
 await punksData.assertCanonicalDataset()
@@ -240,6 +236,9 @@ The canonical mainnet deployment is:
 punksdata.eth
 0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C
 ```
+
+`createPunksDataClient` always reads this address. It is not exposed as a
+constructor option because `PunksData` is an immutable mainnet public good.
 
 The expected sealed dataset hash is:
 

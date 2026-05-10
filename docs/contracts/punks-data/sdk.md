@@ -16,10 +16,7 @@ Create a client from any viem public client:
 ```ts
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
-import {
-  createPunksDataClient,
-  PUNKS_DATA_ADDRESS,
-} from '@networked-art/punks-sdk'
+import { createPunksDataClient } from '@networked-art/punks-sdk'
 
 const publicClient = createPublicClient({
   chain: mainnet,
@@ -28,13 +25,17 @@ const publicClient = createPublicClient({
 
 const punksData = createPunksDataClient({
   publicClient,
-  address: PUNKS_DATA_ADDRESS,
 })
 ```
 
 ## Dataset Pinning
 
-The SDK exports the canonical mainnet address and dataset hash:
+The SDK always reads the canonical mainnet `PunksData` deployment. The address
+is hardcoded in the client because the contract is an immutable mainnet public
+good, not a caller-selected dependency.
+
+The SDK exports the canonical mainnet address and dataset hash for display,
+verification, and direct viem usage:
 
 ```ts
 import {
@@ -43,15 +44,14 @@ import {
 } from '@networked-art/punks-sdk'
 ```
 
-Use `assertCanonicalDataset` before trusting a configurable address:
+Use `assertCanonicalDataset` before trusting RPC responses:
 
 ```ts
 await punksData.assertCanonicalDataset()
 ```
 
 It checks `isSealed()` and `datasetHash()` against the expected sealed mainnet
-hash. Pass `expectedDatasetHash` if you are intentionally reading a different
-sealed deployment.
+hash.
 
 ## Low-Level Reads
 
@@ -264,4 +264,4 @@ const status = await punksData.getDatasetStatus({ cache: false })
 ```
 
 The cache is per SDK instance. Create a fresh client or call `clearCache()`
-when switching addresses or RPC assumptions.
+when switching RPC assumptions.

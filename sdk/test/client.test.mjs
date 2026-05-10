@@ -15,6 +15,7 @@ import {
 describe('PunksDataClient', () => {
   it('resolves traits, searches through bitmap indexes, and paginates results', async () => {
     const sdk = createPunksDataClient({ publicClient: makeFakePublicClient() })
+    assert.equal(sdk.address, PUNKS_DATA_ADDRESS)
 
     await assert.rejects(() => sdk.resolveTraitId('Alien'), /ambiguous/)
     assert.equal(
@@ -46,10 +47,7 @@ describe('PunksDataClient', () => {
   })
 
   it('hydrates punk summaries and expands indexed pixels to RGBA', async () => {
-    const sdk = createPunksDataClient({
-      publicClient: makeFakePublicClient(),
-      address: PUNKS_DATA_ADDRESS,
-    })
+    const sdk = createPunksDataClient({ publicClient: makeFakePublicClient() })
 
     const punk = await sdk.getPunk(10, {
       includeTraits: true,
@@ -212,9 +210,15 @@ function makeFakePublicClient() {
   }
 
   return {
-    readContract: async ({ functionName, args }) => read(functionName, args),
+    readContract: async ({ address, functionName, args }) => {
+      assert.equal(address, PUNKS_DATA_ADDRESS)
+      return read(functionName, args)
+    },
     multicall: async ({ contracts }) =>
-      contracts.map(({ functionName, args }) => read(functionName, args)),
+      contracts.map(({ address, functionName, args }) => {
+        assert.equal(address, PUNKS_DATA_ADDRESS)
+        return read(functionName, args)
+      }),
   }
 }
 

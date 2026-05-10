@@ -105,7 +105,7 @@ export class PunksDataClient {
 
   constructor(config: PunksDataClientConfig) {
     this.publicClient = config.publicClient
-    this.address = config.address ?? PUNKS_DATA_ADDRESS
+    this.address = PUNKS_DATA_ADDRESS
     this.cacheEnabled = config.cache ?? true
     this.multicallBatchSize = config.multicallBatchSize ?? 256
     if (!Number.isInteger(this.multicallBatchSize) || this.multicallBatchSize < 1) {
