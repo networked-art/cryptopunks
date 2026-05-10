@@ -42,7 +42,7 @@ const punksRenderer = createPunksRendererClient({
 })
 
 const hoodiePunks = await punksData.search({
-  traits: {
+  attributes: {
     required: ['Hoodie'],
   },
 })
@@ -86,7 +86,7 @@ Bitmap-first search:
 
 ```ts
 const ids = await punksData.search({
-  traits: {
+  attributes: {
     required: [
       'Male',
       '3D Glasses',
@@ -184,6 +184,16 @@ const aliens = await punksData.search({
 const facets = punksData.facetsSync({ text: 'hoodie' })
 ```
 
+Text search runs fully offline against the bundled trait bitmap index. Terms in
+a group are ANDed, `OR` or `||` unions groups, and quoted phrases require an
+exact attribute name match:
+
+```ts
+const ids = punksData.searchSync({
+  text: 'zombie mohawk OR ape "3d glasses"',
+})
+```
+
 ## Renderer Client
 
 `PunksRendererClient` wraps `PunksRenderer.sol` reads:
@@ -219,7 +229,7 @@ Use `searchBitmap()` if you want the composed 40-word bitmap:
 
 ```ts
 const bitmap = await punksData.searchBitmap({
-  traits: { required: ['Ape'] },
+  attributes: { required: ['Ape'] },
 })
 ```
 
@@ -237,7 +247,7 @@ Use `count()` if you only need the match count:
 
 ```ts
 const total = await punksData.count({
-  traits: { required: ['Zombie'] },
+  attributes: { required: ['Zombie'] },
 })
 ```
 

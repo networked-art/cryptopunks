@@ -38,6 +38,8 @@ export type TraitRef =
       name?: string
     }
 
+export type AttributeRef = TraitRef
+
 export type ColorRef = number | Hex | `#${string}` | string
 
 export type TraitRecord = {
@@ -64,6 +66,15 @@ export type TraitCriteriaInput = {
   required?: readonly TraitRef[]
   forbidden?: readonly TraitRef[]
   anyOf?: readonly TraitRef[]
+  requiredMask?: bigint
+  forbiddenMask?: bigint
+  anyOfMask?: bigint
+}
+
+export type AttributeCriteriaInput = {
+  required?: readonly AttributeRef[]
+  forbidden?: readonly AttributeRef[]
+  anyOf?: readonly AttributeRef[]
   requiredMask?: bigint
   forbiddenMask?: bigint
   anyOfMask?: bigint
@@ -97,7 +108,7 @@ export type NumericRange = number | {
 }
 
 export type PunksSearchQuery = {
-  traits?: TraitCriteriaInput
+  attributes?: AttributeCriteriaInput
   colors?: ColorCriteriaInput
   pixelCount?: NumericRange
   colorCount?: NumericRange

@@ -14,7 +14,7 @@ import {
 const DATASET_HASH = '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
 
 describe('PunksDataClient', () => {
-  it('resolves traits, searches through bitmap indexes, and paginates results', async () => {
+  it('resolves trait records, searches attributes through bitmap indexes, and paginates results', async () => {
     const sdk = createPunksDataClient({ publicClient: makeFakePublicClient() })
     assert.equal(sdk.address, PUNKS_DATA_ADDRESS)
 
@@ -26,7 +26,7 @@ describe('PunksDataClient', () => {
     assert.equal((await sdk.resolveTrait('alien')).id, 0)
 
     const ids = await sdk.search({
-      traits: { required: ['Hoodie'] },
+      attributes: { required: ['Hoodie'] },
       colors: { required: [2] },
       pixelCount: 200,
       colorCount: 4,
@@ -34,7 +34,7 @@ describe('PunksDataClient', () => {
     assert.deepEqual(ids, [10])
 
     const visualWithoutHoodie = await sdk.search({
-      traits: { forbidden: ['Hoodie'] },
+      attributes: { forbidden: ['Hoodie'] },
       colors: { anyOf: [2, 3] },
     })
     assert.deepEqual(visualWithoutHoodie, [300])
@@ -106,6 +106,10 @@ describe('PunksDataClient', () => {
 
     await assert.rejects(() => sdk.search(null), PunksDataValidationError)
     await assert.rejects(() => sdk.searchBitmap(null), PunksDataValidationError)
+    await assert.rejects(
+      () => sdk.search({ traits: { required: ['Hoodie'] } }),
+      PunksDataValidationError,
+    )
   })
 
   it('evicts failed cached reads so transient failures can be retried', async () => {

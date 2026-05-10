@@ -27,6 +27,7 @@ import {
   unionPunkBitmaps,
 } from './bitmap'
 import type {
+  AttributeCriteriaInput,
   ColorCriteriaInput,
   ColorRef,
   PaletteColor,
@@ -583,10 +584,10 @@ export class PunksDataClient {
     validateSearchQuery(query)
     let bitmap = fullPunkBitmap()
 
-    if (query.traits !== undefined) {
+    if (query.attributes !== undefined) {
       bitmap = intersectPunkBitmaps([
         bitmap,
-        await this.bitmapForTraitCriteria(query.traits, options),
+        await this.bitmapForAttributeCriteria(query.attributes, options),
       ])
     }
 
@@ -735,8 +736,8 @@ export class PunksDataClient {
     return summaries
   }
 
-  private async bitmapForTraitCriteria(
-    criteria: TraitCriteriaInput,
+  private async bitmapForAttributeCriteria(
+    criteria: AttributeCriteriaInput,
     options?: PunksDataReadOptions,
   ): Promise<PunkBitmap> {
     const masks = await this.resolveTraitCriteria(criteria, options)
@@ -1003,6 +1004,9 @@ function validatePagination(query: PunksSearchQuery): void {
 function validateSearchQuery(query: PunksSearchQuery): void {
   if (typeof query !== 'object' || query === null) {
     throw new PunksDataValidationError('search query must be an object')
+  }
+  if (Object.prototype.hasOwnProperty.call(query, 'traits')) {
+    throw new PunksDataValidationError('search query uses attributes, not traits')
   }
 }
 

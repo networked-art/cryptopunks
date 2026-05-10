@@ -90,6 +90,8 @@ export {
   validateTraitMask,
 } from './utils'
 export type {
+  AttributeCriteriaInput,
+  AttributeRef,
   BitmapToPunkIdsOptions,
   ColorCriteriaInput,
   ColorRef,

@@ -7,6 +7,7 @@ import {
   createOfflinePunksDataClient,
   createOfflinePunksDataClientFromDataset,
   loadOfflinePunksDataFromDirectory,
+  parseOfflinePunksSearchText,
 } from '../dist/offline.js'
 import { bundledOfflinePunksData } from '../dist/offline-data.js'
 
@@ -31,8 +32,12 @@ describe('OfflinePunksDataClient', () => {
     assert.equal(hoodie.id, 62)
     assert.equal(hoodie.supply, 259)
 
-    assert.equal(sdk.countSync({ traits: { required: ['Hoodie'] } }), hoodie.supply)
+    assert.equal(sdk.countSync({ attributes: { required: ['Hoodie'] } }), hoodie.supply)
     assert.deepEqual(sdk.searchSync({ text: '#8348' }), [8348])
+    assert.throws(
+      () => sdk.searchSync({ traits: { required: ['Hoodie'] } }),
+      /search query uses attributes, not traits/,
+    )
 
     assert.throws(
       () => sdk.getDatasetHashSync({ blockTag: 'latest' }),
@@ -43,10 +48,38 @@ describe('OfflinePunksDataClient', () => {
   it('supports richer offline filters, text search, facets, sorting, and sync/async parity', async () => {
     const sdk = createOfflinePunksDataClient()
 
+    assert.deepEqual(parseOfflinePunksSearchText('zombie mohawk OR ape "3d glasses"'), [
+      [
+        { text: 'zombie', exact: false },
+        { text: 'mohawk', exact: false },
+      ],
+      [
+        { text: 'ape', exact: false },
+        { text: '3d glasses', exact: true },
+      ],
+    ])
+
     assert.equal(sdk.countSync({ punkType: 'Alien' }), 9)
     assert.equal(sdk.countSync({ headVariant: 'Female2' }), 1174)
     assert.deepEqual(sdk.searchSync({ attributeCount: 7 }), [8348])
     assert.deepEqual(sdk.searchSync({ text: 'top hat mole', attributeCount: 7 }), [8348])
+    assert.equal(
+      sdk.countSync({ text: '"3d glasses"' }),
+      sdk.countSync({ attributes: { required: ['3D Glasses'] } }),
+    )
+    assert.equal(sdk.countSync({ text: '"glasses"' }), 0)
+    assert.deepEqual(
+      sdk.searchSync({ text: 'zombie mohawk OR ape "3d glasses"' }),
+      unionIds(
+        sdk.searchSync({
+          attributes: {
+            required: ['Zombie'],
+            anyOf: ['Mohawk', 'Mohawk Dark', 'Mohawk Thin', 'Red Mohawk'],
+          },
+        }),
+        sdk.searchSync({ attributes: { required: ['Ape', '3D Glasses'] } }),
+      ),
+    )
 
     const hoodiePage = sdk.searchSync({ text: 'hoodie', limit: 5 })
     assert.deepEqual(hoodiePage, [54, 58, 87, 90, 99])
@@ -55,11 +88,11 @@ describe('OfflinePunksDataClient', () => {
     const facets = sdk.facetsSync({ text: 'alien' })
     assert.equal(facets.total, 9)
     assert.equal(facets.punkTypes.find((facet) => facet.name === 'Alien').count, 9)
-    assert.equal(facets.traits.find((facet) => facet.name === 'Alien').count, 9)
+    assert.equal(facets.attributes.find((facet) => facet.name === 'Alien').count, 9)
 
     assert.deepEqual(
       sdk.searchSync({
-        traits: { anyOf: ['Alien', 'Ape', 'Zombie'] },
+        attributes: { anyOf: ['Alien', 'Ape', 'Zombie'] },
         sort: 'rarity',
         limit: 5,
       }),
@@ -113,3 +146,7 @@ describe('OfflinePunksDataClient', () => {
     }
   })
 })
+
+function unionIds(...groups) {
+  return [...new Set(groups.flat())].sort((a, b) => a - b)
+}

@@ -33,6 +33,7 @@ import {
   unionPunkBitmaps,
 } from './bitmap'
 import type {
+  AttributeCriteriaInput,
   ColorCriteriaInput,
   ColorRef,
   NumericRange,
@@ -72,6 +73,8 @@ import { bundledOfflinePunksData } from './offline-data'
 
 export { PunksDataSdkError, PunksDataValidationError } from './utils'
 export type {
+  AttributeCriteriaInput,
+  AttributeRef,
   ColorCriteriaInput,
   ColorRef,
   NumericRange,
@@ -182,7 +185,7 @@ export type OfflinePunksNamedFacetCount = OfflinePunksFacetCount & {
   name: string
 }
 
-export type OfflinePunksTraitFacetCount = TraitRecord & {
+export type OfflinePunksAttributeFacetCount = TraitRecord & {
   count: number
 }
 
@@ -192,7 +195,7 @@ export type OfflinePunksColorFacetCount = PaletteColor & {
 
 export type OfflinePunksSearchFacets = {
   total: number
-  traits: OfflinePunksTraitFacetCount[]
+  attributes: OfflinePunksAttributeFacetCount[]
   colors: OfflinePunksColorFacetCount[]
   punkTypes: OfflinePunksNamedFacetCount[]
   headVariants: OfflinePunksNamedFacetCount[]
@@ -201,12 +204,22 @@ export type OfflinePunksSearchFacets = {
   attributeCounts: OfflinePunksFacetCount[]
 }
 
+export type OfflinePunksTextSearchTerm = {
+  text: string
+  exact: boolean
+}
+
 type PackedScalar = {
   pixelCount: number
   colorCount: number
   attributeCount: number
   punkType: PunkTypeValue
   headVariant: HeadVariantValue
+}
+
+type OfflineTextIndexEntry = {
+  key: string
+  bitmap: PunkBitmap
 }
 
 type OfflineStore = {
@@ -221,6 +234,7 @@ type OfflineStore = {
   traitMasks: bigint[]
   colorMasks: bigint[]
   scalars: PackedScalar[]
+  textIndex: OfflineTextIndexEntry[]
   pixelOffsets: Uint8Array
   compressedPixels: Uint8Array
 }
@@ -886,8 +900,11 @@ export class OfflinePunksDataClient {
     if (query.text !== undefined) {
       bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextSync(query.text)])
     }
-    if (query.traits !== undefined) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTraitCriteriaSync(query.traits)])
+    if (query.attributes !== undefined) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForAttributeCriteriaSync(query.attributes),
+      ])
     }
     if (query.colors !== undefined) {
       bitmap = intersectPunkBitmaps([bitmap, this.bitmapForColorCriteriaSync(query.colors)])
@@ -988,7 +1005,7 @@ export class OfflinePunksDataClient {
     const palette = this.getPaletteSync({ includeSupplies: true })
     return {
       total: countPunkBitmap(bitmap),
-      traits: this.store.traits.map((trait) => ({
+      attributes: this.store.traits.map((trait) => ({
         ...trait,
         count: countIntersection(bitmap, this.store.traitBitmaps[trait.id]),
       })),
@@ -1132,7 +1149,7 @@ export class OfflinePunksDataClient {
     return uniqueNumbers(colors.map((color) => this.resolveColorIdSync(color)))
   }
 
-  private bitmapForTraitCriteriaSync(criteria: TraitCriteriaInput): PunkBitmap {
+  private bitmapForAttributeCriteriaSync(criteria: AttributeCriteriaInput): PunkBitmap {
     const masks = this.resolveTraitCriteriaSync(criteria)
     const requiredIds = idsFromMask(masks.requiredMask, TRAIT_COUNT)
     const forbiddenIds = idsFromMask(masks.forbiddenMask, TRAIT_COUNT)
@@ -1152,30 +1169,38 @@ export class OfflinePunksDataClient {
     if (typeof text !== 'string') {
       throw new PunksDataValidationError('text search must be a string')
     }
-    const terms = tokenizeText(text)
-    if (terms.length === 0) return fullPunkBitmap()
+    const groups = parseOfflinePunksSearchText(text)
+    if (groups.length === 0) return fullPunkBitmap()
 
+    return unionPunkBitmaps(groups.map((terms) => this.bitmapForTextGroupSync(terms)))
+  }
+
+  private bitmapForTextGroupSync(terms: readonly OfflinePunksTextSearchTerm[]): PunkBitmap {
     let bitmap = fullPunkBitmap()
     for (const term of terms) {
-      const matches: PunkBitmap[] = []
-      const punkId = parsePunkIdText(term)
-      if (punkId !== undefined) matches.push(punkBitmapFromIds([punkId]))
-
-      for (const trait of this.store.traits) {
-        if (normalizeSearchText(trait.name).includes(term)) {
-          matches.push(this.store.traitBitmaps[trait.id])
-        }
-      }
-
-      const colorId = this.tryResolveTextColorId(term)
-      if (colorId !== undefined) matches.push(this.store.colorBitmaps[colorId])
-
-      bitmap = intersectPunkBitmaps([
-        bitmap,
-        matches.length === 0 ? emptyPunkBitmap() : unionPunkBitmaps(matches),
-      ])
+      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextTermSync(term)])
     }
     return bitmap
+  }
+
+  private bitmapForTextTermSync(term: OfflinePunksTextSearchTerm): PunkBitmap {
+    const normalized = normalizeSearchText(term.text)
+    if (!normalized) return fullPunkBitmap()
+
+    const matches: PunkBitmap[] = []
+    const punkId = parsePunkIdText(normalized)
+    if (punkId !== undefined) matches.push(punkBitmapFromIds([punkId]))
+
+    for (const entry of this.store.textIndex) {
+      if (matchesTextIndexKey(entry.key, normalized, term.exact)) {
+        matches.push(entry.bitmap)
+      }
+    }
+
+    const colorId = this.tryResolveTextColorId(normalized)
+    if (colorId !== undefined) matches.push(this.store.colorBitmaps[colorId])
+
+    return matches.length === 0 ? emptyPunkBitmap() : unionPunkBitmaps(matches)
   }
 
   private tryResolveTextColorId(term: string): number | undefined {
@@ -1340,6 +1365,7 @@ function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBund
   const traitMasks = parseTraitMaskPairs(normalized.files.traitMaskPairs)
   const colorMasks = parseWordArray(normalized.files.colorMasks, PUNK_COUNT, 'colorMasks')
   const scalars = parsePackedScalars(normalized.files.packedScalars)
+  const textIndex = buildTextSearchIndex(traits, traitBitmaps)
   const pixelOffsets = expectLength(
     normalized.files.pixelOffsets,
     (PUNK_COUNT + 1) * 3,
@@ -1359,6 +1385,7 @@ function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBund
     traitMasks,
     colorMasks,
     scalars,
+    textIndex,
     pixelOffsets,
     compressedPixels,
   }
@@ -1583,6 +1610,24 @@ function applyCriteriaRows(
   return bitmap
 }
 
+function buildTextSearchIndex(
+  traits: readonly TraitRecord[],
+  traitBitmaps: readonly PunkBitmap[],
+): OfflineTextIndexEntry[] {
+  const rowsByKey = new Map<string, PunkBitmap[]>()
+  for (const trait of traits) {
+    const key = normalizeSearchText(trait.name)
+    if (!key) continue
+    const rows = rowsByKey.get(key)
+    if (rows === undefined) rowsByKey.set(key, [traitBitmaps[trait.id]])
+    else rows.push(traitBitmaps[trait.id])
+  }
+  return Array.from(rowsByKey, ([key, rows]) => ({
+    key,
+    bitmap: unionPunkBitmaps(rows),
+  }))
+}
+
 function colorRecord(id: number, rgba: Hex, supply?: number): PaletteColor {
   const parts = rgbaHexToParts(rgba)
   return {
@@ -1624,11 +1669,55 @@ function resolveHeadVariantRef(ref: HeadVariantRef): HeadVariantValue {
   return index as HeadVariantValue
 }
 
-function tokenizeText(text: string): string[] {
-  return normalizeSearchText(text)
-    .split(/\s+/)
-    .map((term) => term.trim())
-    .filter(Boolean)
+export function parseOfflinePunksSearchText(input: string): OfflinePunksTextSearchTerm[][] {
+  if (typeof input !== 'string') {
+    throw new PunksDataValidationError('text search must be a string')
+  }
+  const tokens = readTextSearchTokens(input)
+  const groups: OfflinePunksTextSearchTerm[][] = []
+  let group: OfflinePunksTextSearchTerm[] = []
+
+  for (const token of tokens) {
+    const operator = !token.exact && /^(or|\|\|)$/i.test(token.text)
+    if (operator) {
+      if (group.length > 0) {
+        groups.push(group)
+        group = []
+      }
+      continue
+    }
+    group.push(token)
+  }
+
+  if (group.length > 0) groups.push(group)
+  return groups
+}
+
+function readTextSearchTokens(input: string): OfflinePunksTextSearchTerm[] {
+  const tokens: OfflinePunksTextSearchTerm[] = []
+  let cursor = 0
+
+  while (cursor < input.length) {
+    while (cursor < input.length && /\s/.test(input[cursor])) cursor++
+    if (cursor >= input.length) break
+
+    if (input[cursor] === '"') {
+      cursor++
+      const start = cursor
+      while (cursor < input.length && input[cursor] !== '"') cursor++
+      const text = input.slice(start, cursor).trim()
+      if (cursor < input.length && input[cursor] === '"') cursor++
+      if (text) tokens.push({ text, exact: true })
+      continue
+    }
+
+    const start = cursor
+    while (cursor < input.length && !/\s/.test(input[cursor])) cursor++
+    const text = input.slice(start, cursor).replaceAll('"', '').trim()
+    if (text) tokens.push({ text, exact: false })
+  }
+
+  return tokens
 }
 
 function normalizeSearchText(value: string): string {
@@ -1637,6 +1726,10 @@ function normalizeSearchText(value: string): string {
     .replaceAll(/[_-]+/g, ' ')
     .replaceAll(/[^#a-z0-9]+/g, ' ')
     .trim()
+}
+
+function matchesTextIndexKey(key: string, term: string, exact: boolean): boolean {
+  return exact ? key === term : key.startsWith(term) || key.includes(` ${term}`)
 }
 
 function parsePunkIdText(term: string): number | undefined {
@@ -1689,6 +1782,9 @@ function validateOfflinePagination(query: OfflinePunksSearchQuery): void {
 function validateOfflineSearchQuery(query: OfflinePunksSearchQuery): void {
   if (typeof query !== 'object' || query === null) {
     throw new PunksDataValidationError('search query must be an object')
+  }
+  if (Object.prototype.hasOwnProperty.call(query, 'traits')) {
+    throw new PunksDataValidationError('search query uses attributes, not traits')
   }
 }
 
