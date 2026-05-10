@@ -10,26 +10,23 @@ offchain by enumerating the sealed catalog:
 
 ```ts
 const traitCount = await data.read.traitCount()
-const byKindAndName = new Map<string, number>()
+const byName = new Map<string, number>()
 
 for (let id = 0; id < traitCount; id++) {
-  const [kind, name] = await Promise.all([
-    data.read.traitKind([id]),
-    data.read.traitName([id]),
-  ])
-  byKindAndName.set(`${kind}:${name}`, id)
+  const name = await data.read.traitName([id])
+  byName.set(name, id)
 }
 ```
 
 Then convert selected filters into masks:
 
 ```ts
-const hoodie = byKindAndName.get(`${TraitKind.Accessory}:Hoodie`)
+const hoodie = byName.get('Hoodie')
 if (hoodie === undefined) throw new Error('Missing Hoodie trait')
 const requiredMask = 1n << BigInt(hoodie)
 ```
 
-The TypeScript SDK wraps this pattern with cached catalog reads and kind-aware
+The TypeScript SDK wraps this pattern with cached catalog reads and name-based
 lookup helpers. See [TypeScript SDK](/contracts/punks-data/sdk) for the
 offchain read/search surface.
 

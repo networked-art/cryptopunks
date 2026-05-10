@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   PUNKS_DATA_ADDRESS,
-  PUNKS_DATA_DATASET_HASH,
   PunksDataValidationError,
   TraitKind,
   bitmapToPunkIds,
@@ -12,20 +11,22 @@ import {
   punkBitmapFromIds,
 } from '../dist/index.js'
 
+const DATASET_HASH = '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
+
 describe('PunksDataClient', () => {
   it('resolves traits, searches through bitmap indexes, and paginates results', async () => {
     const sdk = createPunksDataClient({ publicClient: makeFakePublicClient() })
     assert.equal(sdk.address, PUNKS_DATA_ADDRESS)
 
-    await assert.rejects(() => sdk.resolveTraitId('Alien'), /ambiguous/)
-    assert.equal(
-      await sdk.resolveTraitId({ name: 'Alien', kind: TraitKind.NormalizedType }),
-      0,
-    )
-    assert.equal(await sdk.resolveTraitId({ name: 'Hoodie', kind: 'Accessory' }), 25)
+    const hoodie = await sdk.resolveTrait('Hoodie')
+    assert.equal(hoodie.id, 25)
+    assert.equal(hoodie.kind, 'Accessory')
+    assert.equal(hoodie.kindId, TraitKind.Accessory)
+    assert.equal(hoodie.supply, 2)
+    assert.equal((await sdk.resolveTrait('alien')).id, 0)
 
     const ids = await sdk.search({
-      traits: { required: [{ name: 'Hoodie', kind: 'Accessory' }] },
+      traits: { required: ['Hoodie'] },
       colors: { required: [2] },
       pixelCount: 200,
       colorCount: 4,
@@ -33,7 +34,7 @@ describe('PunksDataClient', () => {
     assert.deepEqual(ids, [10])
 
     const visualWithoutHoodie = await sdk.search({
-      traits: { forbidden: [{ name: 'Hoodie', kind: 'Accessory' }] },
+      traits: { forbidden: ['Hoodie'] },
       colors: { anyOf: [2, 3] },
     })
     assert.deepEqual(visualWithoutHoodie, [300])
@@ -76,7 +77,7 @@ describe('PunksDataClient', () => {
       publicClient: {
         readContract: async () => {
           reads++
-          return PUNKS_DATA_DATASET_HASH
+          return DATASET_HASH
         },
       },
     })
@@ -114,13 +115,13 @@ describe('PunksDataClient', () => {
         readContract: async () => {
           reads++
           if (reads === 1) throw new Error('temporary rpc failure')
-          return PUNKS_DATA_DATASET_HASH
+          return DATASET_HASH
         },
       },
     })
 
     await assert.rejects(() => sdk.getDatasetHash(), /temporary rpc failure/)
-    assert.equal(await sdk.getDatasetHash(), PUNKS_DATA_DATASET_HASH)
+    assert.equal(await sdk.getDatasetHash(), DATASET_HASH)
     assert.equal(reads, 2)
   })
 })
@@ -145,7 +146,7 @@ function makeFakePublicClient() {
   const read = (functionName, args = []) => {
     switch (functionName) {
       case 'datasetHash':
-        return '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
+        return DATASET_HASH
       case 'isSealed':
         return true
       case 'traitCount':
@@ -230,7 +231,7 @@ function makeCatalog() {
     supply: 0,
   }))
   catalog[0] = { id: 0, name: 'Alien', kind: TraitKind.NormalizedType, supply: 2 }
-  catalog[5] = { id: 5, name: 'Alien', kind: TraitKind.HeadVariant, supply: 1 }
+  catalog[5] = { id: 5, name: 'Alien Head', kind: TraitKind.HeadVariant, supply: 1 }
   catalog[24] = { id: 24, name: 'Beanie', kind: TraitKind.Accessory, supply: 2 }
   catalog[25] = { id: 25, name: 'Hoodie', kind: TraitKind.Accessory, supply: 2 }
   return catalog

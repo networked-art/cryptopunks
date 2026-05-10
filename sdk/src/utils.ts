@@ -13,11 +13,8 @@ import {
   PUNK_HEIGHT,
   PUNK_WIDTH,
   TRAIT_COUNT,
-  TraitKind,
-  traitKindNames,
-  type TraitKindValue,
 } from './constants'
-import type { NumericRange, TraitKindInput } from './types'
+import type { NumericRange } from './types'
 
 export class PunksDataSdkError extends Error {
   constructor(message: string) {
@@ -30,13 +27,6 @@ export class PunksDataValidationError extends PunksDataSdkError {
   constructor(message: string) {
     super(message)
     this.name = 'PunksDataValidationError'
-  }
-}
-
-export class PunksDataDatasetMismatchError extends PunksDataSdkError {
-  constructor(message: string) {
-    super(message)
-    this.name = 'PunksDataDatasetMismatchError'
   }
 }
 
@@ -143,30 +133,6 @@ export function maskFromIds(ids: Iterable<number>, validate: (id: number) => voi
     mask |= 1n << BigInt(id)
   }
   return mask
-}
-
-export function normalizeTraitKind(kind: TraitKindInput): TraitKindValue {
-  if (typeof kind === 'number') {
-    if (!traitKindNames[kind]) {
-      throw new PunksDataValidationError('trait kind must be 0, 1, 2, or 3')
-    }
-    return kind as TraitKindValue
-  }
-
-  if (typeof kind !== 'string') {
-    throw new PunksDataValidationError('trait kind must be a known kind id or name')
-  }
-
-  if (Object.prototype.hasOwnProperty.call(TraitKind, kind)) {
-    return TraitKind[kind as keyof typeof TraitKind]
-  }
-
-  const normalized = kind.replaceAll(/\s|_/g, '').toLowerCase()
-  const index = traitKindNames.findIndex(
-    (name) => name.replaceAll(/\s|_/g, '').toLowerCase() === normalized,
-  )
-  if (index < 0) throw new PunksDataValidationError(`unknown trait kind ${kind}`)
-  return index as TraitKindValue
 }
 
 export function hexToBytes(hex: Hex): Uint8Array {

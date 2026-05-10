@@ -1,11 +1,13 @@
 # @networked-art/punks-sdk
 
-TypeScript SDK for reading and searching the `PunksData.sol` contract.
+TypeScript SDK for reading/searching `PunksData.sol` and rendering through
+`PunksRenderer.sol`.
 
 The SDK is built around viem reads and the contract's bitmap indexes. It gives
 you direct getters for the onchain data surface, plus cached helpers for trait
 catalogs, palettes, bitmap filtering, Punk summaries, and indexed-pixel
-expansion.
+expansion. It also exposes a renderer client for SVG, PNG, RGBA bytes, and
+metadata reads.
 
 ## Install
 
@@ -21,7 +23,10 @@ transport, chain config, and batching behavior.
 ```ts
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
-import { createPunksDataClient } from '@networked-art/punks-sdk'
+import {
+  createPunksDataClient,
+  createPunksRendererClient,
+} from '@networked-art/punks-sdk'
 
 const publicClient = createPublicClient({
   chain: mainnet,
@@ -32,13 +37,17 @@ const punksData = createPunksDataClient({
   publicClient,
 })
 
-await punksData.assertCanonicalDataset()
+const punksRenderer = createPunksRendererClient({
+  publicClient,
+})
 
 const hoodiePunks = await punksData.search({
   traits: {
-    required: [{ name: 'Hoodie', kind: 'Accessory' }],
+    required: ['Hoodie'],
   },
 })
+
+const svg = await punksRenderer.getPunkSvg(hoodiePunks[0])
 ```
 
 ## What It Exposes
@@ -63,11 +72,14 @@ Cached catalog and palette helpers:
 const catalog = await punksData.getTraitCatalog()
 const palette = await punksData.getPalette({ includeSupplies: true })
 
-const hoodie = await punksData.resolveTraitId({
-  name: 'Hoodie',
-  kind: 'Accessory',
-})
-const colorId = await punksData.resolveColorId('#111111')
+const hoodie = await punksData.resolveTrait('Hoodie')
+hoodie.id
+hoodie.kind
+hoodie.supply
+
+const black = await punksData.resolveColor('#111111')
+black.id
+black.rgba
 ```
 
 Bitmap-first search:
@@ -76,13 +88,13 @@ Bitmap-first search:
 const ids = await punksData.search({
   traits: {
     required: [
-      { name: 'Male', kind: 'NormalizedType' },
-      { name: '3D Glasses', kind: 'Accessory' },
+      'Male',
+      '3D Glasses',
     ],
-    forbidden: [{ name: 'Cigarette', kind: 'Accessory' }],
+    forbidden: ['Cigarette'],
     anyOf: [
-      { name: 'Hoodie', kind: 'Accessory' },
-      { name: 'Beanie', kind: 'Accessory' },
+      'Hoodie',
+      'Beanie',
     ],
   },
   colors: {
@@ -131,6 +143,25 @@ const palette = await punksData.getPaletteRgbaBytes()
 const rgba = indexedPixelsToRgba(indexed, palette)
 ```
 
+## Renderer Client
+
+`PunksRendererClient` wraps `PunksRenderer.sol` reads:
+
+```ts
+const renderer = createPunksRendererClient({ publicClient })
+
+const svg = await renderer.getPunkSvg(8348)
+const marketSvg = await renderer.getPunkMarketplaceSvg(8348)
+const png = await renderer.getPunkPng(8348)
+const flattenedPng = await renderer.getPunkPngWithBackground(8348, '#638596')
+const metadata = await renderer.getPunkMetadata(8348)
+const tokenURI = await renderer.getTokenURI(8348)
+```
+
+PNG and RGBA byte methods return `Uint8Array`. SVG, metadata JSON, token URI,
+and attribute methods return strings. Use `getBackground()` for the
+marketplace-aware RGBA background selected by the renderer.
+
 ## Search Model
 
 `PunksData` exposes inverted bitmap rows for efficient offchain filtering:
@@ -147,7 +178,7 @@ Use `searchBitmap()` if you want the composed 40-word bitmap:
 
 ```ts
 const bitmap = await punksData.searchBitmap({
-  traits: { required: [{ name: 'Ape', kind: 'NormalizedType' }] },
+  traits: { required: ['Ape'] },
 })
 ```
 
@@ -165,7 +196,7 @@ Use `count()` if you only need the match count:
 
 ```ts
 const total = await punksData.count({
-  traits: { required: [{ name: 'Zombie', kind: 'NormalizedType' }] },
+  traits: { required: ['Zombie'] },
 })
 ```
 
@@ -192,7 +223,6 @@ are masked out by the helpers.
 
 Client instances cache immutable reads by default:
 
-- dataset status
 - trait catalog
 - palette bytes and expanded palette records
 - color supplies
@@ -208,21 +238,18 @@ await punksData.search(query, { blockNumber: 25_044_552n })
 Bypass or clear the cache when needed:
 
 ```ts
-await punksData.getDatasetStatus({ cache: false })
+await punksData.getTraitCatalog({ cache: false })
 punksData.clearCache()
 ```
 
 Failed cached reads are evicted automatically, so transient RPC failures can be
-retried without clearing the whole client. If you are reading from an unsealed
-or actively loading `PunksData` deployment, prefer `{ cache: false }` or clear
-the cache after sealing.
+retried without clearing the whole client.
 
-## Dataset Constants
+## Deployment Constants
 
 ```ts
 import {
   PUNKS_DATA_ADDRESS,
-  PUNKS_DATA_DATASET_HASH,
   PUNKS_DATA_ENS,
   PUNK_COUNT,
   TRAIT_COUNT,
@@ -239,12 +266,6 @@ punksdata.eth
 
 `createPunksDataClient` always reads this address. It is not exposed as a
 constructor option because `PunksData` is an immutable mainnet public good.
-
-The expected sealed dataset hash is:
-
-```text
-0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68
-```
 
 ## ABI Exports
 

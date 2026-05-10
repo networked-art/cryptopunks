@@ -1,4 +1,9 @@
-export { punksDataAbi, punksDataReadAbi } from './abi'
+export {
+  punksDataAbi,
+  punksDataReadAbi,
+  punksRendererAbi,
+  punksRendererReadAbi,
+} from './abi'
 export {
   BITMAP_WORD_COUNT,
   CANONICAL_COLOR_MASK,
@@ -14,8 +19,14 @@ export {
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
   PUNKS_DATA_ADDRESS,
-  PUNKS_DATA_DATASET_HASH,
   PUNKS_DATA_ENS,
+  PUNKS_RENDERER_ADDRESS,
+  PUNKS_RENDERER_BACKGROUND_BID,
+  PUNKS_RENDERER_BACKGROUND_C721_WRAPPED,
+  PUNKS_RENDERER_BACKGROUND_DEFAULT,
+  PUNKS_RENDERER_BACKGROUND_FOR_SALE,
+  PUNKS_RENDERER_BACKGROUND_WRAPPED,
+  PUNKS_RENDERER_ENS,
   PUNKS_PER_BITMAP_WORD,
   PUNK_COUNT,
   PUNK_HEIGHT,
@@ -39,6 +50,10 @@ export {
   indexedPixelsToRgba,
 } from './client'
 export {
+  PunksRendererClient,
+  createPunksRendererClient,
+} from './renderer'
+export {
   bitmapToPunkIds,
   clonePunkBitmap,
   countPunkBitmap,
@@ -54,7 +69,6 @@ export {
   unionPunkBitmaps,
 } from './bitmap'
 export {
-  PunksDataDatasetMismatchError,
   PunksDataSdkError,
   PunksDataValidationError,
   bytesToHex,
@@ -62,7 +76,6 @@ export {
   idsFromMask,
   maskFromIds,
   normalizeRgbaHex,
-  normalizeTraitKind,
   rgbaHexToParts,
   validateBitmapWordIndex,
   validateColorMask,
@@ -80,20 +93,22 @@ export type {
   BitmapToPunkIdsOptions,
   ColorCriteriaInput,
   ColorRef,
-  DatasetStatus,
   NumericRange,
   PaletteColor,
+  PunkMetadata,
+  PunkMetadataAttribute,
   PunkBitmap,
   PunkSummary,
   PunkSummaryOptions,
   PunksDataBlockTag,
   PunksDataClientConfig,
   PunksDataReadOptions,
+  PunksRendererClientConfig,
+  PunksRendererReadOptions,
   PunksSearchQuery,
   ResolvedColorCriteria,
   ResolvedTraitCriteria,
   TraitCriteriaInput,
-  TraitKindInput,
   TraitRecord,
   TraitRef,
 } from './types'

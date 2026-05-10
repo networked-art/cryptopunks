@@ -3,8 +3,15 @@ import type { Address, Hex } from 'viem'
 export const PUNKS_DATA_ENS = 'punksdata.eth'
 export const PUNKS_DATA_ADDRESS =
   '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as Address
-export const PUNKS_DATA_DATASET_HASH =
-  '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68' as Hex
+export const PUNKS_RENDERER_ENS = 'renderer.punksdata.eth'
+export const PUNKS_RENDERER_ADDRESS =
+  '0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741' as Address
+
+export const PUNKS_RENDERER_BACKGROUND_DEFAULT = '0x638596ff' as Hex
+export const PUNKS_RENDERER_BACKGROUND_FOR_SALE = '0x8c5851ff' as Hex
+export const PUNKS_RENDERER_BACKGROUND_BID = '0x8970b1ff' as Hex
+export const PUNKS_RENDERER_BACKGROUND_WRAPPED = '0x66a670ff' as Hex
+export const PUNKS_RENDERER_BACKGROUND_C721_WRAPPED = '0x75a475ff' as Hex
 
 export const PUNK_COUNT = 10_000
 export const PUNK_WIDTH = 24

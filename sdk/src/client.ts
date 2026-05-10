@@ -8,7 +8,6 @@ import {
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
   PUNKS_DATA_ADDRESS,
-  PUNKS_DATA_DATASET_HASH,
   TRAIT_COUNT,
   headVariantNames,
   punkTypeNames,
@@ -30,7 +29,6 @@ import {
 import type {
   ColorCriteriaInput,
   ColorRef,
-  DatasetStatus,
   PaletteColor,
   PunkBitmap,
   PunkSummary,
@@ -46,7 +44,6 @@ import type {
   TraitRef,
 } from './types'
 import {
-  PunksDataDatasetMismatchError,
   PunksDataValidationError,
   assertIntegerInRange,
   assertIndexedPixels,
@@ -56,7 +53,6 @@ import {
   maskFromIds,
   normalizeNumericRange,
   normalizeRgbaHex,
-  normalizeTraitKind,
   rgbaHexToParts,
   validateBitmapWordIndex,
   validateColorCount,
@@ -123,33 +119,6 @@ export class PunksDataClient {
 
   async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
     return this.cached('isSealed', options, () => this.read<boolean>('isSealed', [], options))
-  }
-
-  async getDatasetStatus(options?: PunksDataReadOptions): Promise<DatasetStatus> {
-    const [isSealed, datasetHash] = await Promise.all([
-      this.isSealed(options),
-      this.getDatasetHash(options),
-    ])
-    return { isSealed, datasetHash }
-  }
-
-  async assertCanonicalDataset(options?: {
-    expectedDatasetHash?: Hex
-    requireSealed?: boolean
-    read?: PunksDataReadOptions
-  }): Promise<DatasetStatus> {
-    const expectedDatasetHash = (options?.expectedDatasetHash ?? PUNKS_DATA_DATASET_HASH).toLowerCase()
-    const requireSealed = options?.requireSealed ?? true
-    const status = await this.getDatasetStatus(options?.read)
-    if (requireSealed && !status.isSealed) {
-      throw new PunksDataDatasetMismatchError('PunksData contract is not sealed')
-    }
-    if (status.datasetHash.toLowerCase() !== expectedDatasetHash) {
-      throw new PunksDataDatasetMismatchError(
-        `PunksData dataset hash ${status.datasetHash} does not match ${expectedDatasetHash}`,
-      )
-    }
-    return status
   }
 
   async getTraitCount(options?: PunksDataReadOptions): Promise<number> {
@@ -496,8 +465,8 @@ export class PunksDataClient {
         catalog.push({
           id: traitId,
           name: String(values[offset]),
-          kind: kind as TraitRecord['kind'],
-          kindName: traitKindNames[kind] as TraitRecord['kindName'],
+          kind: traitKindNames[kind] as TraitRecord['kind'],
+          kindId: kind as TraitRecord['kindId'],
           supply: Number(values[offset + 2]),
         })
       }
@@ -505,14 +474,15 @@ export class PunksDataClient {
     })
   }
 
-  async resolveTraitId(trait: TraitRef, options?: PunksDataReadOptions): Promise<number> {
+  async resolveTrait(trait: TraitRef, options?: PunksDataReadOptions): Promise<TraitRecord> {
+    const catalog = await this.getTraitCatalog(options)
     if (typeof trait === 'number') {
       validateTraitId(trait)
-      return trait
+      return catalog[trait]
     }
     if (typeof trait === 'object' && trait !== null && trait.id !== undefined) {
       validateTraitId(trait.id)
-      return trait.id
+      return catalog[trait.id]
     }
 
     if (typeof trait !== 'string' && (typeof trait !== 'object' || trait === null)) {
@@ -523,34 +493,12 @@ export class PunksDataClient {
       throw new PunksDataValidationError('trait reference needs an id or name')
     }
     const name = rawName.trim()
-    const kind =
-      typeof trait === 'object' && trait.kind !== undefined
-        ? normalizeTraitKind(trait.kind)
-        : undefined
-    const catalog = await this.getTraitCatalog(options)
-    const exact = catalog.filter((record) => record.name === name)
-    const candidates = exact.length > 0
-      ? exact
-      : catalog.filter((record) => record.name.toLowerCase() === name.toLowerCase())
-    const filtered = kind === undefined
-      ? candidates
-      : candidates.filter((record) => record.kind === kind)
-    if (filtered.length === 0) {
-      throw new PunksDataValidationError(`unknown trait ${name}`)
-    }
-    if (filtered.length > 1) {
-      const choices = filtered.map((record) => `${record.kindName}:${record.name}`).join(', ')
-      throw new PunksDataValidationError(`trait ${name} is ambiguous; use kind (${choices})`)
-    }
-    return filtered[0].id
-  }
-
-  async resolveTraitIds(
-    traits: readonly TraitRef[] = [],
-    options?: PunksDataReadOptions,
-  ): Promise<number[]> {
-    const ids = await Promise.all(traits.map((trait) => this.resolveTraitId(trait, options)))
-    return uniqueNumbers(ids)
+    const exact = catalog.find((record) => record.name === name)
+    if (exact) return exact
+    const lowerName = name.toLowerCase()
+    const match = catalog.find((record) => record.name.toLowerCase() === lowerName)
+    if (!match) throw new PunksDataValidationError(`unknown trait ${name}`)
+    return match
   }
 
   async resolveTraitCriteria(
@@ -571,7 +519,23 @@ export class PunksDataClient {
     return { requiredMask, forbiddenMask, anyOfMask }
   }
 
-  async resolveColorId(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+  private async resolveTraitId(trait: TraitRef, options?: PunksDataReadOptions): Promise<number> {
+    return (await this.resolveTrait(trait, options)).id
+  }
+
+  private async resolveTraitIds(
+    traits: readonly TraitRef[] = [],
+    options?: PunksDataReadOptions,
+  ): Promise<number[]> {
+    const ids = await Promise.all(traits.map((trait) => this.resolveTraitId(trait, options)))
+    return uniqueNumbers(ids)
+  }
+
+  async resolveColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
+    return this.getColor(color, options)
+  }
+
+  private async resolveColorId(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
     if (typeof color === 'number') {
       validateColorId(color)
       return color
@@ -586,7 +550,7 @@ export class PunksDataClient {
     return match.id
   }
 
-  async resolveColorIds(
+  private async resolveColorIds(
     colors: readonly ColorRef[] = [],
     options?: PunksDataReadOptions,
   ): Promise<number[]> {

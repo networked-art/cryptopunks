@@ -268,3 +268,130 @@ export const punksDataReadAbi = [
 ] as const satisfies Abi
 
 export const punksDataAbi = punksDataReadAbi
+
+export const punksRendererReadAbi = [
+  {
+    type: 'constructor',
+    inputs: [
+      { name: 'punksData', type: 'address' },
+      { name: 'punksMarket', type: 'address' },
+      { name: 'wrapper', type: 'address' },
+      { name: 'c721Wrapper', type: 'address' },
+      { name: 'reverseRegistrar', type: 'address' },
+      { name: 'reverseName', type: 'string' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'error', name: 'InvalidBackground', inputs: [] },
+  { type: 'error', name: 'InvalidTokenId', inputs: [] },
+  {
+    type: 'function',
+    name: 'C721_WRAPPER',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'PUNKS_DATA',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'PUNKS_MARKET',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'WRAPPER',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'backgroundOf',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ name: 'rgba', type: 'bytes4' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'dataContract',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'metadataJson',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkAttributes',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ name: 'csv', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkImage',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ name: 'rgba', type: 'bytes' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkMarketplacePng',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ type: 'bytes' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkMarketplaceSvg',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkPng',
+    inputs: [
+      { name: 'punkId', type: 'uint16' },
+      { name: 'backgroundRgba', type: 'bytes4' },
+    ],
+    outputs: [{ type: 'bytes' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkPng',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ type: 'bytes' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkSvg',
+    inputs: [{ name: 'punkId', type: 'uint16' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenURI',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+] as const satisfies Abi
+
+export const punksRendererAbi = punksRendererReadAbi

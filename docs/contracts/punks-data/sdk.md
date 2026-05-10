@@ -28,30 +28,18 @@ const punksData = createPunksDataClient({
 })
 ```
 
-## Dataset Pinning
+## Canonical Deployment
 
 The SDK always reads the canonical mainnet `PunksData` deployment. The address
 is hardcoded in the client because the contract is an immutable mainnet public
 good, not a caller-selected dependency.
 
-The SDK exports the canonical mainnet address and dataset hash for display,
-verification, and direct viem usage:
+The SDK exports the canonical mainnet address for display and direct viem
+usage:
 
 ```ts
-import {
-  PUNKS_DATA_ADDRESS,
-  PUNKS_DATA_DATASET_HASH,
-} from '@networked-art/punks-sdk'
+import { PUNKS_DATA_ADDRESS } from '@networked-art/punks-sdk'
 ```
-
-Use `assertCanonicalDataset` before trusting RPC responses:
-
-```ts
-await punksData.assertCanonicalDataset()
-```
-
-It checks `isSealed()` and `datasetHash()` against the expected sealed mainnet
-hash.
 
 ## Low-Level Reads
 
@@ -81,15 +69,17 @@ caches the result:
 
 ```ts
 const catalog = await punksData.getTraitCatalog()
-const hoodie = await punksData.resolveTraitId({
-  name: 'Hoodie',
-  kind: 'Accessory',
-})
+const hoodie = await punksData.resolveTrait('Hoodie')
 ```
 
-Names are kind-aware because some names can appear in more than one category.
-For example, `Alien` is both a normalized type and a head variant, so a bare
-`resolveTraitId('Alien')` throws an ambiguity error.
+Trait names are the ergonomic lookup key. `resolveTrait()` returns the full
+catalog record:
+
+```ts
+hoodie.id
+hoodie.kind
+hoodie.supply
+```
 
 `getPalette()` reads `paletteRgbaBytes()` once and expands each entry:
 
@@ -113,7 +103,7 @@ palette[1]
 Color references can be palette ids or RGBA/RGB hex values:
 
 ```ts
-const colorId = await punksData.resolveColorId('#111111')
+const black = await punksData.resolveColor('#111111')
 ```
 
 RGB hex is treated as opaque RGBA by appending `ff`.
@@ -127,10 +117,7 @@ Punk id.
 ```ts
 import { bitmapToPunkIds } from '@networked-art/punks-sdk'
 
-const hoodieBitmap = await punksData.getTraitBitmap({
-  name: 'Hoodie',
-  kind: 'Accessory',
-})
+const hoodieBitmap = await punksData.getTraitBitmap('Hoodie')
 
 const ids = bitmapToPunkIds(hoodieBitmap)
 ```
@@ -158,11 +145,11 @@ ids from that bitmap and supports `offset` and `limit`.
 ```ts
 const ids = await punksData.search({
   traits: {
-    required: [{ name: 'Hoodie', kind: 'Accessory' }],
-    forbidden: [{ name: 'Cigarette', kind: 'Accessory' }],
+    required: ['Hoodie'],
+    forbidden: ['Cigarette'],
     anyOf: [
-      { name: 'Male', kind: 'NormalizedType' },
-      { name: 'Zombie', kind: 'NormalizedType' },
+      'Male',
+      'Zombie',
     ],
   },
   colors: {
@@ -248,9 +235,9 @@ const rgba = indexedPixelsToRgba(indexed, palette)
 
 ## Caching And Blocks
 
-The client caches immutable reads by default: dataset status, trait catalog,
-palette bytes, palette records, supplies, and bitmap rows. Cache keys include
-`blockNumber` or `blockTag` when supplied.
+The client caches immutable reads by default: trait catalog, palette bytes,
+palette records, supplies, and bitmap rows. Cache keys include `blockNumber`
+or `blockTag` when supplied.
 
 ```ts
 await punksData.search(query, { blockTag: 'safe' })
@@ -260,7 +247,7 @@ punksData.clearCache()
 Pass `cache: false` to a read when you need to bypass the instance cache:
 
 ```ts
-const status = await punksData.getDatasetStatus({ cache: false })
+const catalog = await punksData.getTraitCatalog({ cache: false })
 ```
 
 The cache is per SDK instance. Create a fresh client or call `clearCache()`

@@ -1,11 +1,11 @@
-import type { Hex, PublicClient } from 'viem'
+import type { Address, Hex, PublicClient } from 'viem'
 import type {
   HeadVariantName,
   HeadVariantValue,
   PunkTypeName,
   PunkTypeValue,
-  TraitKindName,
   TraitKindValue,
+  TraitKindName,
 } from './constants'
 
 export type PunksDataBlockTag = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'
@@ -22,14 +22,20 @@ export type PunksDataClientConfig = {
   multicallBatchSize?: number
 }
 
-export type TraitKindInput = TraitKindValue | TraitKindName
+export type PunksRendererReadOptions = PunksDataReadOptions
+
+export type PunksRendererClientConfig = {
+  publicClient: PublicClient
+  address?: Address
+  cache?: boolean
+}
+
 export type TraitRef =
   | number
   | string
   | {
       id?: number
       name?: string
-      kind?: TraitKindInput
     }
 
 export type ColorRef = number | Hex | `#${string}` | string
@@ -37,8 +43,8 @@ export type ColorRef = number | Hex | `#${string}` | string
 export type TraitRecord = {
   id: number
   name: string
-  kind: TraitKindValue
-  kindName: TraitKindName
+  kind: TraitKindName
+  kindId: TraitKindValue
   supply: number
 }
 
@@ -134,7 +140,17 @@ export type PunkSummary = {
   indexedPixels?: Uint8Array
 }
 
-export type DatasetStatus = {
-  isSealed: boolean
-  datasetHash: Hex
+export type PunkMetadataAttribute = {
+  trait_type: string
+  value: string | number
+  display_type?: string
+}
+
+export type PunkMetadata = {
+  name: string
+  description: string
+  image: string
+  attributes: PunkMetadataAttribute[]
+  colors: string[]
+  [key: string]: unknown
 }

@@ -5,7 +5,6 @@ import {
   hexToBytes,
   idsFromMask,
   normalizeRgbaHex,
-  normalizeTraitKind,
   validateColorMask,
   validateTraitMask,
 } from '../dist/index.js'
@@ -19,10 +18,6 @@ describe('utility validation', () => {
   it('normalizes common color formats', () => {
     assert.equal(normalizeRgbaHex('#111111'), '0x111111ff')
     assert.equal(normalizeRgbaHex('0x11111180'), '0x11111180')
-  })
-
-  it('returns typed validation errors for invalid trait kind inputs', () => {
-    assert.throws(() => normalizeTraitKind(null), PunksDataValidationError)
   })
 
   it('returns typed validation errors for invalid mask inputs', () => {
