@@ -13,3 +13,9 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
 
 - [TypeScript SDK](/sdk) covers viem-based data/search reads, renderer reads,
   exported ABIs, canonical addresses, and bitmap/pixel helpers.
+- [Data And Search](/sdk/data-search) covers `PunksDataClient` catalogs,
+  palettes, filters, summaries, and indexed pixels.
+- [Rendering And Metadata](/sdk/rendering) covers `PunksRendererClient` image
+  outputs, marketplace backgrounds, metadata JSON, and token URI reads.
+- [Utilities And Caching](/sdk/utilities) covers constants, ABIs, bitmap
+  helpers, block options, validation, and cache behavior.

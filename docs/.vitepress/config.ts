@@ -50,7 +50,16 @@ export default defineConfig({
       {
         text: 'SDK',
         items: [
-          { text: 'TypeScript SDK', link: '/sdk' },
+          {
+            text: 'TypeScript SDK',
+            link: '/sdk',
+            collapsed: false,
+            items: [
+              { text: 'Data And Search', link: '/sdk/data-search' },
+              { text: 'Rendering And Metadata', link: '/sdk/rendering' },
+              { text: 'Utilities And Caching', link: '/sdk/utilities' },
+            ],
+          },
         ],
       },
     ],

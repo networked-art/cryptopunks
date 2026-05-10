@@ -73,4 +73,5 @@ The detailed reference is split by topic:
 | [Usage And Integration](/contracts/punks-data/usage) | Common patterns, expected reverts, split interfaces, and renderer integration notes |
 
 The TypeScript SDK has its own [top-level section](/sdk) because it covers both
-`PunksData` reads and `PunksRenderer` outputs.
+`PunksData` reads and `PunksRenderer` outputs. For data-specific examples, see
+[SDK: Data And Search](/sdk/data-search).

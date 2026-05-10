@@ -225,3 +225,5 @@ For clients that only need image bytes:
 
 For metadata consumers, `metadataJson` returns parseable JSON directly and
 `tokenURI` returns an ERC721-style base64 JSON data URI.
+
+For TypeScript usage, see [SDK: Rendering And Metadata](/sdk/rendering).
