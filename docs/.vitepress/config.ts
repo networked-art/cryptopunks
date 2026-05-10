@@ -41,11 +41,16 @@ export default defineConfig({
               { text: 'Visual API', link: '/contracts/punks-data/visual' },
               { text: 'Indexed Pixels API', link: '/contracts/punks-data/indexed-pixels' },
               { text: 'Loader And Storage API', link: '/contracts/punks-data/loader-storage' },
-              { text: 'TypeScript SDK', link: '/contracts/punks-data/sdk' },
               { text: 'Usage And Integration', link: '/contracts/punks-data/usage' },
             ],
           },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
+        ],
+      },
+      {
+        text: 'SDK',
+        items: [
+          { text: 'TypeScript SDK', link: '/sdk' },
         ],
       },
     ],

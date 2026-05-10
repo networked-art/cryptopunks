@@ -27,7 +27,7 @@ const requiredMask = 1n << BigInt(hoodie)
 ```
 
 The TypeScript SDK wraps this pattern with cached catalog reads and name-based
-lookup helpers. See [TypeScript SDK](/contracts/punks-data/sdk) for the
+lookup helpers. See [TypeScript SDK](/sdk) for the
 offchain read/search surface.
 
 ## Match An Offer Or Filter

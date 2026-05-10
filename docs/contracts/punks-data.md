@@ -70,5 +70,7 @@ The detailed reference is split by topic:
 | [Visual API](/contracts/punks-data/visual) | Palette colors, color masks, visual metrics, and visual bitmap rows |
 | [Indexed Pixels API](/contracts/punks-data/indexed-pixels) | Decoded 24x24 indexed pixels, `colorAt`, and palette byte arrays |
 | [Loader And Storage API](/contracts/punks-data/loader-storage) | Pre-seal loading functions, blob chunks, packed words, and dataset sealing |
-| [TypeScript SDK](/contracts/punks-data/sdk) | viem-based reads, cached catalog and palette helpers, bitmap search, Punk summaries, and pixel expansion |
 | [Usage And Integration](/contracts/punks-data/usage) | Common patterns, expected reverts, split interfaces, and renderer integration notes |
+
+The TypeScript SDK has its own [top-level section](/sdk) because it covers both
+`PunksData` reads and `PunksRenderer` outputs.
