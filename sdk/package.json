@@ -15,6 +15,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./offline": {
+      "types": "./dist/offline.d.ts",
+      "import": "./dist/offline.js"
+    },
+    "./offline-data": {
+      "types": "./dist/offline-data.d.ts",
+      "import": "./dist/offline-data.js"
     }
   },
   "scripts": {

@@ -143,6 +143,47 @@ const palette = await punksData.getPaletteRgbaBytes()
 const rgba = indexedPixelsToRgba(indexed, palette)
 ```
 
+## Offline Data Client
+
+Use the offline subpath when you want search and data reads without RPC access:
+
+```ts
+import { createOfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
+
+const punksData = createOfflinePunksDataClient()
+
+const ids = punksData.searchSync({
+  text: 'top hat mole',
+  attributeCount: 7,
+})
+```
+
+The bundled canonical dataset lives behind `@networked-art/punks-sdk/offline-data`.
+The root SDK entry does not import it. Offline clients expose async methods that
+match `PunksDataClient`, plus sync variants for loaded local data.
+
+```ts
+import {
+  createOfflinePunksDataClientFromDataset,
+  loadOfflinePunksDataFromDirectory,
+} from '@networked-art/punks-sdk/offline'
+
+const dataset = await loadOfflinePunksDataFromDirectory('scripts/output/punks-data')
+const punksData = createOfflinePunksDataClientFromDataset(dataset)
+```
+
+Offline search also accepts `text`, `punkType`, `headVariant`,
+`attributeCount`, `sort`, and facet reads:
+
+```ts
+const aliens = await punksData.search({
+  punkType: 'Alien',
+  sort: 'rarity',
+})
+
+const facets = punksData.facetsSync({ text: 'hoodie' })
+```
+
 ## Renderer Client
 
 `PunksRendererClient` wraps `PunksRenderer.sol` reads:
