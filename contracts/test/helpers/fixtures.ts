@@ -16,25 +16,35 @@ export type LotItemInput = {
   weightBps: number
 }
 
-export type OfferCriteriaInput = {
+export type FilterInput = {
   requiredTraitMask: bigint
   forbiddenTraitMask: bigint
   anyOfTraitMask: bigint
+  requiredColorMask: bigint
+  forbiddenColorMask: bigint
+  anyOfColorMask: bigint
+  minPixelCount: number
+  maxPixelCount: number
   minColorCount: number
   maxColorCount: number
 }
 
 export type OfferSlotInput = {
-  criteria: OfferCriteriaInput
+  criteria: FilterInput
   standard: number
   includeIds: number[]
   excludeIds: number[]
 }
 
-export const emptyCriteria = (): OfferCriteriaInput => ({
+export const emptyCriteria = (): FilterInput => ({
   requiredTraitMask: 0n,
   forbiddenTraitMask: 0n,
   anyOfTraitMask: 0n,
+  requiredColorMask: 0n,
+  forbiddenColorMask: 0n,
+  anyOfColorMask: 0n,
+  minPixelCount: 0,
+  maxPixelCount: 0,
   minColorCount: 0,
   maxColorCount: 0,
 })

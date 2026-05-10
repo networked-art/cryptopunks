@@ -1367,7 +1367,7 @@ describe('PunksAuction', () => {
       await ctx.viem.assertions.revertWithCustomError(
         auctions.write.acceptOffer([offerId, 801]),
         auctions,
-        'PunkTraitMismatch',
+        'PunkCriteriaMismatch',
       )
 
       await assignPunk(ctx, seller, 800n)
@@ -1403,7 +1403,7 @@ describe('PunksAuction', () => {
       await ctx.viem.assertions.revertWithCustomError(
         auctions.write.acceptOffer([offerId, 900]),
         auctions,
-        'PunkVisualMismatch',
+        'PunkCriteriaMismatch',
       )
     })
 

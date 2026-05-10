@@ -4,20 +4,21 @@ pragma solidity 0.8.34;
 import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
 import "../interfaces/IPunksData.sol";
+import "../lib/Punks.sol";
 import "../lib/PushPullEscrow.sol";
 
 /// @title  Offers
 /// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
 ///         Inspired by MouseDev's CryptoPunksBids, concept by mousedev.eth and kilo.
 abstract contract Offers is IPunksAuction, PushPullEscrow {
+    using Punks for Punks.Filter;
+
     /// @notice Maximum slots per offer. Mirrors the lot item bound.
     uint8 internal constant MAX_LOT_ITEMS = 100;
     /// @notice Maximum entries in `OfferSlot.includeIds` per slot.
     uint8 internal constant MAX_INCLUDE_IDS = 64;
     /// @notice Maximum entries in `OfferSlot.excludeIds` per slot.
     uint8 internal constant MAX_EXCLUDE_IDS = 64;
-    /// @notice Sealed-dataset upper bound for the per-Punk color count.
-    uint8 internal constant COLOR_COUNT_MAX = 14;
 
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
@@ -50,9 +51,8 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         uint256 slotCount = slots.length;
         if (slotCount == 0 || slotCount > MAX_LOT_ITEMS) revert InvalidSlotCount();
 
-        uint16 traitCount = PUNKS_CRITERIA.traitCount();
         for (uint256 i; i < slotCount;) {
-            _requireValidSlot(slots[i], traitCount);
+            _requireValidSlot(slots[i]);
             unchecked { ++i; }
         }
 
@@ -186,25 +186,9 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         if (offer.offerer != msg.sender) revert NotOfferer();
     }
 
-    /// @dev Validates a slot's masks, color range, and id-list bounds at place time.
-    function _requireValidSlot(OfferSlot calldata slot, uint16 traitCount) private pure {
-        OfferCriteria calldata c = slot.criteria;
-
-        uint256 canonicalMask = traitCount >= 256
-            ? type(uint256).max
-            : ((uint256(1) << traitCount) - 1);
-        if ((c.requiredTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
-        if ((c.forbiddenTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
-        if ((c.anyOfTraitMask & ~canonicalMask) != 0) revert InvalidTraitMask();
-        if ((c.requiredTraitMask & c.forbiddenTraitMask) != 0) revert InvalidTraitMask();
-        if ((c.forbiddenTraitMask & c.anyOfTraitMask) != 0) revert InvalidTraitMask();
-
-        if (c.maxColorCount != 0) {
-            if (c.minColorCount > c.maxColorCount) revert InvalidColorCountRange();
-            if (c.maxColorCount > COLOR_COUNT_MAX) revert InvalidColorCountRange();
-        } else if (c.minColorCount != 0) {
-            revert InvalidColorCountRange();
-        }
+    /// @dev Validates a slot's filter and id-list bounds at place time.
+    function _requireValidSlot(OfferSlot calldata slot) private pure {
+        Punks.validate(slot.criteria);
 
         if (slot.includeIds.length > MAX_INCLUDE_IDS) revert TooManyIds();
         if (slot.excludeIds.length > MAX_EXCLUDE_IDS) revert TooManyIds();
@@ -241,11 +225,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
                 offerId,
                 uint8(i),
                 s.standard,
-                s.criteria.requiredTraitMask,
-                s.criteria.forbiddenTraitMask,
-                s.criteria.anyOfTraitMask,
-                s.criteria.minColorCount,
-                s.criteria.maxColorCount,
+                s.criteria,
                 s.includeIds,
                 s.excludeIds
             );
@@ -280,23 +260,8 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             unchecked { ++i; }
         }
 
-        OfferCriteria memory c = slot.criteria;
-        if ((c.requiredTraitMask | c.forbiddenTraitMask | c.anyOfTraitMask) != 0) {
-            if (
-                !PUNKS_CRITERIA.hasTraits(
-                    punkId,
-                    c.requiredTraitMask,
-                    c.forbiddenTraitMask,
-                    c.anyOfTraitMask
-                )
-            ) {
-                revert PunkTraitMismatch();
-            }
-        }
-
-        if (c.maxColorCount != 0) {
-            uint8 cc = PUNKS_VISUAL.colorCountOf(punkId);
-            if (cc < c.minColorCount || cc > c.maxColorCount) revert PunkVisualMismatch();
+        if (!slot.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
+            revert PunkCriteriaMismatch();
         }
     }
 

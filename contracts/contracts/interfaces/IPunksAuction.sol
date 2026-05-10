@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import "../lib/Punks.sol";
+
 /// @title  IPunksAuction
 /// @notice Public types, events, errors, and core API for the zero-fee Punk auction house.
 interface IPunksAuction {
@@ -16,16 +18,8 @@ interface IPunksAuction {
         uint16 weightBps;
     }
 
-    struct OfferCriteria {
-        uint256 requiredTraitMask;
-        uint256 forbiddenTraitMask;
-        uint256 anyOfTraitMask;
-        uint8 minColorCount;
-        uint8 maxColorCount;
-    }
-
     struct OfferSlot {
-        OfferCriteria criteria;
+        Punks.Filter criteria;
         TokenStandard standard;
         uint16[] includeIds;
         uint16[] excludeIds;
@@ -114,11 +108,7 @@ interface IPunksAuction {
         uint256 indexed offerId,
         uint8 indexed slotIndex,
         TokenStandard standard,
-        uint256 requiredTraitMask,
-        uint256 forbiddenTraitMask,
-        uint256 anyOfTraitMask,
-        uint8 minColorCount,
-        uint8 maxColorCount,
+        Punks.Filter criteria,
         uint16[] includeIds,
         uint16[] excludeIds
     );
@@ -168,8 +158,7 @@ interface IPunksAuction {
     error ListingPriceTooHigh();
     error PunkNotIncluded();
     error PunkExcluded();
-    error PunkTraitMismatch();
-    error PunkVisualMismatch();
+    error PunkCriteriaMismatch();
 
     error InvalidItemCount();
     error DuplicateLotItem();
@@ -178,8 +167,6 @@ interface IPunksAuction {
     error SlotItemCountMismatch();
     error MultiSlotOfferRequiresLot();
     error OfferStandardMismatch();
-    error InvalidTraitMask();
-    error InvalidColorCountRange();
     error TooManyIds();
 
     error LotNotFound();
