@@ -11,11 +11,13 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
 
 ## SDK
 
-- [TypeScript SDK](/sdk) covers viem-based data/search reads, renderer reads,
-  exported ABIs, canonical addresses, and bitmap/pixel helpers.
-- [Data And Search](/sdk/data-search) covers `PunksDataClient` catalogs,
-  palettes, filters, summaries, and indexed pixels.
-- [Rendering And Metadata](/sdk/rendering) covers `PunksRendererClient` image
-  outputs, marketplace backgrounds, metadata JSON, and token URI reads.
+- [TypeScript SDK](/sdk) covers the collection-first SDK for local search,
+  rendering, original-market actions, and auction/offer flows.
+- [Data And Search](/sdk/data-search) covers local query filtering, facets,
+  dataset reads, and offer-slot compilation.
+- [Rendering And Metadata](/sdk/rendering) covers local SVG, PNG, RGBA,
+  metadata, token URI generation, and exact onchain renderer reads.
+- [Market, Offers, And Auctions](/sdk/market-actions) covers original-market
+  writes, criterion offers, vault custody, lots, bids, and settlement.
 - [Utilities And Caching](/sdk/utilities) covers constants, ABIs, bitmap
   helpers, block options, validation, and cache behavior.

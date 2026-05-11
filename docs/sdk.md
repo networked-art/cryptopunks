@@ -1,75 +1,104 @@
 # TypeScript SDK
 
-`@networked-art/punks-sdk` is the viem-based TypeScript read layer for the
-CryptoPunks contracts in this repo. It has two client surfaces and a small set
-of pure helpers:
+`@networked-art/punks-sdk` is the application SDK for CryptoPunks data,
+rendering, marketplace actions, and Networked Art auction/offer flows.
 
-- `PunksDataClient` for traits, palette data, visual metrics, indexed pixels,
-  bitmap search, and Punk summaries.
-- `PunksRendererClient` for SVG, PNG-8, RGBA bytes, marketplace backgrounds,
-  metadata JSON, and ERC721-style token URI reads.
-- Bitmap and pixel utilities for local filtering and RGBA expansion.
-
-Install it with viem:
-
-```sh
-pnpm add @networked-art/punks-sdk viem
-```
-
-Create both clients from any viem public client:
+The root API is collection-first. It does not require RPC for search or image
+rendering because it ships with the canonical sealed dataset.
 
 ```ts
-import { createPublicClient, http } from 'viem'
-import { mainnet } from 'viem/chains'
-import {
-  createPunksDataClient,
-  createPunksRendererClient,
-} from '@networked-art/punks-sdk'
+import { createPunksSdk } from '@networked-art/punks-sdk'
 
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(process.env.MAINNET_RPC_URL),
+const punks = createPunksSdk()
+
+const ids = punks.search({
+  text: 'zombie hoodie',
+  colorCount: { max: 4 },
 })
 
-const punksData = createPunksDataClient({ publicClient })
-const renderer = createPunksRendererClient({ publicClient })
+const svg = punks.render.svg(ids[0])
+const metadata = punks.render.metadata(ids[0])
 ```
+
+## Main Surfaces
+
+| Surface | Use it for |
+| --- | --- |
+| `punks.search`, `punks.count`, `punks.facets` | Fast local search/filtering over the canonical collection |
+| `punks.dataset` | Trait catalog, palette, summaries, indexed pixels, bitmaps |
+| `punks.render` | Local SVG, PNG, RGBA, metadata, token URI generation |
+| `punks.market` | Original CryptoPunks market reads/writes |
+| `punks.offers` | Criterion offers through the Networked Art auction contract |
+| `punks.auctions` | Vault deposits, lots, bids, settlement, reclaim |
+| `punks.contracts` | Low-level `PunksData` and `PunksRenderer` viem wrappers |
 
 ## Sections
 
 | Section | Use it for |
 | --- | --- |
-| [Data And Search](/sdk/data-search) | Catalogs, palettes, trait/color lookups, bitmap search, Punk summaries, and indexed pixels |
-| [Rendering And Metadata](/sdk/rendering) | SVG, PNG, RGBA bytes, marketplace backgrounds, metadata JSON, and token URI reads |
-| [Utilities And Caching](/sdk/utilities) | Exported constants/ABIs, bitmap helpers, `indexedPixelsToRgba`, block options, and cache behavior |
+| [Data And Search](/sdk/data-search) | Query filtering, facets, dataset reads, and offer-slot compilation |
+| [Rendering And Metadata](/sdk/rendering) | Local images, metadata, token URI generation, and exact onchain renderer reads |
+| [Market, Offers, And Auctions](/sdk/market-actions) | Original marketplace writes, criterion offers, vaults, lots, bids, and settlement |
+| [Utilities And Caching](/sdk/utilities) | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior |
 
-## Quick Examples
+## Viem Configuration
 
-Search through `PunksData` and render through `PunksRenderer`:
+Search and local rendering work with no clients:
 
 ```ts
-await punksData.assertCanonicalDataset()
+const punks = createPunksSdk()
+```
 
-const hoodiePunks = await punksData.search({
-  attributes: {
-    required: ['Hoodie'],
+Marketplace and auction reads need a `publicClient`; writes need a
+`walletClient`:
+
+```ts
+const punks = createPunksSdk({
+  publicClient,
+  walletClient,
+  addresses: {
+    auction: '0x...',
   },
-  limit: 25,
+})
+```
+
+## Transaction Plans
+
+Every write has an executable method and a `prepare*` method. The prepared
+plan is a plain object with a description and viem `writeContract` request:
+
+```ts
+const plan = punks.market.prepareList({
+  punkId: 8348,
+  priceWei: 100n * 10n ** 18n,
 })
 
-const svg = await renderer.getPunkSvg(hoodiePunks[0])
+await walletClient.writeContract(plan.request)
 ```
 
-Read metadata or image bytes directly:
+The SDK's executable methods call the same plan with the configured
+`walletClient`.
+
+## Query Compilation
+
+The same query language powers local filtering and offer-slot compilation:
 
 ```ts
-const metadata = await renderer.getPunkMetadata(8348)
-const transparentPng = await renderer.getPunkPng(8348)
-const marketplaceSvg = await renderer.getPunkMarketplaceSvg(8348)
+const ids = punks.search({
+  type: 'Zombie',
+  attributes: { anyOf: ['Hoodie', 'Beanie'] },
+  colorCount: { max: 4 },
+})
+
+const slot = punks.offers.slot({
+  query: {
+    type: 'Zombie',
+    attributes: { anyOf: ['Hoodie', 'Beanie'] },
+    colorCount: { max: 4 },
+  },
+})
 ```
 
-## Deployments
-
-`PunksDataClient` reads the canonical mainnet `PunksData` deployment.
-`PunksRendererClient` defaults to the canonical mainnet `PunksRenderer`, and
-accepts an `address` override when reading another renderer deployment.
+Text search, pagination, and sorting are local-only. They cannot be represented
+inside a single onchain `Punks.Filter`; use explicit `includeIds` when an offer
+needs a materialized basket.

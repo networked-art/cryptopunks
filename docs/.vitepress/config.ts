@@ -57,6 +57,7 @@ export default defineConfig({
             items: [
               { text: 'Data And Search', link: '/sdk/data-search' },
               { text: 'Rendering And Metadata', link: '/sdk/rendering' },
+              { text: 'Market, Offers, And Auctions', link: '/sdk/market-actions' },
               { text: 'Utilities And Caching', link: '/sdk/utilities' },
             ],
           },
