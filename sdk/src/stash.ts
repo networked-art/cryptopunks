@@ -18,6 +18,8 @@ import {
   validatePunkId,
 } from './utils'
 
+const UINT256_MAX = (1n << 256n) - 1n
+
 export type StashOrder = {
   numberOfUnits: number
   pricePerUnit: bigint
@@ -39,6 +41,12 @@ export type ProcessStashPunkBidInput = {
   proof?: readonly Hex[]
 }
 
+export type StashOwnerStatus = {
+  owner: Address
+  address: Address
+  deployed: boolean
+}
+
 export type EthTransferPlan = {
   description: string
   request: {
@@ -53,6 +61,29 @@ export type StashClientConfig = WalletConfig & {
 
 export type StashFactoryClientConfig = WalletConfig & {
   address?: Address
+}
+
+export type StashERC721ReceivedInput = {
+  operator: Address
+  from: Address
+  tokenId: bigint | number
+  data?: Hex
+}
+
+export type StashERC1155ReceivedInput = {
+  operator: Address
+  from: Address
+  tokenId: bigint | number
+  amount: bigint | number
+  data?: Hex
+}
+
+export type StashERC1155BatchReceivedInput = {
+  operator: Address
+  from: Address
+  tokenIds: readonly (bigint | number)[]
+  amounts: readonly (bigint | number)[]
+  data?: Hex
 }
 
 export const stashPunkBidTypedDataTypes = {
@@ -104,7 +135,7 @@ export class StashFactoryClient {
   }
 
   implementation(version: bigint | number): Promise<Address> {
-    return this.read<Address>('implementations', [BigInt(version)])
+    return this.read<Address>('implementations', [normalizeUint256('version', version)])
   }
 
   implementations(version: bigint | number): Promise<Address> {
@@ -117,6 +148,14 @@ export class StashFactoryClient {
 
   ownerHasDeployed(owner: Address): Promise<boolean> {
     return this.read<boolean>('ownerHasDeployed', [owner])
+  }
+
+  async statusForOwner(owner: Address): Promise<StashOwnerStatus> {
+    const [address, deployed] = await Promise.all([
+      this.stashAddressFor(owner),
+      this.ownerHasDeployed(owner),
+    ])
+    return { owner, address, deployed }
   }
 
   isStash(stash: Address): Promise<boolean> {
@@ -144,10 +183,12 @@ export class StashFactoryClient {
   }
 
   hasAllRoles(user: Address, roles: bigint): Promise<boolean> {
+    normalizeUint256('roles', roles)
     return this.read<boolean>('hasAllRoles', [user, roles])
   }
 
   hasAnyRole(user: Address, roles: bigint): Promise<boolean> {
+    normalizeUint256('roles', roles)
     return this.read<boolean>('hasAnyRole', [user, roles])
   }
 
@@ -229,7 +270,10 @@ export class StashFactoryClient {
   }
 
   prepareGrantRoles(params: { user: Address; roles: bigint }): ContractWritePlan {
-    return this.plan('Grant StashFactory roles', 'grantRoles', [params.user, params.roles])
+    return this.plan('Grant StashFactory roles', 'grantRoles', [
+      params.user,
+      normalizeUint256('roles', params.roles),
+    ])
   }
 
   grantRoles(params: { user: Address; roles: bigint }): Promise<TransactionHash> {
@@ -237,7 +281,10 @@ export class StashFactoryClient {
   }
 
   prepareRevokeRoles(params: { user: Address; roles: bigint }): ContractWritePlan {
-    return this.plan('Revoke StashFactory roles', 'revokeRoles', [params.user, params.roles])
+    return this.plan('Revoke StashFactory roles', 'revokeRoles', [
+      params.user,
+      normalizeUint256('roles', params.roles),
+    ])
   }
 
   revokeRoles(params: { user: Address; roles: bigint }): Promise<TransactionHash> {
@@ -245,7 +292,9 @@ export class StashFactoryClient {
   }
 
   prepareRenounceRoles(roles: bigint): ContractWritePlan {
-    return this.plan('Renounce StashFactory roles', 'renounceRoles', [roles])
+    return this.plan('Renounce StashFactory roles', 'renounceRoles', [
+      normalizeUint256('roles', roles),
+    ])
   }
 
   renounceRoles(roles: bigint): Promise<TransactionHash> {
@@ -272,6 +321,9 @@ export class StashClient {
   private readonly account?: Address
 
   constructor(config: StashClientConfig) {
+    if (isZeroAddress(config.address)) {
+      throw new PunksDataValidationError('Stash address must not be the zero address')
+    }
     this.address = config.address
     this.publicClient = config.publicClient
     this.walletClient = config.walletClient
@@ -291,15 +343,18 @@ export class StashClient {
   }
 
   punkBidNonceUsesRemaining(bidNonce: bigint | number): Promise<bigint> {
-    return this.read<bigint>('punkBidNonceUsesRemaining', [BigInt(bidNonce)])
+    return this.read<bigint>('punkBidNonceUsesRemaining', [normalizeUint256('bidNonce', bidNonce)])
   }
 
   usedPunkBidNonces(bidNonce: bigint | number): Promise<boolean> {
-    return this.read<boolean>('usedPunkBidNonces', [BigInt(bidNonce)])
+    return this.read<boolean>('usedPunkBidNonces', [normalizeUint256('bidNonce', bidNonce)])
   }
 
   orderAt(paymentToken: Address, index: bigint | number): Promise<StashOrder> {
-    return this.readOrder('paymentTokenToOrders', [paymentToken, BigInt(index)])
+    return this.readOrder('paymentTokenToOrders', [
+      paymentToken,
+      normalizeUint256('index', index),
+    ])
   }
 
   paymentTokenToOrders(paymentToken: Address, index: bigint | number): Promise<StashOrder> {
@@ -351,11 +406,13 @@ export class StashClient {
     valueWei?: bigint
   }): ContractWritePlan {
     assertWei('pricePerUnit', params.pricePerUnit)
+    const valueWei = params.valueWei ?? 0n
+    assertWei('valueWei', valueWei)
     assertIntegerInRange('numberOfUnits', params.numberOfUnits, 1, 65_535)
     return this.plan('Place Stash order', 'placeOrder', [
       params.pricePerUnit,
       params.numberOfUnits,
-    ], params.valueWei ?? 0n)
+    ], valueWei)
   }
 
   placeOrder(params: {
@@ -394,7 +451,9 @@ export class StashClient {
   }
 
   prepareCancelPunkBid(bidNonce: bigint | number): ContractWritePlan {
-    return this.plan('Cancel Stash Punk bid', 'cancelPunkBid', [BigInt(bidNonce)])
+    return this.plan('Cancel Stash Punk bid', 'cancelPunkBid', [
+      normalizeUint256('bidNonce', bidNonce),
+    ])
   }
 
   cancelPunkBid(bidNonce: bigint | number): Promise<TransactionHash> {
@@ -433,7 +492,7 @@ export class StashClient {
   prepareWithdrawERC721(params: { token: Address; tokenIds: readonly (bigint | number)[] }): ContractWritePlan {
     return this.plan('Withdraw ERC-721 tokens from Stash', 'withdrawERC721', [
       params.token,
-      params.tokenIds.map(BigInt),
+      normalizeUint256Array('tokenIds', params.tokenIds),
     ])
   }
 
@@ -451,8 +510,8 @@ export class StashClient {
     }
     return this.plan('Withdraw ERC-1155 tokens from Stash', 'withdrawERC1155', [
       params.token,
-      params.tokenIds.map(BigInt),
-      params.amounts.map(BigInt),
+      normalizeUint256Array('tokenIds', params.tokenIds),
+      normalizeUint256Array('amounts', params.amounts),
     ])
   }
 
@@ -472,6 +531,50 @@ export class StashClient {
 
   withdrawPunks(punkIds: readonly number[]): Promise<TransactionHash> {
     return this.write(this.prepareWithdrawPunks(punkIds))
+  }
+
+  prepareOnERC721Received(input: StashERC721ReceivedInput): ContractWritePlan {
+    return this.plan('Handle ERC-721 token receipt', 'onERC721Received', [
+      input.operator,
+      input.from,
+      normalizeUint256('tokenId', input.tokenId),
+      input.data ?? '0x',
+    ])
+  }
+
+  onERC721Received(input: StashERC721ReceivedInput): Promise<TransactionHash> {
+    return this.write(this.prepareOnERC721Received(input))
+  }
+
+  prepareOnERC1155Received(input: StashERC1155ReceivedInput): ContractWritePlan {
+    return this.plan('Handle ERC-1155 token receipt', 'onERC1155Received', [
+      input.operator,
+      input.from,
+      normalizeUint256('tokenId', input.tokenId),
+      normalizeUint256('amount', input.amount),
+      input.data ?? '0x',
+    ])
+  }
+
+  onERC1155Received(input: StashERC1155ReceivedInput): Promise<TransactionHash> {
+    return this.write(this.prepareOnERC1155Received(input))
+  }
+
+  prepareOnERC1155BatchReceived(input: StashERC1155BatchReceivedInput): ContractWritePlan {
+    if (input.tokenIds.length !== input.amounts.length) {
+      throw new PunksDataValidationError('tokenIds and amounts must have the same length')
+    }
+    return this.plan('Handle ERC-1155 batch token receipt', 'onERC1155BatchReceived', [
+      input.operator,
+      input.from,
+      normalizeUint256Array('tokenIds', input.tokenIds),
+      normalizeUint256Array('amounts', input.amounts),
+      input.data ?? '0x',
+    ])
+  }
+
+  onERC1155BatchReceived(input: StashERC1155BatchReceivedInput): Promise<TransactionHash> {
+    return this.write(this.prepareOnERC1155BatchReceived(input))
   }
 
   typedDataForPunkBid(params: { chainId: number; bid: StashPunkBid }) {
@@ -548,7 +651,15 @@ export class PunksStashFacade {
   }
 
   async forOwner(owner: Address): Promise<StashClient> {
-    return this.at(await this.factory.stashAddressFor(owner))
+    const status = await this.statusForOwner(owner)
+    if (!status.deployed || isZeroAddress(status.address)) {
+      throw new PunksDataValidationError('Stash is not deployed for owner; deploy a Stash first')
+    }
+    return this.at(status.address)
+  }
+
+  statusForOwner(owner: Address): Promise<StashOwnerStatus> {
+    return this.factory.statusForOwner(owner)
   }
 
   prepareDeploy(owner: Address): ContractWritePlan {
@@ -639,9 +750,9 @@ function normalizePunkBid(bid: StashPunkBid): StashPunkBid {
       pricePerUnit: bid.order.pricePerUnit,
       auction: bid.order.auction,
     },
-    accountNonce: BigInt(bid.accountNonce),
-    bidNonce: BigInt(bid.bidNonce),
-    expiration: BigInt(bid.expiration),
+    accountNonce: normalizeUint256('accountNonce', bid.accountNonce),
+    bidNonce: normalizeUint256('bidNonce', bid.bidNonce),
+    expiration: normalizeUint256('expiration', bid.expiration),
     root: bid.root,
   }
 }
@@ -680,4 +791,29 @@ function assertWei(label: string, value: bigint): void {
   if (typeof value !== 'bigint' || value < 0n) {
     throw new PunksDataValidationError(`${label} must be a non-negative bigint`)
   }
+}
+
+function normalizeUint256(label: string, value: bigint | number): bigint {
+  if (typeof value === 'number' && !Number.isSafeInteger(value)) {
+    throw new PunksDataValidationError(`${label} must be a safe integer or bigint`)
+  }
+  if (typeof value !== 'bigint' && typeof value !== 'number') {
+    throw new PunksDataValidationError(`${label} must be a safe integer or bigint`)
+  }
+  const normalized = BigInt(value)
+  if (normalized < 0n || normalized > UINT256_MAX) {
+    throw new PunksDataValidationError(`${label} must be an unsigned 256-bit integer`)
+  }
+  return normalized
+}
+
+function normalizeUint256Array(
+  label: string,
+  values: readonly (bigint | number)[],
+): bigint[] {
+  return values.map((value, index) => normalizeUint256(`${label}[${index}]`, value))
+}
+
+function isZeroAddress(address: Address): boolean {
+  return address.toLowerCase() === ZERO_ADDRESS
 }

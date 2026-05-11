@@ -84,6 +84,7 @@ export class PunksSdk {
       marketAddress: config.addresses?.market,
       legacyAddress: config.addresses?.wrappedPunks,
       c721Address: config.addresses?.c721Wrapper,
+      stashFactoryAddress: config.addresses?.stashFactory,
     })
     this.stash = new PunksStashFacade({
       ...wallet,

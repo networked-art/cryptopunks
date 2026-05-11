@@ -17,6 +17,32 @@ pnpm add @networked-art/punks-sdk viem
 Market and auction writes need a `walletClient`; market and auction reads need
 a `publicClient`.
 
+## Root API
+
+| Surface | Use it for |
+| --- | --- |
+| `punks.search`, `punks.count`, `punks.facets` | Local collection filtering |
+| `punks.dataset` | Bundled trait, palette, bitmap, and pixel data |
+| `punks.render` | Local SVG, PNG, RGBA, metadata, token URI output |
+| `punks.market` | Original CryptoPunks market reads/writes |
+| `punks.data.contract` | `PunksData.sol` reads and loader/admin writes |
+| `punks.data.legacy` | Original `CryptopunksData` SVG and attributes |
+| `punks.wrappers.modern` | CryptoPunks721 and Stash wrapping flows |
+| `punks.wrappers.legacy` | Legacy Wrapped Punks proxy wrapping flows |
+| `punks.stash.factory` | StashFactory deployment, lookup, roles, admin |
+| `punks.stash.at(address)` | Individual Stash funding, liquidity, bids, withdrawals |
+| `punks.offers` | Networked Art criterion offers |
+| `punks.auctions` | Vaults, lots, bidding, settlement |
+
+## Choosing The Right Surface
+
+Use `punks.dataset`, `punks.search`, and `punks.render` for local app UI.
+They are deterministic and do not need RPC.
+
+Use `punks.data.contract` for live `PunksData.sol` reads or loader/admin
+writes. Use `punks.data.legacy` only when you need compatibility with the
+original Larva Labs `CryptopunksData` strings.
+
 ## Quick Start
 
 ```ts
@@ -182,7 +208,8 @@ const deposit = await punks.auctions.prepareDeposit({
 The package still exports:
 
 - `createPunksDataClient` and `createPunksRendererClient`
-- ABIs for `PunksData`, `PunksRenderer`, the original market, auctions, and escrow
+- clients for the original market, wrappers, StashFactory, Stash, auctions, and offers
+- ABIs for `PunksData`, `PunksRenderer`, the original market, wrappers, Stash, auctions, and escrow
 - bitmap utilities and validation helpers
 - `@networked-art/punks-sdk/offline` for direct offline dataset access
 
@@ -199,5 +226,9 @@ pnpm --filter @networked-art/punks-sdk build
 - [TypeScript SDK](../docs/sdk.md)
 - [Data And Search](../docs/sdk/data-search.md)
 - [Rendering And Metadata](../docs/sdk/rendering.md)
-- [Market, Offers, And Auctions](../docs/sdk/market-actions.md)
+- [Original Marketplace](../docs/sdk/original-marketplace.md)
+- [Punk Data Contracts](../docs/sdk/punk-data-contracts.md)
+- [Wrappers](../docs/sdk/wrappers.md)
+- [Stash](../docs/sdk/stash.md)
+- [Offers And Auctions](../docs/sdk/offers-and-auctions.md)
 - [Utilities And Caching](../docs/sdk/utilities.md)

@@ -28,9 +28,26 @@ const metadata = punks.render.metadata(ids[0])
 | `punks.dataset` | Trait catalog, palette, summaries, indexed pixels, bitmaps |
 | `punks.render` | Local SVG, PNG, RGBA, metadata, token URI generation |
 | `punks.market` | Original CryptoPunks market reads/writes |
+| `punks.data.contract` | Exact reads and loader/admin writes for `PunksData.sol` |
+| `punks.data.legacy` | Original `CryptopunksData` SVG and attribute reads |
+| `punks.wrappers.modern` | CryptoPunks721 reads, approvals, and Stash wrapping flows |
+| `punks.wrappers.legacy` | Legacy Wrapped Punks reads, approvals, proxy wrapping flows |
+| `punks.stash.factory` | StashFactory lookup, deployment, versions, roles, and admin |
+| `punks.stash.at(address)` | Individual Stash funding, liquidity, bids, withdrawals, and orders |
 | `punks.offers` | Criterion offers through the Networked Art auction contract |
 | `punks.auctions` | Vault deposits, lots, bids, settlement, reclaim |
 | `punks.contracts` | Low-level `PunksData` and `PunksRenderer` viem wrappers |
+
+## Choosing The Right Surface
+
+Use the local SDK surfaces first for app UI: `punks.search`, `punks.dataset`,
+and `punks.render` are fast, deterministic, and do not require RPC.
+
+Use `punks.data.contract` when you need live reads from `PunksData.sol`, such
+as validating a deployment, reading at a block, or running loader/admin writes.
+
+Use `punks.data.legacy` only when compatibility requires the original Larva
+Labs `CryptopunksData` SVG or attribute strings.
 
 ## Sections
 
@@ -38,7 +55,11 @@ const metadata = punks.render.metadata(ids[0])
 | --- | --- |
 | [Data And Search](/sdk/data-search) | Query filtering, facets, dataset reads, and offer-slot compilation |
 | [Rendering And Metadata](/sdk/rendering) | Local images, metadata, token URI generation, and exact onchain renderer reads |
-| [Market, Offers, And Auctions](/sdk/market-actions) | Original marketplace writes, criterion offers, vaults, lots, bids, and settlement |
+| [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes |
+| [Punk Data Contracts](/sdk/punk-data-contracts) | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData` |
+| [Wrappers](/sdk/wrappers) | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers |
+| [Stash](/sdk/stash) | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and admin |
+| [Offers And Auctions](/sdk/offers-and-auctions) | Criterion offers, vaults, lots, bids, settlement |
 | [Utilities And Caching](/sdk/utilities) | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior |
 
 ## Viem Configuration

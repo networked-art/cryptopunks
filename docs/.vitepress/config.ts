@@ -57,7 +57,11 @@ export default defineConfig({
             items: [
               { text: 'Data And Search', link: '/sdk/data-search' },
               { text: 'Rendering And Metadata', link: '/sdk/rendering' },
-              { text: 'Market, Offers, And Auctions', link: '/sdk/market-actions' },
+              { text: 'Original Marketplace', link: '/sdk/original-marketplace' },
+              { text: 'Punk Data Contracts', link: '/sdk/punk-data-contracts' },
+              { text: 'Wrappers', link: '/sdk/wrappers' },
+              { text: 'Stash', link: '/sdk/stash' },
+              { text: 'Offers And Auctions', link: '/sdk/offers-and-auctions' },
               { text: 'Utilities And Caching', link: '/sdk/utilities' },
             ],
           },

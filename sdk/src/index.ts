@@ -206,18 +206,30 @@ export type {
 } from './legacy-data'
 export type {
   C721BatchWrapFlowInput,
+  C721StashStatus,
+  C721WrapPreflight,
+  C721WrapPreflightInput,
   C721WrapFlowInput,
   LegacyWrapFlowInput,
+  LegacyWrapPreflight,
+  LegacyWrapPreflightInput,
   PunksWrappersConfig,
+  WrapperApprovalInput,
+  WrapperApprovalStatus,
   WrapperClientConfig,
+  WrapperNextStep,
 } from './wrappers'
 export type {
   EthTransferPlan,
   ProcessStashPunkBidInput,
   PunksStashConfig,
+  StashERC1155BatchReceivedInput,
+  StashERC1155ReceivedInput,
+  StashERC721ReceivedInput,
   StashClientConfig,
   StashFactoryClientConfig,
   StashOrder,
+  StashOwnerStatus,
   StashPunkBid,
 } from './stash'
 export type {
