@@ -103,12 +103,11 @@ export const stashPunkBidTypedDataTypes = {
 
 export function stashPunkBidTypedData(params: {
   stash: Address
-  chainId: number
   bid: StashPunkBid
 }) {
   return {
     domain: {
-      chainId: params.chainId,
+      chainId: 1,
       verifyingContract: params.stash,
     },
     types: stashPunkBidTypedDataTypes,
@@ -166,32 +165,6 @@ export class StashFactoryClient {
     return this.read<boolean>('isAuction', [auction])
   }
 
-  stashVerifier(): Promise<Address> {
-    return this.read<Address>('stashVerifier')
-  }
-
-  owner(): Promise<Address> {
-    return this.read<Address>('owner')
-  }
-
-  ownershipHandoverExpiresAt(pendingOwner: Address): Promise<bigint> {
-    return this.read<bigint>('ownershipHandoverExpiresAt', [pendingOwner])
-  }
-
-  rolesOf(user: Address): Promise<bigint> {
-    return this.read<bigint>('rolesOf', [user])
-  }
-
-  hasAllRoles(user: Address, roles: bigint): Promise<boolean> {
-    normalizeUint256('roles', roles)
-    return this.read<boolean>('hasAllRoles', [user, roles])
-  }
-
-  hasAnyRole(user: Address, roles: bigint): Promise<boolean> {
-    normalizeUint256('roles', roles)
-    return this.read<boolean>('hasAnyRole', [user, roles])
-  }
-
   prepareDeployStash(owner: Address): ContractWritePlan {
     return this.plan('Deploy CryptoPunks Stash', 'deployStash', [owner])
   }
@@ -206,99 +179,6 @@ export class StashFactoryClient {
 
   upgradeStash(): Promise<TransactionHash> {
     return this.write(this.prepareUpgradeStash())
-  }
-
-  prepareAddVersion(implementation: Address): ContractWritePlan {
-    return this.plan('Add Stash implementation version', 'addVersion', [implementation])
-  }
-
-  addVersion(implementation: Address): Promise<TransactionHash> {
-    return this.write(this.prepareAddVersion(implementation))
-  }
-
-  prepareSetAuction(params: { auction: Address; enabled: boolean }): ContractWritePlan {
-    return this.plan('Set Stash auction allowlist status', 'setAuction', [
-      params.auction,
-      params.enabled,
-    ])
-  }
-
-  setAuction(params: { auction: Address; enabled: boolean }): Promise<TransactionHash> {
-    return this.write(this.prepareSetAuction(params))
-  }
-
-  prepareTransferOwnership(newOwner: Address): ContractWritePlan {
-    return this.plan('Transfer StashFactory ownership', 'transferOwnership', [newOwner])
-  }
-
-  transferOwnership(newOwner: Address): Promise<TransactionHash> {
-    return this.write(this.prepareTransferOwnership(newOwner))
-  }
-
-  prepareRenounceOwnership(): ContractWritePlan {
-    return this.plan('Renounce StashFactory ownership', 'renounceOwnership', [])
-  }
-
-  renounceOwnership(): Promise<TransactionHash> {
-    return this.write(this.prepareRenounceOwnership())
-  }
-
-  prepareRequestOwnershipHandover(): ContractWritePlan {
-    return this.plan('Request StashFactory ownership handover', 'requestOwnershipHandover', [])
-  }
-
-  requestOwnershipHandover(): Promise<TransactionHash> {
-    return this.write(this.prepareRequestOwnershipHandover())
-  }
-
-  prepareCompleteOwnershipHandover(pendingOwner: Address): ContractWritePlan {
-    return this.plan('Complete StashFactory ownership handover', 'completeOwnershipHandover', [
-      pendingOwner,
-    ])
-  }
-
-  completeOwnershipHandover(pendingOwner: Address): Promise<TransactionHash> {
-    return this.write(this.prepareCompleteOwnershipHandover(pendingOwner))
-  }
-
-  prepareCancelOwnershipHandover(): ContractWritePlan {
-    return this.plan('Cancel StashFactory ownership handover', 'cancelOwnershipHandover', [])
-  }
-
-  cancelOwnershipHandover(): Promise<TransactionHash> {
-    return this.write(this.prepareCancelOwnershipHandover())
-  }
-
-  prepareGrantRoles(params: { user: Address; roles: bigint }): ContractWritePlan {
-    return this.plan('Grant StashFactory roles', 'grantRoles', [
-      params.user,
-      normalizeUint256('roles', params.roles),
-    ])
-  }
-
-  grantRoles(params: { user: Address; roles: bigint }): Promise<TransactionHash> {
-    return this.write(this.prepareGrantRoles(params))
-  }
-
-  prepareRevokeRoles(params: { user: Address; roles: bigint }): ContractWritePlan {
-    return this.plan('Revoke StashFactory roles', 'revokeRoles', [
-      params.user,
-      normalizeUint256('roles', params.roles),
-    ])
-  }
-
-  revokeRoles(params: { user: Address; roles: bigint }): Promise<TransactionHash> {
-    return this.write(this.prepareRevokeRoles(params))
-  }
-
-  prepareRenounceRoles(roles: bigint): ContractWritePlan {
-    return this.plan('Renounce StashFactory roles', 'renounceRoles', [
-      normalizeUint256('roles', roles),
-    ])
-  }
-
-  renounceRoles(roles: bigint): Promise<TransactionHash> {
-    return this.write(this.prepareRenounceRoles(roles))
   }
 
   private plan(description: string, functionName: string, args: readonly unknown[]): ContractWritePlan {
@@ -390,14 +270,6 @@ export class StashClient {
 
   fundEth(amountWei: bigint): Promise<TransactionHash> {
     return sendTransaction(this.prepareFundEth(amountWei), this.walletClient, this.account)
-  }
-
-  prepareInitialize(owner: Address): ContractWritePlan {
-    return this.plan('Initialize Stash', 'initialize', [owner])
-  }
-
-  initialize(owner: Address): Promise<TransactionHash> {
-    return this.write(this.prepareInitialize(owner))
   }
 
   preparePlaceOrder(params: {
@@ -577,15 +449,14 @@ export class StashClient {
     return this.write(this.prepareOnERC1155BatchReceived(input))
   }
 
-  typedDataForPunkBid(params: { chainId: number; bid: StashPunkBid }) {
+  typedDataForPunkBid(params: { bid: StashPunkBid }) {
     return stashPunkBidTypedData({
       stash: this.address,
-      chainId: params.chainId,
       bid: params.bid,
     })
   }
 
-  async signPunkBid(params: { chainId: number; bid: StashPunkBid }): Promise<Hex> {
+  async signPunkBid(params: { bid: StashPunkBid }): Promise<Hex> {
     if (!this.walletClient) throw new PunksDataValidationError('walletClient is required for signing')
     const resolvedAccount = this.account ?? this.walletClient.account?.address
     if (!resolvedAccount) throw new PunksDataValidationError('account is required for signing')

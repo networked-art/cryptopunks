@@ -29,7 +29,7 @@ a `publicClient`.
 | `punks.data.legacy` | Original `CryptopunksData` SVG and attributes |
 | `punks.wrappers.modern` | CryptoPunks721 and Stash wrapping flows |
 | `punks.wrappers.legacy` | Legacy Wrapped Punks proxy wrapping flows |
-| `punks.stash.factory` | StashFactory deployment, lookup, roles, admin |
+| `punks.stash.factory` | StashFactory deployment, lookup, implementation status, upgrades |
 | `punks.stash.at(address)` | Individual Stash funding, liquidity, bids, withdrawals |
 | `punks.offers` | Networked Art criterion offers |
 | `punks.auctions` | Vaults, lots, bidding, settlement |

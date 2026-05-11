@@ -32,7 +32,7 @@ const metadata = punks.render.metadata(ids[0])
 | `punks.data.legacy` | Original `CryptopunksData` SVG and attribute reads |
 | `punks.wrappers.modern` | CryptoPunks721 reads, approvals, and Stash wrapping flows |
 | `punks.wrappers.legacy` | Legacy Wrapped Punks reads, approvals, proxy wrapping flows |
-| `punks.stash.factory` | StashFactory lookup, deployment, versions, roles, and admin |
+| `punks.stash.factory` | StashFactory lookup, deployment, implementation status, and Stash upgrades |
 | `punks.stash.at(address)` | Individual Stash funding, liquidity, bids, withdrawals, and orders |
 | `punks.offers` | Criterion offers through the Networked Art auction contract |
 | `punks.auctions` | Vault deposits, lots, bids, settlement, reclaim |
@@ -58,7 +58,7 @@ Labs `CryptopunksData` SVG or attribute strings.
 | [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes |
 | [Punk Data Contracts](/sdk/punk-data-contracts) | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData` |
 | [Wrappers](/sdk/wrappers) | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers |
-| [Stash](/sdk/stash) | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and admin |
+| [Stash](/sdk/stash) | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and orders |
 | [Offers And Auctions](/sdk/offers-and-auctions) | Criterion offers, vaults, lots, bids, settlement |
 | [Utilities And Caching](/sdk/utilities) | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior |
 

@@ -183,8 +183,9 @@ describe('PunksSdk', () => {
     assert.equal(process.request.functionName, 'processPunkBid')
     assert.equal(process.request.args[1], 123n)
 
-    const typedData = stash.typedDataForPunkBid({ chainId: 1, bid: process.request.args[0] })
+    const typedData = stash.typedDataForPunkBid({ bid: process.request.args[0] })
     assert.equal(typedData.domain.verifyingContract, STASH)
+    assert.equal(typedData.domain.chainId, 1)
     assert.equal(typedData.primaryType, 'PunkBid')
   })
 

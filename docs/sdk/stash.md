@@ -4,7 +4,7 @@
 
 | Surface | Use it for |
 | --- | --- |
-| `punks.stash.factory` | Deployment lookup, deployment, versions, roles, admin |
+| `punks.stash.factory` | Deployment lookup, deployment, implementation status, and Stash upgrades |
 | `punks.stash.at(address)` | Work with a known Stash address |
 | `punks.stash.forOwner(owner)` | Resolve a deployed Stash for an owner |
 | `punks.stash.current` | Stash client from `addresses.stash`, when configured |
@@ -24,18 +24,21 @@ if (!status.deployed) {
 const stash = await punks.stash.forOwner(owner)
 ```
 
-Factory admin and role operations are exposed for advanced tooling:
+The user-facing factory client exposes status reads plus Stash deployment and
+caller upgrades:
 
 ```ts
-await punks.stash.factory.addVersion(implementation)
+const version = await punks.stash.factory.currentVersion()
+const implementation = await punks.stash.factory.implementation(version)
+const deployed = await punks.stash.factory.ownerHasDeployed(owner)
+const isKnownStash = await punks.stash.factory.isStash(stashAddress)
+
 await punks.stash.factory.upgradeStash()
-await punks.stash.factory.setAuction({ auction, enabled: true })
-await punks.stash.factory.grantRoles({ user, roles })
-await punks.stash.factory.revokeRoles({ user, roles })
-await punks.stash.factory.transferOwnership(newOwner)
 ```
 
-Use the `prepare*` variants for simulation or custom submission.
+Use the `prepare*` variants for simulation or custom submission. Raw ABI
+exports remain available for protocol-owner tooling that needs manual admin
+calls.
 
 ## Funding And Liquidity
 
@@ -81,8 +84,9 @@ await stash.processOrder({
 
 ## Punk Bids
 
-Offchain Punk bids use the Stash EIP-712 domain with `chainId` and
-`verifyingContract` only.
+Offchain Punk bids use the Stash EIP-712 domain with `chainId: 1` and
+`verifyingContract`. CryptoPunks are mainnet-only, so the SDK sets the chain ID
+internally.
 
 ```ts
 const bid = {
@@ -97,12 +101,9 @@ const bid = {
   root,
 }
 
-const typedData = stash.typedDataForPunkBid({
-  chainId: 1,
-  bid,
-})
+const typedData = stash.typedDataForPunkBid({ bid })
 
-const signature = await stash.signPunkBid({ chainId: 1, bid })
+const signature = await stash.signPunkBid({ bid })
 
 await stash.processPunkBid({
   bid,

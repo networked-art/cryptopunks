@@ -24,7 +24,7 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
 - [Wrappers](/sdk/wrappers) covers modern Stash wrapping, legacy proxy
   wrapping, approvals, and transfers.
 - [Stash](/sdk/stash) covers StashFactory, funding, liquidity, Punk bids,
-  withdrawals, and admin operations.
+  withdrawals, and orders.
 - [Offers And Auctions](/sdk/offers-and-auctions) covers criterion offers,
   vault custody, lots, bids, and settlement.
 - [Utilities And Caching](/sdk/utilities) covers constants, ABIs, bitmap

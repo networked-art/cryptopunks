@@ -796,46 +796,6 @@ export class LegacyWrappedPunksClient {
     return this.write(this.prepareSafeTransferFrom(params))
   }
 
-  prepareSetBaseURI(baseUri: string): ContractWritePlan {
-    return this.plan('Set legacy wrapped Punks base URI', 'setBaseURI', [baseUri])
-  }
-
-  setBaseURI(baseUri: string): Promise<TransactionHash> {
-    return this.write(this.prepareSetBaseURI(baseUri))
-  }
-
-  preparePause(): ContractWritePlan {
-    return this.plan('Pause legacy wrapped Punks', 'pause', [])
-  }
-
-  pause(): Promise<TransactionHash> {
-    return this.write(this.preparePause())
-  }
-
-  prepareUnpause(): ContractWritePlan {
-    return this.plan('Unpause legacy wrapped Punks', 'unpause', [])
-  }
-
-  unpause(): Promise<TransactionHash> {
-    return this.write(this.prepareUnpause())
-  }
-
-  prepareTransferOwnership(newOwner: Address): ContractWritePlan {
-    return this.plan('Transfer legacy wrapped Punks ownership', 'transferOwnership', [newOwner])
-  }
-
-  transferOwnership(newOwner: Address): Promise<TransactionHash> {
-    return this.write(this.prepareTransferOwnership(newOwner))
-  }
-
-  prepareRenounceOwnership(): ContractWritePlan {
-    return this.plan('Renounce legacy wrapped Punks ownership', 'renounceOwnership', [])
-  }
-
-  renounceOwnership(): Promise<TransactionHash> {
-    return this.write(this.prepareRenounceOwnership())
-  }
-
   private plan(description: string, functionName: string, args: readonly unknown[]): ContractWritePlan {
     return writePlan(this.address, wrappedPunksAbi, description, functionName, args)
   }
