@@ -11,7 +11,8 @@ export {
   stashFactoryAbi,
   stashAbi,
   punksAuctionAbi,
-  punksEscrowAbi,
+  punkVaultAbi,
+  punkVaultFactoryAbi,
 } from './abi'
 export {
   BITMAP_WORD_COUNT,

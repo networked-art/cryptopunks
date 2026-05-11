@@ -149,6 +149,8 @@ interface IPunksAuction {
     error InvalidExpiry();
     error TooManyTokens();
     error PunkNotInVault();
+    error VaultNotDeployed();
+    error AuctionNotApproved();
     error NotAuctions();
     error IncorrectPayment();
     error NotOfferer();

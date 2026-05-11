@@ -28,8 +28,9 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm clean && tsc -p tsconfig.build.json && vite build",
-    "test": "pnpm build && node --test test/*.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "test": "pnpm build && pnpm typecheck:api && node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "typecheck:api": "tsc --noEmit -p tsconfig.api-test.json"
   },
   "peerDependencies": {
     "viem": "^2.48.0"

@@ -1,19 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./escrow/PunksEscrowManager.sol";
 import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
+import "./interfaces/IPunkVault.sol";
+import "./interfaces/IPunkVaultFactory.sol";
 import "./offers/Offers.sol";
 
 /// @title PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
-contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
+/// @dev    Sellers custody Punks in their own `PunkVault` (deployed via the
+///         `PunkVaultFactory`) and approve this contract as operator. The
+///         auction pulls Punks straight from the vault at sale start and
+///         performs the canonical settlement round-trip from its own custody.
+contract PunksAuction is IPunksAuction, Offers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
     uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
     uint40 internal constant AUCTION_DURATION = 24 hours;
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
+
+    /// @notice Returns the canonical CryptoPunks market.
+    ICryptoPunksMarket public immutable PUNKS;
+    /// @notice Returns the CryptoPunks V1 market.
+    ICryptoPunksMarket public immutable PUNKS_V1;
+    /// @notice Returns the per-user `PunkVault` factory.
+    IPunkVaultFactory public immutable PUNK_VAULTS;
 
     /// @notice Returns the last lot id that was created.
     uint256 public lastLotId;
@@ -35,20 +47,31 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     mapping(uint256 => LotItem[]) internal lotItems;
     mapping(uint256 => LotItem[]) internal auctionItems;
 
-    /// @notice Creates the auction house wired to the canonical and V1 Punk markets.
-    constructor(address punks, address punksV1, address punksData)
-        PunksEscrowManager(punks, punksV1)
+    /// @notice Creates the auction house wired to both Punk markets and the vault factory.
+    constructor(address punks, address punksV1, address punksData, address vaultFactory)
         Offers(punksData)
-    {}
+    {
+        if (punks == address(0) || punksV1 == address(0) || vaultFactory == address(0)) {
+            revert ZeroAddress();
+        }
+        if (punks == punksV1) revert ZeroAddress();
+        PUNKS = ICryptoPunksMarket(punks);
+        PUNKS_V1 = ICryptoPunksMarket(punksV1);
+        PUNK_VAULTS = IPunkVaultFactory(vaultFactory);
+    }
 
-    /// @notice Receives ETH from trusted Punk market flows.
+    /// @notice Receives ETH from the two Punk markets during settlement
+    ///         `withdraw()` calls. Nothing else.
     receive() external payable {
-        if (!_isPunkReceiveSender(msg.sender)) revert UnexpectedEtherSender();
+        if (msg.sender != address(PUNKS) && msg.sender != address(PUNKS_V1)) {
+            revert UnexpectedEtherSender();
+        }
     }
 
     /// @notice Creates a lot of one or more Punks that can be opened as an auction.
-    /// @dev    Idempotently registers the seller's vault so first-time sellers
-    ///         do not need a separate `ensureVault` transaction.
+    /// @dev    Pre-checks that the seller's vault is deployed and has approved
+    ///         this auction as operator — surfaces misconfiguration up front
+    ///         instead of at pull time.
     function createLot(
         LotItem[] calldata items,
         uint96 reserveWei,
@@ -56,7 +79,7 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
     ) external returns (uint256 id) {
         if (reserveWei == 0) revert InvalidAmount();
         if (expiresAt <= block.timestamp) revert InvalidExpiry();
-        _ensureSellerVault(msg.sender);
+        _requireAuctionApproved(msg.sender);
         _validateLotItems(items);
 
         uint8 itemCount = uint8(items.length);
@@ -600,5 +623,80 @@ contract PunksAuction is IPunksAuction, PunksEscrowManager, Offers {
         uint256 tokenId
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(seller, tokenContract, tokenId));
+    }
+
+    // ───────────────────── Vault interaction helpers ──────────────────────
+
+    /// @dev Resolves the Punk market contract for a standard.
+    function _marketFor(TokenStandard standard) private view returns (ICryptoPunksMarket) {
+        return standard == TokenStandard.CRYPTOPUNKS ? PUNKS : PUNKS_V1;
+    }
+
+    /// @dev Returns the Punk market contract address for a standard.
+    function _tokenContractFor(TokenStandard standard) private view returns (address) {
+        return address(_marketFor(standard));
+    }
+
+    /// @dev Pre-check at lot create time: the seller's vault must be
+    ///      deployed and the auction must be approved as operator on it.
+    function _requireAuctionApproved(address seller) private view {
+        address vault = PUNK_VAULTS.predictVault(seller);
+        if (vault.code.length == 0) revert VaultNotDeployed();
+        if (!IPunkVault(vault).isApprovedForAll(address(this))) {
+            revert AuctionNotApproved();
+        }
+    }
+
+    /// @dev Reverts when the seller's vault does not currently hold the Punk.
+    function _requirePunkInVault(
+        TokenStandard standard,
+        address seller,
+        uint256 punkIndex
+    ) private view {
+        if (
+            _marketFor(standard).punkIndexToAddress(punkIndex)
+                != PUNK_VAULTS.predictVault(seller)
+        ) revert PunkNotInVault();
+    }
+
+    /// @dev Returns true when the seller's vault still holds the Punk.
+    function _punkStillInSellerVault(
+        TokenStandard standard,
+        address seller,
+        uint256 punkIndex
+    ) private view returns (bool) {
+        address vault = PUNK_VAULTS.predictVault(seller);
+        try _marketFor(standard).punkIndexToAddress(punkIndex) returns (address holder) {
+            return holder == vault;
+        } catch {
+            return false;
+        }
+    }
+
+    /// @dev Pulls a Punk from the seller's vault into this contract's custody.
+    function _pullPunk(
+        TokenStandard standard,
+        address seller,
+        uint256 punkIndex
+    ) private {
+        IPunkVault(PUNK_VAULTS.predictVault(seller))
+            .transferPunk(_tokenContractFor(standard), punkIndex, address(this));
+    }
+
+    /// @dev Delivers a Punk that is already in this contract's custody to the
+    ///      winner. Round-trips the hammer through `buyPunk` so the market
+    ///      emits a real-priced `PunkBought`. Net ETH movement is zero — the
+    ///      proceeds land back here via `withdraw()`.
+    function _deliverPunk(
+        TokenStandard standard,
+        uint256 punkIndex,
+        address to,
+        uint256 hammerWei
+    ) private {
+        ICryptoPunksMarket market = _marketFor(standard);
+        market.offerPunkForSaleToAddress(punkIndex, hammerWei, address(this));
+        market.buyPunk{value: hammerWei}(punkIndex);
+        market.withdraw();
+        market.transferPunk(to, punkIndex);
     }
 }

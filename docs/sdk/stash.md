@@ -88,6 +88,10 @@ Offchain Punk bids use the Stash EIP-712 domain with `chainId: 1` and
 `verifyingContract`. CryptoPunks are mainnet-only, so the SDK sets the chain ID
 internally.
 
+Migration note: replace `signPunkBid({ chainId, bid })` and
+`typedDataForPunkBid({ chainId, bid })` with `{ bid }`. Stash Punk bid signing
+always uses Ethereum mainnet.
+
 ```ts
 const bid = {
   order: {

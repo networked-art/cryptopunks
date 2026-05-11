@@ -213,10 +213,18 @@ The package still exports:
 - bitmap utilities and validation helpers
 - `@networked-art/punks-sdk/offline` for direct offline dataset access
 
+## Stash Bid Migration
+
+Stash Punk bid signing is mainnet-only. Replace
+`signPunkBid({ chainId, bid })` and `typedDataForPunkBid({ chainId, bid })`
+with `signPunkBid({ bid })` and `typedDataForPunkBid({ bid })`; the SDK always
+uses Ethereum mainnet `chainId: 1`.
+
 ## Development
 
 ```sh
 pnpm --filter @networked-art/punks-sdk typecheck
+pnpm --filter @networked-art/punks-sdk typecheck:api
 pnpm --filter @networked-art/punks-sdk test
 pnpm --filter @networked-art/punks-sdk build
 ```

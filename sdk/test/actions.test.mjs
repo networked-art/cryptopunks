@@ -378,75 +378,16 @@ describe('SDK contract actions', () => {
 
   it('keeps admin-only helpers off the user-facing SDK clients', () => {
     const punks = createPunksSdk({ addresses: { stash: STASH } })
-    const removedFactoryMethods = [
-      'stashVerifier',
-      'owner',
-      'ownershipHandoverExpiresAt',
-      'rolesOf',
-      'hasAllRoles',
-      'hasAnyRole',
-      'prepareAddVersion',
-      'addVersion',
-      'prepareSetAuction',
-      'setAuction',
-      'prepareTransferOwnership',
-      'transferOwnership',
-      'prepareRenounceOwnership',
-      'renounceOwnership',
-      'prepareRequestOwnershipHandover',
-      'requestOwnershipHandover',
-      'prepareCompleteOwnershipHandover',
-      'completeOwnershipHandover',
-      'prepareCancelOwnershipHandover',
-      'cancelOwnershipHandover',
-      'prepareGrantRoles',
-      'grantRoles',
-      'prepareRevokeRoles',
-      'revokeRoles',
-      'prepareRenounceRoles',
-      'renounceRoles',
-    ]
-    for (const method of removedFactoryMethods) {
-      assert.equal(punks.stash.factory[method], undefined, `factory.${method} should not be public`)
-    }
-
-    const keptFactoryMethods = [
-      'currentVersion',
-      'implementation',
-      'implementations',
-      'stashAddressFor',
-      'ownerHasDeployed',
-      'statusForOwner',
-      'isStash',
-      'isAuction',
-      'prepareDeployStash',
-      'deployStash',
-      'prepareUpgradeStash',
-      'upgradeStash',
-    ]
-    for (const method of keptFactoryMethods) {
-      assert.equal(typeof punks.stash.factory[method], 'function', `factory.${method} should stay public`)
-    }
-
     const stash = punks.stash.at(STASH)
-    assert.equal(stash.prepareInitialize, undefined)
-    assert.equal(stash.initialize, undefined)
-
-    const removedLegacyWrapperMethods = [
-      'prepareSetBaseURI',
-      'setBaseURI',
-      'preparePause',
-      'pause',
-      'prepareUnpause',
-      'unpause',
-      'prepareTransferOwnership',
-      'transferOwnership',
-      'prepareRenounceOwnership',
-      'renounceOwnership',
-    ]
-    for (const method of removedLegacyWrapperMethods) {
-      assert.equal(punks.wrappers.legacy[method], undefined, `legacy wrapper ${method} should not be public`)
-    }
+    assert.deepEqual({
+      factoryAddVersion: punks.stash.factory.addVersion,
+      stashInitialize: stash.initialize,
+      legacyPause: punks.wrappers.legacy.pause,
+    }, {
+      factoryAddVersion: undefined,
+      stashInitialize: undefined,
+      legacyPause: undefined,
+    })
   })
 
   it('rejects zero or undeployed Stash owner lookups clearly', async () => {

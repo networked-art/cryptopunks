@@ -89,16 +89,13 @@ export async function deployAuctionStack() {
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
   const punksData = await viem.deployContract('MockPunksData')
+  const vaultFactory = await viem.deployContract('PunkVaultFactory')
   const auctions = await viem.deployContract('PunksAuction', [
     punks.address,
     punksV1.address,
     punksData.address,
+    vaultFactory.address,
   ])
-
-  const escrow = await viem.getContractAt(
-    'PunksEscrow',
-    (await auctions.read.PUNKS_ESCROW()) as `0x${string}`,
-  )
 
   return {
     connection,
@@ -107,7 +104,7 @@ export async function deployAuctionStack() {
     punksV1,
     punksData,
     auctions,
-    escrow,
+    vaultFactory,
     deployer,
     seller,
     bidder1,

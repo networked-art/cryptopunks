@@ -19,6 +19,7 @@ import {
 } from './utils'
 
 const UINT256_MAX = (1n << 256n) - 1n
+const STASH_PUNK_BID_CHAIN_ID = 1 as const
 
 export type StashOrder = {
   numberOfUnits: number
@@ -107,7 +108,7 @@ export function stashPunkBidTypedData(params: {
 }) {
   return {
     domain: {
-      chainId: 1,
+      chainId: STASH_PUNK_BID_CHAIN_ID,
       verifyingContract: params.stash,
     },
     types: stashPunkBidTypedDataTypes,

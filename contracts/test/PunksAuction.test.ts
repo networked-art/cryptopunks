@@ -25,11 +25,42 @@ async function assignPunkV1(ctx: Ctx, to: any, punkId: bigint) {
   await ctx.punksV1.write.setInitialOwner([to.account.address, punkId])
 }
 
-async function depositPunk(ctx: Ctx, owner: any, punkId: bigint) {
-  const vault = (await ctx.escrow.read.predictVault([
+async function ensureVaultApprovingAuctions(ctx: Ctx, owner: any) {
+  const vault = (await ctx.vaultFactory.read.predictVault([
     owner.account.address,
   ])) as `0x${string}`
 
+  const publicClient = await ctx.viem.getPublicClient()
+  const code = await publicClient.getCode({ address: vault })
+  const deployed = !!code && code !== '0x'
+
+  if (!deployed) {
+    // First-time setup: deploy + pre-approve auctions in one tx.
+    const factoryAsOwner = await ctx.viem.getContractAt(
+      'PunkVaultFactory',
+      ctx.vaultFactory.address,
+      { client: { wallet: owner } },
+    )
+    await factoryAsOwner.write.ensureMyVault([[ctx.auctions.address]])
+    return vault
+  }
+
+  // Already deployed — confirm the auction is approved as operator.
+  const vaultContract = await ctx.viem.getContractAt('PunkVault', vault)
+  const approved = (await vaultContract.read.isApprovedForAll([
+    ctx.auctions.address,
+  ])) as boolean
+  if (!approved) {
+    const vaultAsOwner = await ctx.viem.getContractAt('PunkVault', vault, {
+      client: { wallet: owner },
+    })
+    await vaultAsOwner.write.setApprovalForAll([ctx.auctions.address, true])
+  }
+  return vault
+}
+
+async function depositPunk(ctx: Ctx, owner: any, punkId: bigint) {
+  const vault = await ensureVaultApprovingAuctions(ctx, owner)
   const punksAsOwner = await ctx.viem.getContractAt(
     'MockCryptoPunksMarket',
     ctx.punks.address,
@@ -40,10 +71,7 @@ async function depositPunk(ctx: Ctx, owner: any, punkId: bigint) {
 }
 
 async function depositPunkV1(ctx: Ctx, owner: any, punkId: bigint) {
-  const vault = (await ctx.escrow.read.predictVault([
-    owner.account.address,
-  ])) as `0x${string}`
-
+  const vault = await ensureVaultApprovingAuctions(ctx, owner)
   const punksAsOwner = await ctx.viem.getContractAt(
     'MockCryptoPunksMarketV1Buggy',
     ctx.punksV1.address,
@@ -176,42 +204,54 @@ async function placeOffer(
 const traitBit = (id: number): bigint => 1n << BigInt(id)
 
 describe('PunksAuction', () => {
-  it('deploys one escrow that serves both standards from a single deterministic vault per user', async () => {
+  it('exposes both markets and the vault factory through the auction immutables', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, escrow, punks, punksV1, seller, other } = ctx
+    const { auctions, punks, punksV1, vaultFactory } = ctx
 
     assert.equal(
-      ((await escrow.read.AUCTIONS()) as string).toLowerCase(),
-      auctions.address.toLowerCase(),
-    )
-    assert.equal(
-      ((await escrow.read.PUNKS()) as string).toLowerCase(),
+      ((await auctions.read.PUNKS()) as string).toLowerCase(),
       punks.address.toLowerCase(),
     )
     assert.equal(
-      ((await escrow.read.PUNKS_V1()) as string).toLowerCase(),
+      ((await auctions.read.PUNKS_V1()) as string).toLowerCase(),
       punksV1.address.toLowerCase(),
     )
-
-    const predicted = (await escrow.read.predictVault([
-      seller.account.address,
-    ])) as `0x${string}`
-
-    // Anyone can register a user's vault — the salt is the user's address.
-    const escrowAsOther = await ctx.viem.getContractAt(
-      'PunksEscrow',
-      escrow.address,
-      { client: { wallet: other } },
+    assert.equal(
+      ((await auctions.read.PUNK_VAULTS()) as string).toLowerCase(),
+      vaultFactory.address.toLowerCase(),
     )
-    await escrowAsOther.write.ensureVault([seller.account.address])
-
-    const stored = (await escrow.read.vaults([
-      seller.account.address,
-    ])) as `0x${string}`
-    assert.equal(stored.toLowerCase(), predicted.toLowerCase())
   })
 
-  it('requires the seller vault to hold the punk before lot creation', async () => {
+  it('deploys a single deterministic vault per user via the factory', async () => {
+    const ctx = await deployAuctionStack()
+    const { vaultFactory, seller, other } = ctx
+
+    const predicted = (await vaultFactory.read.predictVault([
+      seller.account.address,
+    ])) as `0x${string}`
+
+    // Anyone can deploy a user's vault — the salt is the user's address.
+    const factoryAsOther = await ctx.viem.getContractAt(
+      'PunkVaultFactory',
+      vaultFactory.address,
+      { client: { wallet: other } },
+    )
+    await factoryAsOther.write.ensureVault([seller.account.address])
+
+    const publicClient = await ctx.viem.getPublicClient()
+    const code = await publicClient.getCode({ address: predicted })
+    assert.ok(code && code !== '0x', 'vault should have code after ensureVault')
+
+    // Predicted address stays the same after deploy.
+    assert.equal(
+      ((await vaultFactory.read.predictVault([
+        seller.account.address,
+      ])) as string).toLowerCase(),
+      predicted.toLowerCase(),
+    )
+  })
+
+  it('rejects createLot when the seller vault is not yet deployed', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, seller } = ctx
     await assignPunk(ctx, seller, 500n)
@@ -230,13 +270,68 @@ describe('PunksAuction', () => {
         expiresAt,
       ]),
       auctions,
+      'VaultNotDeployed',
+    )
+  })
+
+  it('rejects createLot when the seller vault has not approved the auction', async () => {
+    const ctx = await deployAuctionStack()
+    const { auctions, vaultFactory, seller } = ctx
+    await assignPunk(ctx, seller, 501n)
+
+    // Deploy the vault without pre-approving the auction.
+    const factoryAsSeller = await ctx.viem.getContractAt(
+      'PunkVaultFactory',
+      vaultFactory.address,
+      { client: { wallet: seller } },
+    )
+    await factoryAsSeller.write.ensureMyVault([[]])
+
+    const expiresAt = await futureTs(ctx.connection, WEEK)
+    const auctionsAsSeller = await ctx.viem.getContractAt(
+      'PunksAuction',
+      auctions.address,
+      { client: { wallet: seller } },
+    )
+
+    await ctx.viem.assertions.revertWithCustomError(
+      auctionsAsSeller.write.createLot([
+        [lotItem(501)],
+        parseEther('1'),
+        expiresAt,
+      ]),
+      auctions,
+      'AuctionNotApproved',
+    )
+  })
+
+  it('requires the seller vault to hold the punk before lot creation', async () => {
+    const ctx = await deployAuctionStack()
+    const { auctions, seller } = ctx
+    await assignPunk(ctx, seller, 502n)
+    await ensureVaultApprovingAuctions(ctx, seller)
+
+    const expiresAt = await futureTs(ctx.connection, WEEK)
+    const auctionsAsSeller = await ctx.viem.getContractAt(
+      'PunksAuction',
+      auctions.address,
+      { client: { wallet: seller } },
+    )
+
+    await ctx.viem.assertions.revertWithCustomError(
+      auctionsAsSeller.write.createLot([
+        [lotItem(502)],
+        parseEther('1'),
+        expiresAt,
+      ]),
+      auctions,
       'PunkNotInVault',
     )
   })
 
-  it('opens an auction by pulling the punk from the seller vault into escrow', async () => {
+  it('opens an auction by pulling the punk from the seller vault into auction custody', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, escrow, punks, seller, bidder1 } = ctx
+    const { auctions, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 100n)
     const vault = await depositPunk(ctx, seller, 100n)
@@ -252,7 +347,7 @@ describe('PunksAuction', () => {
 
     assert.equal(
       ((await punks.read.punkIndexToAddress([100n])) as string).toLowerCase(),
-      escrow.address.toLowerCase(),
+      auctions.address.toLowerCase(),
     )
 
     const auction = await auctions.read.auctions([1n])
@@ -353,7 +448,7 @@ describe('PunksAuction', () => {
 
   it('settles canonical Punks with a PunkBought round-trip and zero fees', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, escrow, punks, seller, bidder1 } = ctx
+    const { auctions, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 200n)
     await depositPunk(ctx, seller, 200n)
@@ -396,17 +491,18 @@ describe('PunksAuction', () => {
     })) as Array<{ args: { value: bigint; fromAddress: string; toAddress: string } }>
     assert.equal(bought.length, 1)
     assert.equal(bought[0].args.value, bidWei)
-    assert.equal(bought[0].args.fromAddress.toLowerCase(), escrow.address.toLowerCase())
+    // Round-trip happens from the auction's custody, so it appears as
+    // both the seller and the buyer of the canonical PunkBought.
+    assert.equal(bought[0].args.fromAddress.toLowerCase(), auctions.address.toLowerCase())
     assert.equal(bought[0].args.toAddress.toLowerCase(), auctions.address.toLowerCase())
 
     assert.equal(await publicClient.getBalance({ address: auctions.address }), 0n)
-    assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
-    assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
+    assert.equal(await punks.read.pendingWithdrawals([auctions.address]), 0n)
   })
 
   it('reverts settlement without paying the seller when delivery fails', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, escrow, punks, seller, bidder1 } = ctx
+    const { auctions, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 201n)
     await depositPunk(ctx, seller, 201n)
@@ -431,9 +527,9 @@ describe('PunksAuction', () => {
     assert.equal(sellerAfter, sellerBefore)
     assert.equal(
       ((await punks.read.punkIndexToAddress([201n])) as string).toLowerCase(),
-      escrow.address.toLowerCase(),
+      auctions.address.toLowerCase(),
     )
-    assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
+    assert.equal(await punks.read.pendingWithdrawals([auctions.address]), 0n)
 
     const auction = await auctions.read.auctions([1n])
     assert.equal(auction[6], false)
@@ -441,7 +537,7 @@ describe('PunksAuction', () => {
 
   it('settles V1 Punks through the bug-aware withdraw path with zero fees', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, escrow, punksV1, seller, bidder1 } = ctx
+    const { auctions, punksV1, seller, bidder1 } = ctx
 
     await assignPunkV1(ctx, seller, 300n)
     await depositPunkV1(ctx, seller, 300n)
@@ -468,8 +564,6 @@ describe('PunksAuction', () => {
       bidder1.account.address.toLowerCase(),
     )
     assert.equal(await punksV1.read.pendingWithdrawals([auctions.address]), 0n)
-    // The unified escrow never sees V1 ETH — it's credited to the auction house.
-    assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
   })
 
   it('rejects arbitrary ETH sends outside bidding and Punk settlement', async () => {
@@ -484,12 +578,12 @@ describe('PunksAuction', () => {
     )
   })
 
-  describe('escrow & vault', () => {
+  describe('vault factory & vault', () => {
     it('routes both standards through one deterministic vault per user', async () => {
       const ctx = await deployAuctionStack()
-      const { escrow, punks, punksV1, seller } = ctx
+      const { vaultFactory, punks, punksV1, seller } = ctx
 
-      const predicted = (await escrow.read.predictVault([
+      const predicted = (await vaultFactory.read.predictVault([
         seller.account.address,
       ])) as `0x${string}`
 
@@ -512,24 +606,32 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('reclaims canonical and V1 Punks from the same vault via the per-standard reclaim path', async () => {
+    it('reclaims canonical and V1 Punks via vault.transferPunk by the owner', async () => {
       const ctx = await deployAuctionStack()
-      const { escrow, punks, punksV1, seller } = ctx
+      const { vaultFactory, punks, punksV1, seller } = ctx
 
       await assignPunk(ctx, seller, 5n)
       await assignPunkV1(ctx, seller, 5n)
-      await depositPunk(ctx, seller, 5n)
+      const vaultAddress = await depositPunk(ctx, seller, 5n)
       await depositPunkV1(ctx, seller, 5n)
 
-      const escrowAsSeller = await ctx.viem.getContractAt(
-        'PunksEscrow',
-        escrow.address,
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
         { client: { wallet: seller } },
       )
 
-      // No prior ensureVault — reclaim auto-deploys the clone.
-      await escrowAsSeller.write.reclaim([Standard.CRYPTOPUNKS, 5n])
-      await escrowAsSeller.write.reclaim([Standard.CRYPTOPUNKS_V1, 5n])
+      // Owner is implicitly authorized: transferPunk back to themselves.
+      await vaultAsSeller.write.transferPunk([
+        punks.address,
+        5n,
+        seller.account.address,
+      ])
+      await vaultAsSeller.write.transferPunk([
+        punksV1.address,
+        5n,
+        seller.account.address,
+      ])
 
       assert.equal(
         ((await punks.read.punkIndexToAddress([5n])) as string).toLowerCase(),
@@ -539,106 +641,104 @@ describe('PunksAuction', () => {
         ((await punksV1.read.punkIndexToAddress([5n])) as string).toLowerCase(),
         seller.account.address.toLowerCase(),
       )
+      // Predicted address survives a deploy.
+      assert.equal(
+        ((await vaultFactory.read.predictVault([
+          seller.account.address,
+        ])) as string).toLowerCase(),
+        vaultAddress.toLowerCase(),
+      )
     })
 
-    it('reclaim reverts when the vault does not currently hold the Punk for that standard', async () => {
+    it('vault.transferPunk reverts when the vault does not hold the Punk on that market', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, escrow, seller } = ctx
+      const { seller } = ctx
 
-      // Seller owns canonical #6 but only ever deposited the canonical one.
       await assignPunk(ctx, seller, 6n)
-      await depositPunk(ctx, seller, 6n)
+      const vaultAddress = await depositPunk(ctx, seller, 6n)
 
-      const escrowAsSeller = await ctx.viem.getContractAt(
-        'PunksEscrow',
-        escrow.address,
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
         { client: { wallet: seller } },
       )
 
-      // Reclaim with the wrong standard: nothing for V1 #6 in the vault.
-      await ctx.viem.assertions.revertWithCustomError(
-        escrowAsSeller.write.reclaim([Standard.CRYPTOPUNKS_V1, 6n]),
-        auctions,
-        'PunkNotInVault',
+      // Vault doesn't hold V1 #6 — the underlying market call reverts.
+      await assert.rejects(
+        vaultAsSeller.write.transferPunk([
+          ctx.punksV1.address,
+          6n,
+          seller.account.address,
+        ]),
       )
     })
 
-    it('auto-registers the seller vault on first createLot when only predictVault was used', async () => {
+    it('exposes one-shot factory pre-approval, with subsequent calls reverting', async () => {
       const ctx = await deployAuctionStack()
-      const { escrow, seller } = ctx
+      const { auctions, vaultFactory, seller } = ctx
 
-      // Seller deposits to the predicted address without first calling ensureVault.
-      await assignPunk(ctx, seller, 7n)
-      const vault = await depositPunk(ctx, seller, 7n)
+      // First call deploys + approves the auction in the same tx.
+      await ensureVaultApprovingAuctions(ctx, seller)
+
+      const vaultAddress = (await vaultFactory.read.predictVault([
+        seller.account.address,
+      ])) as `0x${string}`
+      const vault = await ctx.viem.getContractAt('PunkVault', vaultAddress)
       assert.equal(
-        ((await escrow.read.vaults([seller.account.address])) as string).toLowerCase(),
-        zeroAddress,
+        (await vault.read.isApprovedForAll([auctions.address])) as boolean,
+        true,
       )
 
-      const expiresAt = await futureTs(ctx.connection, WEEK)
-      await createSinglePunkLot(ctx, seller, 7n, parseEther('1'), expiresAt)
-
-      // After createLot, the vault is registered at the predicted address.
-      assert.equal(
-        ((await escrow.read.vaults([seller.account.address])) as string).toLowerCase(),
-        vault.toLowerCase(),
+      // Second factory pre-approval reverts — owner must use setApprovalForAll.
+      const factoryAsSeller = await ctx.viem.getContractAt(
+        'PunkVaultFactory',
+        vaultFactory.address,
+        { client: { wallet: seller } },
+      )
+      await assert.rejects(
+        factoryAsSeller.write.ensureMyVault([[auctions.address]]),
       )
     })
 
-    it('rejects ETH from any sender other than the canonical Punk market', async () => {
+    it('rejects ETH from any sender other than the two Punk markets', async () => {
       const ctx = await deployAuctionStack()
-      const { escrow, other } = ctx
+      const { auctions, other } = ctx
 
       await assert.rejects(
         other.sendTransaction({
-          to: escrow.address,
+          to: auctions.address,
           value: 1n,
         }),
       )
     })
 
-    it('rejects pullFromVault when called from outside the auction house', async () => {
+    it('rejects vault transferPunk from callers that are neither owner nor approved', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, escrow, attacker } = ctx
+      const { vaultFactory, punks, seller, attacker } = ctx
 
-      const escrowAsAttacker = await ctx.viem.getContractAt(
-        'PunksEscrow',
-        escrow.address,
-        { client: { wallet: attacker } },
-      )
-      await ctx.viem.assertions.revertWithCustomError(
-        escrowAsAttacker.write.pullFromVault([
-          Standard.CRYPTOPUNKS,
-          attacker.account.address,
-          0n,
-        ]),
-        auctions,
-        'NotAuctions',
-      )
-    })
-
-    it('rejects vault transfers from any caller other than the escrow', async () => {
-      const ctx = await deployAuctionStack()
-      const { escrow, punks, seller, attacker } = ctx
-
-      // Materialize the seller's vault.
-      const escrowAsSeller = await ctx.viem.getContractAt(
-        'PunksEscrow',
-        escrow.address,
+      // Seller deploys their vault without approving the attacker.
+      const factoryAsSeller = await ctx.viem.getContractAt(
+        'PunkVaultFactory',
+        vaultFactory.address,
         { client: { wallet: seller } },
       )
-      await escrowAsSeller.write.ensureVault([seller.account.address])
-      const vaultAddress = (await escrow.read.vaults([
+      await factoryAsSeller.write.ensureMyVault([[]])
+
+      const vaultAddress = (await vaultFactory.read.predictVault([
         seller.account.address,
       ])) as `0x${string}`
-
       const vault = await ctx.viem.getContractAt('PunkVault', vaultAddress, {
         client: { wallet: attacker },
       })
+
       await ctx.viem.assertions.revertWithCustomError(
-        vault.write.transfer([punks.address, 0n, attacker.account.address]),
+        vault.write.transferPunk([
+          punks.address,
+          0n,
+          attacker.account.address,
+        ]),
         vault,
-        'NotOwner',
+        'NotAuthorized',
       )
     })
   })
@@ -647,6 +747,9 @@ describe('PunksAuction', () => {
     it('rejects empty and oversized item arrays', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
+      // Setup the seller's vault + approval so item-array validation, not
+      // the vault pre-check, is what fires.
+      await ensureVaultApprovingAuctions(ctx, seller)
       const expiresAt = await futureTs(ctx.connection, WEEK)
       const auctionsAsSeller = await ctx.viem.getContractAt(
         'PunksAuction',
@@ -944,20 +1047,24 @@ describe('PunksAuction', () => {
 
     it('frees a Punk slot when a lot is cleared after the seller reclaims the Punk', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, escrow, seller } = ctx
+      const { auctions, punks, seller } = ctx
       await assignPunk(ctx, seller, 82n)
-      await depositPunk(ctx, seller, 82n)
+      const vaultAddress = await depositPunk(ctx, seller, 82n)
 
       const expiresAt = await futureTs(ctx.connection, WEEK)
       await createSinglePunkLot(ctx, seller, 82n, parseEther('1'), expiresAt)
 
       // Seller pulls the Punk back out of the vault, invalidating the lot.
-      const escrowAsSeller = await ctx.viem.getContractAt(
-        'PunksEscrow',
-        escrow.address,
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
         { client: { wallet: seller } },
       )
-      await escrowAsSeller.write.reclaim([Standard.CRYPTOPUNKS, 82n])
+      await vaultAsSeller.write.transferPunk([
+        punks.address,
+        82n,
+        seller.account.address,
+      ])
 
       // Anyone can now clear the stale lot, which frees the slot.
       await auctions.write.clearStaleLot([1n])
@@ -998,7 +1105,7 @@ describe('PunksAuction', () => {
       await openAuction(ctx, bidder1, 1n, parseEther('1'))
 
       // Once auction opens, the lot slot is released. (The Punk itself is now
-      // in escrow custody, so re-listing the same Punk would revert at the
+      // in auction custody, so re-listing the same Punk would revert at the
       // vault-custody check.)
       assert.equal(
         await auctions.read.activeLotFor([
@@ -1448,7 +1555,7 @@ describe('PunksAuction', () => {
 
     it('initializes a 24h auction from an offer using a stored lot', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, escrow, punks, seller, bidder1, other } = ctx
+      const { auctions, punks, seller, bidder1, other } = ctx
 
       await assignPunk(ctx, seller, 950n)
       await depositPunk(ctx, seller, 950n)
@@ -1478,7 +1585,7 @@ describe('PunksAuction', () => {
       )
       assert.equal(
         ((await punks.read.punkIndexToAddress([950n])) as string).toLowerCase(),
-        escrow.address.toLowerCase(),
+        auctions.address.toLowerCase(),
       )
       const auction = await auctions.read.auctions([1n])
       assert.equal(auction[0].toLowerCase(), seller.account.address.toLowerCase())

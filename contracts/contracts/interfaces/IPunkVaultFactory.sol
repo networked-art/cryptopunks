@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+/// @title  IPunkVaultFactory
+/// @notice Deterministic per-user `PunkVault` deployer. Salt is the user's
+///         address, so a vault's address is stable across networks and
+///         predictable offchain. Counterfactual deposits to
+///         `predictVault(user)` are safe regardless of when the vault is
+///         deployed or by whom.
+/// @author 1001
+interface IPunkVaultFactory {
+    error ZeroAddress();
+
+    /// @dev Emitted the first time a user's vault is deployed.
+    event VaultDeployed(address indexed owner, address indexed vault);
+
+    /// @notice The `PunkVault` implementation cloned for each user.
+    function IMPLEMENTATION() external view returns (address);
+
+    /// @notice Deterministic vault address for `user`, deployed or not.
+    function predictVault(address user) external view returns (address);
+
+    /// @notice Deploys `user`'s vault if not yet deployed. Idempotent and
+    ///         open — a third-party deploy can only produce an empty,
+    ///         user-owned vault. The user sets approvals afterwards.
+    function ensureVault(address user) external returns (address vault);
+
+    /// @notice Deploys (or returns) `msg.sender`'s vault and pre-approves
+    ///         `operators` in the same tx. `msg.sender`-gated so only the
+    ///         owner can opt into pre-approvals at deploy time.
+    /// @dev    Pre-approval is one-shot per vault: subsequent calls revert
+    ///         with `AlreadyInitialized`. After deployment, use
+    ///         `setApprovalForAll` on the vault directly.
+    function ensureMyVault(address[] calldata operators)
+        external returns (address vault);
+}

@@ -1348,7 +1348,7 @@ export const punksAuctionAbi = [
   },
   {
     type: 'function',
-    name: 'PUNKS_ESCROW',
+    name: 'PUNK_VAULTS',
     inputs: [],
     outputs: [{ type: 'address' }],
     stateMutability: 'view',
@@ -1600,11 +1600,11 @@ export const punksAuctionAbi = [
   },
 ] as const satisfies Abi
 
-export const punksEscrowAbi = [
+export const punkVaultFactoryAbi = [
   {
     type: 'function',
-    name: 'vaults',
-    inputs: [{ name: 'user', type: 'address' }],
+    name: 'IMPLEMENTATION',
+    inputs: [],
     outputs: [{ type: 'address' }],
     stateMutability: 'view',
   },
@@ -1619,17 +1619,143 @@ export const punksEscrowAbi = [
     type: 'function',
     name: 'ensureVault',
     inputs: [{ name: 'user', type: 'address' }],
-    outputs: [{ type: 'address' }],
+    outputs: [{ name: 'vault', type: 'address' }],
     stateMutability: 'nonpayable',
   },
   {
     type: 'function',
-    name: 'reclaim',
+    name: 'ensureMyVault',
+    inputs: [{ name: 'operators', type: 'address[]' }],
+    outputs: [{ name: 'vault', type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    name: 'VaultDeployed',
     inputs: [
-      { name: 'standard', type: 'uint8' },
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'vault', type: 'address', indexed: true },
+    ],
+  },
+] as const satisfies Abi
+
+export const punkVaultAbi = [
+  {
+    type: 'function',
+    name: 'owner',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'FACTORY',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    inputs: [
+      { name: 'market', type: 'address' },
       { name: 'punkIndex', type: 'uint256' },
+      { name: 'operator', type: 'address' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setApprovalForAll',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'approved', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getApproved',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+    ],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isApprovedForAll',
+    inputs: [{ name: 'operator', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isAuthorized',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'caller', type: 'address' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'transferPunk',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'to', type: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawFromMarket',
+    inputs: [{ name: 'market', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'execute',
+    inputs: [
+      { name: 'target', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'event',
+    name: 'Approval',
+    inputs: [
+      { name: 'market', type: 'address', indexed: true },
+      { name: 'punkIndex', type: 'uint256', indexed: true },
+      { name: 'operator', type: 'address', indexed: true },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ApprovalForAll',
+    inputs: [
+      { name: 'operator', type: 'address', indexed: true },
+      { name: 'approved', type: 'bool', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'Executed',
+    inputs: [
+      { name: 'target', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256', indexed: false },
+      { name: 'data', type: 'bytes', indexed: false },
+    ],
   },
 ] as const satisfies Abi

@@ -8,7 +8,8 @@ import {
 import {
   cryptoPunksMarketAbi,
   punksAuctionAbi,
-  punksEscrowAbi,
+  punkVaultAbi,
+  punkVaultFactoryAbi,
 } from './abi'
 import type { PunksDataset } from './dataset'
 import type { PunkQuery } from './types'
@@ -367,8 +368,8 @@ export class PunksAuctionClient {
     return compileOfferSlot(this.dataset.source, input)
   }
 
-  async escrowAddress(): Promise<Address> {
-    return this.read<Address>('PUNKS_ESCROW')
+  async vaultFactoryAddress(): Promise<Address> {
+    return this.read<Address>('PUNK_VAULTS')
   }
 
   async canonicalMarketAddress(): Promise<Address> {
@@ -379,23 +380,16 @@ export class PunksAuctionClient {
     return this.read<Address>('PUNKS_V1')
   }
 
-  async vaultFor(user: Address): Promise<{ registered: Address; predicted: Address }> {
-    const escrow = await this.escrowAddress()
-    const [registered, predicted] = await Promise.all([
-      readContract<Address>(this.requirePublicClient(), {
-        address: escrow,
-        abi: punksEscrowAbi,
-        functionName: 'vaults',
-        args: [user],
-      }),
-      readContract<Address>(this.requirePublicClient(), {
-        address: escrow,
-        abi: punksEscrowAbi,
-        functionName: 'predictVault',
-        args: [user],
-      }),
-    ])
-    return { registered, predicted }
+  /// Returns the deterministic vault address for `user`. Same value whether
+  /// the vault is already deployed or not — safe to deposit to before deploy.
+  async vaultFor(user: Address): Promise<Address> {
+    const factory = await this.vaultFactoryAddress()
+    return readContract<Address>(this.requirePublicClient(), {
+      address: factory,
+      abi: punkVaultFactoryAbi,
+      functionName: 'predictVault',
+      args: [user],
+    })
   }
 
   async prepareDeposit(params: {
@@ -405,7 +399,7 @@ export class PunksAuctionClient {
   }): Promise<ContractWritePlan> {
     validatePunkId(params.punkId)
     const standard = normalizePunkStandard(params.standard ?? 'cryptopunks')
-    const [{ predicted }, market] = await Promise.all([
+    const [vault, market] = await Promise.all([
       this.vaultFor(params.owner),
       this.marketAddressFor(standard),
     ])
@@ -415,7 +409,7 @@ export class PunksAuctionClient {
         address: market,
         abi: cryptoPunksMarketAbi,
         functionName: 'transferPunk',
-        args: [predicted, BigInt(params.punkId)],
+        args: [vault, BigInt(params.punkId)],
       },
     }
   }
@@ -428,12 +422,14 @@ export class PunksAuctionClient {
     return this.write(await this.prepareDeposit(params))
   }
 
+  /// Open deploy path: anyone may call. Produces a clean vault with no
+  /// approvals — the owner sets approvals afterwards.
   async prepareEnsureVault(user: Address): Promise<ContractWritePlan> {
     return {
-      description: 'Register auction vault',
+      description: 'Deploy auction vault',
       request: {
-        address: await this.escrowAddress(),
-        abi: punksEscrowAbi,
+        address: await this.vaultFactoryAddress(),
+        abi: punkVaultFactoryAbi,
         functionName: 'ensureVault',
         args: [user],
       },
@@ -444,18 +440,44 @@ export class PunksAuctionClient {
     return this.write(await this.prepareEnsureVault(user))
   }
 
+  /// Owner-only deploy path: bundles deploy + one-shot operator pre-approval
+  /// in one tx. msg.sender becomes the immutable owner.
+  async prepareEnsureMyVault(operators: readonly Address[]): Promise<ContractWritePlan> {
+    return {
+      description: 'Deploy your vault and pre-approve operators',
+      request: {
+        address: await this.vaultFactoryAddress(),
+        abi: punkVaultFactoryAbi,
+        functionName: 'ensureMyVault',
+        args: [operators],
+      },
+    }
+  }
+
+  async ensureMyVault(operators: readonly Address[]): Promise<TransactionHash> {
+    return this.write(await this.prepareEnsureMyVault(operators))
+  }
+
+  /// Reclaim is a direct `vault.transferPunk(market, idx, owner)` — works
+  /// because the vault's owner is implicitly authorized.
   async prepareReclaim(params: {
     punkId: number
     standard?: PunkStandardRef
   }): Promise<ContractWritePlan> {
     validatePunkId(params.punkId)
+    const owner = this.requireAccount()
+    const standard = normalizePunkStandard(params.standard ?? 'cryptopunks')
+    const [vault, market] = await Promise.all([
+      this.vaultFor(owner),
+      this.marketAddressFor(standard),
+    ])
     return {
       description: `Reclaim CryptoPunk ${params.punkId} from auction vault`,
       request: {
-        address: await this.escrowAddress(),
-        abi: punksEscrowAbi,
-        functionName: 'reclaim',
-        args: [normalizePunkStandard(params.standard ?? 'cryptopunks'), BigInt(params.punkId)],
+        address: vault,
+        abi: punkVaultAbi,
+        functionName: 'transferPunk',
+        args: [market, BigInt(params.punkId), owner],
       },
     }
   }
@@ -771,6 +793,13 @@ export class PunksAuctionClient {
   private requirePublicClient(): PublicClient {
     if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
     return this.publicClient
+  }
+
+  private requireAccount(): Address {
+    if (!this.account) {
+      throw new PunksDataValidationError('account is required for owner-scoped actions')
+    }
+    return this.account
   }
 }
 
