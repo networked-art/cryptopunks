@@ -27,6 +27,12 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
     /// @inheritdoc IPunkVault
     address public immutable FACTORY;
 
+    /// @dev Implementation address baked into the runtime bytecode. Clones
+    ///      delegatecall into this same bytecode, so they read the impl's
+    ///      address through this immutable — `address(this) == _SELF`
+    ///      identifies a direct call on the bare implementation.
+    address private immutable _SELF = address(this);
+
     /// @dev True once `factoryInitialize` has run. Pre-set on the
     ///      implementation itself by the constructor so the template
     ///      can never be hijacked.
@@ -54,13 +60,15 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
 
     /// @inheritdoc IPunkVault
     function owner() public view returns (address ownerAddr) {
+        // Reject calls on the bare implementation: it carries no immutable
+        // args, so `extcodecopy` would return a deterministic-but-arbitrary
+        // slice of the impl's own runtime. That value could mislead
+        // `isAuthorized` callers and offchain indexers.
+        if (address(this) == _SELF) revert NotClone();
+
         // The ERC-1167 proxy runtime is exactly 45 (0x2d) bytes; OZ
-        // `cloneDeterministicWithImmutableArgs` appends our args after.
-        // Layout we agreed on: 20 bytes of owner, nothing else.
-        // extcodecopy reads from this contract's own code, which for a
-        // clone IS the proxy + args. On the bare implementation the args
-        // segment is absent and the read is garbage — the implementation
-        // is sealed by `_initialized = true`, so that's harmless.
+        // `cloneDeterministicWithImmutableArgs` appends our 20 bytes of
+        // owner directly after.
         assembly ("memory-safe") {
             extcodecopy(address(), 0x00, 0x2d, 0x14)
             ownerAddr := shr(96, mload(0x00))

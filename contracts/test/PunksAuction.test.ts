@@ -650,6 +650,27 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('rejects calls on the bare implementation', async () => {
+      const ctx = await deployAuctionStack()
+      const { vaultFactory } = ctx
+
+      const implAddress = (await vaultFactory.read.IMPLEMENTATION()) as `0x${string}`
+      const impl = await ctx.viem.getContractAt('PunkVault', implAddress)
+
+      // owner() must not return a garbage slice of the impl's own runtime.
+      await assert.rejects(impl.read.owner(), /NotClone/)
+
+      // Owner-gated paths route through owner() and therefore also revert.
+      await assert.rejects(
+        impl.read.isAuthorized([
+          ctx.punks.address,
+          0n,
+          ctx.seller.account.address,
+        ]),
+        /NotClone/,
+      )
+    })
+
     it('vault.transferPunk reverts when the vault does not hold the Punk on that market', async () => {
       const ctx = await deployAuctionStack()
       const { seller } = ctx

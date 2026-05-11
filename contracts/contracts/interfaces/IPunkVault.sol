@@ -18,6 +18,7 @@ interface IPunkVault {
     error NotOwner();
     error NotAuthorized();
     error NotFactory();
+    error NotClone();
     error AlreadyInitialized();
     error ExecutionFailed(bytes returnData);
     error ZeroAddress();
