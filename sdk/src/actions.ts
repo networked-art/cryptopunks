@@ -1,0 +1,769 @@
+import type { Abi, Address, Hex, PublicClient, WalletClient } from 'viem'
+import {
+  CRYPTOPUNKS_MARKET_ADDRESS,
+  PunkStandard,
+  ZERO_ADDRESS,
+  type PunkStandardValue,
+} from './constants'
+import {
+  cryptoPunksMarketAbi,
+  punksAuctionAbi,
+  punksEscrowAbi,
+} from './abi'
+import type { PunksDataset } from './dataset'
+import type { PunkQuery } from './types'
+import {
+  type CompiledOfferSlot,
+  type CompileOfferSlotInput,
+  type PunkStandardRef,
+  compileOfferSlot,
+  normalizePunkStandard,
+} from './query'
+import {
+  PunksDataValidationError,
+  assertIntegerInRange,
+  validatePunkId,
+} from './utils'
+
+export type ContractWriteRequest = {
+  address: Address
+  abi: Abi
+  functionName: string
+  args?: readonly unknown[]
+  value?: bigint
+}
+
+export type ContractWritePlan = {
+  description: string
+  request: ContractWriteRequest
+}
+
+export type TransactionHash = Hex
+
+export type WalletConfig = {
+  publicClient?: PublicClient
+  walletClient?: WalletClient
+  account?: Address
+}
+
+export type PunkListing = {
+  punkId: number
+  isForSale: boolean
+  seller: Address
+  priceWei: bigint
+  onlySellTo: Address
+}
+
+export type PunkBid = {
+  punkId: number
+  hasBid: boolean
+  bidder: Address
+  valueWei: bigint
+}
+
+export type PunksMarketConfig = WalletConfig & {
+  address?: Address
+}
+
+export class PunksMarketClient {
+  readonly address: Address
+  private readonly publicClient?: PublicClient
+  private readonly walletClient?: WalletClient
+  private readonly account?: Address
+
+  constructor(config: PunksMarketConfig = {}) {
+    this.address = config.address ?? CRYPTOPUNKS_MARKET_ADDRESS
+    this.publicClient = config.publicClient
+    this.walletClient = config.walletClient
+    this.account = config.account
+  }
+
+  async ownerOf(punkId: number): Promise<Address> {
+    validatePunkId(punkId)
+    return this.read<Address>('punkIndexToAddress', [BigInt(punkId)])
+  }
+
+  async listing(punkId: number): Promise<PunkListing> {
+    validatePunkId(punkId)
+    const [isForSale, punkIndex, seller, minValue, onlySellTo] = await this.read<
+      readonly [boolean, bigint, Address, bigint, Address]
+    >('punksOfferedForSale', [BigInt(punkId)])
+    return {
+      punkId: Number(punkIndex),
+      isForSale,
+      seller,
+      priceWei: minValue,
+      onlySellTo,
+    }
+  }
+
+  async bidFor(punkId: number): Promise<PunkBid> {
+    validatePunkId(punkId)
+    const [hasBid, punkIndex, bidder, value] = await this.read<
+      readonly [boolean, bigint, Address, bigint]
+    >('punkBids', [BigInt(punkId)])
+    return {
+      punkId: Number(punkIndex),
+      hasBid,
+      bidder,
+      valueWei: value,
+    }
+  }
+
+  prepareList(params: {
+    punkId: number
+    priceWei: bigint
+    onlySellTo?: Address
+  }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    assertWei('priceWei', params.priceWei)
+    const privateListing = params.onlySellTo !== undefined && params.onlySellTo !== ZERO_ADDRESS
+    return {
+      description: privateListing
+        ? `List CryptoPunk ${params.punkId} to one buyer`
+        : `List CryptoPunk ${params.punkId}`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: privateListing ? 'offerPunkForSaleToAddress' : 'offerPunkForSale',
+        args: privateListing
+          ? [BigInt(params.punkId), params.priceWei, params.onlySellTo]
+          : [BigInt(params.punkId), params.priceWei],
+      },
+    }
+  }
+
+  list(params: { punkId: number; priceWei: bigint; onlySellTo?: Address }): Promise<TransactionHash> {
+    return this.write(this.prepareList(params))
+  }
+
+  prepareUnlist(punkId: number): ContractWritePlan {
+    validatePunkId(punkId)
+    return {
+      description: `Remove CryptoPunk ${punkId} listing`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'punkNoLongerForSale',
+        args: [BigInt(punkId)],
+      },
+    }
+  }
+
+  unlist(punkId: number): Promise<TransactionHash> {
+    return this.write(this.prepareUnlist(punkId))
+  }
+
+  prepareBuy(params: { punkId: number; priceWei: bigint }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    assertWei('priceWei', params.priceWei)
+    return {
+      description: `Buy CryptoPunk ${params.punkId}`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'buyPunk',
+        args: [BigInt(params.punkId)],
+        value: params.priceWei,
+      },
+    }
+  }
+
+  async buy(params: {
+    punkId: number
+    priceWei?: bigint
+    maxPriceWei?: bigint
+  }): Promise<TransactionHash> {
+    const listing = params.priceWei === undefined ? await this.listing(params.punkId) : undefined
+    if (listing !== undefined && !listing.isForSale) {
+      throw new PunksDataValidationError(`CryptoPunk ${params.punkId} is not listed for sale`)
+    }
+    const priceWei = params.priceWei ?? listing?.priceWei ?? 0n
+    if (params.maxPriceWei !== undefined && priceWei > params.maxPriceWei) {
+      throw new PunksDataValidationError('listing price exceeds maxPriceWei')
+    }
+    return this.write(this.prepareBuy({ punkId: params.punkId, priceWei }))
+  }
+
+  prepareTransfer(params: { punkId: number; to: Address }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    return {
+      description: `Transfer CryptoPunk ${params.punkId}`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'transferPunk',
+        args: [params.to, BigInt(params.punkId)],
+      },
+    }
+  }
+
+  transfer(params: { punkId: number; to: Address }): Promise<TransactionHash> {
+    return this.write(this.prepareTransfer(params))
+  }
+
+  prepareWithdraw(): ContractWritePlan {
+    return {
+      description: 'Withdraw CryptoPunks market balance',
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'withdraw',
+      },
+    }
+  }
+
+  withdraw(): Promise<TransactionHash> {
+    return this.write(this.prepareWithdraw())
+  }
+
+  private async read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
+    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+    return readContract<T>(this.publicClient, {
+      address: this.address,
+      abi: cryptoPunksMarketAbi,
+      functionName,
+      args,
+    })
+  }
+
+  private write(plan: ContractWritePlan): Promise<TransactionHash> {
+    return writeContract(plan, this.walletClient, this.account)
+  }
+}
+
+export type LotItemInput = {
+  punkId: number
+  standard?: PunkStandardRef
+  weightBps?: number
+}
+
+export type LotItem = {
+  punkId: number
+  standard: PunkStandardValue
+  weightBps: number
+}
+
+export type OfferSlotInput = CompileOfferSlotInput
+
+export type PlaceOfferInput = {
+  amountWei: bigint
+  settlementWei?: bigint
+  receiver?: Address
+  query?: PunkQuery
+  standard?: PunkStandardRef
+  includeIds?: Iterable<number>
+  excludeIds?: Iterable<number>
+  slots?: readonly OfferSlotInput[]
+}
+
+export type PunksAuctionConfig = WalletConfig & {
+  address?: Address
+  dataset: PunksDataset
+}
+
+export class PunksAuctionClient {
+  readonly address?: Address
+  private readonly dataset: PunksDataset
+  private readonly publicClient?: PublicClient
+  private readonly walletClient?: WalletClient
+  private readonly account?: Address
+
+  constructor(config: PunksAuctionConfig) {
+    this.address = config.address
+    this.dataset = config.dataset
+    this.publicClient = config.publicClient
+    this.walletClient = config.walletClient
+    this.account = config.account
+  }
+
+  slot(input: OfferSlotInput = {}): CompiledOfferSlot {
+    return compileOfferSlot(this.dataset.source, input)
+  }
+
+  async escrowAddress(): Promise<Address> {
+    return this.read<Address>('PUNKS_ESCROW')
+  }
+
+  async canonicalMarketAddress(): Promise<Address> {
+    return this.read<Address>('PUNKS')
+  }
+
+  async v1MarketAddress(): Promise<Address> {
+    return this.read<Address>('PUNKS_V1')
+  }
+
+  async vaultFor(user: Address): Promise<{ registered: Address; predicted: Address }> {
+    const escrow = await this.escrowAddress()
+    const [registered, predicted] = await Promise.all([
+      readContract<Address>(this.requirePublicClient(), {
+        address: escrow,
+        abi: punksEscrowAbi,
+        functionName: 'vaults',
+        args: [user],
+      }),
+      readContract<Address>(this.requirePublicClient(), {
+        address: escrow,
+        abi: punksEscrowAbi,
+        functionName: 'predictVault',
+        args: [user],
+      }),
+    ])
+    return { registered, predicted }
+  }
+
+  async prepareDeposit(params: {
+    owner: Address
+    punkId: number
+    standard?: PunkStandardRef
+  }): Promise<ContractWritePlan> {
+    validatePunkId(params.punkId)
+    const standard = normalizePunkStandard(params.standard ?? 'cryptopunks')
+    const [{ predicted }, market] = await Promise.all([
+      this.vaultFor(params.owner),
+      this.marketAddressFor(standard),
+    ])
+    return {
+      description: `Deposit CryptoPunk ${params.punkId} to auction vault`,
+      request: {
+        address: market,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'transferPunk',
+        args: [predicted, BigInt(params.punkId)],
+      },
+    }
+  }
+
+  async deposit(params: {
+    owner: Address
+    punkId: number
+    standard?: PunkStandardRef
+  }): Promise<TransactionHash> {
+    return this.write(await this.prepareDeposit(params))
+  }
+
+  async prepareEnsureVault(user: Address): Promise<ContractWritePlan> {
+    return {
+      description: 'Register auction vault',
+      request: {
+        address: await this.escrowAddress(),
+        abi: punksEscrowAbi,
+        functionName: 'ensureVault',
+        args: [user],
+      },
+    }
+  }
+
+  async ensureVault(user: Address): Promise<TransactionHash> {
+    return this.write(await this.prepareEnsureVault(user))
+  }
+
+  async prepareReclaim(params: {
+    punkId: number
+    standard?: PunkStandardRef
+  }): Promise<ContractWritePlan> {
+    validatePunkId(params.punkId)
+    return {
+      description: `Reclaim CryptoPunk ${params.punkId} from auction vault`,
+      request: {
+        address: await this.escrowAddress(),
+        abi: punksEscrowAbi,
+        functionName: 'reclaim',
+        args: [normalizePunkStandard(params.standard ?? 'cryptopunks'), BigInt(params.punkId)],
+      },
+    }
+  }
+
+  async reclaim(params: { punkId: number; standard?: PunkStandardRef }): Promise<TransactionHash> {
+    return this.write(await this.prepareReclaim(params))
+  }
+
+  prepareCreateLot(params: {
+    items: readonly LotItemInput[]
+    reserveWei: bigint
+    expiresAt: number
+  }): ContractWritePlan {
+    const items = normalizeLotItems(params.items)
+    assertWei('reserveWei', params.reserveWei)
+    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
+    return {
+      description: 'Create CryptoPunks auction lot',
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'createLot',
+        args: [items, params.reserveWei, params.expiresAt],
+      },
+    }
+  }
+
+  createLot(params: {
+    items: readonly LotItemInput[]
+    reserveWei: bigint
+    expiresAt: number
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareCreateLot(params))
+  }
+
+  prepareUpdateLot(params: {
+    lotId: bigint | number
+    reserveWei: bigint
+    expiresAt: number
+  }): ContractWritePlan {
+    assertWei('reserveWei', params.reserveWei)
+    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
+    return {
+      description: `Update CryptoPunks lot ${params.lotId.toString()}`,
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'updateLot',
+        args: [BigInt(params.lotId), params.reserveWei, params.expiresAt],
+      },
+    }
+  }
+
+  updateLot(params: {
+    lotId: bigint | number
+    reserveWei: bigint
+    expiresAt: number
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareUpdateLot(params))
+  }
+
+  prepareCancelLot(lotId: bigint | number): ContractWritePlan {
+    return simpleAuctionWrite(this.requireAddress(), 'Cancel CryptoPunks lot', 'cancelLot', [
+      BigInt(lotId),
+    ])
+  }
+
+  cancelLot(lotId: bigint | number): Promise<TransactionHash> {
+    return this.write(this.prepareCancelLot(lotId))
+  }
+
+  prepareClearStaleLot(lotId: bigint | number): ContractWritePlan {
+    return simpleAuctionWrite(this.requireAddress(), 'Clear stale CryptoPunks lot', 'clearStaleLot', [
+      BigInt(lotId),
+    ])
+  }
+
+  clearStaleLot(lotId: bigint | number): Promise<TransactionHash> {
+    return this.write(this.prepareClearStaleLot(lotId))
+  }
+
+  prepareOpenAuction(params: {
+    lotId: bigint | number
+    reserveWei: bigint
+    bidWei?: bigint
+  }): ContractWritePlan {
+    assertWei('reserveWei', params.reserveWei)
+    const value = params.bidWei ?? params.reserveWei
+    assertWei('bidWei', value)
+    return {
+      description: `Open CryptoPunks auction lot ${params.lotId.toString()}`,
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'openAuction',
+        args: [BigInt(params.lotId), params.reserveWei],
+        value,
+      },
+    }
+  }
+
+  openAuction(params: {
+    lotId: bigint | number
+    reserveWei: bigint
+    bidWei?: bigint
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareOpenAuction(params))
+  }
+
+  prepareBid(params: { auctionId: bigint | number; amountWei: bigint }): ContractWritePlan {
+    assertWei('amountWei', params.amountWei)
+    return {
+      description: `Bid on CryptoPunks auction ${params.auctionId.toString()}`,
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'bid',
+        args: [BigInt(params.auctionId)],
+        value: params.amountWei,
+      },
+    }
+  }
+
+  bid(params: { auctionId: bigint | number; amountWei: bigint }): Promise<TransactionHash> {
+    return this.write(this.prepareBid(params))
+  }
+
+  preparePlaceOffer(input: PlaceOfferInput): ContractWritePlan {
+    assertWei('amountWei', input.amountWei)
+    const settlementWei = input.settlementWei ?? 0n
+    assertWei('settlementWei', settlementWei)
+    const slots =
+      input.slots?.map((slot) => this.slot(slot)) ??
+      [this.slot({
+        query: input.query,
+        standard: input.standard,
+        includeIds: input.includeIds,
+        excludeIds: input.excludeIds,
+      })]
+    if (slots.length === 0) throw new PunksDataValidationError('offer must contain at least one slot')
+    return {
+      description: 'Place CryptoPunks offer',
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'placeOffer',
+        args: [input.amountWei, settlementWei, input.receiver ?? ZERO_ADDRESS, slots],
+        value: input.amountWei + settlementWei,
+      },
+    }
+  }
+
+  placeOffer(input: PlaceOfferInput): Promise<TransactionHash> {
+    return this.write(this.preparePlaceOffer(input))
+  }
+
+  prepareCancelOffer(offerId: bigint | number): ContractWritePlan {
+    return simpleAuctionWrite(this.requireAddress(), 'Cancel CryptoPunks offer', 'cancelOffer', [
+      BigInt(offerId),
+    ])
+  }
+
+  cancelOffer(offerId: bigint | number): Promise<TransactionHash> {
+    return this.write(this.prepareCancelOffer(offerId))
+  }
+
+  prepareAdjustOfferAmount(params: {
+    offerId: bigint | number
+    amountWei: bigint
+    increase: boolean
+  }): ContractWritePlan {
+    assertWei('amountWei', params.amountWei)
+    return {
+      description: 'Adjust CryptoPunks offer amount',
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'adjustOfferAmount',
+        args: [BigInt(params.offerId), params.amountWei, params.increase],
+        value: params.increase ? params.amountWei : 0n,
+      },
+    }
+  }
+
+  adjustOfferAmount(params: {
+    offerId: bigint | number
+    amountWei: bigint
+    increase: boolean
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareAdjustOfferAmount(params))
+  }
+
+  prepareAdjustOfferSettlement(params: {
+    offerId: bigint | number
+    amountWei: bigint
+    increase: boolean
+  }): ContractWritePlan {
+    assertWei('amountWei', params.amountWei)
+    return {
+      description: 'Adjust CryptoPunks offer settlement',
+      request: {
+        address: this.requireAddress(),
+        abi: punksAuctionAbi,
+        functionName: 'adjustOfferSettlement',
+        args: [BigInt(params.offerId), params.amountWei, params.increase],
+        value: params.increase ? params.amountWei : 0n,
+      },
+    }
+  }
+
+  adjustOfferSettlement(params: {
+    offerId: bigint | number
+    amountWei: bigint
+    increase: boolean
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareAdjustOfferSettlement(params))
+  }
+
+  prepareAcceptOffer(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    return simpleAuctionWrite(this.requireAddress(), 'Accept CryptoPunks offer', 'acceptOffer', [
+      BigInt(params.offerId),
+      params.punkId,
+    ])
+  }
+
+  acceptOffer(params: { offerId: bigint | number; punkId: number }): Promise<TransactionHash> {
+    return this.write(this.prepareAcceptOffer(params))
+  }
+
+  prepareAcceptOfferFromLot(params: {
+    offerId: bigint | number
+    lotId: bigint | number
+  }): ContractWritePlan {
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Accept CryptoPunks offer from lot',
+      'acceptOfferFromLot',
+      [BigInt(params.offerId), BigInt(params.lotId)],
+    )
+  }
+
+  acceptOfferFromLot(params: {
+    offerId: bigint | number
+    lotId: bigint | number
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareAcceptOfferFromLot(params))
+  }
+
+  prepareStartAuctionFromOffer(params: {
+    offerId: bigint | number
+    lotId: bigint | number
+  }): ContractWritePlan {
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Start CryptoPunks auction from offer',
+      'startAuctionFromOffer',
+      [BigInt(params.offerId), BigInt(params.lotId)],
+    )
+  }
+
+  startAuctionFromOffer(params: {
+    offerId: bigint | number
+    lotId: bigint | number
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareStartAuctionFromOffer(params))
+  }
+
+  prepareSettle(auctionId: bigint | number): ContractWritePlan {
+    return simpleAuctionWrite(this.requireAddress(), 'Settle CryptoPunks auction', 'settle', [
+      BigInt(auctionId),
+    ])
+  }
+
+  settle(auctionId: bigint | number): Promise<TransactionHash> {
+    return this.write(this.prepareSettle(auctionId))
+  }
+
+  async minimumBid(auctionId: bigint | number): Promise<bigint> {
+    return this.read<bigint>('currentMinBidWei', [BigInt(auctionId)])
+  }
+
+  async isActive(auctionId: bigint | number): Promise<boolean> {
+    return this.read<boolean>('auctionActive', [BigInt(auctionId)])
+  }
+
+  private async marketAddressFor(standard: PunkStandardValue): Promise<Address> {
+    return standard === PunkStandard.CryptoPunks
+      ? this.canonicalMarketAddress()
+      : this.v1MarketAddress()
+  }
+
+  private async read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
+    return readContract<T>(this.requirePublicClient(), {
+      address: this.requireAddress(),
+      abi: punksAuctionAbi,
+      functionName,
+      args,
+    })
+  }
+
+  private write(plan: ContractWritePlan): Promise<TransactionHash> {
+    return writeContract(plan, this.walletClient, this.account)
+  }
+
+  private requireAddress(): Address {
+    if (!this.address) {
+      throw new PunksDataValidationError('auction address is required for auction actions')
+    }
+    return this.address
+  }
+
+  private requirePublicClient(): PublicClient {
+    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+    return this.publicClient
+  }
+}
+
+function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
+  if (items.length === 0) throw new PunksDataValidationError('lot must contain at least one item')
+  const anyWeight = items.some((item) => item.weightBps !== undefined)
+  const allWeight = items.every((item) => item.weightBps !== undefined)
+  if (anyWeight && !allWeight) {
+    throw new PunksDataValidationError('provide weightBps for every lot item or none of them')
+  }
+
+  const defaultWeights = splitWeights(items.length)
+  const normalized = items.map((item, index) => {
+    validatePunkId(item.punkId)
+    const weightBps = item.weightBps ?? defaultWeights[index]
+    assertIntegerInRange('weightBps', weightBps, 1, 10_000)
+    return {
+      punkId: item.punkId,
+      standard: normalizePunkStandard(item.standard ?? 'cryptopunks'),
+      weightBps,
+    }
+  })
+  const totalWeight = normalized.reduce((sum, item) => sum + item.weightBps, 0)
+  if (totalWeight !== 10_000) {
+    throw new PunksDataValidationError('lot item weights must sum to 10000 basis points')
+  }
+  return normalized
+}
+
+function splitWeights(count: number): number[] {
+  assertIntegerInRange('item count', count, 1, 100)
+  const base = Math.floor(10_000 / count)
+  const remainder = 10_000 - base * count
+  return Array.from({ length: count }, (_, index) => base + (index === 0 ? remainder : 0))
+}
+
+function simpleAuctionWrite(
+  address: Address,
+  description: string,
+  functionName: string,
+  args: readonly unknown[],
+): ContractWritePlan {
+  return {
+    description,
+    request: {
+      address,
+      abi: punksAuctionAbi,
+      functionName,
+      args,
+    },
+  }
+}
+
+async function readContract<T>(
+  publicClient: PublicClient,
+  request: ContractWriteRequest,
+): Promise<T> {
+  return (publicClient.readContract as unknown as (value: ContractWriteRequest) => Promise<T>)(
+    request,
+  )
+}
+
+async function writeContract(
+  plan: ContractWritePlan,
+  walletClient: WalletClient | undefined,
+  account: Address | undefined,
+): Promise<TransactionHash> {
+  if (!walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+  const resolvedAccount = account ?? walletClient.account?.address
+  const request = resolvedAccount === undefined
+    ? plan.request
+    : { ...plan.request, account: resolvedAccount }
+  return (walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
+    request,
+  )
+}
+
+function assertWei(label: string, value: bigint): void {
+  if (typeof value !== 'bigint' || value < 0n) {
+    throw new PunksDataValidationError(`${label} must be a non-negative bigint`)
+  }
+}

@@ -3,9 +3,15 @@ import type { Address, Hex } from 'viem'
 export const PUNKS_DATA_ENS = 'punksdata.eth'
 export const PUNKS_DATA_ADDRESS =
   '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as Address
+export const PUNKS_DATA_DATASET_HASH =
+  '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68' as Hex
 export const PUNKS_RENDERER_ENS = 'renderer.punksdata.eth'
 export const PUNKS_RENDERER_ADDRESS =
   '0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741' as Address
+export const CRYPTOPUNKS_MARKET_ADDRESS =
+  '0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb' as Address
+export const ZERO_ADDRESS =
+  '0x0000000000000000000000000000000000000000' as Address
 
 export const PUNKS_RENDERER_BACKGROUND_DEFAULT = '0x638596ff' as Hex
 export const PUNKS_RENDERER_BACKGROUND_FOR_SALE = '0x8c5851ff' as Hex
@@ -80,6 +86,11 @@ export const TraitKind = {
   Accessory: 3,
 } as const
 
+export const PunkStandard = {
+  CryptoPunks: 0,
+  CryptoPunksV1: 1,
+} as const
+
 export const traitKindNames = [
   'HeadVariant',
   'NormalizedType',
@@ -93,3 +104,4 @@ export type HeadVariantValue = (typeof HeadVariant)[keyof typeof HeadVariant]
 export type HeadVariantName = (typeof headVariantNames)[number]
 export type TraitKindValue = (typeof TraitKind)[keyof typeof TraitKind]
 export type TraitKindName = (typeof traitKindNames)[number]
+export type PunkStandardValue = (typeof PunkStandard)[keyof typeof PunkStandard]

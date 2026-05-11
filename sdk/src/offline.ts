@@ -7,6 +7,7 @@ import {
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
   PIXELS_PER_PUNK,
+  PUNKS_DATA_DATASET_HASH,
   PUNK_COUNT,
   PUNK_HEIGHT,
   PUNK_WIDTH,
@@ -299,6 +300,17 @@ export class OfflinePunksDataClient {
 
   async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
     return this.isSealedSync(options)
+  }
+
+  assertCanonicalDatasetSync(options?: PunksDataReadOptions): void {
+    validateOfflineReadOptions(options)
+    if (this.getDatasetHashSync().toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {
+      throw new PunksDataValidationError('offline data does not match the canonical dataset')
+    }
+  }
+
+  async assertCanonicalDataset(options?: PunksDataReadOptions): Promise<void> {
+    this.assertCanonicalDatasetSync(options)
   }
 
   getTraitCountSync(options?: PunksDataReadOptions): number {

@@ -395,3 +395,419 @@ export const punksRendererReadAbi = [
 ] as const satisfies Abi
 
 export const punksRendererAbi = punksRendererReadAbi
+
+export const cryptoPunksMarketAbi = [
+  {
+    type: 'function',
+    name: 'punkIndexToAddress',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punksOfferedForSale',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [
+      { name: 'isForSale', type: 'bool' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'seller', type: 'address' },
+      { name: 'minValue', type: 'uint256' },
+      { name: 'onlySellTo', type: 'address' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkBids',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [
+      { name: 'hasBid', type: 'bool' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'bidder', type: 'address' },
+      { name: 'value', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'offerPunkForSale',
+    inputs: [
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minSalePriceInWei', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'offerPunkForSaleToAddress',
+    inputs: [
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minSalePriceInWei', type: 'uint256' },
+      { name: 'toAddress', type: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'punkNoLongerForSale',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'buyPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'transferPunk',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdraw',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const satisfies Abi
+
+const punksFilterAbi = [
+  { name: 'requiredTraitMask', type: 'uint256' },
+  { name: 'forbiddenTraitMask', type: 'uint256' },
+  { name: 'anyOfTraitMask', type: 'uint256' },
+  { name: 'requiredColorMask', type: 'uint256' },
+  { name: 'forbiddenColorMask', type: 'uint256' },
+  { name: 'anyOfColorMask', type: 'uint256' },
+  { name: 'minPixelCount', type: 'uint16' },
+  { name: 'maxPixelCount', type: 'uint16' },
+  { name: 'minColorCount', type: 'uint8' },
+  { name: 'maxColorCount', type: 'uint8' },
+] as const
+
+const lotItemAbi = [
+  { name: 'standard', type: 'uint8' },
+  { name: 'punkId', type: 'uint16' },
+  { name: 'weightBps', type: 'uint16' },
+] as const
+
+const offerSlotAbi = [
+  { name: 'criteria', type: 'tuple', components: punksFilterAbi },
+  { name: 'standard', type: 'uint8' },
+  { name: 'includeIds', type: 'uint16[]' },
+  { name: 'excludeIds', type: 'uint16[]' },
+] as const
+
+export const punksAuctionAbi = [
+  {
+    type: 'function',
+    name: 'PUNKS',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'PUNKS_V1',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'PUNKS_ESCROW',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'lastLotId',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'lastAuctionId',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'lastOfferId',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'lots',
+    inputs: [{ name: 'lotId', type: 'uint256' }],
+    outputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'reserveWei', type: 'uint96' },
+      { name: 'expiresAt', type: 'uint40' },
+      { name: 'itemCount', type: 'uint8' },
+      { name: 'itemHash', type: 'bytes32' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'auctions',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'latestBidder', type: 'address' },
+      { name: 'latestBidWei', type: 'uint96' },
+      { name: 'endTimestamp', type: 'uint40' },
+      { name: 'itemCount', type: 'uint8' },
+      { name: 'itemHash', type: 'bytes32' },
+      { name: 'settled', type: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'offers',
+    inputs: [{ name: 'offerId', type: 'uint256' }],
+    outputs: [
+      { name: 'amountWei', type: 'uint96' },
+      { name: 'settlementWei', type: 'uint96' },
+      { name: 'offerer', type: 'address' },
+      { name: 'receiver', type: 'address' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getLotItems',
+    inputs: [{ name: 'lotId', type: 'uint256' }],
+    outputs: [{ type: 'tuple[]', components: lotItemAbi }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAuctionItems',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [{ type: 'tuple[]', components: lotItemAbi }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOfferSlots',
+    inputs: [{ name: 'offerId', type: 'uint256' }],
+    outputs: [{ type: 'tuple[]', components: offerSlotAbi }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'activeLotFor',
+    inputs: [
+      { name: 'seller', type: 'address' },
+      { name: 'standard', type: 'uint8' },
+      { name: 'punkId', type: 'uint16' },
+    ],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'currentMinBidWei',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [{ type: 'uint96' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'auctionActive',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'endTimestampOf',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [{ type: 'uint40' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'createLot',
+    inputs: [
+      { name: 'items', type: 'tuple[]', components: lotItemAbi },
+      { name: 'reserveWei', type: 'uint96' },
+      { name: 'expiresAt', type: 'uint40' },
+    ],
+    outputs: [{ name: 'lotId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateLot',
+    inputs: [
+      { name: 'lotId', type: 'uint256' },
+      { name: 'reserveWei', type: 'uint96' },
+      { name: 'expiresAt', type: 'uint40' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelLot',
+    inputs: [{ name: 'lotId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'clearStaleLot',
+    inputs: [{ name: 'lotId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'openAuction',
+    inputs: [
+      { name: 'lotId', type: 'uint256' },
+      { name: 'expectedReserveWei', type: 'uint96' },
+    ],
+    outputs: [{ name: 'auctionId', type: 'uint256' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'bid',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'settle',
+    inputs: [{ name: 'auctionId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeOffer',
+    inputs: [
+      { name: 'amountWei', type: 'uint96' },
+      { name: 'settlementWei', type: 'uint96' },
+      { name: 'receiver', type: 'address' },
+      { name: 'slots', type: 'tuple[]', components: offerSlotAbi },
+    ],
+    outputs: [{ name: 'offerId', type: 'uint256' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'cancelOffer',
+    inputs: [{ name: 'offerId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'adjustOfferAmount',
+    inputs: [
+      { name: 'offerId', type: 'uint256' },
+      { name: 'weiToAdjust', type: 'uint96' },
+      { name: 'increase', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'adjustOfferSettlement',
+    inputs: [
+      { name: 'offerId', type: 'uint256' },
+      { name: 'weiToAdjust', type: 'uint96' },
+      { name: 'increase', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'acceptOffer',
+    inputs: [
+      { name: 'offerId', type: 'uint256' },
+      { name: 'punkId', type: 'uint16' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'acceptOfferFromLot',
+    inputs: [
+      { name: 'offerId', type: 'uint256' },
+      { name: 'lotId', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'startAuctionFromOffer',
+    inputs: [
+      { name: 'offerId', type: 'uint256' },
+      { name: 'lotId', type: 'uint256' },
+    ],
+    outputs: [{ name: 'auctionId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+] as const satisfies Abi
+
+export const punksEscrowAbi = [
+  {
+    type: 'function',
+    name: 'vaults',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'predictVault',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'ensureVault',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'reclaim',
+    inputs: [
+      { name: 'standard', type: 'uint8' },
+      { name: 'punkIndex', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const satisfies Abi

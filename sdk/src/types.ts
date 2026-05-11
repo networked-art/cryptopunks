@@ -107,6 +107,18 @@ export type NumericRange = number | {
   max?: number
 }
 
+export type PunkQuerySort =
+  | 'id'
+  | 'id-desc'
+  | 'rarity'
+  | 'rarity-desc'
+  | 'pixelCount'
+  | 'pixelCount-desc'
+  | 'colorCount'
+  | 'colorCount-desc'
+  | 'attributeCount'
+  | 'attributeCount-desc'
+
 export type PunksSearchQuery = {
   attributes?: AttributeCriteriaInput
   colors?: ColorCriteriaInput
@@ -116,6 +128,16 @@ export type PunksSearchQuery = {
   excludeIds?: Iterable<number>
   offset?: number
   limit?: number
+}
+
+export type PunkQuery = PunksSearchQuery & {
+  text?: string
+  type?: PunkTypeValue | PunkTypeName | string | readonly (PunkTypeValue | PunkTypeName | string)[]
+  punkType?: PunkTypeValue | PunkTypeName | string | readonly (PunkTypeValue | PunkTypeName | string)[]
+  head?: HeadVariantValue | HeadVariantName | string | readonly (HeadVariantValue | HeadVariantName | string)[]
+  headVariant?: HeadVariantValue | HeadVariantName | string | readonly (HeadVariantValue | HeadVariantName | string)[]
+  attributeCount?: NumericRange
+  sort?: PunkQuerySort
 }
 
 export type PunkBitmap = bigint[]

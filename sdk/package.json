@@ -1,7 +1,7 @@
 {
   "name": "@networked-art/punks-sdk",
   "version": "0.0.1",
-  "description": "TypeScript SDK for reading and searching the PunksData contract",
+  "description": "Collection-first TypeScript SDK for CryptoPunks search, rendering, market actions, and auctions",
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",

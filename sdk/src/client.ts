@@ -8,6 +8,7 @@ import {
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
   PUNKS_DATA_ADDRESS,
+  PUNKS_DATA_DATASET_HASH,
   TRAIT_COUNT,
   headVariantNames,
   punkTypeNames,
@@ -120,6 +121,17 @@ export class PunksDataClient {
 
   async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
     return this.cached('isSealed', options, () => this.read<boolean>('isSealed', [], options))
+  }
+
+  async assertCanonicalDataset(options?: PunksDataReadOptions): Promise<void> {
+    const [isSealed, datasetHash] = await Promise.all([
+      this.isSealed(options),
+      this.getDatasetHash(options),
+    ])
+    if (!isSealed) throw new PunksDataValidationError('PunksData contract is not sealed')
+    if (datasetHash.toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {
+      throw new PunksDataValidationError('PunksData contract does not match the canonical dataset')
+    }
   }
 
   async getTraitCount(options?: PunksDataReadOptions): Promise<number> {
