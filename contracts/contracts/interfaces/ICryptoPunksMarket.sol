@@ -26,6 +26,9 @@ interface ICryptoPunksMarket {
     /// @notice Returns the owner of a Punk.
     function punkIndexToAddress(uint256 punkIndex) external view returns (address);
 
+    /// @notice Offers a Punk for public sale.
+    function offerPunkForSale(uint256 punkIndex, uint256 minSalePriceInWei) external;
+
     /// @notice Offers a Punk for sale to one address.
     function offerPunkForSaleToAddress(
         uint256 punkIndex,
@@ -41,6 +44,9 @@ interface ICryptoPunksMarket {
 
     /// @notice Transfers a Punk to another address.
     function transferPunk(address to, uint256 punkIndex) external;
+
+    /// @notice Accepts the standing bid for a Punk at >= minPrice.
+    function acceptBidForPunk(uint256 punkIndex, uint256 minPrice) external;
 
     /// @notice Withdraws pending ETH from the Punk market.
     function withdraw() external;
