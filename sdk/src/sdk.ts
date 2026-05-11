@@ -1,5 +1,6 @@
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { createPunksDataClient, type PunksDataClient } from './client'
+import { LegacyCryptoPunksDataClient } from './legacy-data'
 import { createPunksRendererClient, type PunksRendererClient } from './renderer'
 import {
   PunksAuctionClient,
@@ -11,6 +12,8 @@ import {
   type PunksMarketConfig,
   type TransactionHash,
 } from './actions'
+import { PunksStashFacade } from './stash'
+import { PunksWrappersFacade } from './wrappers'
 import {
   PunksDataset,
   type PunksDatasetConfig,
@@ -23,9 +26,15 @@ import type {
 } from './types'
 
 export type PunksSdkAddresses = {
+  data?: Address
+  legacyData?: Address
   renderer?: Address
   market?: Address
   auction?: Address
+  wrappedPunks?: Address
+  c721Wrapper?: Address
+  stashFactory?: Address
+  stash?: Address
 }
 
 export type PunksSdkConfig = PunksDatasetConfig & {
@@ -42,8 +51,11 @@ export type PunksContractClients = {
 
 export class PunksSdk {
   readonly dataset: PunksDataset
+  readonly data: PunksDataFacade
   readonly render: PunkImageRenderer
   readonly market: PunksMarketClient
+  readonly wrappers: PunksWrappersFacade
+  readonly stash: PunksStashFacade
   readonly auctions: PunksAuctionClient
   readonly offers: PunksOffersFacade
   readonly contracts: PunksContractClients
@@ -62,6 +74,22 @@ export class PunksSdk {
       ...wallet,
       address: config.addresses?.market,
     } satisfies PunksMarketConfig)
+    this.data = new PunksDataFacade({
+      ...wallet,
+      dataAddress: config.addresses?.data,
+      legacyDataAddress: config.addresses?.legacyData,
+    })
+    this.wrappers = new PunksWrappersFacade({
+      ...wallet,
+      marketAddress: config.addresses?.market,
+      legacyAddress: config.addresses?.wrappedPunks,
+      c721Address: config.addresses?.c721Wrapper,
+    })
+    this.stash = new PunksStashFacade({
+      ...wallet,
+      factoryAddress: config.addresses?.stashFactory,
+      stashAddress: config.addresses?.stash,
+    })
     this.auctions = new PunksAuctionClient({
       ...wallet,
       address: config.addresses?.auction,
@@ -70,7 +98,7 @@ export class PunksSdk {
     this.offers = new PunksOffersFacade(this.auctions)
     this.contracts = config.publicClient
       ? {
-          data: createPunksDataClient({ publicClient: config.publicClient }),
+          data: this.data.onchain,
           renderer: createPunksRendererClient({
             publicClient: config.publicClient,
             address: config.addresses?.renderer,
@@ -97,6 +125,34 @@ export class PunksSdk {
 
   getMany(punkIds: readonly number[], options: PunkSummaryOptions = {}): PunkSummary[] {
     return this.dataset.getMany(punkIds, options)
+  }
+}
+
+export type PunksDataFacadeConfig = {
+  publicClient?: PublicClient
+  walletClient?: WalletClient
+  account?: Address
+  dataAddress?: Address
+  legacyDataAddress?: Address
+}
+
+export class PunksDataFacade {
+  readonly onchain: PunksDataClient
+  readonly contract: PunksDataClient
+  readonly legacy: LegacyCryptoPunksDataClient
+
+  constructor(config: PunksDataFacadeConfig = {}) {
+    this.onchain = createPunksDataClient({
+      publicClient: config.publicClient,
+      walletClient: config.walletClient,
+      account: config.account,
+      address: config.dataAddress,
+    })
+    this.contract = this.onchain
+    this.legacy = new LegacyCryptoPunksDataClient({
+      publicClient: config.publicClient,
+      address: config.legacyDataAddress,
+    })
   }
 }
 

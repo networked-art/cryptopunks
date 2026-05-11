@@ -1,9 +1,15 @@
 export {
   punksDataAbi,
   punksDataReadAbi,
+  punksDataWriteAbi,
   punksRendererAbi,
   punksRendererReadAbi,
+  legacyCryptoPunksDataAbi,
   cryptoPunksMarketAbi,
+  cryptoPunks721Abi,
+  wrappedPunksAbi,
+  stashFactoryAbi,
+  stashAbi,
   punksAuctionAbi,
   punksEscrowAbi,
 } from './abi'
@@ -32,6 +38,10 @@ export {
   PUNKS_RENDERER_BACKGROUND_WRAPPED,
   PUNKS_RENDERER_ENS,
   CRYPTOPUNKS_MARKET_ADDRESS,
+  CRYPTOPUNKS_DATA_ADDRESS,
+  WRAPPED_PUNKS_ADDRESS,
+  CRYPTOPUNKS_721_ADDRESS,
+  STASH_FACTORY_ADDRESS,
   PUNKS_PER_BITMAP_WORD,
   PUNK_COUNT,
   PUNK_HEIGHT,
@@ -54,6 +64,7 @@ export {
 } from './constants'
 export {
   PunksSdk,
+  PunksDataFacade,
   PunksOffersFacade,
   createPunks,
   createPunksSdk,
@@ -80,13 +91,34 @@ export {
 } from './query'
 export {
   PunksDataClient,
+  PunksDataBlob,
   createPunksDataClient,
   indexedPixelsToRgba,
 } from './client'
 export {
+  LegacyCryptoPunksDataClient,
+  createLegacyCryptoPunksDataClient,
+} from './legacy-data'
+export {
   PunksRendererClient,
   createPunksRendererClient,
 } from './renderer'
+export {
+  CryptoPunks721Client,
+  LegacyWrappedPunksClient,
+  PunksWrappersFacade,
+  createCryptoPunks721Client,
+  createLegacyWrappedPunksClient,
+} from './wrappers'
+export {
+  PunksStashFacade,
+  StashClient,
+  StashFactoryClient,
+  createStashClient,
+  createStashFactoryClient,
+  stashPunkBidTypedData,
+  stashPunkBidTypedDataTypes,
+} from './stash'
 export {
   bitmapToPunkIds,
   clonePunkBitmap,
@@ -165,6 +197,30 @@ export type {
   WalletConfig,
 } from './actions'
 export type {
+  PunksDataBlobRef,
+  PunksDataBlobValue,
+  PunksDataCommitment,
+} from './client'
+export type {
+  LegacyCryptoPunksDataClientConfig,
+} from './legacy-data'
+export type {
+  C721BatchWrapFlowInput,
+  C721WrapFlowInput,
+  LegacyWrapFlowInput,
+  PunksWrappersConfig,
+  WrapperClientConfig,
+} from './wrappers'
+export type {
+  EthTransferPlan,
+  ProcessStashPunkBidInput,
+  PunksStashConfig,
+  StashClientConfig,
+  StashFactoryClientConfig,
+  StashOrder,
+  StashPunkBid,
+} from './stash'
+export type {
   CompiledOfferSlot,
   CompileOfferSlotInput,
   PunksFilter,
@@ -179,4 +235,5 @@ export type {
   PunksSdkAddresses,
   PunksSdkConfig,
   PunksContractClients,
+  PunksDataFacadeConfig,
 } from './sdk'

@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  CRYPTOPUNKS_721_ADDRESS,
   CRYPTOPUNKS_MARKET_ADDRESS,
   PUNKS_RENDERER_BACKGROUND_DEFAULT,
+  STASH_FACTORY_ADDRESS,
+  WRAPPED_PUNKS_ADDRESS,
   PunksDataValidationError,
   createPunksSdk,
 } from '../dist/index.js'
 
 const AUCTION = '0x0000000000000000000000000000000000000abc'
 const BUYER = '0x0000000000000000000000000000000000000b0b'
+const STASH = '0x0000000000000000000000000000000000000a55'
+const ZERO_BYTES32 = '0x' + '00'.repeat(32)
 
 describe('PunksSdk', () => {
   it('exposes collection-first search, summaries, and local rendering without RPC', () => {
@@ -98,6 +103,89 @@ describe('PunksSdk', () => {
     assert.equal(await punks.market.list({ punkId: 10, priceWei: 5n }), '0x1234')
     assert.equal(writes[0].functionName, 'offerPunkForSale')
     assert.equal(writes[0].account, BUYER)
+
+    const enterBid = punks.market.prepareEnterBid({ punkId: 10, amountWei: 7n })
+    assert.equal(enterBid.request.functionName, 'enterBidForPunk')
+    assert.equal(enterBid.request.value, 7n)
+
+    const acceptBid = punks.market.prepareAcceptBid({ punkId: 10, minPriceWei: 6n })
+    assert.equal(acceptBid.request.functionName, 'acceptBidForPunk')
+    assert.deepEqual(acceptBid.request.args, [10n, 6n])
+
+    const withdrawBid = punks.market.prepareWithdrawBid(10)
+    assert.equal(withdrawBid.request.functionName, 'withdrawBidForPunk')
+  })
+
+  it('exposes legacy data, new PunksData loader writes, wrappers, and stash plans', async () => {
+    const punks = createPunksSdk({
+      addresses: { stash: STASH },
+    })
+
+    assert.equal(punks.data.legacy.address.length, 42)
+
+    const loadChunk = punks.data.onchain.prepareLoadBlobChunk('Palette', 0, new Uint8Array([1, 2]))
+    assert.equal(loadChunk.request.functionName, 'loadBlobChunk')
+    assert.deepEqual(loadChunk.request.args, [2, 0, '0x0102'])
+
+    const seal = punks.data.onchain.prepareSeal({
+      traitCatalogHash: '0x' + '11'.repeat(32),
+      punkMaskHash: '0x' + '22'.repeat(32),
+      paletteHash: '0x' + '33'.repeat(32),
+      indexedPixelsHash: '0x' + '44'.repeat(32),
+      compressedPixelsHash: '0x' + '55'.repeat(32),
+    })
+    assert.equal(seal.request.functionName, 'seal')
+
+    const c721Wrap = punks.wrappers.c721.prepareWrapPunk(123)
+    assert.equal(c721Wrap.request.address, CRYPTOPUNKS_721_ADDRESS)
+    assert.equal(c721Wrap.request.functionName, 'wrapPunk')
+
+    const c721Flow = await punks.wrappers.c721.prepareWrapFlow({
+      owner: BUYER,
+      punkId: 123,
+      stash: STASH,
+    })
+    assert.deepEqual(c721Flow.map((plan) => plan.request.functionName), ['transferPunk', 'wrapPunk'])
+
+    const legacyProxy = punks.wrappers.legacy.prepareRegisterProxy()
+    assert.equal(legacyProxy.request.address, WRAPPED_PUNKS_ADDRESS)
+    assert.equal(legacyProxy.request.functionName, 'registerProxy')
+
+    const legacyDeposit = punks.wrappers.legacy.prepareDepositToProxy({
+      punkId: 123,
+      proxy: BUYER,
+    })
+    assert.equal(legacyDeposit.request.functionName, 'transferPunk')
+
+    const deployStash = punks.stash.prepareDeploy(BUYER)
+    assert.equal(deployStash.request.address, STASH_FACTORY_ADDRESS)
+    assert.equal(deployStash.request.functionName, 'deployStash')
+
+    const stash = punks.stash.at(STASH)
+    const fund = stash.prepareFundEth(10n)
+    assert.deepEqual(fund.request, { to: STASH, value: 10n })
+
+    const process = stash.prepareProcessPunkBid({
+      punkId: 123,
+      signature: '0x1234',
+      bid: {
+        order: {
+          numberOfUnits: 1,
+          pricePerUnit: 10n,
+          auction: CRYPTOPUNKS_MARKET_ADDRESS,
+        },
+        accountNonce: 0n,
+        bidNonce: 1n,
+        expiration: 0n,
+        root: ZERO_BYTES32,
+      },
+    })
+    assert.equal(process.request.functionName, 'processPunkBid')
+    assert.equal(process.request.args[1], 123n)
+
+    const typedData = stash.typedDataForPunkBid({ chainId: 1, bid: process.request.args[0] })
+    assert.equal(typedData.domain.verifyingContract, STASH)
+    assert.equal(typedData.primaryType, 'PunkBid')
   })
 
   it('keeps auction lot and bid writes inspectable', () => {

@@ -1,5 +1,5 @@
-import type { Address, Hex, PublicClient } from 'viem'
-import { punksDataReadAbi } from './abi'
+import type { Address, Hex, PublicClient, WalletClient } from 'viem'
+import { punksDataAbi, punksDataReadAbi, punksDataWriteAbi } from './abi'
 import {
   BITMAP_WORD_COUNT,
   COLOR_COUNT_MAX,
@@ -27,6 +27,10 @@ import {
   subtractPunkBitmaps,
   unionPunkBitmaps,
 } from './bitmap'
+import type {
+  ContractWritePlan,
+  TransactionHash,
+} from './actions'
 import type {
   AttributeCriteriaInput,
   ColorCriteriaInput,
@@ -72,6 +76,11 @@ type ReadFunctionName = Extract<
   { type: 'function' }
 >['name']
 
+type WriteFunctionName = Extract<
+  (typeof punksDataWriteAbi)[number],
+  { type: 'function' }
+>['name']
+
 type ContractReadCall = {
   functionName: ReadFunctionName
   args?: readonly unknown[]
@@ -93,9 +102,34 @@ const READ_BLOCK_TAGS = new Set<PunksDataBlockTag>([
   'finalized',
 ])
 
+export const PunksDataBlob = {
+  TraitBitmaps: 0,
+  TraitMeta: 1,
+  Palette: 2,
+  PixelOffsets: 3,
+  CompressedPixels: 4,
+  ColorBitmaps: 5,
+  PixelCountBitmaps: 6,
+  ColorCountBitmaps: 7,
+} as const
+
+export type PunksDataBlobValue = (typeof PunksDataBlob)[keyof typeof PunksDataBlob]
+
+export type PunksDataBlobRef = PunksDataBlobValue | keyof typeof PunksDataBlob
+
+export type PunksDataCommitment = {
+  traitCatalogHash: Hex
+  punkMaskHash: Hex
+  paletteHash: Hex
+  indexedPixelsHash: Hex
+  compressedPixelsHash: Hex
+}
+
 export class PunksDataClient {
-  readonly publicClient: PublicClient
+  readonly publicClient?: PublicClient
+  readonly walletClient?: WalletClient
   readonly address: Address
+  readonly account?: Address
 
   private readonly cacheEnabled: boolean
   private readonly multicallBatchSize: number
@@ -103,7 +137,9 @@ export class PunksDataClient {
 
   constructor(config: PunksDataClientConfig) {
     this.publicClient = config.publicClient
-    this.address = PUNKS_DATA_ADDRESS
+    this.walletClient = config.walletClient
+    this.account = config.account
+    this.address = config.address ?? PUNKS_DATA_ADDRESS
     this.cacheEnabled = config.cache ?? true
     this.multicallBatchSize = config.multicallBatchSize ?? 256
     if (!Number.isInteger(this.multicallBatchSize) || this.multicallBatchSize < 1) {
@@ -115,8 +151,16 @@ export class PunksDataClient {
     this.cache.clear()
   }
 
+  async owner(options?: PunksDataReadOptions): Promise<Address> {
+    return this.cached('owner', options, () => this.read<Address>('owner', [], options))
+  }
+
   async getDatasetHash(options?: PunksDataReadOptions): Promise<Hex> {
     return this.cached('datasetHash', options, () => this.read<Hex>('datasetHash', [], options))
+  }
+
+  datasetHash(options?: PunksDataReadOptions): Promise<Hex> {
+    return this.getDatasetHash(options)
   }
 
   async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
@@ -140,6 +184,10 @@ export class PunksDataClient {
     )
   }
 
+  traitCount(options?: PunksDataReadOptions): Promise<number> {
+    return this.getTraitCount(options)
+  }
+
   async isValidTraitId(traitId: number, options?: PunksDataReadOptions): Promise<boolean> {
     assertIntegerLike('traitId', traitId)
     return this.read<boolean>('isValidTraitId', [traitId], options)
@@ -152,6 +200,10 @@ export class PunksDataClient {
     )
   }
 
+  traitName(traitId: number, options?: PunksDataReadOptions): Promise<string> {
+    return this.getTraitName(traitId, options)
+  }
+
   async getTraitKind(traitId: number, options?: PunksDataReadOptions): Promise<number> {
     validateTraitId(traitId)
     return this.cached(`traitKind:${traitId}`, options, async () =>
@@ -159,11 +211,19 @@ export class PunksDataClient {
     )
   }
 
+  traitKind(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getTraitKind(traitId, options)
+  }
+
   async getTraitSupply(traitId: number, options?: PunksDataReadOptions): Promise<number> {
     validateTraitId(traitId)
     return this.cached(`traitSupply:${traitId}`, options, async () =>
       Number(await this.read<bigint | number>('traitSupply', [traitId], options)),
     )
+  }
+
+  traitSupply(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getTraitSupply(traitId, options)
   }
 
   async hasTrait(
@@ -179,6 +239,10 @@ export class PunksDataClient {
   async getTraitMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
     validatePunkId(punkId)
     return this.read<bigint>('traitMaskOf', [punkId], options)
+  }
+
+  traitMaskOf(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+    return this.getTraitMask(punkId, options)
   }
 
   async hasTraits(
@@ -222,6 +286,14 @@ export class PunksDataClient {
     return this.read<bigint>('traitBitmapWord', [traitId, wordIndex], options)
   }
 
+  traitBitmapWord(
+    trait: TraitRef,
+    wordIndex: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
+    return this.getTraitBitmapWord(trait, wordIndex, options)
+  }
+
   async getTraitBitmap(trait: TraitRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
     const traitId = await this.resolveTraitId(trait, options)
     const rows = await this.readBitmapRows([traitId], 'traitBitmapWord', 'traitBitmap', options)
@@ -241,9 +313,17 @@ export class PunksDataClient {
     return Number(await this.read<bigint | number>('punkTypeOf', [punkId], options))
   }
 
+  punkTypeOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getPunkType(punkId, options)
+  }
+
   async getHeadVariant(punkId: number, options?: PunksDataReadOptions): Promise<number> {
     validatePunkId(punkId)
     return Number(await this.read<bigint | number>('headVariantOf', [punkId], options))
+  }
+
+  headVariantOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getHeadVariant(punkId, options)
   }
 
   async getAttributeCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
@@ -251,10 +331,23 @@ export class PunksDataClient {
     return Number(await this.read<bigint | number>('attributeCountOf', [punkId], options))
   }
 
+  attributeCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getAttributeCount(punkId, options)
+  }
+
   async getPaletteSize(options?: PunksDataReadOptions): Promise<number> {
     return this.cached('paletteSize', options, async () =>
       Number(await this.read<bigint | number>('paletteSize', [], options)),
     )
+  }
+
+  paletteSize(options?: PunksDataReadOptions): Promise<number> {
+    return this.getPaletteSize(options)
+  }
+
+  async colorOf(colorId: number, options?: PunksDataReadOptions): Promise<Hex> {
+    validateColorId(colorId)
+    return this.read<Hex>('colorOf', [colorId], options)
   }
 
   async getColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
@@ -273,9 +366,17 @@ export class PunksDataClient {
     )
   }
 
+  colorSupply(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+    return this.getColorSupply(color, options)
+  }
+
   async getColorMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
     validatePunkId(punkId)
     return this.read<bigint>('colorMaskOf', [punkId], options)
+  }
+
+  colorMaskOf(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+    return this.getColorMask(punkId, options)
   }
 
   async hasColor(
@@ -293,9 +394,17 @@ export class PunksDataClient {
     return Number(await this.read<bigint | number>('pixelCountOf', [punkId], options))
   }
 
+  pixelCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getPixelCount(punkId, options)
+  }
+
   async getColorCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
     validatePunkId(punkId)
     return Number(await this.read<bigint | number>('colorCountOf', [punkId], options))
+  }
+
+  colorCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+    return this.getColorCount(punkId, options)
   }
 
   async getColorBitmapWord(
@@ -306,6 +415,14 @@ export class PunksDataClient {
     const colorId = await this.resolveColorId(color, options)
     validateBitmapWordIndex(wordIndex)
     return this.read<bigint>('colorBitmapWord', [colorId, wordIndex], options)
+  }
+
+  colorBitmapWord(
+    color: ColorRef,
+    wordIndex: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
+    return this.getColorBitmapWord(color, wordIndex, options)
   }
 
   async getColorBitmap(color: ColorRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
@@ -332,6 +449,14 @@ export class PunksDataClient {
     return this.read<bigint>('pixelCountBitmapWord', [pixelCount, wordIndex], options)
   }
 
+  pixelCountBitmapWord(
+    pixelCount: number,
+    wordIndex: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
+    return this.getPixelCountBitmapWord(pixelCount, wordIndex, options)
+  }
+
   async getPixelCountBitmap(
     pixelCount: number,
     options?: PunksDataReadOptions,
@@ -356,6 +481,14 @@ export class PunksDataClient {
     return this.read<bigint>('colorCountBitmapWord', [colorCount, wordIndex], options)
   }
 
+  colorCountBitmapWord(
+    colorCount: number,
+    wordIndex: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
+    return this.getColorCountBitmapWord(colorCount, wordIndex, options)
+  }
+
   async getColorCountBitmap(
     colorCount: number,
     options?: PunksDataReadOptions,
@@ -377,6 +510,10 @@ export class PunksDataClient {
     return pixels
   }
 
+  indexedPixelsOf(punkId: number, options?: PunksDataReadOptions): Promise<Uint8Array> {
+    return this.getIndexedPixels(punkId, options)
+  }
+
   async getColorAt(
     punkId: number,
     x: number,
@@ -386,6 +523,15 @@ export class PunksDataClient {
     validatePunkId(punkId)
     validateCoordinate(x, y)
     return Number(await this.read<bigint | number>('colorAt', [punkId, x, y], options))
+  }
+
+  colorAt(
+    punkId: number,
+    x: number,
+    y: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
+    return this.getColorAt(punkId, x, y, options)
   }
 
   async getPaletteRgbaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
@@ -398,6 +544,10 @@ export class PunksDataClient {
     })
   }
 
+  paletteRgbaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+    return this.getPaletteRgbaBytes(options)
+  }
+
   async getPaletteRgbBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
     return this.cached('paletteRgbBytes', options, async () => {
       const bytes = hexToBytes(await this.read<Hex>('paletteRgbBytes', [], options))
@@ -408,6 +558,10 @@ export class PunksDataClient {
     })
   }
 
+  paletteRgbBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+    return this.getPaletteRgbBytes(options)
+  }
+
   async getPaletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
     return this.cached('paletteAlphaBytes', options, async () => {
       const bytes = hexToBytes(await this.read<Hex>('paletteAlphaBytes', [], options))
@@ -416,6 +570,67 @@ export class PunksDataClient {
       }
       return bytes
     })
+  }
+
+  paletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+    return this.getPaletteAlphaBytes(options)
+  }
+
+  prepareLoadTraitMaskPairs(startPairIndex: number, packedPairs: readonly bigint[]): ContractWritePlan {
+    assertIntegerInRange('startPairIndex', startPairIndex, 0, 4_999)
+    return this.writePlan('Load Punk trait masks', 'loadTraitMaskPairs', [startPairIndex, packedPairs])
+  }
+
+  loadTraitMaskPairs(startPairIndex: number, packedPairs: readonly bigint[]): Promise<TransactionHash> {
+    return this.write(this.prepareLoadTraitMaskPairs(startPairIndex, packedPairs))
+  }
+
+  prepareLoadColorMasks(startPunkId: number, masks: readonly bigint[]): ContractWritePlan {
+    validatePunkId(startPunkId)
+    return this.writePlan('Load Punk color masks', 'loadColorMasks', [startPunkId, masks])
+  }
+
+  loadColorMasks(startPunkId: number, masks: readonly bigint[]): Promise<TransactionHash> {
+    return this.write(this.prepareLoadColorMasks(startPunkId, masks))
+  }
+
+  prepareLoadPackedScalars(startWordIndex: number, words: readonly bigint[]): ContractWritePlan {
+    assertIntegerInRange('startWordIndex', startWordIndex, 0, 1_999)
+    return this.writePlan('Load Punk packed scalars', 'loadPackedScalars', [startWordIndex, words])
+  }
+
+  loadPackedScalars(startWordIndex: number, words: readonly bigint[]): Promise<TransactionHash> {
+    return this.write(this.prepareLoadPackedScalars(startWordIndex, words))
+  }
+
+  prepareLoadColorSupplies(startColorId: number, supplies: readonly number[]): ContractWritePlan {
+    validateColorId(startColorId)
+    return this.writePlan('Load Punk color supplies', 'loadColorSupplies', [startColorId, supplies])
+  }
+
+  loadColorSupplies(startColorId: number, supplies: readonly number[]): Promise<TransactionHash> {
+    return this.write(this.prepareLoadColorSupplies(startColorId, supplies))
+  }
+
+  prepareLoadBlobChunk(blob: PunksDataBlobRef, chunkIndex: number, data: Hex | Uint8Array): ContractWritePlan {
+    assertIntegerInRange('chunkIndex', chunkIndex, 0, 65_535)
+    return this.writePlan('Load Punk data blob chunk', 'loadBlobChunk', [
+      normalizeBlobId(blob),
+      chunkIndex,
+      typeof data === 'string' ? data : bytesToHex(data),
+    ])
+  }
+
+  loadBlobChunk(blob: PunksDataBlobRef, chunkIndex: number, data: Hex | Uint8Array): Promise<TransactionHash> {
+    return this.write(this.prepareLoadBlobChunk(blob, chunkIndex, data))
+  }
+
+  prepareSeal(commitment: PunksDataCommitment): ContractWritePlan {
+    return this.writePlan('Seal Punk data set', 'seal', [commitment])
+  }
+
+  seal(commitment: PunksDataCommitment): Promise<TransactionHash> {
+    return this.write(this.prepareSeal(commitment))
   }
 
   async getPalette(
@@ -823,6 +1038,7 @@ export class PunksDataClient {
     args: readonly unknown[] = [],
     options?: PunksDataReadOptions,
   ): Promise<T> {
+    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
     const params = {
       address: this.address,
       abi: punksDataReadAbi,
@@ -840,6 +1056,7 @@ export class PunksDataClient {
     options?: PunksDataReadOptions,
   ): Promise<T[]> {
     if (calls.length === 0) return []
+    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
     const multicall = (this.publicClient as unknown as { multicall?: (args: unknown) => Promise<unknown[]> }).multicall
     if (!multicall) {
       return Promise.all(calls.map((call) => this.read<T>(call.functionName, call.args ?? [], options)))
@@ -861,6 +1078,33 @@ export class PunksDataClient {
       out.push(...(values as T[]))
     }
     return out
+  }
+
+  private writePlan(
+    description: string,
+    functionName: WriteFunctionName,
+    args: readonly unknown[],
+  ): ContractWritePlan {
+    return {
+      description,
+      request: {
+        address: this.address,
+        abi: punksDataAbi,
+        functionName,
+        args,
+      },
+    }
+  }
+
+  private async write(plan: ContractWritePlan): Promise<TransactionHash> {
+    if (!this.walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+    const resolvedAccount = this.account ?? this.walletClient.account?.address
+    const request = resolvedAccount === undefined
+      ? plan.request
+      : { ...plan.request, account: resolvedAccount }
+    return (this.walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
+      request,
+    )
   }
 
   private cached<T>(
@@ -896,6 +1140,16 @@ export class PunksDataClient {
 
 export function createPunksDataClient(config: PunksDataClientConfig): PunksDataClient {
   return new PunksDataClient(config)
+}
+
+function normalizeBlobId(blob: PunksDataBlobRef): number {
+  if (typeof blob === 'number') {
+    assertIntegerInRange('blobId', blob, 0, 7)
+    return blob
+  }
+  const id = PunksDataBlob[blob]
+  if (id === undefined) throw new PunksDataValidationError(`unknown PunksData blob ${blob}`)
+  return id
 }
 
 export function indexedPixelsToRgba(

@@ -33,12 +33,15 @@ const punks = createPunksSdk({
 Read ownership, listings, and original-market bids:
 
 ```ts
+const name = await punks.market.name()
+const totalSupply = await punks.market.totalSupply()
 const owner = await punks.market.ownerOf(8348)
 const listing = await punks.market.listing(8348)
 const bid = await punks.market.bidFor(8348)
+const escrowed = await punks.market.pendingWithdrawal(seller)
 ```
 
-List, unlist, buy, transfer, and withdraw:
+List, unlist, buy, bid, accept bids, transfer, and withdraw:
 
 ```ts
 await punks.market.list({
@@ -59,6 +62,18 @@ await punks.market.buy({
   maxPriceWei: 100n * 10n ** 18n,
 })
 
+await punks.market.enterBid({
+  punkId: 8348,
+  amountWei: 90n * 10n ** 18n,
+})
+
+await punks.market.acceptBid({
+  punkId: 8348,
+  minPriceWei: 90n * 10n ** 18n,
+})
+
+await punks.market.withdrawBid(8348)
+
 await punks.market.transfer({
   punkId: 8348,
   to: receiver,
@@ -67,9 +82,120 @@ await punks.market.transfer({
 await punks.market.withdraw()
 ```
 
-Use `prepareList`, `prepareUnlist`, `prepareBuy`, `prepareTransfer`, and
-`prepareWithdraw` when the app wants to simulate, show a confirmation, or batch
-the request itself.
+Use the matching `prepare*` method when the app wants to simulate, show a
+confirmation, or batch the request itself.
+
+## Punk Data Contracts
+
+`punks.data.legacy` reads the original Larva Labs `CryptopunksData` contract:
+
+```ts
+const svg = await punks.data.legacy.punkImageSvg(8348)
+const csv = await punks.data.legacy.punkAttributes(8348)
+```
+
+`punks.data.onchain` reads and administers this repo's `PunksData.sol`
+contract. Read methods keep ergonomic aliases and contract-shaped names:
+
+```ts
+const hash = await punks.data.onchain.datasetHash()
+const trait = await punks.data.onchain.traitName(62)
+const pixels = await punks.data.onchain.indexedPixelsOf(8348)
+const matches = await punks.data.onchain.hasTraits(8348, required, forbidden, anyOf)
+```
+
+Loader writes are exposed for deployment tooling:
+
+```ts
+await punks.data.onchain.loadBlobChunk('Palette', 0, paletteBytes)
+await punks.data.onchain.seal({
+  traitCatalogHash,
+  punkMaskHash,
+  paletteHash,
+  indexedPixelsHash,
+  compressedPixelsHash,
+})
+```
+
+## Wrappers
+
+The modern 721 wrapper uses a Stash. Transfer the Punk to the user's Stash,
+then call the wrapper:
+
+```ts
+const steps = await punks.wrappers.c721.prepareWrapFlow({
+  owner,
+  punkId: 8348,
+})
+
+for (const step of steps) await walletClient.writeContract(step.request)
+
+await punks.wrappers.c721.unwrap(8348)
+await punks.wrappers.c721.migrateLegacyWrappedPunks([8348])
+```
+
+The legacy wrapper uses a per-user proxy. Register it once, transfer the Punk
+to that proxy, then mint:
+
+```ts
+await punks.wrappers.legacy.registerProxy()
+
+const proxy = await punks.wrappers.legacy.proxyFor(owner)
+await punks.market.transfer({ punkId: 8348, to: proxy })
+await punks.wrappers.legacy.mint(8348)
+
+await punks.wrappers.legacy.burn(8348)
+```
+
+Both wrapper clients also expose ERC-721 approvals and transfers.
+
+## Stash
+
+`punks.stash.factory` covers StashFactory reads, deployment, upgrades, auction
+allowlisting, ownership, and roles:
+
+```ts
+const stashAddress = await punks.stash.factory.stashAddressFor(owner)
+await punks.stash.deploy(owner)
+```
+
+Work with any Stash by address, or resolve one from its owner:
+
+```ts
+const stash = await punks.stash.forOwner(owner)
+
+await stash.fundEth(100n * 10n ** 18n)
+
+const available = await stash.availableLiquidity()
+const order = await stash.getOrder(auction)
+
+await stash.cancelPunkBid(12n)
+await stash.cancelAllPunkBids()
+
+await stash.withdraw({
+  amountWei: 10n * 10n ** 18n,
+})
+
+await stash.withdrawPunks([8348])
+```
+
+Offchain Punk bids use the Stash EIP-712 shape:
+
+```ts
+const typedData = stash.typedDataForPunkBid({
+  chainId: 1,
+  bid,
+})
+
+const signature = await stash.signPunkBid({ chainId: 1, bid })
+
+await stash.processPunkBid({
+  bid,
+  punkId: 8348,
+  signature,
+  proof,
+})
+```
 
 ## Offer Slots
 

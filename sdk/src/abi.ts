@@ -267,7 +267,83 @@ export const punksDataReadAbi = [
   },
 ] as const satisfies Abi
 
-export const punksDataAbi = punksDataReadAbi
+export const punksDataWriteAbi = [
+  {
+    type: 'function',
+    name: 'loadTraitMaskPairs',
+    inputs: [
+      { name: 'startPairIndex', type: 'uint16' },
+      { name: 'packedPairs', type: 'uint256[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'loadColorMasks',
+    inputs: [
+      { name: 'startPunkId', type: 'uint16' },
+      { name: 'masks', type: 'uint256[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'loadPackedScalars',
+    inputs: [
+      { name: 'startWordIndex', type: 'uint16' },
+      { name: 'words', type: 'uint256[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'loadColorSupplies',
+    inputs: [
+      { name: 'startColorId', type: 'uint8' },
+      { name: 'supplies', type: 'uint32[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'loadBlobChunk',
+    inputs: [
+      { name: 'blobId', type: 'uint8' },
+      { name: 'chunkIndex', type: 'uint16' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'seal',
+    inputs: [
+      {
+        name: 'commitment',
+        type: 'tuple',
+        components: [
+          { name: 'traitCatalogHash', type: 'bytes32' },
+          { name: 'punkMaskHash', type: 'bytes32' },
+          { name: 'paletteHash', type: 'bytes32' },
+          { name: 'indexedPixelsHash', type: 'bytes32' },
+          { name: 'compressedPixelsHash', type: 'bytes32' },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const satisfies Abi
+
+export const punksDataAbi = [
+  ...punksDataReadAbi,
+  ...punksDataWriteAbi,
+] as const satisfies Abi
 
 export const punksRendererReadAbi = [
   {
@@ -396,12 +472,381 @@ export const punksRendererReadAbi = [
 
 export const punksRendererAbi = punksRendererReadAbi
 
+export const legacyCryptoPunksDataAbi = [
+  {
+    type: 'function',
+    name: 'punkImageSvg',
+    inputs: [{ name: 'index', type: 'uint16' }],
+    outputs: [{ name: 'svg', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkAttributes',
+    inputs: [{ name: 'index', type: 'uint16' }],
+    outputs: [{ name: 'text', type: 'string' }],
+    stateMutability: 'view',
+  },
+] as const satisfies Abi
+
+export const cryptoPunks721Abi = [
+  { type: 'function', name: 'name', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'pure' },
+  { type: 'function', name: 'symbol', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'pure' },
+  { type: 'function', name: 'licensingTerms', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'pure' },
+  { type: 'function', name: 'totalSupply', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'ownerOf',
+    inputs: [{ name: 'id', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenURI',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokensOfOwner',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'punkProxyForUser',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getApproved',
+    inputs: [{ name: 'id', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isApprovedForAll',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'operator', type: 'address' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'supportsInterface',
+    inputs: [{ name: 'interfaceId', type: 'bytes4' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'wrapPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'wrapPunkBatch',
+    inputs: [{ name: 'punkIndexes', type: 'uint256[]' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unwrapPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unwrapPunkBatch',
+    inputs: [{ name: 'punkIndexes', type: 'uint256[]' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'migrateLegacyWrappedPunks',
+    inputs: [{ name: 'punkIndexes', type: 'uint256[]' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'rescuePunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'id', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'setApprovalForAll',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'isApproved', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'id', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'safeTransferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'id', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'safeTransferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'id', type: 'uint256' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+] as const satisfies Abi
+
+export const wrappedPunksAbi = [
+  { type: 'function', name: 'name', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'symbol', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'totalSupply', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'ownerOf',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenURI',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  { type: 'function', name: 'baseURI', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'tokenByIndex',
+    inputs: [{ name: 'index', type: 'uint256' }],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenOfOwnerByIndex',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'index', type: 'uint256' },
+    ],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getApproved',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isApprovedForAll',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'operator', type: 'address' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'supportsInterface',
+    inputs: [{ name: 'interfaceId', type: 'bytes4' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'proxyInfo',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  { type: 'function', name: 'punkContract', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'owner', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'paused', inputs: [], outputs: [{ type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'registerProxy', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  {
+    type: 'function',
+    name: 'mint',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'burn',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setApprovalForAll',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'approved', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'safeTransferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'safeTransferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+      { name: '_data', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setBaseURI',
+    inputs: [{ name: 'baseUri', type: 'string' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'function', name: 'pause', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'unpause', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  {
+    type: 'function',
+    name: 'transferOwnership',
+    inputs: [{ name: 'newOwner', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'function', name: 'renounceOwnership', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+] as const satisfies Abi
+
 export const cryptoPunksMarketAbi = [
+  { type: 'function', name: 'name', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'symbol', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'imageHash', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'totalSupply', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'punksRemainingToAssign',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'nextPunkIndexToAssign',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
   {
     type: 'function',
     name: 'punkIndexToAddress',
     inputs: [{ name: 'punkIndex', type: 'uint256' }],
     outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
     stateMutability: 'view',
   },
   {
@@ -427,6 +872,13 @@ export const cryptoPunksMarketAbi = [
       { name: 'bidder', type: 'address' },
       { name: 'value', type: 'uint256' },
     ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'pendingWithdrawals',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
     stateMutability: 'view',
   },
   {
@@ -466,6 +918,30 @@ export const cryptoPunksMarketAbi = [
   },
   {
     type: 'function',
+    name: 'enterBidForPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'acceptBidForPunk',
+    inputs: [
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minPrice', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawBidForPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'transferPunk',
     inputs: [
       { name: 'to', type: 'address' },
@@ -479,6 +955,352 @@ export const cryptoPunksMarketAbi = [
     name: 'withdraw',
     inputs: [],
     outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const satisfies Abi
+
+const stashOrderAbi = [
+  { name: 'numberOfUnits', type: 'uint16' },
+  { name: 'pricePerUnit', type: 'uint80' },
+  { name: 'auction', type: 'address' },
+] as const
+
+const stashPunkBidAbi = [
+  { name: 'order', type: 'tuple', components: stashOrderAbi },
+  { name: 'accountNonce', type: 'uint256' },
+  { name: 'bidNonce', type: 'uint256' },
+  { name: 'expiration', type: 'uint256' },
+  { name: 'root', type: 'bytes32' },
+] as const
+
+export const stashFactoryAbi = [
+  { type: 'function', name: 'currentVersion', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'implementations',
+    inputs: [{ name: 'version', type: 'uint256' }],
+    outputs: [{ name: 'implementation', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'stashAddressFor',
+    inputs: [{ name: 'stashOwner', type: 'address' }],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'ownerHasDeployed',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isStash',
+    inputs: [{ name: 'stashAddress', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isAuction',
+    inputs: [{ name: 'auctionAddress', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  { type: 'function', name: 'stashVerifier', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'owner', inputs: [], outputs: [{ name: 'result', type: 'address' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'ownershipHandoverExpiresAt',
+    inputs: [{ name: 'pendingOwner', type: 'address' }],
+    outputs: [{ name: 'result', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'rolesOf',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ name: 'roles', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'hasAllRoles',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'roles', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'hasAnyRole',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'roles', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'deployStash',
+    inputs: [{ name: '_owner', type: 'address' }],
+    outputs: [{ name: 'deployedAddress', type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'function', name: 'upgradeStash', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  {
+    type: 'function',
+    name: 'addVersion',
+    inputs: [{ name: 'implementation', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setAuction',
+    inputs: [
+      { name: 'auction', type: 'address' },
+      { name: '_isAuction', type: 'bool' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferOwnership',
+    inputs: [{ name: 'newOwner', type: 'address' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  { type: 'function', name: 'renounceOwnership', inputs: [], outputs: [], stateMutability: 'payable' },
+  { type: 'function', name: 'requestOwnershipHandover', inputs: [], outputs: [], stateMutability: 'payable' },
+  {
+    type: 'function',
+    name: 'completeOwnershipHandover',
+    inputs: [{ name: 'pendingOwner', type: 'address' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  { type: 'function', name: 'cancelOwnershipHandover', inputs: [], outputs: [], stateMutability: 'payable' },
+  {
+    type: 'function',
+    name: 'grantRoles',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'roles', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'revokeRoles',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'roles', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'renounceRoles',
+    inputs: [{ name: 'roles', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+] as const satisfies Abi
+
+export const stashAbi = [
+  { type: 'function', name: 'owner', inputs: [], outputs: [{ type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'version', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'pure' },
+  { type: 'function', name: 'punkAccountNonce', inputs: [], outputs: [{ type: 'uint56' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'punkBidNonceUsesRemaining',
+    inputs: [{ name: 'punkBidNonce', type: 'uint256' }],
+    outputs: [{ name: 'usesRemaining', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'usedPunkBidNonces',
+    inputs: [{ name: 'punkBidNonce', type: 'uint256' }],
+    outputs: [{ name: 'isUsed', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'paymentTokenToOrders',
+    inputs: [
+      { name: 'paymentToken', type: 'address' },
+      { name: 'index', type: 'uint256' },
+    ],
+    outputs: stashOrderAbi,
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getOrder',
+    inputs: [{ name: 'auction', type: 'address' }],
+    outputs: [{ name: 'order', type: 'tuple', components: stashOrderAbi }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'totalLocked',
+    inputs: [{ name: 'tokenAddress', type: 'address' }],
+    outputs: [{ name: 'lockedAmount', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'availableLiquidity',
+    inputs: [{ name: 'tokenAddress', type: 'address' }],
+    outputs: [{ name: 'availableAmount', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'availableLiquidityWETHAndETH',
+    inputs: [],
+    outputs: [{ name: 'availableAmount', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'initialize',
+    inputs: [{ name: '_owner', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'placeOrder',
+    inputs: [
+      { name: 'pricePerUnit', type: 'uint80' },
+      { name: 'numberOfUnits', type: 'uint16' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'processOrder',
+    inputs: [
+      { name: 'costPerUnit', type: 'uint80' },
+      { name: 'numberOfUnits', type: 'uint16' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'processPunkBid',
+    inputs: [
+      { name: 'bid', type: 'tuple', components: stashPunkBidAbi },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'signature', type: 'bytes' },
+      { name: 'proof', type: 'bytes32[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancelPunkBid',
+    inputs: [{ name: 'bidNonce', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'function', name: 'cancelAllPunkBids', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  {
+    type: 'function',
+    name: 'wrapPunk',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdraw',
+    inputs: [
+      { name: 'tokenAddress', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawERC721',
+    inputs: [
+      { name: 'tokenAddress', type: 'address' },
+      { name: 'tokenIds', type: 'uint256[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawERC1155',
+    inputs: [
+      { name: 'tokenAddress', type: 'address' },
+      { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'amounts', type: 'uint256[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawPunks',
+    inputs: [{ name: 'tokenIds', type: 'uint256[]' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'onERC1155Received',
+    inputs: [
+      { type: 'address' },
+      { type: 'address' },
+      { type: 'uint256' },
+      { type: 'uint256' },
+      { type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'onERC1155BatchReceived',
+    inputs: [
+      { type: 'address' },
+      { type: 'address' },
+      { type: 'uint256[]' },
+      { type: 'uint256[]' },
+      { type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'onERC721Received',
+    inputs: [
+      { type: 'address' },
+      { type: 'address' },
+      { type: 'uint256' },
+      { type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
     stateMutability: 'nonpayable',
   },
 ] as const satisfies Abi
