@@ -1,4 +1,4 @@
-# SDK: Original Marketplace
+# Original Marketplace
 
 The original CryptoPunks market is available at `punks.market`. Reads require
 a `publicClient`; writes require a `walletClient`.

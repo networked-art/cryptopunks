@@ -1,4 +1,4 @@
-# SDK: Utilities And Caching
+# Utilities And Caching
 
 The SDK exports contract constants, ABIs, pure bitmap helpers, pixel helpers,
 and shared read options for block-scoped reads.

@@ -1,4 +1,4 @@
-# SDK: Stash
+# Stash
 
 `punks.stash` covers StashFactory and individual Stash contracts.
 

@@ -1,4 +1,4 @@
-# SDK: Punk Data Contracts
+# Punk Data Contracts
 
 The SDK has three data surfaces with different jobs.
 

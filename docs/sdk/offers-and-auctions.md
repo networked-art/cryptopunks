@@ -1,4 +1,4 @@
-# SDK: Offers And Auctions
+# Offers And Auctions
 
 Offers and auctions use the Networked Art auction contract. Configure its
 address before preparing or submitting writes:

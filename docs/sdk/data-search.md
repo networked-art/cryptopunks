@@ -1,4 +1,4 @@
-# SDK: Data And Search
+# Data And Search
 
 The root SDK searches the bundled canonical dataset locally. It uses the same
 bitmap data sealed into `PunksData`, but the application API is shaped around

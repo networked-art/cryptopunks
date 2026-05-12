@@ -153,9 +153,9 @@ body {
 }
 
 .vp-doc h1 {
-  max-width: 11ch;
+  max-width: none;
   margin-bottom: 34px;
-  font-size: 64px;
+  font-size: 42px;
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: 0;

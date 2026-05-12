@@ -1,4 +1,4 @@
-# SDK: Market Actions
+# Market Actions
 
 This page has been split into focused SDK guides:
 

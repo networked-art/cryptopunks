@@ -74,4 +74,4 @@ The detailed reference is split by topic:
 
 The TypeScript SDK has its own [top-level section](/sdk) because it covers both
 `PunksData` reads and `PunksRenderer` outputs. For data-specific examples, see
-[SDK: Data And Search](/sdk/data-search).
+[Data And Search](/sdk/data-search).

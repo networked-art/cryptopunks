@@ -1,4 +1,4 @@
-# SDK: Wrappers
+# Wrappers
 
 Wrapper clients live under `punks.wrappers`.
 

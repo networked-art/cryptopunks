@@ -1,4 +1,4 @@
-# SDK: Rendering And Metadata
+# Rendering And Metadata
 
 `punks.render` is a pure TypeScript renderer backed by the bundled canonical
 indexed pixels and palette.
