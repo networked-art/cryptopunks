@@ -187,7 +187,7 @@ its own. The singleton-fast-path `acceptOffer(offerId, punkId)` uses
 ### 2.6 Constants
 
 ```solidity
-uint8  internal constant MAX_LOT_ITEMS    = 100;
+uint8  internal constant MAX_LOT_ITEMS    = 80;
 uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
 uint8  internal constant COLOR_COUNT_MAX  = 14;
 uint16 internal constant BPS              = 10_000;
@@ -717,11 +717,11 @@ between forbidden and anyOf.
 
 ## 10. Gas analysis
 
-`MAX_LOT_ITEMS = 100` is chosen to cover plausible curated baskets (large
+`MAX_LOT_ITEMS = 80` is chosen to cover plausible curated baskets (large
 artist collections, exchange treasury bundles) while keeping worst-case
 settlement well under the L1 mainnet 30M block limit.
 
-### 10.1 Settlement (worst case: 100 V1 items)
+### 10.1 Settlement (worst case: 80 V1 items)
 
 Per V1 item via `_deliverPunk`:
 
@@ -731,41 +731,39 @@ Per V1 item via `_deliverPunk`:
 - `PUNKS_V1.transferPunk(to, tokenId)` ~25k
 - Auction-contract bookkeeping per item ~15k
 
-Per item: ~150k gas. 100 × 150k = ~15M.
+Per item: ~150k gas. 80 × 150k = ~12M.
 
 Plus auction state read/write, seller payment, settled-flag flip, top-level
 events: ~1M.
 
-Total: ~16M gas. Within a 30M block limit, leaving ~14M of headroom.
+Total: ~13M gas. Within a 30M block limit, leaving ~17M of headroom.
 
 ### 10.2 Settlement (canonical-only)
 
 Canonical V2 path is cheaper (~110k per item; no `withdraw()`):
 
-- 100 × 110k = ~11M plus ~1M overhead = ~12M.
+- 80 × 110k = ~8.8M plus ~1M overhead = ~9.8M.
 
-### 10.3 openAuction (100-item pull)
+### 10.3 openAuction (80-item pull)
 
-Per item: `_pullPunk` ~60–80k (V1 higher than V2). 100 × 80k = ~8M plus
-~1M overhead = ~9M.
+Per item: `_pullPunk` ~60–80k (V1 higher than V2). 80 × 80k = ~6.4M plus
+~1M overhead = ~7.4M.
 
-### 10.4 placeOffer (100-slot offer)
+### 10.4 placeOffer (80-slot offer)
 
-Per slot: ~25k (storage of OfferSlot + small dynamic arrays). 100 × 25k =
-~2.5M plus ~50k overhead = ~2.55M.
+Per slot: ~25k (storage of OfferSlot + small dynamic arrays). 80 × 25k =
+~2M plus ~50k overhead = ~2.05M.
 
-### 10.5 createLot (100-item lot)
+### 10.5 createLot (80-item lot)
 
 Per item: ~25k storage + ~10k validation + ~3k slot reservation = ~38k.
-100 × 38k = ~3.8M plus ~100k overhead = ~3.9M.
+80 × 38k = ~3.04M plus ~100k overhead = ~3.14M.
 
 ### 10.6 Conclusion
 
-At MAX_LOT_ITEMS=100, worst-case settlement (~16M) is roughly half a block.
-That is fine in normal conditions but leaves less headroom under congestion
-than a smaller bound would. The trade-off is deliberate: 100 covers larger
-curated collections that 40 would exclude, and bidders for large bundles
-can afford to time their settlement.
+At MAX_LOT_ITEMS=80, worst-case settlement (~13M) stays below half a block.
+The bound leaves more headroom under congestion than the earlier 100-item
+design while still covering larger curated collections that 40 would exclude.
 
 Bidder gas cost rises linearly in N; acceptable for the bundle use case
 where the buyer is choosing to acquire many Punks atomically.

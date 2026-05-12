@@ -369,7 +369,7 @@ New coverage:
 - Place-time mask validation: bits beyond canonical, required/forbidden
   overlap, forbidden/anyOf overlap.
 - Place-time `weightBps` validation: zero weight, sum != 10_000.
-- Bundle createLot with V1+V2 pair, six-Punk equal-weight, 100-Punk max.
+- Bundle createLot with V1+V2 pair, six-Punk equal-weight, 80-Punk max.
 - Bundle openAuction pulls every Punk; bundle settle delivers every Punk;
   per-item market sale events recorded with weighted prices.
 - Per-item version cascading: opening a lot containing item X invalidates
@@ -434,24 +434,23 @@ pending pull balance, which they sweep separately. No accounting drift.
 
 ### 5.4 MAX_LOT_ITEMS tightening
 
-`MAX_LOT_ITEMS = 100` is chosen for use-case coverage; the design margin
-against 30M is real but slimmer than the original 40-item proposal. If
-post-implementation gas measurements reveal real overhead beyond the
-estimates in 01-design §10, MAX should be reduced (likely to 64 or 80).
-Better to ship with measured headroom than to ship at 100 and have settlement
-transactions fail under congestion. Profile before mainnet.
+`MAX_LOT_ITEMS = 80` is chosen for use-case coverage with more measured
+headroom than the earlier 100-item design. If post-implementation gas
+measurements reveal real overhead beyond the estimates in 01-design §10,
+MAX should be reduced further. Better to ship with measured headroom than
+to ship at the edge and have settlement transactions fail under congestion.
 
 ### 5.5 Per-item lot reservation storage
 
 `mapping(bytes32 => uint256) lotForPunk` reserves a Punk for one lot at a
 time (see 01-design §2.3). Lot creation writes one SSTORE per item;
 consumption (openAuction, acceptOfferFromLot, cancelLot, clearStaleLot)
-clears them with refund-eligible deletes. For 100-item lots that's 100
-SSTOREs at create + 100 deletes at consume.
+clears them with refund-eligible deletes. For 80-item lots that's 80
+SSTOREs at create + 80 deletes at consume.
 
 ### 5.6 Offer deletion gas
 
-Deleting an `Offer` with 100 slots iterates 100 dynamic-storage clears.
+Deleting an `Offer` with 80 slots iterates 80 dynamic-storage clears.
 Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
 
 ## 6. Done definition
@@ -459,9 +458,9 @@ Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
 - All listed contract files compile with the new interfaces.
 - All existing test cases pass after migration to `MockPunksData` and
   `OfferSlot[]`.
-- New bundle test cases pass (V1+V2 pair, 6-Punk lot, 100-Punk lot,
+- New bundle test cases pass (V1+V2 pair, 6-Punk lot, 80-Punk lot,
   single-listing rejection on overlap, atomic delivery revert).
-- Gas profile output recorded against MAX_LOT_ITEMS=100 worst case;
+- Gas profile output recorded against MAX_LOT_ITEMS=80 worst case;
   decision to keep or tighten the bound documented.
 - `docs/punks-auction-redesign/02-implementation-plan.md` updated with any
   spec deviations discovered during implementation.

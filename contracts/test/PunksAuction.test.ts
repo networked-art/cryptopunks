@@ -809,13 +809,32 @@ describe('PunksAuction', () => {
         'InvalidItemCount',
       )
 
-      const big = Array.from({ length: 101 }, (_, i) => lotItem(i, 0))
+      const big = Array.from({ length: 81 }, (_, i) => lotItem(i, 0))
       // weightBps=0 also invalid; still fails on count first
       await ctx.viem.assertions.revertWithCustomError(
         auctionsAsSeller.write.createLot([big, parseEther('1'), expiresAt]),
         auctions,
         'InvalidItemCount',
       )
+    })
+
+    it('accepts exactly 80 lot items', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      const items: LotItemInput[] = []
+
+      for (let i = 0; i < 80; i++) {
+        const punkId = 2_000 + i
+        await assignPunk(ctx, seller, BigInt(punkId))
+        await depositPunk(ctx, seller, BigInt(punkId))
+        items.push(lotItem(punkId, 125))
+      }
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createLotWith(ctx, seller, items, parseEther('1'), expiresAt)
+
+      const storedItems = await auctions.read.getLotItems([1n])
+      assert.equal(storedItems.length, 80)
     })
 
     it('rejects weights that do not sum to 10_000 or include a zero weight', async () => {
@@ -1375,7 +1394,7 @@ describe('PunksAuction', () => {
         'InvalidSlotCount',
       )
 
-      const tooMany = Array.from({ length: 101 }, () => wildcardSlot())
+      const tooMany = Array.from({ length: 81 }, () => wildcardSlot())
       await ctx.viem.assertions.revertWithCustomError(
         auctionsAsOfferer.write.placeOffer(
           [parseEther('1'), 0n, zeroAddress, tooMany],
@@ -1384,6 +1403,14 @@ describe('PunksAuction', () => {
         auctions,
         'InvalidSlotCount',
       )
+
+      const maxSlots = Array.from({ length: 80 }, () => wildcardSlot())
+      await auctionsAsOfferer.write.placeOffer(
+        [parseEther('1'), 0n, zeroAddress, maxSlots],
+        { value: parseEther('1') },
+      )
+      const storedSlots = await auctions.read.getOfferSlots([1n])
+      assert.equal(storedSlots.length, 80)
     })
 
     it('accepts a canonical Punk offer through the original marketplace and refunds excess', async () => {
