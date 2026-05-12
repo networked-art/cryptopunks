@@ -8,6 +8,7 @@ import {
   bytesToHex,
   createPunksDataClient,
   emptyPunkBitmap,
+  punkBitmapWord,
   punkBitmapFromIds,
 } from '../dist/index.js'
 
@@ -162,13 +163,13 @@ function makeFakePublicClient() {
       case 'traitSupply':
         return catalog[args[0]].supply
       case 'traitBitmapWord':
-        return (bitmaps.traits.get(args[0]) ?? emptyPunkBitmap())[args[1]]
+        return punkBitmapWord(bitmaps.traits.get(args[0]) ?? emptyPunkBitmap(), args[1])
       case 'colorBitmapWord':
-        return (bitmaps.colors.get(args[0]) ?? emptyPunkBitmap())[args[1]]
+        return punkBitmapWord(bitmaps.colors.get(args[0]) ?? emptyPunkBitmap(), args[1])
       case 'pixelCountBitmapWord':
-        return (bitmaps.pixelCounts.get(args[0]) ?? emptyPunkBitmap())[args[1]]
+        return punkBitmapWord(bitmaps.pixelCounts.get(args[0]) ?? emptyPunkBitmap(), args[1])
       case 'colorCountBitmapWord':
-        return (bitmaps.colorCounts.get(args[0]) ?? emptyPunkBitmap())[args[1]]
+        return punkBitmapWord(bitmaps.colorCounts.get(args[0]) ?? emptyPunkBitmap(), args[1])
       case 'traitMaskOf':
         return traitMasks.get(args[0]) ?? 0n
       case 'colorMaskOf':

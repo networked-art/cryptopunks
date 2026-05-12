@@ -30,6 +30,7 @@ import {
   intersectPunkBitmaps,
   normalizePunkBitmap,
   punkBitmapFromIds,
+  punkBitmapWord,
   subtractPunkBitmaps,
   unionPunkBitmaps,
 } from './bitmap'
@@ -92,11 +93,13 @@ export type {
 } from './types'
 
 export type OfflinePunksDataFileKey =
+  | OfflinePunksSearchFileKey
+  | OfflinePunksPixelFileKey
+
+export type OfflinePunksSearchFileKey =
   | 'traitBitmaps'
   | 'traitMeta'
   | 'palette'
-  | 'pixelOffsets'
-  | 'compressedPixels'
   | 'colorBitmaps'
   | 'pixelCountBitmaps'
   | 'colorCountBitmaps'
@@ -105,14 +108,18 @@ export type OfflinePunksDataFileKey =
   | 'packedScalars'
   | 'colorSupplies'
 
+export type OfflinePunksPixelFileKey =
+  | 'pixelOffsets'
+  | 'compressedPixels'
+
 export type OfflinePunksDataBundle = {
   manifestJson: string
-  files: Record<OfflinePunksDataFileKey, string>
+  files: Partial<Record<OfflinePunksDataFileKey, string>>
 }
 
 export type OfflinePunksDataSource = {
   manifest: string | OfflinePunksDataManifest
-  files: Record<OfflinePunksDataFileKey, Uint8Array | string>
+  files: Partial<Record<OfflinePunksDataFileKey, Uint8Array | string>>
 }
 
 export type OfflinePunksDataManifest = {
@@ -152,6 +159,10 @@ export type OfflinePunksDataManifest = {
 export type OfflinePunksDataClientConfig = {
   dataset?: OfflinePunksDataSource | OfflinePunksDataBundle
   cache?: boolean
+}
+
+export type LoadOfflinePunksDataOptions = {
+  includePixels?: boolean
 }
 
 export type PunkTypeRef = PunkTypeValue | PunkTypeName | string
@@ -236,21 +247,19 @@ type OfflineStore = {
   colorMasks: bigint[]
   scalars: PackedScalar[]
   textIndex: OfflineTextIndexEntry[]
-  pixelOffsets: Uint8Array
-  compressedPixels: Uint8Array
+  pixelOffsets?: Uint8Array
+  compressedPixels?: Uint8Array
 }
 
 type NormalizedOfflineSource = {
   manifest: string | OfflinePunksDataManifest
-  files: Record<OfflinePunksDataFileKey, Uint8Array>
+  files: Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
 }
 
-const FILE_KEYS: readonly OfflinePunksDataFileKey[] = [
+const SEARCH_FILE_KEYS: readonly OfflinePunksSearchFileKey[] = [
   'traitBitmaps',
   'traitMeta',
   'palette',
-  'pixelOffsets',
-  'compressedPixels',
   'colorBitmaps',
   'pixelCountBitmaps',
   'colorCountBitmaps',
@@ -258,6 +267,16 @@ const FILE_KEYS: readonly OfflinePunksDataFileKey[] = [
   'colorMasks',
   'packedScalars',
   'colorSupplies',
+]
+
+const PIXEL_FILE_KEYS: readonly OfflinePunksPixelFileKey[] = [
+  'pixelOffsets',
+  'compressedPixels',
+]
+
+const FILE_KEYS: readonly OfflinePunksDataFileKey[] = [
+  ...SEARCH_FILE_KEYS,
+  ...PIXEL_FILE_KEYS,
 ]
 
 const ATTRIBUTE_COUNT_MIN = 0
@@ -437,7 +456,7 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     const traitId = this.resolveTraitIdSync(trait)
     validateBitmapWordIndex(wordIndex)
-    return this.store.traitBitmaps[traitId][wordIndex]
+    return punkBitmapWord(this.store.traitBitmaps[traitId], wordIndex)
   }
 
   async getTraitBitmapWord(
@@ -585,7 +604,7 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     const colorId = this.resolveColorIdSync(color)
     validateBitmapWordIndex(wordIndex)
-    return this.store.colorBitmaps[colorId][wordIndex]
+    return punkBitmapWord(this.store.colorBitmaps[colorId], wordIndex)
   }
 
   async getColorBitmapWord(
@@ -629,7 +648,7 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     validatePixelCount(pixelCount)
     validateBitmapWordIndex(wordIndex)
-    return this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN][wordIndex]
+    return punkBitmapWord(this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN], wordIndex)
   }
 
   async getPixelCountBitmapWord(
@@ -664,7 +683,7 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     validateColorCount(colorCount)
     validateBitmapWordIndex(wordIndex)
-    return this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN][wordIndex]
+    return punkBitmapWord(this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN], wordIndex)
   }
 
   async getColorCountBitmapWord(
@@ -977,8 +996,16 @@ export class OfflinePunksDataClient {
 
   searchSync(query: OfflinePunksSearchQuery = {}, options?: PunksDataReadOptions): number[] {
     validateOfflinePagination(query)
-    const ids = bitmapToPunkIds(this.searchBitmapSync(query, options))
-    const sorted = this.sortPunkIds(ids, query.sort ?? 'id')
+    const sort = query.sort ?? 'id'
+    const bitmap = this.searchBitmapSync(query, options)
+    if (sort === 'id') {
+      return bitmapToPunkIds(bitmap, {
+        offset: query.offset,
+        limit: query.limit,
+      })
+    }
+    const ids = bitmapToPunkIds(bitmap)
+    const sorted = this.sortPunkIds(ids, sort)
     return paginateIds(sorted, query.offset, query.limit)
   }
 
@@ -1307,6 +1334,7 @@ export function createOfflinePunksDataClientFromDataset(
 
 export async function loadOfflinePunksDataFromDirectory(
   directory: string,
+  options: LoadOfflinePunksDataOptions = {},
 ): Promise<OfflinePunksDataSource> {
   const [{ readFile }, { join }] = await Promise.all([
     import('node:fs/promises'),
@@ -1314,9 +1342,10 @@ export async function loadOfflinePunksDataFromDirectory(
   ])
   const manifestText = await readFile(join(directory, 'manifest.json'), 'utf8')
   const manifest = parseManifest(manifestText)
-  const files = {} as Record<OfflinePunksDataFileKey, Uint8Array>
+  const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
+  const keys = offlineFileKeysForLoad(options)
   await Promise.all(
-    FILE_KEYS.map(async (key) => {
+    keys.map(async (key) => {
       files[key] = new Uint8Array(await readFile(join(directory, manifest.files[key])))
     }),
   )
@@ -1325,6 +1354,7 @@ export async function loadOfflinePunksDataFromDirectory(
 
 export async function loadOfflinePunksDataFromUrl(
   baseUrl: string | URL,
+  options: LoadOfflinePunksDataOptions = {},
 ): Promise<OfflinePunksDataSource> {
   if (typeof fetch !== 'function') {
     throw new PunksDataValidationError('fetch is not available in this runtime')
@@ -1332,13 +1362,18 @@ export async function loadOfflinePunksDataFromUrl(
   const base = ensureBaseUrl(baseUrl)
   const manifestText = await fetchText(new URL('manifest.json', base))
   const manifest = parseManifest(manifestText)
-  const files = {} as Record<OfflinePunksDataFileKey, Uint8Array>
+  const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
+  const keys = offlineFileKeysForLoad(options)
   await Promise.all(
-    FILE_KEYS.map(async (key) => {
+    keys.map(async (key) => {
       files[key] = await fetchBytes(new URL(manifest.files[key], base))
     }),
   )
   return { manifest, files }
+}
+
+function offlineFileKeysForLoad(options: LoadOfflinePunksDataOptions): readonly OfflinePunksDataFileKey[] {
+  return options.includePixels === false ? SEARCH_FILE_KEYS : FILE_KEYS
 }
 
 function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBundle): OfflineStore {
@@ -1346,34 +1381,44 @@ function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBund
   const manifest = parseManifest(normalized.manifest)
   validateManifest(manifest)
 
-  const traitBitmaps = parseBitmapTable(normalized.files.traitBitmaps, TRAIT_COUNT, 'traitBitmaps')
-  const colorBitmaps = parseBitmapTable(normalized.files.colorBitmaps, PALETTE_SIZE, 'colorBitmaps')
+  const traitBitmaps = parseBitmapTable(
+    requiredFile(normalized.files, 'traitBitmaps'),
+    TRAIT_COUNT,
+    'traitBitmaps',
+  )
+  const colorBitmaps = parseBitmapTable(
+    requiredFile(normalized.files, 'colorBitmaps'),
+    PALETTE_SIZE,
+    'colorBitmaps',
+  )
   const pixelCountBitmaps = parseBitmapTable(
-    normalized.files.pixelCountBitmaps,
+    requiredFile(normalized.files, 'pixelCountBitmaps'),
     PIXEL_COUNT_MAX - PIXEL_COUNT_MIN + 1,
     'pixelCountBitmaps',
   )
   const colorCountBitmaps = parseBitmapTable(
-    normalized.files.colorCountBitmaps,
+    requiredFile(normalized.files, 'colorCountBitmaps'),
     COLOR_COUNT_MAX - COLOR_COUNT_MIN + 1,
     'colorCountBitmaps',
   )
-  const traits = parseTraitMeta(normalized.files.traitMeta)
-  const paletteBytes = expectLength(normalized.files.palette, PALETTE_SIZE * 4, 'palette')
+  const traits = parseTraitMeta(requiredFile(normalized.files, 'traitMeta'))
+  const paletteBytes = expectLength(
+    requiredFile(normalized.files, 'palette'),
+    PALETTE_SIZE * 4,
+    'palette',
+  )
   const colorSupplies = parseUint32Array(
-    normalized.files.colorSupplies,
+    requiredFile(normalized.files, 'colorSupplies'),
     PALETTE_SIZE,
     'colorSupplies',
   )
-  const traitMasks = parseTraitMaskPairs(normalized.files.traitMaskPairs)
-  const colorMasks = parseWordArray(normalized.files.colorMasks, PUNK_COUNT, 'colorMasks')
-  const scalars = parsePackedScalars(normalized.files.packedScalars)
+  const traitMasks = parseTraitMaskPairs(requiredFile(normalized.files, 'traitMaskPairs'))
+  const colorMasks = parseWordArray(requiredFile(normalized.files, 'colorMasks'), PUNK_COUNT, 'colorMasks')
+  const scalars = parsePackedScalars(requiredFile(normalized.files, 'packedScalars'))
   const textIndex = buildTextSearchIndex(traits, traitBitmaps)
-  const pixelOffsets = expectLength(
-    normalized.files.pixelOffsets,
-    (PUNK_COUNT + 1) * 3,
-    'pixelOffsets',
-  )
+  const pixelOffsets = normalized.files.pixelOffsets === undefined
+    ? undefined
+    : expectLength(normalized.files.pixelOffsets, (PUNK_COUNT + 1) * 3, 'pixelOffsets')
   const compressedPixels = normalized.files.compressedPixels
 
   return {
@@ -1398,16 +1443,20 @@ function normalizeOfflineSource(
   source: OfflinePunksDataSource | OfflinePunksDataBundle,
 ): NormalizedOfflineSource {
   if ('manifestJson' in source) {
-    const files = {} as Record<OfflinePunksDataFileKey, Uint8Array>
-    for (const key of FILE_KEYS) files[key] = decodeBase64(source.files[key])
+    const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
+    for (const key of FILE_KEYS) {
+      if (source.files[key] !== undefined) files[key] = decodeBase64(source.files[key])
+    }
     return {
       manifest: source.manifestJson,
       files,
     }
   }
 
-  const files = {} as Record<OfflinePunksDataFileKey, Uint8Array>
-  for (const key of FILE_KEYS) files[key] = normalizeFileBytes(source.files[key], key)
+  const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
+  for (const key of FILE_KEYS) {
+    if (source.files[key] !== undefined) files[key] = normalizeFileBytes(source.files[key], key)
+  }
   return {
     manifest: source.manifest,
     files,
@@ -1418,6 +1467,17 @@ function normalizeFileBytes(value: Uint8Array | string, key: string): Uint8Array
   if (value instanceof Uint8Array) return value
   if (typeof value === 'string') return decodeBase64(value)
   throw new PunksDataValidationError(`${key} must be bytes or a base64 string`)
+}
+
+function requiredFile(
+  files: Partial<Record<OfflinePunksDataFileKey, Uint8Array>>,
+  key: OfflinePunksSearchFileKey,
+): Uint8Array {
+  const file = files[key]
+  if (file === undefined) {
+    throw new PunksDataValidationError(`offline dataset is missing ${key}`)
+  }
+  return file
 }
 
 function parseManifest(input: string | OfflinePunksDataManifest): OfflinePunksDataManifest {
@@ -1480,10 +1540,18 @@ function parseTraitMeta(bytes: Uint8Array): TraitRecord[] {
 }
 
 function parseBitmapTable(bytes: Uint8Array, rows: number, label: string): PunkBitmap[] {
-  const words = parseWordArray(bytes, rows * BITMAP_WORD_COUNT, label)
-  return Array.from({ length: rows }, (_, row) =>
-    normalizePunkBitmap(words.slice(row * BITMAP_WORD_COUNT, (row + 1) * BITMAP_WORD_COUNT)),
-  )
+  expectLength(bytes, rows * BITMAP_WORD_COUNT * 32, label)
+  return Array.from({ length: rows }, (_, row) => {
+    const bitmap = emptyPunkBitmap()
+    const rowOffset = row * BITMAP_WORD_COUNT * 32
+    for (let wordIndex = 0; wordIndex < BITMAP_WORD_COUNT; wordIndex++) {
+      const wordOffset = rowOffset + wordIndex * 32
+      for (let lane = 0; lane < 8; lane++) {
+        bitmap[wordIndex * 8 + lane] = readUint32(bytes, wordOffset + (7 - lane) * 4)
+      }
+    }
+    return normalizePunkBitmap(bitmap)
+  })
 }
 
 function parseTraitMaskPairs(bytes: Uint8Array): bigint[] {
@@ -1522,12 +1590,13 @@ function parseUint32Array(bytes: Uint8Array, length: number, label: string): num
 }
 
 function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
-  const start = readUint24(store.pixelOffsets, punkId * 3)
-  const end = readUint24(store.pixelOffsets, (punkId + 1) * 3)
-  if (end <= start || end > store.compressedPixels.length) {
+  const { pixelOffsets, compressedPixels } = requirePixelData(store)
+  const start = readUint24(pixelOffsets, punkId * 3)
+  const end = readUint24(pixelOffsets, (punkId + 1) * 3)
+  if (end <= start || end > compressedPixels.length) {
     throw new PunksDataValidationError(`compressed pixel entry ${punkId} is malformed`)
   }
-  const entry = store.compressedPixels.slice(start, end)
+  const entry = compressedPixels.slice(start, end)
   if (entry.length < COMPRESSED_PIXEL_HEADER_SIZE) {
     throw new PunksDataValidationError(`compressed pixel entry ${punkId} is too short`)
   }
@@ -1578,6 +1647,21 @@ function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
   }
   assertIndexedPixels(pixels)
   return pixels
+}
+
+function requirePixelData(store: OfflineStore): {
+  pixelOffsets: Uint8Array
+  compressedPixels: Uint8Array
+} {
+  if (store.pixelOffsets === undefined || store.compressedPixels === undefined) {
+    throw new PunksDataValidationError(
+      'offline pixel data is not loaded; pass a dataset that includes pixelOffsets and compressedPixels',
+    )
+  }
+  return {
+    pixelOffsets: store.pixelOffsets,
+    compressedPixels: store.compressedPixels,
+  }
 }
 
 function indexedPixelsToRgbaOffline(
@@ -1747,7 +1831,7 @@ function paginateIds(ids: number[], offset = 0, limit = Number.POSITIVE_INFINITY
   return ids.slice(offset, offset + limit)
 }
 
-function countIntersection(a: readonly bigint[], b: readonly bigint[]): number {
+function countIntersection(a: PunkBitmap, b: PunkBitmap): number {
   return countPunkBitmap(intersectPunkBitmaps([a, b]))
 }
 

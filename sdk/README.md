@@ -2,10 +2,11 @@
 
 Collection-first TypeScript SDK for CryptoPunks.
 
-The default API is built for application code: fast local search, local image
-rendering, and inspectable transaction plans for the original CryptoPunks
-market plus the Networked Art auction/offer system. The low-level contract
-clients are still exported for exact onchain reads.
+The default API is built for application code: fast local search and
+inspectable transaction plans for the original CryptoPunks market plus the
+Networked Art auction/offer system. The low-level contract clients are still
+exported for exact onchain reads, and local rendering is available by opting
+into the bundled pixel data.
 
 ## Install
 
@@ -13,16 +14,17 @@ clients are still exported for exact onchain reads.
 pnpm add @networked-art/punks-sdk viem
 ```
 
-`viem` is a peer dependency. Search and local rendering work without RPC.
-Market and auction writes need a `walletClient`; market and auction reads need
-a `publicClient`.
+`viem` is a peer dependency. Search works without RPC from the default bundled
+search data. Local rendering also works without RPC when you pass the optional
+pixel bundle. Market and auction writes need a `walletClient`; market and
+auction reads need a `publicClient`.
 
 ## Root API
 
 | Surface | Use it for |
 | --- | --- |
 | `punks.search`, `punks.count`, `punks.facets` | Local collection filtering |
-| `punks.dataset` | Bundled trait, palette, bitmap, and pixel data |
+| `punks.dataset` | Bundled trait, palette, bitmap, and optional pixel data |
 | `punks.render` | Local SVG, PNG, RGBA, metadata, token URI output |
 | `punks.market` | Original CryptoPunks market reads/writes |
 | `punks.data.contract` | `PunksData.sol` reads |
@@ -36,8 +38,9 @@ a `publicClient`.
 
 ## Choosing The Right Surface
 
-Use `punks.dataset`, `punks.search`, and `punks.render` for local app UI.
-They are deterministic and do not need RPC.
+Use `punks.dataset` and `punks.search` for local app UI. They are
+deterministic and do not need RPC. Use `punks.render` with the optional pixel
+bundle when you need local images.
 
 Use `punks.data.contract` for live `PunksData.sol` reads. Use
 `punks.data.legacy` only when you need compatibility with the original Larva
@@ -57,8 +60,6 @@ const ids = punks.search({
 })
 
 const punk = punks.get(ids[0], { includeTraits: true })
-const svg = punks.render.svg(ids[0])
-const png = punks.render.png(ids[0], { background: 'transparent' })
 ```
 
 ## Search
@@ -81,27 +82,31 @@ punks.count({ text: '"3d glasses"' })
 punks.facets({ text: 'mohawk' })
 ```
 
-Use `dataset` directly when you want catalogs, palette data, pixels, or
-bitmaps:
+Use `dataset` directly when you want catalogs, palette data, or bitmaps:
 
 ```ts
 const traits = punks.dataset.traits()
 const hoodie = punks.dataset.trait('Hoodie')
 const palette = punks.dataset.palette({ includeSupplies: true })
-const indexed = punks.dataset.indexedPixels(8348)
 ```
 
 ## Rendering
 
-The root renderer is pure TypeScript and uses the bundled indexed pixels and
-palette:
+The root renderer is pure TypeScript. Import the separate pixel bundle when
+you need local indexed pixels, SVG, PNG, RGBA, metadata, or token URI output:
 
 ```ts
+import { createPunksSdk } from '@networked-art/punks-sdk'
+import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
+
+const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
+
 const svg = punks.render.svg(8348)
 const rgba = punks.render.rgba(8348)
 const png = punks.render.png(8348)
 const metadata = punks.render.metadata(8348)
 const tokenUri = punks.render.tokenUri(8348)
+const indexed = punks.dataset.indexedPixels(8348)
 ```
 
 The default background is the classic CryptoPunks blue. Pass

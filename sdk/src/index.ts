@@ -129,6 +129,7 @@ export {
   normalizePunkBitmap,
   punkBitmapFromIds,
   punkBitmapHasId,
+  punkBitmapWord,
   punkBitmapsEqual,
   subtractPunkBitmaps,
   unionPunkBitmaps,

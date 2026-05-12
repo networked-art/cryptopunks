@@ -141,7 +141,7 @@ export type PunkQuery = PunksSearchQuery & {
   sort?: PunkQuerySort
 }
 
-export type PunkBitmap = bigint[]
+export type PunkBitmap = Uint32Array
 
 export type BitmapToPunkIdsOptions = {
   offset?: number

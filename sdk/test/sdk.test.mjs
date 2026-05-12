@@ -9,6 +9,7 @@ import {
   PunksDataValidationError,
   createPunksSdk,
 } from '../dist/index.js'
+import { bundledOfflinePunksDataWithPixels } from '../dist/offline-pixel-data.js'
 
 const AUCTION = '0x0000000000000000000000000000000000000abc'
 const BUYER = '0x0000000000000000000000000000000000000b0b'
@@ -17,7 +18,7 @@ const ZERO_BYTES32 = '0x' + '00'.repeat(32)
 
 describe('PunksSdk', () => {
   it('exposes collection-first search, summaries, and local rendering without RPC', () => {
-    const punks = createPunksSdk()
+    const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
 
     assert.deepEqual(punks.search({ text: 'hoodie', limit: 3 }), [54, 58, 87])
     assert.equal(punks.count({ type: 'Alien' }), 9)

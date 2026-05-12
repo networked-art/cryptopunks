@@ -23,6 +23,10 @@
     "./offline-data": {
       "types": "./dist/offline-data.d.ts",
       "import": "./dist/offline-data.js"
+    },
+    "./offline-pixel-data": {
+      "types": "./dist/offline-pixel-data.d.ts",
+      "import": "./dist/offline-pixel-data.js"
     }
   },
   "scripts": {

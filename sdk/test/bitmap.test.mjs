@@ -21,9 +21,12 @@ describe('bitmap utilities', () => {
     assert.deepEqual(bitmapToPunkIds(bitmap), [0, 255, 256, 9999])
     assert.equal(countPunkBitmap(bitmap), 4)
 
-    bitmap[39] |= 1n << 200n
-    assert.deepEqual(bitmapToPunkIds(bitmap), [0, 255, 256, 9999])
-    assert.equal(countPunkBitmap(bitmap), 4)
+    const externalWords = Array.from({ length: 40 }, () => 0n)
+    externalWords[0] = 1n | (1n << 255n)
+    externalWords[1] = 1n
+    externalWords[39] = (1n << 15n) | (1n << 200n)
+    assert.deepEqual(bitmapToPunkIds(externalWords), [0, 255, 256, 9999])
+    assert.equal(countPunkBitmap(externalWords), 4)
   })
 
   it('combines bitmaps as set operations', () => {

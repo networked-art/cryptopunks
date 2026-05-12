@@ -10,6 +10,7 @@ import {
   parseOfflinePunksSearchText,
 } from '../dist/offline.js'
 import { bundledOfflinePunksData } from '../dist/offline-data.js'
+import { bundledOfflinePunksDataWithPixels } from '../dist/offline-pixel-data.js'
 
 const DATASET_HASH = '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
 
@@ -100,7 +101,7 @@ describe('OfflinePunksDataClient', () => {
   })
 
   it('hydrates summaries and decodes compressed indexed pixels', () => {
-    const sdk = createOfflinePunksDataClient()
+    const sdk = createOfflinePunksDataClient({ dataset: bundledOfflinePunksDataWithPixels })
     const punk = sdk.getPunkSync(0, {
       includeTraits: true,
       includeColors: true,
@@ -122,21 +123,31 @@ describe('OfflinePunksDataClient', () => {
     assert.deepEqual([...rgba.slice(0, 4)], [0, 0, 0, 0])
   })
 
+  it('keeps default bundled data search-only until pixel data is supplied', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    assert.deepEqual(sdk.searchSync({ text: 'hoodie', limit: 3 }), [54, 58, 87])
+    assert.throws(
+      () => sdk.getIndexedPixelsSync(0),
+      /offline pixel data is not loaded/,
+    )
+  })
+
   it('loads the same data from a Node directory source', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'punks-offline-'))
     try {
       const manifest = JSON.parse(bundledOfflinePunksData.manifestJson)
       await writeFile(join(dir, 'manifest.json'), bundledOfflinePunksData.manifestJson)
       await Promise.all(
-        Object.entries(manifest.files).map(([key, fileName]) =>
+        Object.entries(bundledOfflinePunksData.files).map(([key]) =>
           writeFile(
-            join(dir, fileName),
+            join(dir, manifest.files[key]),
             Buffer.from(bundledOfflinePunksData.files[key], 'base64'),
           ),
         ),
       )
 
-      const dataset = await loadOfflinePunksDataFromDirectory(dir)
+      const dataset = await loadOfflinePunksDataFromDirectory(dir, { includePixels: false })
       const sdk = createOfflinePunksDataClientFromDataset(dataset)
       assert.equal(sdk.getDatasetHashSync(), DATASET_HASH)
       assert.deepEqual(sdk.searchSync({ attributeCount: 7 }), [8348])
