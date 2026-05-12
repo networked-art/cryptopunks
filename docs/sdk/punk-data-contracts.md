@@ -4,9 +4,10 @@ The SDK has three data surfaces with different jobs.
 
 ## Choosing The Right Surface
 
-Use `punks.dataset` for local application work: rendering previews, search,
-facets, trait catalogs, palette reads, and summaries. It uses the canonical
-dataset bundled with the package and does not require RPC.
+Use `punks.dataset` for local application work: search, facets, trait
+catalogs, palette reads, and summaries. It uses the canonical search dataset
+bundled with the package and does not require RPC. Rendering previews and
+indexed pixels use the separate optional pixel bundle.
 
 Use `punks.data.contract` or `punks.data.onchain` when you need exact reads
 from this repo's `PunksData.sol` deployment.
@@ -24,6 +25,15 @@ const ids = punks.search({
 
 const punk = punks.get(8348, { includeTraits: true })
 const palette = punks.dataset.palette({ includeSupplies: true })
+```
+
+Pass the pixel bundle when you need local indexed pixels:
+
+```ts
+import { createPunksSdk } from '@networked-art/punks-sdk'
+import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
+
+const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
 const indexedPixels = punks.dataset.indexedPixels(8348)
 ```
 

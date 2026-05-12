@@ -1,8 +1,10 @@
 # Data And Search
 
-The root SDK searches the bundled canonical dataset locally. It uses the same
-bitmap data sealed into `PunksData`, but the application API is shaped around
-collection queries rather than contract getters.
+The root SDK searches the bundled canonical search dataset locally. It uses
+the same bitmap data sealed into `PunksData`, but the application API is
+shaped around collection queries rather than contract getters. Compressed
+indexed pixels live in a separate optional bundle so search-only apps do not
+load render data.
 
 ```ts
 import { createPunksSdk } from '@networked-art/punks-sdk'
@@ -54,14 +56,15 @@ Use `dataset` for canonical collection data:
 const punk = punks.dataset.get(8348, {
   includeTraits: true,
   includeColors: true,
-  includePixels: true,
 })
 
 const traits = punks.dataset.traits()
 const hoodie = punks.dataset.trait('Hoodie')
 const palette = punks.dataset.palette({ includeSupplies: true })
-const indexedPixels = punks.dataset.indexedPixels(8348)
 ```
+
+`punks.dataset.indexedPixels()` requires a dataset that includes
+`@networked-art/punks-sdk/offline-pixel-data`.
 
 ## Offer Slot Compilation
 

@@ -3,8 +3,9 @@
 `@networked-art/punks-sdk` is the application SDK for CryptoPunks data,
 rendering, marketplace actions, and Networked Art auction/offer flows.
 
-The root API is collection-first. It does not require RPC for search or image
-rendering because it ships with the canonical sealed dataset.
+The root API is collection-first. It does not require RPC for search because it
+ships with the canonical sealed search dataset. Local rendering also works
+without RPC when you opt into the separate bundled pixel data.
 
 ```ts
 import { createPunksSdk } from '@networked-art/punks-sdk'
@@ -15,9 +16,6 @@ const ids = punks.search({
   text: 'zombie hoodie',
   colorCount: { max: 4 },
 })
-
-const svg = punks.render.svg(ids[0])
-const metadata = punks.render.metadata(ids[0])
 ```
 
 ## Main Surfaces
@@ -25,8 +23,8 @@ const metadata = punks.render.metadata(ids[0])
 | Surface | Use it for |
 | --- | --- |
 | `punks.search`, `punks.count`, `punks.facets` | Fast local search/filtering over the canonical collection |
-| `punks.dataset` | Trait catalog, palette, summaries, indexed pixels, bitmaps |
-| `punks.render` | Local SVG, PNG, RGBA, metadata, token URI generation |
+| `punks.dataset` | Trait catalog, palette, summaries, optional indexed pixels, bitmaps |
+| `punks.render` | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle |
 | `punks.market` | Original CryptoPunks market reads/writes |
 | `punks.data.contract` | Exact reads for `PunksData.sol` |
 | `punks.data.legacy` | Original `CryptopunksData` SVG and attribute reads |
@@ -40,8 +38,9 @@ const metadata = punks.render.metadata(ids[0])
 
 ## Choosing The Right Surface
 
-Use the local SDK surfaces first for app UI: `punks.search`, `punks.dataset`,
-and `punks.render` are fast, deterministic, and do not require RPC.
+Use the local SDK surfaces first for app UI: `punks.search` and
+`punks.dataset` are fast, deterministic, and do not require RPC. Add the
+pixel bundle when `punks.render` or indexed pixels are needed.
 
 Use `punks.data.contract` when you need live reads from `PunksData.sol`, such
 as validating a deployment or reading at a block.
@@ -64,10 +63,20 @@ Labs `CryptopunksData` SVG or attribute strings.
 
 ## Viem Configuration
 
-Search and local rendering work with no clients:
+Search works with no clients:
 
 ```ts
 const punks = createPunksSdk()
+```
+
+Local rendering uses the split pixel bundle:
+
+```ts
+import { createPunksSdk } from '@networked-art/punks-sdk'
+import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
+
+const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
+const svg = punks.render.svg(8348)
 ```
 
 Marketplace and auction reads need a `publicClient`; writes need a

@@ -37,7 +37,9 @@ import {
 
 ## Bitmap Utilities
 
-The bitmap helpers operate on `bigint[]` Punk bitmaps with 40 words:
+The bitmap helpers operate on `Uint32Array` Punk bitsets. They still accept
+external `bigint[]` 256-bit-word bitmaps, which is useful when adapting raw
+contract bitmap words:
 
 ```ts
 import {
@@ -46,6 +48,7 @@ import {
   fullPunkBitmap,
   intersectPunkBitmaps,
   punkBitmapFromIds,
+  punkBitmapWord,
   subtractPunkBitmaps,
   unionPunkBitmaps,
 } from '@networked-art/punks-sdk'
@@ -60,6 +63,8 @@ const beanie = await punksData.getTraitBitmap('Beanie')
 const ids = bitmapToPunkIds(unionPunkBitmaps([hoodie, beanie]), {
   limit: 100,
 })
+
+const firstContractWord = punkBitmapWord(hoodie, 0)
 ```
 
 Tail bits above Punk id `9999` are masked out by the helpers.

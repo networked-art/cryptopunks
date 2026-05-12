@@ -1,9 +1,15 @@
 # Rendering And Metadata
 
-`punks.render` is a pure TypeScript renderer backed by the bundled canonical
-indexed pixels and palette.
+`punks.render` is a pure TypeScript renderer backed by the canonical indexed
+pixels and palette. Import the split pixel bundle when local rendering is
+needed:
 
 ```ts
+import { createPunksSdk } from '@networked-art/punks-sdk'
+import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
+
+const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
+
 const svg = punks.render.svg(8348)
 const png = punks.render.png(8348)
 const rgba = punks.render.rgba(8348)
