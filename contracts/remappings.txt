@@ -1,0 +1,4 @@
+forge-std/=contracts/reference/lib/forge-std/src/
+solady/=contracts/reference/lib/solady/src/
+sol-json/=contracts/reference/lib/sol-json/src/
+lib/=contracts/reference/lib/
