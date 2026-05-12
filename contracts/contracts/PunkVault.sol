@@ -26,7 +26,7 @@ import "./interfaces/IStashFactory.sol";
 /// @author 1001
 contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
     /// @inheritdoc IPunkVault
-    address public constant STASH_FACTORY = 0x000000000000a6fa31f5fc51c1640aac76866750;
+    address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
     /// @inheritdoc IPunkVault
     address public immutable FACTORY;
