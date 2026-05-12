@@ -14,7 +14,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     using Punks for Punks.Filter;
 
     /// @notice Maximum slots per offer. Mirrors the lot item bound.
-    uint8 internal constant MAX_LOT_ITEMS = 100;
+    uint8 internal constant MAX_LOT_ITEMS = 80;
     /// @notice Maximum entries in `OfferSlot.includeIds` per slot.
     uint8 internal constant MAX_INCLUDE_IDS = 64;
     /// @notice Maximum entries in `OfferSlot.excludeIds` per slot.

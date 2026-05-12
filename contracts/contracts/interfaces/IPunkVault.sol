@@ -122,8 +122,8 @@ interface IPunkVault {
     // ─────────────────────────── Proceeds ─────────────────────────────────
 
     /// @notice Pulls this vault's `pendingWithdrawals` on `market` into
-    ///         the vault's ETH balance. Open — proceeds always belong to
-    ///         the vault, so triggering this is benign.
+    ///         the vault's ETH balance.
+    /// @dev Owner-only.
     function withdrawFromMarket(address market) external;
 
     // ──────────────── Owner-only generic execution ────────────────────────

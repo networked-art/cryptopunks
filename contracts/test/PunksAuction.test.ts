@@ -762,6 +762,31 @@ describe('PunksAuction', () => {
         'NotAuthorized',
       )
     })
+
+    it('restricts vault market withdrawals to the owner', async () => {
+      const ctx = await deployAuctionStack()
+      const { punks, seller, attacker } = ctx
+
+      const vaultAddress = await ensureVaultApprovingAuctions(ctx, seller)
+      const vaultAsAttacker = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
+        { client: { wallet: attacker } },
+      )
+
+      await ctx.viem.assertions.revertWithCustomError(
+        vaultAsAttacker.write.withdrawFromMarket([punks.address]),
+        vaultAsAttacker,
+        'NotOwner',
+      )
+
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.withdrawFromMarket([punks.address])
+    })
   })
 
   describe('lots — validation', () => {
