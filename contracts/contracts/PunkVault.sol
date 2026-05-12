@@ -9,10 +9,10 @@ import "./interfaces/ICryptoPunksMarket.sol";
 
 /// @title  PunkVault
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
-///         Holds Punks across every CryptoPunks-compatible market — canonical,
-///         V1, future variants — at a single address per user. Protocols
-///         integrate by being approved as operators, ERC721-style; the owner
-///         uses `execute` for everything else.
+///         Holds Punks across every CryptoPunks-compatible market at a
+///         single address per user. Protocols integrate by being approved
+///         as operators, ERC721-style; the owner uses `execute`
+///         for everything else.
 ///
 ///         No wrapping. No marketplace-listing pollution. No per-protocol
 ///         custody glue. The vault is the Punk's canonical owner on each
@@ -20,8 +20,8 @@ import "./interfaces/ICryptoPunksMarket.sol";
 ///
 ///         The vault is also a smart account: arbitrary `execute` calls let
 ///         the owner manage ENS records on the vault address, receive and
-///         redeem ERC20 / ERC721 / ERC1155 tokens that flow in, and integrate
-///         with protocols that don't yet exist.
+///         redeem ERC20 / ERC721 / ERC1155 tokens that flow in, and
+///         integrate with protocols that don't yet exist.
 /// @author 1001
 contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
     /// @inheritdoc IPunkVault
