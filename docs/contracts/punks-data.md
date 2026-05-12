@@ -35,15 +35,12 @@ Use the canonical mainnet deployment,
 consumer accepts a configurable data address, pin it with these checks:
 
 ```solidity
-require(data.isSealed(), "PunksData: unsealed");
 require(data.datasetHash() == EXPECTED_DATASET_HASH, "PunksData: wrong data");
 ```
 
 On the live deployment,
-[`isSealed()`](https://evm.now/address/punksdata.eth/read#isSealed) returns
-true and
 [`datasetHash()`](https://evm.now/address/punksdata.eth/read#datasetHash)
-returns the sealed dataset hash below.
+returns the dataset hash below.
 
 ## Dataset Reference
 
@@ -69,7 +66,6 @@ The detailed reference is split by topic:
 | [Criteria API](/contracts/punks-data/criteria) | Trait catalog reads, trait masks, broad Punk type filters, and batch trait bitmaps |
 | [Visual API](/contracts/punks-data/visual) | Palette colors, color masks, visual metrics, and visual bitmap rows |
 | [Indexed Pixels API](/contracts/punks-data/indexed-pixels) | Decoded 24x24 indexed pixels, `colorAt`, and palette byte arrays |
-| [Loader And Storage API](/contracts/punks-data/loader-storage) | Pre-seal loading functions, blob chunks, packed words, and dataset sealing |
 | [Usage And Integration](/contracts/punks-data/usage) | Common patterns, expected reverts, split interfaces, and renderer integration notes |
 
 The TypeScript SDK has its own [top-level section](/sdk) because it covers both

@@ -9,8 +9,7 @@ facets, trait catalogs, palette reads, and summaries. It uses the canonical
 dataset bundled with the package and does not require RPC.
 
 Use `punks.data.contract` or `punks.data.onchain` when you need exact reads
-from this repo's `PunksData.sol` deployment or loader/admin writes during a
-deployment.
+from this repo's `PunksData.sol` deployment.
 
 Use `punks.data.legacy` when you need the original Larva Labs
 `CryptopunksData` SVG or CSV strings.
@@ -35,27 +34,10 @@ const indexedPixels = punks.dataset.indexedPixels(8348)
 
 ```ts
 const hash = await punks.data.contract.datasetHash()
-const sealed = await punks.data.contract.isSealed()
 const trait = await punks.data.contract.traitName(62)
 const pixels = await punks.data.contract.indexedPixelsOf(8348)
 const matches = await punks.data.contract.hasTraits(8348, required, forbidden, anyOf)
 ```
-
-Loader writes are exposed for deployment tooling:
-
-```ts
-await punks.data.contract.loadBlobChunk('Palette', 0, paletteBytes)
-await punks.data.contract.seal({
-  traitCatalogHash,
-  punkMaskHash,
-  paletteHash,
-  indexedPixelsHash,
-  compressedPixelsHash,
-})
-```
-
-Use the matching `prepareLoad*` and `prepareSeal` methods when another layer
-will simulate, batch, or submit the transaction.
 
 ## Legacy CryptopunksData
 

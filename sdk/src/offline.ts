@@ -293,15 +293,6 @@ export class OfflinePunksDataClient {
     return this.getDatasetHashSync(options)
   }
 
-  isSealedSync(options?: PunksDataReadOptions): boolean {
-    validateOfflineReadOptions(options)
-    return true
-  }
-
-  async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
-    return this.isSealedSync(options)
-  }
-
   assertCanonicalDatasetSync(options?: PunksDataReadOptions): void {
     validateOfflineReadOptions(options)
     if (this.getDatasetHashSync().toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {

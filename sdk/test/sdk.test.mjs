@@ -116,25 +116,16 @@ describe('PunksSdk', () => {
     assert.equal(withdrawBid.request.functionName, 'withdrawBidForPunk')
   })
 
-  it('exposes legacy data, new PunksData loader writes, wrappers, and stash plans', async () => {
+  it('exposes legacy data, read-only PunksData contract reads, wrappers, and stash plans', async () => {
     const punks = createPunksSdk({
       addresses: { stash: STASH },
     })
 
     assert.equal(punks.data.legacy.address.length, 42)
-
-    const loadChunk = punks.data.onchain.prepareLoadBlobChunk('Palette', 0, new Uint8Array([1, 2]))
-    assert.equal(loadChunk.request.functionName, 'loadBlobChunk')
-    assert.deepEqual(loadChunk.request.args, [2, 0, '0x0102'])
-
-    const seal = punks.data.onchain.prepareSeal({
-      traitCatalogHash: '0x' + '11'.repeat(32),
-      punkMaskHash: '0x' + '22'.repeat(32),
-      paletteHash: '0x' + '33'.repeat(32),
-      indexedPixelsHash: '0x' + '44'.repeat(32),
-      compressedPixelsHash: '0x' + '55'.repeat(32),
-    })
-    assert.equal(seal.request.functionName, 'seal')
+    assert.equal('prepareLoadBlobChunk' in punks.data.onchain, false)
+    assert.equal('prepareSeal' in punks.data.onchain, false)
+    assert.equal('isSealed' in punks.data.onchain, false)
+    assert.equal('owner' in punks.data.onchain, false)
 
     const c721Wrap = punks.wrappers.c721.prepareWrapPunk(123)
     assert.equal(c721Wrap.request.address, CRYPTOPUNKS_721_ADDRESS)

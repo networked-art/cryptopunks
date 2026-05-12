@@ -80,9 +80,9 @@ head-variant bit. They currently match the same Punks, but they mean different
 things: type is the broad market category, while head variant is the exact
 source-image head class.
 
-Implementation details:
+Storage details:
 
-- Trait masks are loaded into `_traitMaskPairs`.
+- Trait masks are stored in `_traitMaskPairs`.
 - Each storage word holds two Punk masks because 111 bits fit inside 128 bits.
 - Even Punk ids use the low 128 bits. Odd Punk ids use the high 128 bits.
 - `traitMaskOf(punkId)` unpacks the mask.
@@ -206,9 +206,8 @@ The blob-backed storage types are:
 | `PixelCountBitmaps` | `185 * 40` big-endian `uint256` bitmap words | `pixelCountBitmapWord` |
 | `ColorCountBitmaps` | `13 * 40` big-endian `uint256` bitmap words | `colorCountBitmapWord` |
 
-`loadBlobChunk` appends chunks while the contract is unsealed. `seal` verifies
-that all fixed-size blobs have the expected lengths, records the dataset hash,
-and permanently disables loading.
+The live deployment stores finalized blob chunks and exposes them only through
+the read functions listed above.
 
 ## Pixels And Palette
 

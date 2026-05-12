@@ -1,5 +1,5 @@
-import type { Address, Hex, PublicClient, WalletClient } from 'viem'
-import { punksDataAbi, punksDataReadAbi, punksDataWriteAbi } from './abi'
+import type { Address, Hex, PublicClient } from 'viem'
+import { punksDataReadAbi } from './abi'
 import {
   BITMAP_WORD_COUNT,
   COLOR_COUNT_MAX,
@@ -27,10 +27,6 @@ import {
   subtractPunkBitmaps,
   unionPunkBitmaps,
 } from './bitmap'
-import type {
-  ContractWritePlan,
-  TransactionHash,
-} from './actions'
 import type {
   AttributeCriteriaInput,
   ColorCriteriaInput,
@@ -76,11 +72,6 @@ type ReadFunctionName = Extract<
   { type: 'function' }
 >['name']
 
-type WriteFunctionName = Extract<
-  (typeof punksDataWriteAbi)[number],
-  { type: 'function' }
->['name']
-
 type ContractReadCall = {
   functionName: ReadFunctionName
   args?: readonly unknown[]
@@ -102,34 +93,9 @@ const READ_BLOCK_TAGS = new Set<PunksDataBlockTag>([
   'finalized',
 ])
 
-export const PunksDataBlob = {
-  TraitBitmaps: 0,
-  TraitMeta: 1,
-  Palette: 2,
-  PixelOffsets: 3,
-  CompressedPixels: 4,
-  ColorBitmaps: 5,
-  PixelCountBitmaps: 6,
-  ColorCountBitmaps: 7,
-} as const
-
-export type PunksDataBlobValue = (typeof PunksDataBlob)[keyof typeof PunksDataBlob]
-
-export type PunksDataBlobRef = PunksDataBlobValue | keyof typeof PunksDataBlob
-
-export type PunksDataCommitment = {
-  traitCatalogHash: Hex
-  punkMaskHash: Hex
-  paletteHash: Hex
-  indexedPixelsHash: Hex
-  compressedPixelsHash: Hex
-}
-
 export class PunksDataClient {
   readonly publicClient?: PublicClient
-  readonly walletClient?: WalletClient
   readonly address: Address
-  readonly account?: Address
 
   private readonly cacheEnabled: boolean
   private readonly multicallBatchSize: number
@@ -137,8 +103,6 @@ export class PunksDataClient {
 
   constructor(config: PunksDataClientConfig) {
     this.publicClient = config.publicClient
-    this.walletClient = config.walletClient
-    this.account = config.account
     this.address = config.address ?? PUNKS_DATA_ADDRESS
     this.cacheEnabled = config.cache ?? true
     this.multicallBatchSize = config.multicallBatchSize ?? 256
@@ -151,10 +115,6 @@ export class PunksDataClient {
     this.cache.clear()
   }
 
-  async owner(options?: PunksDataReadOptions): Promise<Address> {
-    return this.cached('owner', options, () => this.read<Address>('owner', [], options))
-  }
-
   async getDatasetHash(options?: PunksDataReadOptions): Promise<Hex> {
     return this.cached('datasetHash', options, () => this.read<Hex>('datasetHash', [], options))
   }
@@ -163,16 +123,8 @@ export class PunksDataClient {
     return this.getDatasetHash(options)
   }
 
-  async isSealed(options?: PunksDataReadOptions): Promise<boolean> {
-    return this.cached('isSealed', options, () => this.read<boolean>('isSealed', [], options))
-  }
-
   async assertCanonicalDataset(options?: PunksDataReadOptions): Promise<void> {
-    const [isSealed, datasetHash] = await Promise.all([
-      this.isSealed(options),
-      this.getDatasetHash(options),
-    ])
-    if (!isSealed) throw new PunksDataValidationError('PunksData contract is not sealed')
+    const datasetHash = await this.getDatasetHash(options)
     if (datasetHash.toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {
       throw new PunksDataValidationError('PunksData contract does not match the canonical dataset')
     }
@@ -574,63 +526,6 @@ export class PunksDataClient {
 
   paletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
     return this.getPaletteAlphaBytes(options)
-  }
-
-  prepareLoadTraitMaskPairs(startPairIndex: number, packedPairs: readonly bigint[]): ContractWritePlan {
-    assertIntegerInRange('startPairIndex', startPairIndex, 0, 4_999)
-    return this.writePlan('Load Punk trait masks', 'loadTraitMaskPairs', [startPairIndex, packedPairs])
-  }
-
-  loadTraitMaskPairs(startPairIndex: number, packedPairs: readonly bigint[]): Promise<TransactionHash> {
-    return this.write(this.prepareLoadTraitMaskPairs(startPairIndex, packedPairs))
-  }
-
-  prepareLoadColorMasks(startPunkId: number, masks: readonly bigint[]): ContractWritePlan {
-    validatePunkId(startPunkId)
-    return this.writePlan('Load Punk color masks', 'loadColorMasks', [startPunkId, masks])
-  }
-
-  loadColorMasks(startPunkId: number, masks: readonly bigint[]): Promise<TransactionHash> {
-    return this.write(this.prepareLoadColorMasks(startPunkId, masks))
-  }
-
-  prepareLoadPackedScalars(startWordIndex: number, words: readonly bigint[]): ContractWritePlan {
-    assertIntegerInRange('startWordIndex', startWordIndex, 0, 1_999)
-    return this.writePlan('Load Punk packed scalars', 'loadPackedScalars', [startWordIndex, words])
-  }
-
-  loadPackedScalars(startWordIndex: number, words: readonly bigint[]): Promise<TransactionHash> {
-    return this.write(this.prepareLoadPackedScalars(startWordIndex, words))
-  }
-
-  prepareLoadColorSupplies(startColorId: number, supplies: readonly number[]): ContractWritePlan {
-    validateColorId(startColorId)
-    return this.writePlan('Load Punk color supplies', 'loadColorSupplies', [startColorId, supplies])
-  }
-
-  loadColorSupplies(startColorId: number, supplies: readonly number[]): Promise<TransactionHash> {
-    return this.write(this.prepareLoadColorSupplies(startColorId, supplies))
-  }
-
-  prepareLoadBlobChunk(blob: PunksDataBlobRef, chunkIndex: number, data: Hex | Uint8Array): ContractWritePlan {
-    assertIntegerInRange('chunkIndex', chunkIndex, 0, 65_535)
-    return this.writePlan('Load Punk data blob chunk', 'loadBlobChunk', [
-      normalizeBlobId(blob),
-      chunkIndex,
-      typeof data === 'string' ? data : bytesToHex(data),
-    ])
-  }
-
-  loadBlobChunk(blob: PunksDataBlobRef, chunkIndex: number, data: Hex | Uint8Array): Promise<TransactionHash> {
-    return this.write(this.prepareLoadBlobChunk(blob, chunkIndex, data))
-  }
-
-  prepareSeal(commitment: PunksDataCommitment): ContractWritePlan {
-    return this.writePlan('Seal Punk data set', 'seal', [commitment])
-  }
-
-  seal(commitment: PunksDataCommitment): Promise<TransactionHash> {
-    return this.write(this.prepareSeal(commitment))
   }
 
   async getPalette(
@@ -1080,33 +975,6 @@ export class PunksDataClient {
     return out
   }
 
-  private writePlan(
-    description: string,
-    functionName: WriteFunctionName,
-    args: readonly unknown[],
-  ): ContractWritePlan {
-    return {
-      description,
-      request: {
-        address: this.address,
-        abi: punksDataAbi,
-        functionName,
-        args,
-      },
-    }
-  }
-
-  private async write(plan: ContractWritePlan): Promise<TransactionHash> {
-    if (!this.walletClient) throw new PunksDataValidationError('walletClient is required for writes')
-    const resolvedAccount = this.account ?? this.walletClient.account?.address
-    const request = resolvedAccount === undefined
-      ? plan.request
-      : { ...plan.request, account: resolvedAccount }
-    return (this.walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
-      request,
-    )
-  }
-
   private cached<T>(
     key: string,
     options: PunksDataReadOptions | undefined,
@@ -1140,16 +1008,6 @@ export class PunksDataClient {
 
 export function createPunksDataClient(config: PunksDataClientConfig): PunksDataClient {
   return new PunksDataClient(config)
-}
-
-function normalizeBlobId(blob: PunksDataBlobRef): number {
-  if (typeof blob === 'number') {
-    assertIntegerInRange('blobId', blob, 0, 7)
-    return blob
-  }
-  const id = PunksDataBlob[blob]
-  if (id === undefined) throw new PunksDataValidationError(`unknown PunksData blob ${blob}`)
-  return id
 }
 
 export function indexedPixelsToRgba(

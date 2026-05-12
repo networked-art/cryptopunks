@@ -19,7 +19,6 @@ describe('OfflinePunksDataClient', () => {
 
     assert.equal(sdk.getDatasetHashSync(), DATASET_HASH)
     assert.equal(await sdk.getDatasetHash(), DATASET_HASH)
-    assert.equal(sdk.isSealedSync(), true)
     assert.equal(sdk.getTraitCountSync(), 111)
     assert.equal(sdk.getPaletteSizeSync(), 222)
 

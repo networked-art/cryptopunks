@@ -27,7 +27,7 @@ Live read: [`datasetHash()`](https://evm.now/address/punksdata.eth/read#datasetH
 Use this to pin a consumer contract or frontend to one known dataset:
 
 ```solidity
-if (!data.isSealed() || data.datasetHash() != EXPECTED_DATASET_HASH) {
+if (data.datasetHash() != EXPECTED_DATASET_HASH) {
     revert WrongPunksData();
 }
 ```
@@ -352,4 +352,3 @@ Storage detail: this unpacks the 8-bit `attributeCount` field from the Punk's
 48-bit scalar record inside `_packedScalarWords`.
 
 Reverts with `InvalidPunkId` when `punkId >= 10000`.
-

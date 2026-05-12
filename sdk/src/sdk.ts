@@ -75,7 +75,7 @@ export class PunksSdk {
       address: config.addresses?.market,
     } satisfies PunksMarketConfig)
     this.data = new PunksDataFacade({
-      ...wallet,
+      publicClient: config.publicClient,
       dataAddress: config.addresses?.data,
       legacyDataAddress: config.addresses?.legacyData,
     })
@@ -131,8 +131,6 @@ export class PunksSdk {
 
 export type PunksDataFacadeConfig = {
   publicClient?: PublicClient
-  walletClient?: WalletClient
-  account?: Address
   dataAddress?: Address
   legacyDataAddress?: Address
 }
@@ -145,8 +143,6 @@ export class PunksDataFacade {
   constructor(config: PunksDataFacadeConfig = {}) {
     this.onchain = createPunksDataClient({
       publicClient: config.publicClient,
-      walletClient: config.walletClient,
-      account: config.account,
       address: config.dataAddress,
     })
     this.contract = this.onchain

@@ -1,24 +1,15 @@
 import type { Abi } from 'viem'
 
 export const punksDataReadAbi = [
-  { type: 'error', name: 'AlreadySealed', inputs: [] },
-  { type: 'error', name: 'BlobTooLarge', inputs: [] },
-  { type: 'error', name: 'BlobWriteFailed', inputs: [] },
-  { type: 'error', name: 'InvalidChunkIndex', inputs: [] },
   { type: 'error', name: 'InvalidColorCount', inputs: [] },
   { type: 'error', name: 'InvalidColorId', inputs: [] },
   { type: 'error', name: 'InvalidCoordinate', inputs: [] },
-  { type: 'error', name: 'InvalidHash', inputs: [] },
-  { type: 'error', name: 'InvalidLength', inputs: [] },
   { type: 'error', name: 'InvalidMask', inputs: [] },
   { type: 'error', name: 'InvalidPixelCount', inputs: [] },
   { type: 'error', name: 'InvalidPunkId', inputs: [] },
-  { type: 'error', name: 'InvalidScalar', inputs: [] },
   { type: 'error', name: 'InvalidTraitId', inputs: [] },
   { type: 'error', name: 'InvalidWordIndex', inputs: [] },
-  { type: 'error', name: 'LengthOverflow', inputs: [] },
   { type: 'error', name: 'MalformedPixelBlob', inputs: [] },
-  { type: 'error', name: 'NotOwner', inputs: [] },
   {
     type: 'error',
     name: 'ReadOutOfBounds',
@@ -27,7 +18,6 @@ export const punksDataReadAbi = [
       { name: 'length', type: 'uint256' },
     ],
   },
-  { type: 'error', name: 'ZeroAddress', inputs: [] },
   {
     type: 'function',
     name: 'attributeCountOf',
@@ -149,24 +139,10 @@ export const punksDataReadAbi = [
   },
   {
     type: 'function',
-    name: 'isSealed',
-    inputs: [],
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
     name: 'isValidTraitId',
     inputs: [{ name: 'traitId', type: 'uint16' }],
     outputs: [{ type: 'bool' }],
     stateMutability: 'pure',
-  },
-  {
-    type: 'function',
-    name: 'owner',
-    inputs: [],
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -267,83 +243,7 @@ export const punksDataReadAbi = [
   },
 ] as const satisfies Abi
 
-export const punksDataWriteAbi = [
-  {
-    type: 'function',
-    name: 'loadTraitMaskPairs',
-    inputs: [
-      { name: 'startPairIndex', type: 'uint16' },
-      { name: 'packedPairs', type: 'uint256[]' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'loadColorMasks',
-    inputs: [
-      { name: 'startPunkId', type: 'uint16' },
-      { name: 'masks', type: 'uint256[]' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'loadPackedScalars',
-    inputs: [
-      { name: 'startWordIndex', type: 'uint16' },
-      { name: 'words', type: 'uint256[]' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'loadColorSupplies',
-    inputs: [
-      { name: 'startColorId', type: 'uint8' },
-      { name: 'supplies', type: 'uint32[]' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'loadBlobChunk',
-    inputs: [
-      { name: 'blobId', type: 'uint8' },
-      { name: 'chunkIndex', type: 'uint16' },
-      { name: 'data', type: 'bytes' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'seal',
-    inputs: [
-      {
-        name: 'commitment',
-        type: 'tuple',
-        components: [
-          { name: 'traitCatalogHash', type: 'bytes32' },
-          { name: 'punkMaskHash', type: 'bytes32' },
-          { name: 'paletteHash', type: 'bytes32' },
-          { name: 'indexedPixelsHash', type: 'bytes32' },
-          { name: 'compressedPixelsHash', type: 'bytes32' },
-        ],
-      },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const satisfies Abi
-
-export const punksDataAbi = [
-  ...punksDataReadAbi,
-  ...punksDataWriteAbi,
-] as const satisfies Abi
+export const punksDataAbi = punksDataReadAbi
 
 export const punksRendererReadAbi = [
   {

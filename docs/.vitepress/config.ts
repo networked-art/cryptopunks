@@ -40,7 +40,6 @@ export default defineConfig({
               { text: 'Criteria API', link: '/contracts/punks-data/criteria' },
               { text: 'Visual API', link: '/contracts/punks-data/visual' },
               { text: 'Indexed Pixels API', link: '/contracts/punks-data/indexed-pixels' },
-              { text: 'Loader And Storage API', link: '/contracts/punks-data/loader-storage' },
               { text: 'Usage And Integration', link: '/contracts/punks-data/usage' },
             ],
           },

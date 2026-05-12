@@ -1,7 +1,6 @@
 export {
   punksDataAbi,
   punksDataReadAbi,
-  punksDataWriteAbi,
   punksRendererAbi,
   punksRendererReadAbi,
   legacyCryptoPunksDataAbi,
@@ -92,7 +91,6 @@ export {
 } from './query'
 export {
   PunksDataClient,
-  PunksDataBlob,
   createPunksDataClient,
   indexedPixelsToRgba,
 } from './client'
@@ -197,11 +195,6 @@ export type {
   TransactionHash,
   WalletConfig,
 } from './actions'
-export type {
-  PunksDataBlobRef,
-  PunksDataBlobValue,
-  PunksDataCommitment,
-} from './client'
 export type {
   LegacyCryptoPunksDataClientConfig,
 } from './legacy-data'

@@ -151,8 +151,6 @@ function makeFakePublicClient() {
     switch (functionName) {
       case 'datasetHash':
         return DATASET_HASH
-      case 'isSealed':
-        return true
       case 'traitCount':
         return 111
       case 'paletteSize':

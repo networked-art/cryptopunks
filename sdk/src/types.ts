@@ -1,4 +1,4 @@
-import type { Address, Hex, PublicClient, WalletClient } from 'viem'
+import type { Address, Hex, PublicClient } from 'viem'
 import type {
   HeadVariantName,
   HeadVariantValue,
@@ -18,8 +18,6 @@ export type PunksDataReadOptions = {
 
 export type PunksDataClientConfig = {
   publicClient?: PublicClient
-  walletClient?: WalletClient
-  account?: Address
   address?: Address
   cache?: boolean
   multicallBatchSize?: number

@@ -1,5 +1,6 @@
-import type { Address, Hex } from 'viem'
+import type { Address, Hex, WalletClient } from 'viem'
 import {
+  createPunksDataClient,
   createPunksSdk,
   createStashClient,
   createStashFactoryClient,
@@ -15,6 +16,7 @@ declare const receiver: Address
 declare const operator: Address
 declare const stashAddress: Address
 declare const auction: Address
+declare const walletClient: WalletClient
 
 const bid: StashPunkBid = {
   order: {
@@ -122,6 +124,21 @@ factory.prepareRenounceRoles
 factory.renounceRoles
 
 const punks = createPunksSdk()
+const punksData = createPunksDataClient({})
+const punksDataHash: Promise<Hex> = punksData.datasetHash()
+
+// @ts-expect-error PunksData contract client is read-only and does not accept wallet clients.
+createPunksDataClient({ walletClient })
+
+// @ts-expect-error PunksData loader writes are not part of the public SDK client.
+punks.data.contract.prepareLoadBlobChunk
+// @ts-expect-error PunksData sealing writes are not part of the public SDK client.
+punks.data.contract.prepareSeal
+// @ts-expect-error PunksData sealing status is not part of the public SDK client.
+punks.data.contract.isSealed
+// @ts-expect-error PunksData loader owner is not part of the public SDK client.
+punks.data.contract.owner
+
 const c721TransferPlan: ContractWritePlan = punks.wrappers.modern.prepareTransferFrom({
   from: owner,
   to: receiver,

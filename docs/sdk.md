@@ -28,7 +28,7 @@ const metadata = punks.render.metadata(ids[0])
 | `punks.dataset` | Trait catalog, palette, summaries, indexed pixels, bitmaps |
 | `punks.render` | Local SVG, PNG, RGBA, metadata, token URI generation |
 | `punks.market` | Original CryptoPunks market reads/writes |
-| `punks.data.contract` | Exact reads and loader/admin writes for `PunksData.sol` |
+| `punks.data.contract` | Exact reads for `PunksData.sol` |
 | `punks.data.legacy` | Original `CryptopunksData` SVG and attribute reads |
 | `punks.wrappers.modern` | CryptoPunks721 reads, approvals, and Stash wrapping flows |
 | `punks.wrappers.legacy` | Legacy Wrapped Punks reads, approvals, proxy wrapping flows |
@@ -44,7 +44,7 @@ Use the local SDK surfaces first for app UI: `punks.search`, `punks.dataset`,
 and `punks.render` are fast, deterministic, and do not require RPC.
 
 Use `punks.data.contract` when you need live reads from `PunksData.sol`, such
-as validating a deployment, reading at a block, or running loader/admin writes.
+as validating a deployment or reading at a block.
 
 Use `punks.data.legacy` only when compatibility requires the original Larva
 Labs `CryptopunksData` SVG or attribute strings.

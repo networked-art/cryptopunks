@@ -104,9 +104,7 @@ renderer.clearCache()
 ```
 
 Failed cached reads are evicted automatically, so transient RPC errors can be
-retried without clearing the whole client. If you are reading from an unsealed
-or actively loading `PunksData` deployment, prefer `{ cache: false }` or clear
-the cache after sealing.
+retried without clearing the whole client.
 
 ## Validation
 

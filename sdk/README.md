@@ -25,7 +25,7 @@ a `publicClient`.
 | `punks.dataset` | Bundled trait, palette, bitmap, and pixel data |
 | `punks.render` | Local SVG, PNG, RGBA, metadata, token URI output |
 | `punks.market` | Original CryptoPunks market reads/writes |
-| `punks.data.contract` | `PunksData.sol` reads and loader/admin writes |
+| `punks.data.contract` | `PunksData.sol` reads |
 | `punks.data.legacy` | Original `CryptopunksData` SVG and attributes |
 | `punks.wrappers.modern` | CryptoPunks721 and Stash wrapping flows |
 | `punks.wrappers.legacy` | Legacy Wrapped Punks proxy wrapping flows |
@@ -39,9 +39,9 @@ a `publicClient`.
 Use `punks.dataset`, `punks.search`, and `punks.render` for local app UI.
 They are deterministic and do not need RPC.
 
-Use `punks.data.contract` for live `PunksData.sol` reads or loader/admin
-writes. Use `punks.data.legacy` only when you need compatibility with the
-original Larva Labs `CryptopunksData` strings.
+Use `punks.data.contract` for live `PunksData.sol` reads. Use
+`punks.data.legacy` only when you need compatibility with the original Larva
+Labs `CryptopunksData` strings.
 
 ## Quick Start
 
