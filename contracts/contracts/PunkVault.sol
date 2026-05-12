@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
+import "./interfaces/IStashFactory.sol";
 
 /// @title  PunkVault
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
@@ -24,6 +25,9 @@ import "./interfaces/ICryptoPunksMarket.sol";
 ///         integrate with protocols that don't yet exist.
 /// @author 1001
 contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
+    /// @inheritdoc IPunkVault
+    address public constant STASH_FACTORY = 0x000000000000a6fa31f5fc51c1640aac76866750;
+
     /// @inheritdoc IPunkVault
     address public immutable FACTORY;
 
@@ -160,6 +164,26 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
         if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
         _clearTokenApproval(market, punkIndex);
         ICryptoPunksMarket(market).acceptBidForPunk(punkIndex, minPrice);
+    }
+
+    // ─────────────────────────── Stash ────────────────────────────────────
+
+    /// @inheritdoc IPunkVault
+    /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
+    ///         and its EOA owner resolve to different Stashes — sending
+    ///         to `stashAddressFor(owner())` lands the Punk in the EOA's
+    ///         existing Stash (or a freshly deployed one), where it can be
+    ///         used without needing the vault to implement ERC-1271 or
+    ///         satisfy Stash's `tx.origin == owner` checks.
+    function stash(address market, uint256 punkIndex) external {
+        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
+        address eoaOwner = owner();
+        address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
+        if (stashAddr.code.length == 0) {
+            IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
+        }
+        _clearTokenApproval(market, punkIndex);
+        ICryptoPunksMarket(market).transferPunk(stashAddr, punkIndex);
     }
 
     // ─────────────────────────── Proceeds ─────────────────────────────────
