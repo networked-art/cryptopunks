@@ -434,13 +434,13 @@ contract PunksAuction is IPunksAuction, Offers {
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Removes a lot that is expired or whose custody slipped out of the vault.
+    /// @dev Removes a lot that is expired, no longer approved, or whose custody slipped out of the vault.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        bool stale = block.timestamp >= lot.expiresAt;
+        bool stale = block.timestamp >= lot.expiresAt || !_auctionStillApproved(lot.seller);
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
@@ -644,6 +644,17 @@ contract PunksAuction is IPunksAuction, Offers {
         if (vault.code.length == 0) revert VaultNotDeployed();
         if (!IPunkVault(vault).isApprovedForAll(address(this))) {
             revert AuctionNotApproved();
+        }
+    }
+
+    /// @dev Best-effort approval check for stale-lot cleanup.
+    function _auctionStillApproved(address seller) private view returns (bool) {
+        address vault = PUNK_VAULTS.predictVault(seller);
+        if (vault.code.length == 0) return false;
+        try IPunkVault(vault).isApprovedForAll(address(this)) returns (bool approved) {
+            return approved;
+        } catch {
+            return false;
         }
     }
 

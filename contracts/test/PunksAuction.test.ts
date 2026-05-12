@@ -1143,6 +1143,33 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('frees a Punk slot when a lot is cleared after auction approval is revoked', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      await assignPunk(ctx, seller, 85n)
+      const vaultAddress = await depositPunk(ctx, seller, 85n)
+
+      const expiresAt = await futureTs(ctx.connection, WEEK)
+      await createSinglePunkLot(ctx, seller, 85n, parseEther('1'), expiresAt)
+
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.setApprovalForAll([auctions.address, false])
+
+      await auctions.write.clearStaleLot([1n])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          85,
+        ]),
+        0n,
+      )
+    })
+
     it('clearStaleLot reverts when the lot is still valid', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
