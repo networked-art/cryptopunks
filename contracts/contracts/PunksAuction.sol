@@ -206,11 +206,18 @@ contract PunksAuction is IPunksAuction, Offers {
     }
 
     /// @notice Accepts an offer against a stored lot.
-    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external nonReentrant {
+    function acceptOfferFromLot(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    ) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
         if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < minAmountWei) {
+            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
+        }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
@@ -255,7 +262,11 @@ contract PunksAuction is IPunksAuction, Offers {
     }
 
     /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
-    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
+    function startAuctionFromOffer(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    )
         external
         nonReentrant
         returns (uint256 auctionId)
@@ -264,6 +275,9 @@ contract PunksAuction is IPunksAuction, Offers {
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
         if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < minAmountWei) {
+            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
+        }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];

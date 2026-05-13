@@ -172,6 +172,7 @@ interface IPunksAuction {
     error PunkAlreadyInLot(uint256 lotId);
     error ReserveMismatch(uint96 expectedReserveWei, uint96 actualReserveWei);
     error ReserveNotMet();
+    error OfferAmountBelowMinimum(uint96 minAmountWei, uint96 actualAmountWei);
 
     error AuctionDoesNotExist();
     error AuctionNotActive();
@@ -223,11 +224,11 @@ interface IPunksAuction {
     /// @notice Accepts a single-slot offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external;
 
-    /// @notice Accepts an offer against a stored lot.
-    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external;
+    /// @notice Accepts an offer against a stored lot when it still meets the caller's minimum.
+    function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;
 
-    /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
-    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
+    /// @notice Starts an auction from an offer when it still meets the caller's minimum.
+    function startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)
         external
         returns (uint256 auctionId);
 

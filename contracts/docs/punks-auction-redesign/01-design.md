@@ -295,7 +295,7 @@ item-count-agnostic.
 ### 3.5 startAuctionFromOffer
 
 ```solidity
-function startAuctionFromOffer(uint256 offerId, uint256 lotId)
+function startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)
     external
     returns (uint256 auctionId);
 ```
@@ -305,12 +305,13 @@ Bootstraps an auction with an existing offer as the first bid.
 Validation:
 
 - `offer.slots.length == lot.itemCount`.
+- `offer.amountWei >= minAmountWei`.
 - For every i: `lot.items[i]` matches `offer.slots[i]` (see §5.2).
 - Lot not stale; standard custody checks.
 
 State changes:
 
-1. Delete offer; refund `offer.settlementWei` to `offer.offerer`.
+1. Delete offer.
 2. Delete lot.
 3. For every item: `delete lotForPunk[key(item)]` and `_pullPunk`.
 4. Create auction with `latestBidder = offer.offerer`,
@@ -412,15 +413,19 @@ Events: `OfferAccepted`.
 ### 5.5 acceptOfferFromLot (any-N path)
 
 ```solidity
-function acceptOfferFromLot(uint256 offerId, uint256 lotId) external;
+function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;
 ```
 
 Lot-binding path. Works for any N including N=1 (when seller has chosen to
 escrow rather than market-list). Required for any N > 1.
 
+The caller supplies `minAmountWei` to pin the minimum acceptable current offer
+amount and avoid accepting an offer that was lowered before execution.
+
 Validation:
 
 - Offer exists; lot exists, not stale.
+- `offer.amountWei >= minAmountWei`.
 - `offer.slots.length == lot.itemCount`.
 - For every i: `lot.items[i]` matches `offer.slots[i]` per §5.2 (with
   `standard = lot.items[i].standard` and `punkId = lot.items[i].punkId`).

@@ -39,14 +39,15 @@ Reshape signatures:
 
 - `createLot(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`
   — drops `tokenContract`, `tokenId`, `standard` (now per-item).
-- `placeOffer(uint96 amountWei, uint96 settlementWei, address receiver,
-  OfferSlot[] calldata slots)` — drops top-level `standard`,
+- `placeOffer(uint96 amountWei, address receiver, OfferSlot[] calldata slots)`
+  — drops top-level `standard`,
   `traitFilters`, `includeIds`, `excludeIds`.
 - `acceptOffer(uint256 offerId, uint16 punkId)` — unchanged signature.
   Behaviour limited to `slots.length == 1` (singleton fast path).
-- New: `acceptOfferFromLot(uint256 offerId, uint256 lotId)`.
-- `startAuctionFromOffer(uint256 offerId, uint256 lotId)` — second arg
-  changes from `uint16 punkId` to `uint256 lotId`.
+- New: `acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`.
+- `startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)`
+  — second arg changes from `uint16 punkId` to `uint256 lotId`; third arg
+  pins the minimum acceptable offer amount.
 - New accessors: `getLotItems(lotId)`, `getAuctionItems(auctionId)`,
   `getOfferSlots(offerId)`. `getOfferFilters` is dropped.
 
@@ -231,19 +232,20 @@ unchanged; only types of offer struct fields move under the hood.
 - Existing market arbitrage flow follows: `_requireAcceptableListing`,
   `_buyListedOfferPunk`, refund excess, pay settlement.
 
-`acceptOfferFromLot(uint256 offerId, uint256 lotId)`:
+`acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`:
 
 - Required for any N>1; usable for N=1 if seller chose to escrow.
+- Require `offer.amountWei >= minAmountWei`.
 - Validate slot/item count match, every slot matches its item, lot not stale.
 - Delete offer + lot.
 - Pull every item, settle with `_settleBundleDelivery(items, offer.amountWei,
   recipient)`.
-- Pay msg.sender `offer.settlementWei`.
+- Pay seller `offer.amountWei`.
 
-`startAuctionFromOffer(uint256 offerId, uint256 lotId)`:
+`startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)`:
 
 - Same matching as acceptOfferFromLot.
-- Refund offer.settlementWei to offerer.
+- Require `offer.amountWei >= minAmountWei`.
 - Open the auction in same shape as `openAuction(lotId)` but with the offer
   as the first bid.
 
