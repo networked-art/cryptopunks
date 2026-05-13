@@ -1247,14 +1247,15 @@ describe('PunksAuction', () => {
         auctions.address,
         { client: { wallet: bidder1 } },
       )
-      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('0.25'), true], {
+      // 1.0 -> 1.25 (top up), 0.1 -> 0.15 (top up), 1.25 -> 1.15 (decrease), 0.15 -> 0.13 (decrease).
+      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('1.25')], {
         value: parseEther('0.25'),
       })
-      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.05'), true], {
+      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.15')], {
         value: parseEther('0.05'),
       })
-      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('0.1'), false])
-      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.02'), false])
+      await auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('1.15')])
+      await auctionsAsOfferer.write.adjustOfferSettlement([offerId, parseEther('0.13')])
 
       offer = await auctions.read.offers([offerId])
       assert.equal(offer[0], parseEther('1.15'))
@@ -1273,6 +1274,49 @@ describe('PunksAuction', () => {
         auctions,
         'OfferNotActive',
       )
+    })
+
+    it('rejects setting the offer amount to zero or with mismatched payment', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, bidder1 } = ctx
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        settlementWei: 0n,
+      })
+
+      const auctionsAsOfferer = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+
+      // Zero is rejected — mirrors placeOffer's `InvalidAmount` guard.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.adjustOfferAmount([offerId, 0n]),
+        auctions,
+        'InvalidAmount',
+      )
+
+      // Increases require `msg.value` to equal the delta exactly.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('2')], {
+          value: parseEther('0.5'),
+        }),
+        auctions,
+        'IncorrectPayment',
+      )
+
+      // Decreases must be zero-value calls.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('0.5')], { value: 1n }),
+        auctions,
+        'IncorrectPayment',
+      )
+
+      // Sanity: the offer is still active with its original amount.
+      const offer = await auctions.read.offers([offerId])
+      assert.equal(offer[0], parseEther('1'))
     })
 
     it('rejects place-time invalid masks and color count ranges', async () => {

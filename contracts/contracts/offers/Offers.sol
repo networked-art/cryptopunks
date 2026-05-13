@@ -87,30 +87,33 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferCancelled(offerId);
     }
 
-    /// @notice Increases or decreases the offer amount.
-    function adjustOfferAmount(uint256 offerId, uint96 weiToAdjust, bool increase)
+    /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
+    function adjustOfferAmount(uint256 offerId, uint96 newAmountWei)
         external
         payable
         nonReentrant
     {
+        if (newAmountWei == 0) revert InvalidAmount();
         Offer storage offer = _offerForOfferer(offerId);
 
         uint96 oldAmountWei = offer.amountWei;
-        if (increase) {
-            if (msg.value != weiToAdjust) revert IncorrectPayment();
-            offer.amountWei = oldAmountWei + weiToAdjust;
+        if (newAmountWei > oldAmountWei) {
+            if (msg.value != newAmountWei - oldAmountWei) revert IncorrectPayment();
         } else {
             if (msg.value != 0) revert IncorrectPayment();
-            if (weiToAdjust > oldAmountWei) revert NegativeAdjustmentHigherThanCurrentOffer();
-            offer.amountWei = oldAmountWei - weiToAdjust;
-            _pushOrCredit(msg.sender, weiToAdjust);
         }
 
-        emit OfferAmountAdjusted(offerId, offer.amountWei);
+        offer.amountWei = newAmountWei;
+
+        if (newAmountWei < oldAmountWei) {
+            _pushOrCredit(msg.sender, oldAmountWei - newAmountWei);
+        }
+
+        emit OfferAmountAdjusted(offerId, newAmountWei);
     }
 
-    /// @notice Increases or decreases the seller settlement amount.
-    function adjustOfferSettlement(uint256 offerId, uint96 weiToAdjust, bool increase)
+    /// @notice Sets the seller settlement amount. `msg.value` must equal the increase, or be zero for a decrease.
+    function adjustOfferSettlement(uint256 offerId, uint96 newSettlementWei)
         external
         payable
         nonReentrant
@@ -118,17 +121,19 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         Offer storage offer = _offerForOfferer(offerId);
 
         uint96 oldSettlementWei = offer.settlementWei;
-        if (increase) {
-            if (msg.value != weiToAdjust) revert IncorrectPayment();
-            offer.settlementWei = oldSettlementWei + weiToAdjust;
+        if (newSettlementWei > oldSettlementWei) {
+            if (msg.value != newSettlementWei - oldSettlementWei) revert IncorrectPayment();
         } else {
             if (msg.value != 0) revert IncorrectPayment();
-            if (weiToAdjust > oldSettlementWei) revert NegativeAdjustmentHigherThanCurrentOffer();
-            offer.settlementWei = oldSettlementWei - weiToAdjust;
-            _pushOrCredit(msg.sender, weiToAdjust);
         }
 
-        emit OfferSettlementAdjusted(offerId, offer.settlementWei);
+        offer.settlementWei = newSettlementWei;
+
+        if (newSettlementWei < oldSettlementWei) {
+            _pushOrCredit(msg.sender, oldSettlementWei - newSettlementWei);
+        }
+
+        emit OfferSettlementAdjusted(offerId, newSettlementWei);
     }
 
     /// @notice Accepts a single-slot offer for a marketplace-listed Punk.

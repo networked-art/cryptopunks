@@ -155,7 +155,6 @@ interface IPunksAuction {
     error IncorrectPayment();
     error NotOfferer();
     error OfferNotActive();
-    error NegativeAdjustmentHigherThanCurrentOffer();
     error ListingNotValid();
     error ListingPriceTooHigh();
     error PunkNotIncluded();
@@ -224,19 +223,11 @@ interface IPunksAuction {
     /// @notice Cancels your active offer and refunds its ETH.
     function cancelOffer(uint256 offerId) external;
 
-    /// @notice Increases or decreases the offer amount.
-    function adjustOfferAmount(
-        uint256 offerId,
-        uint96 weiToAdjust,
-        bool increase
-    ) external payable;
+    /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
+    function adjustOfferAmount(uint256 offerId, uint96 newAmountWei) external payable;
 
-    /// @notice Increases or decreases the seller settlement amount.
-    function adjustOfferSettlement(
-        uint256 offerId,
-        uint96 weiToAdjust,
-        bool increase
-    ) external payable;
+    /// @notice Sets the seller settlement amount. `msg.value` must equal the increase, or be zero for a decrease.
+    function adjustOfferSettlement(uint256 offerId, uint96 newSettlementWei) external payable;
 
     /// @notice Accepts a single-slot offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external;
