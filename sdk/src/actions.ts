@@ -335,7 +335,6 @@ export type OfferSlotInput = CompileOfferSlotInput
 
 export type PlaceOfferInput = {
   amountWei: bigint
-  settlementWei?: bigint
   receiver?: Address
   query?: PunkQuery
   standard?: PunkStandardRef
@@ -607,8 +606,6 @@ export class PunksAuctionClient {
 
   preparePlaceOffer(input: PlaceOfferInput): ContractWritePlan {
     assertWei('amountWei', input.amountWei)
-    const settlementWei = input.settlementWei ?? 0n
-    assertWei('settlementWei', settlementWei)
     const slots =
       input.slots?.map((slot) => this.slot(slot)) ??
       [this.slot({
@@ -624,8 +621,8 @@ export class PunksAuctionClient {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'placeOffer',
-        args: [input.amountWei, settlementWei, input.receiver ?? ZERO_ADDRESS, slots],
-        value: input.amountWei + settlementWei,
+        args: [input.amountWei, input.receiver ?? ZERO_ADDRESS, slots],
+        value: input.amountWei,
       },
     }
   }
@@ -668,32 +665,6 @@ export class PunksAuctionClient {
     increase: boolean
   }): Promise<TransactionHash> {
     return this.write(this.prepareAdjustOfferAmount(params))
-  }
-
-  prepareAdjustOfferSettlement(params: {
-    offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): ContractWritePlan {
-    assertWei('amountWei', params.amountWei)
-    return {
-      description: 'Adjust CryptoPunks offer settlement',
-      request: {
-        address: this.requireAddress(),
-        abi: punksAuctionAbi,
-        functionName: 'adjustOfferSettlement',
-        args: [BigInt(params.offerId), params.amountWei, params.increase],
-        value: params.increase ? params.amountWei : 0n,
-      },
-    }
-  }
-
-  adjustOfferSettlement(params: {
-    offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): Promise<TransactionHash> {
-    return this.write(this.prepareAdjustOfferSettlement(params))
   }
 
   prepareAcceptOffer(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {

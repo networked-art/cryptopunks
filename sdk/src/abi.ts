@@ -1308,7 +1308,6 @@ export const punksAuctionAbi = [
     inputs: [{ name: 'offerId', type: 'uint256' }],
     outputs: [
       { name: 'amountWei', type: 'uint96' },
-      { name: 'settlementWei', type: 'uint96' },
       { name: 'offerer', type: 'address' },
       { name: 'receiver', type: 'address' },
     ],
@@ -1432,7 +1431,6 @@ export const punksAuctionAbi = [
     name: 'placeOffer',
     inputs: [
       { name: 'amountWei', type: 'uint96' },
-      { name: 'settlementWei', type: 'uint96' },
       { name: 'receiver', type: 'address' },
       { name: 'slots', type: 'tuple[]', components: offerSlotAbi },
     ],
@@ -1449,17 +1447,6 @@ export const punksAuctionAbi = [
   {
     type: 'function',
     name: 'adjustOfferAmount',
-    inputs: [
-      { name: 'offerId', type: 'uint256' },
-      { name: 'weiToAdjust', type: 'uint96' },
-      { name: 'increase', type: 'bool' },
-    ],
-    outputs: [],
-    stateMutability: 'payable',
-  },
-  {
-    type: 'function',
-    name: 'adjustOfferSettlement',
     inputs: [
       { name: 'offerId', type: 'uint256' },
       { name: 'weiToAdjust', type: 'uint96' },

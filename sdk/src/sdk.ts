@@ -196,22 +196,6 @@ export class PunksOffersFacade {
     return this.auctions.adjustOfferAmount(params)
   }
 
-  prepareAdjustSettlement(params: {
-    offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): ContractWritePlan {
-    return this.auctions.prepareAdjustOfferSettlement(params)
-  }
-
-  adjustSettlement(params: {
-    offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): Promise<TransactionHash> {
-    return this.auctions.adjustOfferSettlement(params)
-  }
-
   prepareAccept(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {
     return this.auctions.prepareAcceptOffer(params)
   }

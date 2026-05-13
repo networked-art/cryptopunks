@@ -243,7 +243,6 @@ contract PunksAuction is IPunksAuction, Offers {
         _settleBundleDelivery(items, offer.amountWei, recipient);
 
         _pushOrCredit(lot.seller, offer.amountWei);
-        _pushOrCredit(msg.sender, offer.settlementWei);
 
         emit OfferAcceptedFromLot(
             offerId,
@@ -251,8 +250,7 @@ contract PunksAuction is IPunksAuction, Offers {
             lot.seller,
             offer.offerer,
             recipient,
-            offer.amountWei,
-            offer.settlementWei
+            offer.amountWei
         );
     }
 
@@ -284,8 +282,6 @@ contract PunksAuction is IPunksAuction, Offers {
         delete offers[offerId];
         delete lots[lotId];
         delete lotItems[lotId];
-
-        _refundOfferSettlement(offer);
 
         address recipient = _offerRecipient(offer);
         auctionId = _createAuctionFromItems(

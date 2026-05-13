@@ -41,12 +41,11 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @notice Places an ETH offer for one or more Punks that match the slot criteria.
     function placeOffer(
         uint96 amountWei,
-        uint96 settlementWei,
         address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId) {
         if (amountWei == 0) revert InvalidAmount();
-        if (msg.value != uint256(amountWei) + uint256(settlementWei)) revert IncorrectPayment();
+        if (msg.value != amountWei) revert IncorrectPayment();
 
         uint256 slotCount = slots.length;
         if (slotCount == 0 || slotCount > MAX_LOT_ITEMS) revert InvalidSlotCount();
@@ -60,7 +59,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
 
         Offer storage stored = offers[offerId];
         stored.amountWei = amountWei;
-        stored.settlementWei = settlementWei;
         stored.offerer = msg.sender;
         stored.receiver = receiver;
         _storeOfferSlots(stored, slots);
@@ -70,7 +68,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             msg.sender,
             receiver,
             amountWei,
-            settlementWei,
             uint8(slotCount)
         );
         _emitOfferSlotDetails(offerId, slots);
@@ -79,7 +76,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @notice Cancels your active offer and refunds its ETH.
     function cancelOffer(uint256 offerId) external nonReentrant {
         Offer storage offer = _offerForOfferer(offerId);
-        uint256 refundWei = uint256(offer.amountWei) + uint256(offer.settlementWei);
+        uint96 refundWei = offer.amountWei;
 
         delete offers[offerId];
         _pushOrCredit(msg.sender, refundWei);
@@ -112,30 +109,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferAmountAdjusted(offerId, newAmountWei);
     }
 
-    /// @notice Sets the seller settlement amount. `msg.value` must equal the increase, or be zero for a decrease.
-    function adjustOfferSettlement(uint256 offerId, uint96 newSettlementWei)
-        external
-        payable
-        nonReentrant
-    {
-        Offer storage offer = _offerForOfferer(offerId);
-
-        uint96 oldSettlementWei = offer.settlementWei;
-        if (newSettlementWei > oldSettlementWei) {
-            if (msg.value != newSettlementWei - oldSettlementWei) revert IncorrectPayment();
-        } else {
-            if (msg.value != 0) revert IncorrectPayment();
-        }
-
-        offer.settlementWei = newSettlementWei;
-
-        if (newSettlementWei < oldSettlementWei) {
-            _pushOrCredit(msg.sender, oldSettlementWei - newSettlementWei);
-        }
-
-        emit OfferSettlementAdjusted(offerId, newSettlementWei);
-    }
-
     /// @notice Accepts a single-slot offer for a marketplace-listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
@@ -153,8 +126,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         address recipient = _offerRecipient(offer);
         _buyListedOfferPunk(standard, punkId, listingWei, seller, recipient);
 
-        _pushOrCredit(msg.sender, offer.settlementWei);
-
         uint256 excess = uint256(offer.amountWei) - listingWei;
         if (excess > 0) _pushOrCredit(offer.offerer, excess);
 
@@ -164,8 +135,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             seller,
             offer.offerer,
             recipient,
-            listingWei,
-            offer.settlementWei
+            listingWei
         );
     }
 
@@ -291,11 +261,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @dev Returns the requested receiver, or the offerer when none is set.
     function _offerRecipient(Offer memory offer) internal pure returns (address) {
         return offer.receiver == address(0) ? offer.offerer : offer.receiver;
-    }
-
-    /// @dev Refunds the settlement amount to the offerer.
-    function _refundOfferSettlement(Offer memory offer) internal {
-        _pushOrCredit(offer.offerer, offer.settlementWei);
     }
 
     /// @dev Resolves the Punk market for an offer standard.

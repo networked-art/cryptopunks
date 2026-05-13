@@ -45,7 +45,6 @@ interface IPunksAuction {
 
     struct Offer {
         uint96 amountWei;
-        uint96 settlementWei;
         address offerer;
         address receiver;
         OfferSlot[] slots;
@@ -101,7 +100,6 @@ interface IPunksAuction {
         address indexed offerer,
         address indexed receiver,
         uint96 amountWei,
-        uint96 settlementWei,
         uint8 slotCount
     );
     event OfferSlotDetail(
@@ -114,15 +112,13 @@ interface IPunksAuction {
     );
     event OfferCancelled(uint256 indexed offerId);
     event OfferAmountAdjusted(uint256 indexed offerId, uint96 newAmountWei);
-    event OfferSettlementAdjusted(uint256 indexed offerId, uint96 newSettlementWei);
     event OfferAccepted(
         uint256 indexed offerId,
         uint256 indexed punkId,
         address indexed seller,
         address offerer,
         address receiver,
-        uint256 listingWei,
-        uint256 settlementWei
+        uint256 listingWei
     );
     event OfferAcceptedFromLot(
         uint256 indexed offerId,
@@ -130,8 +126,7 @@ interface IPunksAuction {
         address indexed seller,
         address offerer,
         address receiver,
-        uint96 amountWei,
-        uint96 settlementWei
+        uint96 amountWei
     );
     event OfferAuctionInitialised(
         uint256 indexed offerId,
@@ -215,7 +210,6 @@ interface IPunksAuction {
     /// @notice Places an ETH offer for Punks that match a list of slot criteria.
     function placeOffer(
         uint96 amountWei,
-        uint96 settlementWei,
         address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId);
@@ -225,9 +219,6 @@ interface IPunksAuction {
 
     /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
     function adjustOfferAmount(uint256 offerId, uint96 newAmountWei) external payable;
-
-    /// @notice Sets the seller settlement amount. `msg.value` must equal the increase, or be zero for a decrease.
-    function adjustOfferSettlement(uint256 offerId, uint96 newSettlementWei) external payable;
 
     /// @notice Accepts a single-slot offer for a listed Punk.
     function acceptOffer(uint256 offerId, uint16 punkId) external;
