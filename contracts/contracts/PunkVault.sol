@@ -295,6 +295,12 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @dev    Lets the vault address participate as a first-class signer
     ///         in Seaport / Permit2 / SIWE / Snapshot and any other protocol
     ///         that consumes 1271, without exposing the owner EOA.
+    ///
+    ///         `hash` is forwarded unmodified: wrapping would break every
+    ///         off-the-shelf signing flow (Seaport, Permit2, …). Consumers
+    ///         that don't bind `verifyingContract` themselves may see
+    ///         signatures replay across sibling 1271 wallets backed by the
+    ///         same key — they must bind it to be safe.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         external
         view
