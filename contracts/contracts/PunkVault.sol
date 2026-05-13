@@ -98,11 +98,11 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     }
 
     /// @inheritdoc IPunkVault
-    function setApprovalForAll(address operator, bool approved) external {
+    function setOperator(address operator, bool approved) external {
         if (msg.sender != owner()) revert NotOwner();
         if (operator == address(0)) revert ZeroAddress();
         _operatorApproved[operator] = approved;
-        emit ApprovalForAll(operator, approved);
+        emit OperatorSet(operator, approved);
     }
 
     /// @inheritdoc IPunkVault
@@ -111,7 +111,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     }
 
     /// @inheritdoc IPunkVault
-    function isApprovedForAll(address operator) external view returns (bool) {
+    function isOperator(address operator) external view returns (bool) {
         return _operatorApproved[operator];
     }
 
@@ -288,7 +288,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
             address op = operators[i];
             if (op == address(0)) revert ZeroAddress();
             _operatorApproved[op] = true;
-            emit ApprovalForAll(op, true);
+            emit OperatorSet(op, true);
             unchecked { ++i; }
         }
     }

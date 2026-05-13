@@ -30,7 +30,7 @@ interface IPunkVaultFactory {
     ///         owner can opt into pre-approvals at deploy time.
     /// @dev    Pre-approval is one-shot per vault: subsequent calls revert
     ///         with `AlreadyInitialized`. After deployment, use
-    ///         `setApprovalForAll` on the vault directly.
+    ///         `setOperator` on the vault directly.
     function ensureMyVault(address[] calldata operators)
         external returns (address vault);
 }

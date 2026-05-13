@@ -85,9 +85,9 @@ const punkVaultInterfaceId = ifaceId([
   'owner()',
   'FACTORY()',
   'approve(address,uint256,address)',
-  'setApprovalForAll(address,bool)',
+  'setOperator(address,bool)',
   'getApproved(address,uint256)',
-  'isApprovedForAll(address)',
+  'isOperator(address)',
   'isAuthorized(address,uint256,address)',
   'transferPunk(address,uint256,address)',
   'offerPunkForSale(address,uint256,uint256)',
@@ -269,8 +269,8 @@ describe('PunkVault', () => {
       ])) as Address
       const vault = await viem.getContractAt('PunkVault', vaultAddress)
 
-      assert.equal(await vault.read.isApprovedForAll([operator.account.address]), true)
-      assert.equal(await vault.read.isApprovedForAll([other.account.address]), true)
+      assert.equal(await vault.read.isOperator([operator.account.address]), true)
+      assert.equal(await vault.read.isOperator([other.account.address]), true)
       await assert.rejects(
         factoryAsOwner.write.ensureMyVault([[attacker.account.address]]),
         /AlreadyInitialized/,
@@ -279,10 +279,10 @@ describe('PunkVault', () => {
 
     it('keeps an empty first ensureMyVault available for later one-shot approvals', async () => {
       const ctx = await deployVaultFixture()
-      assert.equal(await ctx.vault.read.isApprovedForAll([ctx.operator.account.address]), false)
+      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
 
       await ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]])
-      assert.equal(await ctx.vault.read.isApprovedForAll([ctx.operator.account.address]), true)
+      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
       await assert.rejects(
         ctx.factoryAsOwner.write.ensureMyVault([[ctx.approved.account.address]]),
         /AlreadyInitialized/,
@@ -324,7 +324,7 @@ describe('PunkVault', () => {
         11n,
         ctx.approved.account.address,
       ])
-      await ctx.vaultAsOwner.write.setApprovalForAll([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
 
       assert.equal(
         lc(await ctx.vault.read.getApproved([ctx.punks.address, 11n]) as string),
@@ -384,7 +384,7 @@ describe('PunkVault', () => {
         'NotOwner',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsAttacker.write.setApprovalForAll([
+        ctx.vaultAsAttacker.write.setOperator([
           ctx.attacker.account.address,
           true,
         ]),
@@ -392,7 +392,7 @@ describe('PunkVault', () => {
         'NotOwner',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsOwner.write.setApprovalForAll([zeroAddress, true]),
+        ctx.vaultAsOwner.write.setOperator([zeroAddress, true]),
         ctx.vaultAsOwner,
         'ZeroAddress',
       )
@@ -437,7 +437,7 @@ describe('PunkVault', () => {
         lc(zeroAddress),
       )
 
-      await ctx.vaultAsOwner.write.setApprovalForAll([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
       await ctx.vaultAsOperator.write.transferPunk([
         ctx.punks.address,
         23n,
@@ -487,7 +487,7 @@ describe('PunkVault', () => {
       await depositV1Punk(ctx, 42n)
       const bid = parseEther('1')
 
-      await ctx.vaultAsOwner.write.setApprovalForAll([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
       await ctx.vaultAsOperator.write.offerPunkForSaleToAddress([
         ctx.punks.address,
         41n,
@@ -558,7 +558,7 @@ describe('PunkVault', () => {
       await punksAsSeller.write.offerPunkForSale([61n, price])
       await sendEth(ctx, ctx.vaultAddress, parseEther('0.4'))
 
-      await ctx.vaultAsOwner.write.setApprovalForAll([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
       await ctx.vaultAsOperator.write.buyPunk([ctx.punks.address, 61n, price], {
         value: parseEther('0.7'),
       })
@@ -577,7 +577,7 @@ describe('PunkVault', () => {
       const bid = parseEther('0.5')
       await ctx.punks.write.setInitialOwner([ctx.seller.account.address, 71n])
       await sendEth(ctx, ctx.vaultAddress, parseEther('0.2'))
-      await ctx.vaultAsOwner.write.setApprovalForAll([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
 
       await ctx.vaultAsOperator.write.enterBidForPunk([ctx.punks.address, 71n, bid], {
         value: parseEther('0.3'),

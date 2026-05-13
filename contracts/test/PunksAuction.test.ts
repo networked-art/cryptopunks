@@ -47,14 +47,14 @@ async function ensureVaultApprovingAuctions(ctx: Ctx, owner: any) {
 
   // Already deployed — confirm the auction is approved as operator.
   const vaultContract = await ctx.viem.getContractAt('PunkVault', vault)
-  const approved = (await vaultContract.read.isApprovedForAll([
+  const approved = (await vaultContract.read.isOperator([
     ctx.auctions.address,
   ])) as boolean
   if (!approved) {
     const vaultAsOwner = await ctx.viem.getContractAt('PunkVault', vault, {
       client: { wallet: owner },
     })
-    await vaultAsOwner.write.setApprovalForAll([ctx.auctions.address, true])
+    await vaultAsOwner.write.setOperator([ctx.auctions.address, true])
   }
   return vault
 }
@@ -704,11 +704,11 @@ describe('PunksAuction', () => {
       ])) as `0x${string}`
       const vault = await ctx.viem.getContractAt('PunkVault', vaultAddress)
       assert.equal(
-        (await vault.read.isApprovedForAll([auctions.address])) as boolean,
+        (await vault.read.isOperator([auctions.address])) as boolean,
         true,
       )
 
-      // Second factory pre-approval reverts — owner must use setApprovalForAll.
+      // Second factory pre-approval reverts — owner must use setOperator.
       const factoryAsSeller = await ctx.viem.getContractAt(
         'PunkVaultFactory',
         vaultFactory.address,
@@ -1226,7 +1226,7 @@ describe('PunksAuction', () => {
         vaultAddress,
         { client: { wallet: seller } },
       )
-      await vaultAsSeller.write.setApprovalForAll([auctions.address, false])
+      await vaultAsSeller.write.setOperator([auctions.address, false])
 
       await auctions.write.clearStaleLot([1n])
       assert.equal(

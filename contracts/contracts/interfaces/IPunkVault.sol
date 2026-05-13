@@ -33,7 +33,12 @@ interface IPunkVault {
         address indexed operator
     );
 
-    event ApprovalForAll(address indexed operator, bool approved);
+    /// @dev Deliberately not named `ApprovalForAll`: this vault's operator
+    ///      role is strictly stronger than ERC-721's (it also conveys ETH
+    ///      spend authority via `buyPunk` / `enterBidForPunk`). A distinct
+    ///      event name + selector prevents wallets and indexers from
+    ///      auto-classifying it under the ERC-721 trust model.
+    event OperatorSet(address indexed operator, bool approved);
 
     /// @dev Indexes the vault as a smart account.
     event Executed(address indexed target, uint256 value, bytes data);
@@ -64,10 +69,14 @@ interface IPunkVault {
     ///         only operators get that. Prefer per-token approvals for
     ///         one-off integrations; reserve operator status for protocols
     ///         you'd grant ERC721 `setApprovalForAll` AND an ETH allowance to.
-    function setApprovalForAll(address operator, bool approved) external;
+    /// @dev    Deliberately not named `setApprovalForAll`: this role is
+    ///         strictly stronger than the ERC-721 setter of the same name,
+    ///         and the distinct selector keeps wallets / integrators from
+    ///         under-pricing the authority through ERC-721 heuristics.
+    function setOperator(address operator, bool approved) external;
 
     function getApproved(address market, uint256 punkIndex) external view returns (address);
-    function isApprovedForAll(address operator) external view returns (bool);
+    function isOperator(address operator) external view returns (bool);
 
     /// @notice True if `caller` may move `(market, punkIndex)` — owner,
     ///         the per-token approved address, or any operator. Convenience
@@ -184,6 +193,6 @@ interface IPunkVault {
 
     /// @notice Pre-approves `operators` at deploy time. Callable exactly
     ///         once, only by `FACTORY`. After this, only the owner may
-    ///         change approvals via `setApprovalForAll`.
+    ///         change approvals via `setOperator`.
     function factoryInitialize(address[] calldata operators) external;
 }

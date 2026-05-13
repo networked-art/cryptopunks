@@ -638,7 +638,7 @@ contract PunksAuction is IPunksAuction, Offers {
     function _requireAuctionApproved(address seller) private view {
         address vault = PUNK_VAULTS.predictVault(seller);
         if (vault.code.length == 0) revert VaultNotDeployed();
-        if (!IPunkVault(vault).isApprovedForAll(address(this))) {
+        if (!IPunkVault(vault).isOperator(address(this))) {
             revert AuctionNotApproved();
         }
     }
@@ -647,7 +647,7 @@ contract PunksAuction is IPunksAuction, Offers {
     function _auctionStillApproved(address seller) private view returns (bool) {
         address vault = PUNK_VAULTS.predictVault(seller);
         if (vault.code.length == 0) return false;
-        try IPunkVault(vault).isApprovedForAll(address(this)) returns (bool approved) {
+        try IPunkVault(vault).isOperator(address(this)) returns (bool approved) {
             return approved;
         } catch {
             return false;

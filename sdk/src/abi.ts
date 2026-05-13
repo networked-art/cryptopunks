@@ -1554,7 +1554,7 @@ export const punkVaultAbi = [
   },
   {
     type: 'function',
-    name: 'setApprovalForAll',
+    name: 'setOperator',
     inputs: [
       { name: 'operator', type: 'address' },
       { name: 'approved', type: 'bool' },
@@ -1574,7 +1574,7 @@ export const punkVaultAbi = [
   },
   {
     type: 'function',
-    name: 'isApprovedForAll',
+    name: 'isOperator',
     inputs: [{ name: 'operator', type: 'address' }],
     outputs: [{ type: 'bool' }],
     stateMutability: 'view',
@@ -1630,7 +1630,7 @@ export const punkVaultAbi = [
   },
   {
     type: 'event',
-    name: 'ApprovalForAll',
+    name: 'OperatorSet',
     inputs: [
       { name: 'operator', type: 'address', indexed: true },
       { name: 'approved', type: 'bool', indexed: false },
