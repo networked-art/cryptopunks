@@ -168,6 +168,32 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         ICryptoPunksMarket(market).acceptBidForPunk(punkIndex, minPrice);
     }
 
+    // ──────────────── Punk market — spending surface ──────────────────────
+
+    /// @inheritdoc IPunkVault
+    function buyPunk(address market, uint256 punkIndex, uint256 value)
+        external
+        payable
+    {
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        ICryptoPunksMarket(market).buyPunk{value: value}(punkIndex);
+    }
+
+    /// @inheritdoc IPunkVault
+    function enterBidForPunk(address market, uint256 punkIndex, uint256 value)
+        external
+        payable
+    {
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        ICryptoPunksMarket(market).enterBidForPunk{value: value}(punkIndex);
+    }
+
+    /// @inheritdoc IPunkVault
+    function withdrawBidForPunk(address market, uint256 punkIndex) external {
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        ICryptoPunksMarket(market).withdrawBidForPunk(punkIndex);
+    }
+
     // ─────────────────────────── Stash ────────────────────────────────────
 
     /// @inheritdoc IPunkVault
@@ -322,6 +348,13 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     }
 
     // ─────────────────────────── Internals ────────────────────────────────
+
+    /// @dev Spend-tier auth: owner or any operator. Distinct from
+    ///      `isAuthorized`, which also honors per-token approval — that
+    ///      tier never extends to ETH-spending.
+    function _isOwnerOrOperator(address caller) private view returns (bool) {
+        return caller == owner() || _operatorApproved[caller];
+    }
 
     /// @dev Clears any per-token approval before a transfer-equivalent
     ///      call. Mirrors ERC721's `_approve` clearance on transfer.

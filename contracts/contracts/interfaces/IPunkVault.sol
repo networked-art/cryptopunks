@@ -55,10 +55,15 @@ interface IPunkVault {
     ///         vault's market surface.
     function approve(address market, uint256 punkIndex, address operator) external;
 
-    /// @notice Approves `operator` to move any punk this vault holds on
-    ///         any market. Same drain-attack surface as ERC721
-    ///         `setApprovalForAll` — prefer per-token approvals for one-off
-    ///         integrations.
+    /// @notice Approves `operator` as a full-trust agent for this vault.
+    ///         Operators may move any punk this vault holds on any market
+    ///         (transfer to any recipient, list at any price including zero,
+    ///         accept any standing bid) AND spend the vault's ETH balance
+    ///         via `buyPunk` / `enterBidForPunk` up to `address(this).balance`.
+    ///         Per-token `approve` does not extend ETH-spending rights —
+    ///         only operators get that. Prefer per-token approvals for
+    ///         one-off integrations; reserve operator status for protocols
+    ///         you'd grant ERC721 `setApprovalForAll` AND an ETH allowance to.
     function setApprovalForAll(address operator, bool approved) external;
 
     function getApproved(address market, uint256 punkIndex) external view returns (address);
@@ -105,6 +110,33 @@ interface IPunkVault {
         uint256 punkIndex,
         uint256 minPrice
     ) external;
+
+    // ──────────────── Punk market — spending surface ──────────────────────
+    //
+    // Owner-or-operator gated. Per-token approval does not apply — the vault
+    // does not yet own the Punk being bought / bid on. `payable` so callers
+    // may top up the vault inline; `value` is what the market sees and may
+    // exceed `msg.value` by drawing on existing balance. Surplus `msg.value`
+    // beyond `value` stays in the vault.
+
+    /// @notice Buys the Punk at `(market, punkIndex)`, forwarding `value`
+    ///         wei to the market. Funded from any combination of the
+    ///         attached `msg.value` and the vault's existing balance.
+    /// @dev Owner or operator.
+    function buyPunk(address market, uint256 punkIndex, uint256 value)
+        external payable;
+
+    /// @notice Places a bid on `(market, punkIndex)`, locking `value` wei
+    ///         in the market. Funded as in `buyPunk`. The market refunds
+    ///         any previously outbid bidder via its own `pendingWithdrawals`.
+    /// @dev Owner or operator.
+    function enterBidForPunk(address market, uint256 punkIndex, uint256 value)
+        external payable;
+
+    /// @notice Withdraws the vault's standing bid on `(market, punkIndex)`,
+    ///         returning the locked ETH to the vault's balance.
+    /// @dev Owner or operator.
+    function withdrawBidForPunk(address market, uint256 punkIndex) external;
 
     // ─────────────────────────── Stash ────────────────────────────────────
 

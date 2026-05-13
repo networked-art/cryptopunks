@@ -45,6 +45,14 @@ interface ICryptoPunksMarket {
     /// @notice Transfers a Punk to another address.
     function transferPunk(address to, uint256 punkIndex) external;
 
+    /// @notice Places a bid on a Punk. The market locks `msg.value` and
+    ///         refunds any previously outbid bidder via `pendingWithdrawals`.
+    function enterBidForPunk(uint256 punkIndex) external payable;
+
+    /// @notice Withdraws the caller's standing bid on a Punk, returning the
+    ///         locked ETH to the caller.
+    function withdrawBidForPunk(uint256 punkIndex) external;
+
     /// @notice Accepts the standing bid for a Punk at >= minPrice.
     function acceptBidForPunk(uint256 punkIndex, uint256 minPrice) external;
 
