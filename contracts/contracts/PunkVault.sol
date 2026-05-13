@@ -136,14 +136,20 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     }
 
     /// @inheritdoc IPunkVault
+    /// @dev    Clears any per-token approval: once offered, the punk can be
+    ///         filled by a buyer hitting the market directly, in which case
+    ///         the vault never sees the transfer and stale approval would
+    ///         survive an eventual reacquisition.
     function offerPunkForSale(address market, uint256 punkIndex, uint256 minSalePriceWei)
         external
     {
         if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
+        _clearTokenApproval(market, punkIndex);
         ICryptoPunksMarket(market).offerPunkForSale(punkIndex, minSalePriceWei);
     }
 
     /// @inheritdoc IPunkVault
+    /// @dev    See {offerPunkForSale} for the approval-clearing rationale.
     function offerPunkForSaleToAddress(
         address market,
         uint256 punkIndex,
@@ -151,6 +157,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         address toAddress
     ) external {
         if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
+        _clearTokenApproval(market, punkIndex);
         ICryptoPunksMarket(market)
             .offerPunkForSaleToAddress(punkIndex, minSalePriceWei, toAddress);
     }
@@ -205,12 +212,12 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///         satisfy Stash's `tx.origin == owner` checks.
     function stash(address market, uint256 punkIndex) external {
         if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
+        _clearTokenApproval(market, punkIndex);
         address eoaOwner = owner();
         address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
         if (stashAddr.code.length == 0) {
             IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
         }
-        _clearTokenApproval(market, punkIndex);
         ICryptoPunksMarket(market).transferPunk(stashAddr, punkIndex);
     }
 
