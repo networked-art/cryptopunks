@@ -28,7 +28,6 @@ interface IPunksAuction {
     struct Lot {
         address seller;
         uint96 reserveWei;
-        uint40 expiresAt;
         uint8 itemCount;
         bytes32 itemHash;
     }
@@ -54,8 +53,7 @@ interface IPunksAuction {
         address indexed seller,
         bytes32 indexed itemHash,
         uint8 itemCount,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     );
     event LotItemDetail(
         uint256 indexed lotId,
@@ -66,7 +64,7 @@ interface IPunksAuction {
     );
     event LotCancelled(uint256 indexed lotId);
     event LotCleared(uint256 indexed lotId, address indexed cleaner);
-    event LotUpdated(uint256 indexed lotId, uint96 reserveWei, uint40 expiresAt);
+    event LotUpdated(uint256 indexed lotId, uint96 reserveWei);
 
     event AuctionInitialised(
         uint256 indexed auctionId,
@@ -136,7 +134,6 @@ interface IPunksAuction {
     error ZeroAddress();
     error UnexpectedEtherSender();
     error InvalidAmount();
-    error InvalidExpiry();
     error TooManyTokens();
     error PunkNotInVault();
     error VaultNotDeployed();
@@ -162,7 +159,6 @@ interface IPunksAuction {
     error TooManyIds();
 
     error LotNotFound();
-    error LotExpired();
     error LotNotStale();
     error NotSeller();
     error PunkAlreadyInLot(uint256 lotId);
@@ -179,20 +175,19 @@ interface IPunksAuction {
     /// @notice Creates a lot of one or more Punks that can be opened as an auction.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     ) external returns (uint256 lotId);
 
-    /// @notice Updates the reserve price and expiry for your lot.
-    function updateLot(uint256 lotId, uint96 reserveWei, uint40 expiresAt) external;
+    /// @notice Updates the reserve price for your lot.
+    function updateLot(uint256 lotId, uint96 reserveWei) external;
 
     /// @notice Cancels your lot.
     function cancelLot(uint256 lotId) external;
 
-    /// @notice Clears one lot that is expired or no longer valid.
+    /// @notice Clears one lot that is no longer valid.
     function clearStaleLot(uint256 lotId) external;
 
-    /// @notice Clears several lots that are expired or no longer valid.
+    /// @notice Clears several lots that are no longer valid.
     function clearStaleLots(uint256[] calldata lotIds) external;
 
     /// @notice Opens a lot as a live auction with your first bid.

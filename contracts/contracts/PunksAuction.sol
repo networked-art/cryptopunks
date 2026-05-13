@@ -71,11 +71,9 @@ contract PunksAuction is IPunksAuction, Offers {
     ///         instead of at pull time.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     ) external returns (uint256 id) {
         if (reserveWei == 0) revert InvalidAmount();
-        if (expiresAt <= block.timestamp) revert InvalidExpiry();
         _requireAuctionApproved(msg.sender);
         _validateLotItems(items);
 
@@ -89,12 +87,11 @@ contract PunksAuction is IPunksAuction, Offers {
         lots[id] = Lot({
             seller: msg.sender,
             reserveWei: reserveWei,
-            expiresAt: expiresAt,
             itemCount: itemCount,
             itemHash: itemHash
         });
 
-        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, expiresAt);
+        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei);
 
         LotItem[] storage storedItems = lotItems[id];
         for (uint256 i; i < itemCount;) {
@@ -109,18 +106,16 @@ contract PunksAuction is IPunksAuction, Offers {
         }
     }
 
-    /// @notice Updates the reserve price and expiry for your lot.
-    function updateLot(uint256 id, uint96 reserveWei, uint40 expiresAt) external {
+    /// @notice Updates the reserve price for your lot.
+    function updateLot(uint256 id, uint96 reserveWei) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
         if (lot.seller != msg.sender) revert NotSeller();
         if (reserveWei == 0) revert InvalidAmount();
-        if (expiresAt <= block.timestamp) revert InvalidExpiry();
 
         lot.reserveWei = reserveWei;
-        lot.expiresAt = expiresAt;
 
-        emit LotUpdated(id, reserveWei, expiresAt);
+        emit LotUpdated(id, reserveWei);
     }
 
     /// @notice Cancels your lot.
@@ -136,12 +131,12 @@ contract PunksAuction is IPunksAuction, Offers {
         emit LotCancelled(id);
     }
 
-    /// @notice Clears one lot that is expired or no longer valid.
+    /// @notice Clears one lot that is no longer valid.
     function clearStaleLot(uint256 id) external {
         _clearStaleLot(id);
     }
 
-    /// @notice Clears several lots that are expired or no longer valid.
+    /// @notice Clears several lots that are no longer valid.
     function clearStaleLots(uint256[] calldata ids) external {
         uint256 len = ids.length;
         for (uint256 i; i < len;) {
@@ -159,7 +154,6 @@ contract PunksAuction is IPunksAuction, Offers {
     ) external payable nonReentrant returns (uint256 auctionId) {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
         if (lot.reserveWei != expectedReserveWei) {
             revert ReserveMismatch(expectedReserveWei, lot.reserveWei);
         }
@@ -210,7 +204,6 @@ contract PunksAuction is IPunksAuction, Offers {
         Offer memory offer = _activeOffer(offerId);
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
         if (offer.amountWei < minAmountWei) {
             revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
         }
@@ -268,7 +261,6 @@ contract PunksAuction is IPunksAuction, Offers {
         Offer memory offer = _activeOffer(offerId);
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
         if (offer.amountWei < minAmountWei) {
             revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
         }
@@ -430,13 +422,13 @@ contract PunksAuction is IPunksAuction, Offers {
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Removes a lot that is expired, no longer approved, or whose custody slipped out of the vault.
+    /// @dev Removes a lot that is no longer approved or whose custody slipped out of the vault.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        bool stale = block.timestamp >= lot.expiresAt || !_auctionStillApproved(lot.seller);
+        bool stale = !_auctionStillApproved(lot.seller);
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {

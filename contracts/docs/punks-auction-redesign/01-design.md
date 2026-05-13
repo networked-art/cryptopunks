@@ -73,7 +73,6 @@ item carries `1666` (or `1667` for the rounding-remainder item).
 struct Lot {
     address seller;
     uint96  reserveWei;
-    uint40  expiresAt;
     uint8   itemCount;
     bytes32 itemHash;       // keccak256(abi.encode(items))
 }
@@ -99,7 +98,8 @@ keyed by `keccak256(seller, tokenContract, tokenId)`, holds the active lot id
 or 0. `createLot` writes the entry; `cancelLot`, `clearStaleLot`, `openAuction`,
 `acceptOfferFromLot`, and `startAuctionFromOffer` clear it. Trying to create
 a lot whose Punk is already reserved reverts with `PunkAlreadyInLot(lotId)` —
-the seller must `cancelLot(lotId)` (or wait for `clearStaleLot`) before
+the seller must `cancelLot(lotId)` (or the lot must become invalid and be
+cleared with `clearStaleLot`) before
 re-listing the same Punk.
 
 ```solidity
@@ -203,8 +203,7 @@ uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
 ```solidity
 function createLot(
     LotItem[] calldata items,
-    uint96 reserveWei,
-    uint40 expiresAt
+    uint96 reserveWei
 ) external returns (uint256 lotId);
 ```
 
@@ -218,12 +217,12 @@ Validation:
   for V1 the seller must hold the V1 Punk.)
 - For every item: `lotForPunk[key]` is 0. Otherwise revert
   `PunkAlreadyInLot(existingLotId)`.
-- `reserveWei > 0` and `expiresAt > block.timestamp`.
+- `reserveWei > 0`.
 
 State changes:
 
 - Allocate `lotId = ++lastLotId`.
-- Store `Lot { seller, reserveWei, expiresAt, itemCount, itemHash }`.
+- Store `Lot { seller, reserveWei, itemCount, itemHash }`.
 - Store `lotItems[lotId] = items`.
 - For every item: `lotForPunk[key(items[i])] = lotId`.
 
@@ -232,7 +231,7 @@ Events: see §8.
 ### 3.2 updateLot, cancelLot, clearStaleLot, clearStaleLots
 
 ```solidity
-function updateLot(uint256 lotId, uint96 reserveWei, uint40 expiresAt) external;
+function updateLot(uint256 lotId, uint96 reserveWei) external;
 function cancelLot(uint256 lotId) external;
 function clearStaleLot(uint256 lotId) external;
 function clearStaleLots(uint256[] calldata lotIds) external;
@@ -244,7 +243,7 @@ re-listing.
 
 Stale conditions (any one):
 
-- `block.timestamp >= expiresAt`.
+- The seller vault no longer approves the auction contract.
 - For any item: the Punk is no longer in the seller vault (custody slipped
   externally — typically a `reclaim` from the escrow).
 
@@ -259,7 +258,7 @@ function openAuction(uint256 lotId, uint96 expectedReserveWei)
 
 Validation:
 
-- Lot exists, not expired.
+- Lot exists.
 - `lot.reserveWei == expectedReserveWei` (frontend protection against reserve
   changes between read and submit).
 - `msg.value >= lot.reserveWei` (cast to `uint96` with overflow check).
@@ -535,7 +534,7 @@ match against.
 | Σ `weightBps == TOTAL_WEIGHT_BPS` and every weight > 0 | createLot | `InvalidWeights` |
 | Every Punk in seller vault | createLot, openAuction, clearStaleLot | `PunkNotInVault` |
 | Every Punk free of another lot | createLot | `PunkAlreadyInLot(otherLotId)` |
-| `reserveWei > 0`, `expiresAt > now` | createLot, updateLot | `InvalidAmount`, `InvalidExpiry` |
+| `reserveWei > 0` | createLot, updateLot | `InvalidAmount` |
 | `expectedReserveWei` matches | openAuction | `ReserveMismatch(expected, actual)` |
 | `msg.value >= reserveWei` | openAuction | `ReserveNotMet` |
 
@@ -574,8 +573,7 @@ event LotCreated(
     address indexed seller,
     bytes32 indexed itemHash,
     uint8  itemCount,
-    uint96 reserveWei,
-    uint40 expiresAt
+    uint96 reserveWei
 );
 
 event LotItemDetail(
@@ -588,7 +586,7 @@ event LotItemDetail(
 
 event LotCancelled(uint256 indexed lotId);
 event LotCleared(uint256 indexed lotId, address indexed cleaner);
-event LotUpdated(uint256 indexed lotId, uint96 reserveWei, uint40 expiresAt);
+event LotUpdated(uint256 indexed lotId, uint96 reserveWei);
 
 event AuctionInitialised(
     uint256 indexed auctionId,

@@ -184,7 +184,6 @@ describe('PunksSdk', () => {
     const lot = punks.auctions.prepareCreateLot({
       items: [{ punkId: 1 }, { punkId: 2 }, { punkId: 3 }],
       reserveWei: 100n,
-      expiresAt: 2_000_000_000,
     })
     assert.equal(lot.request.functionName, 'createLot')
     assert.deepEqual(

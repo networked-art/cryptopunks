@@ -1281,7 +1281,6 @@ export const punksAuctionAbi = [
     outputs: [
       { name: 'seller', type: 'address' },
       { name: 'reserveWei', type: 'uint96' },
-      { name: 'expiresAt', type: 'uint40' },
       { name: 'itemCount', type: 'uint8' },
       { name: 'itemHash', type: 'bytes32' },
     ],
@@ -1371,7 +1370,6 @@ export const punksAuctionAbi = [
     inputs: [
       { name: 'items', type: 'tuple[]', components: lotItemAbi },
       { name: 'reserveWei', type: 'uint96' },
-      { name: 'expiresAt', type: 'uint40' },
     ],
     outputs: [{ name: 'lotId', type: 'uint256' }],
     stateMutability: 'nonpayable',
@@ -1382,7 +1380,6 @@ export const punksAuctionAbi = [
     inputs: [
       { name: 'lotId', type: 'uint256' },
       { name: 'reserveWei', type: 'uint96' },
-      { name: 'expiresAt', type: 'uint40' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',

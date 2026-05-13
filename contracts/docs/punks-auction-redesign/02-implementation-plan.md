@@ -37,7 +37,7 @@ Reshape:
 
 Reshape signatures:
 
-- `createLot(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`
+- `createLot(LotItem[] calldata items, uint96 reserveWei)`
   — drops `tokenContract`, `tokenId`, `standard` (now per-item).
 - `placeOffer(uint96 amountWei, address receiver, OfferSlot[] calldata slots)`
   — drops top-level `standard`,
@@ -78,11 +78,11 @@ Add errors:
 
 Keep errors:
 
-- `InvalidAmount`, `InvalidExpiry`, `TooManyTokens`,
+- `InvalidAmount`, `TooManyTokens`,
   `IncorrectPayment`, `NotOfferer`, `OfferNotActive`,
   `NegativeAdjustmentHigherThanCurrentOffer`, `ListingNotValid`,
   `ListingPriceTooHigh`, `PunkNotIncluded`, `PunkExcluded`,
-  `PunkTraitMismatch`, `LotNotFound`, `LotExpired`, `LotNotStale`,
+  `PunkTraitMismatch`, `LotNotFound`, `LotNotStale`,
   `NotSeller`, `ReserveMismatch`, `ReserveNotMet`, `AuctionDoesNotExist`,
   `AuctionNotActive`, `AuctionAlreadySettled`, `AuctionNotComplete`,
   `MinimumBidNotMet`, `PunkNotInVault`, `PunkContractMismatch`, `NotAuctions`,
@@ -138,7 +138,7 @@ the slot. See 01-design §2.3 for the single-listing constraint.
 
 `clearStaleLot`, `_clearStaleLot`:
 
-- A lot is stale if expired OR any Punk left the seller vault.
+- A lot is stale if auction approval is revoked OR any Punk left the seller vault.
 - Release every item's `lotForPunk` slot, then delete the lot.
 
 `openAuction`:
@@ -169,8 +169,7 @@ the slot. See 01-design §2.3 for the single-listing constraint.
 `_buyListedOfferPunk` — unchanged (still used by the singleton `acceptOffer`
 fast path).
 
-`_validateLotArgs` — replaced by `_validateLotItems(items, reserveWei,
-expiresAt)`.
+`_validateLotArgs` — replaced by `_validateLotItems(items)`.
 
 `_tokenContractFor(standard)` — small private helper (currently inlined in
 `_offerTokenContract` and the escrow router). Hoist to a shared util used by
@@ -181,7 +180,7 @@ Punks variants, every value is supported by construction.
 
 Internal helpers added:
 
-- `_validateLotItems(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`.
+- `_validateLotItems(LotItem[] calldata items)`.
 - `_validateLotItemNoDuplicates(LotItem[] calldata items)` — O(N²); for N≤40
   this is bounded and clean.
 - `_releaseLotSlots(address seller, LotItem[] memory items)`.
@@ -390,7 +389,7 @@ Replace `MockCryptoPunksTraits` deploy + `setTrait` calls with `MockPunksData`
 Existing harness pieces that move:
 
 - The lot-creation helper: takes `items` (array) instead of `(tokenContract,
-  tokenId, standard, reserveWei, expiresAt)`.
+  tokenId, standard, reserveWei)`.
 - The auction settler helper: still takes `auctionId`; reads items via
   `getAuctionItems`.
 - The offer placement helper: takes `slots` array.

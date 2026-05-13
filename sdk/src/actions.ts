@@ -487,18 +487,16 @@ export class PunksAuctionClient {
   prepareCreateLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
-    expiresAt: number
   }): ContractWritePlan {
     const items = normalizeLotItems(params.items)
     assertWei('reserveWei', params.reserveWei)
-    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
     return {
       description: 'Create CryptoPunks auction lot',
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'createLot',
-        args: [items, params.reserveWei, params.expiresAt],
+        args: [items, params.reserveWei],
       },
     }
   }
@@ -506,7 +504,6 @@ export class PunksAuctionClient {
   createLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
-    expiresAt: number
   }): Promise<TransactionHash> {
     return this.write(this.prepareCreateLot(params))
   }
@@ -514,17 +511,15 @@ export class PunksAuctionClient {
   prepareUpdateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
-    expiresAt: number
   }): ContractWritePlan {
     assertWei('reserveWei', params.reserveWei)
-    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
     return {
       description: `Update CryptoPunks lot ${params.lotId.toString()}`,
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'updateLot',
-        args: [BigInt(params.lotId), params.reserveWei, params.expiresAt],
+        args: [BigInt(params.lotId), params.reserveWei],
       },
     }
   }
@@ -532,7 +527,6 @@ export class PunksAuctionClient {
   updateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
-    expiresAt: number
   }): Promise<TransactionHash> {
     return this.write(this.prepareUpdateLot(params))
   }

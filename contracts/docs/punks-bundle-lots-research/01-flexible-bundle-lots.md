@@ -59,9 +59,9 @@ bundle is equivalent to the current single-Punk lot. A V1 + V2 pair is a
 two-item bundle with the same `punkId` and different standards. A six-Punk lot
 is six items, any supported mix, subject to duplicate checks and gas bounds.
 
-The bid amount, reserve, expiry, start time, auction duration, and anti-sniping
-logic should remain auction-level fields. Bidders bid on the bundle as one
-asset group.
+The bid amount, reserve, start time, auction duration, and anti-sniping logic
+should remain auction-level fields. Lots themselves should not expire; sellers
+can cancel them at any time. Bidders bid on the bundle as one asset group.
 
 ## Storage Shape
 
@@ -72,7 +72,6 @@ structs and store item arrays separately.
 struct BundleLot {
     address seller;
     uint96 reserveWei;
-    uint40 expiresAt;
     uint8 itemCount;
     bytes32 itemHash;
 }
@@ -117,11 +116,10 @@ Prefer additive APIs first so the current single-Punk surface remains stable.
 ```solidity
 function createBundleLot(
     LotItem[] calldata items,
-    uint96 reserveWei,
-    uint40 expiresAt
+    uint96 reserveWei
 ) external returns (uint256 lotId);
 
-function updateBundleLot(uint256 lotId, uint96 reserveWei, uint40 expiresAt) external;
+function updateBundleLot(uint256 lotId, uint96 reserveWei) external;
 function cancelBundleLot(uint256 lotId) external;
 function clearStaleBundleLot(uint256 lotId) external;
 
@@ -146,12 +144,11 @@ At lot creation:
 - No duplicate `{standard, punkId}` items in the same lot.
 - The seller must have every Punk in the right vault.
 - `reserveWei` must be nonzero.
-- `expiresAt` must be in the future.
 - If `weightBps` is enabled, all item weights must sum to `10_000`.
 
 At auction open:
 
-- Recheck expiry and reserve expectation.
+- Recheck reserve expectation.
 - Recheck each saved item version.
 - Recheck every Punk is still in the seller vault.
 - Delete the lot before external custody moves.
@@ -160,8 +157,8 @@ At auction open:
 
 At stale-lot clearing:
 
-- A bundle lot is stale if it expired, if any item version changed, or if any
-  Punk is no longer in the seller vault.
+- A bundle lot is stale if auction approval is revoked, if any item version
+  changed, or if any Punk is no longer in the seller vault.
 - If a Punk moved out of the seller vault, bump the affected item version so
   other lots that reference that exact seller item become stale too.
 
@@ -301,8 +298,7 @@ event BundleLotCreated(
     address indexed seller,
     bytes32 indexed itemHash,
     uint8 itemCount,
-    uint96 reserveWei,
-    uint40 expiresAt
+    uint96 reserveWei
 );
 
 event BundleLotItem(
