@@ -777,6 +777,14 @@ describe('PunksAuction', () => {
         vaultAsAttacker,
         'NotOwner',
       )
+      await ctx.viem.assertions.revertWithCustomError(
+        vaultAsAttacker.write.withdrawFromMarketTo([
+          punks.address,
+          attacker.account.address,
+        ]),
+        vaultAsAttacker,
+        'NotOwner',
+      )
 
       const vaultAsSeller = await ctx.viem.getContractAt(
         'PunkVault',
@@ -784,6 +792,69 @@ describe('PunksAuction', () => {
         { client: { wallet: seller } },
       )
       await vaultAsSeller.write.withdrawFromMarket([punks.address])
+      await ctx.viem.assertions.revertWithCustomError(
+        vaultAsSeller.write.withdrawFromMarketTo([punks.address, zeroAddress]),
+        vaultAsSeller,
+        'ZeroAddress',
+      )
+      await vaultAsSeller.write.withdrawFromMarketTo([
+        punks.address,
+        seller.account.address,
+      ])
+    })
+
+    it('withdraws market proceeds directly to a recipient without sweeping vault ETH', async () => {
+      const ctx = await deployAuctionStack()
+      const { punks, seller, bidder1, other } = ctx
+
+      await assignPunk(ctx, seller, 7n)
+      const vaultAddress = await depositPunk(ctx, seller, 7n)
+      const saleWei = parseEther('1')
+      const retainedWei = parseEther('0.123')
+
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunkVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.offerPunkForSaleToAddress([
+        punks.address,
+        7n,
+        saleWei,
+        bidder1.account.address,
+      ])
+
+      const punksAsBidder = await ctx.viem.getContractAt(
+        'MockCryptoPunksMarket',
+        punks.address,
+        { client: { wallet: bidder1 } },
+      )
+      await punksAsBidder.write.buyPunk([7n], { value: saleWei })
+      assert.equal(await punks.read.pendingWithdrawals([vaultAddress]), saleWei)
+
+      const publicClient = await ctx.viem.getPublicClient()
+      const hash = await other.sendTransaction({
+        to: vaultAddress,
+        value: retainedWei,
+      })
+      await publicClient.waitForTransactionReceipt({ hash })
+      assert.equal(await publicClient.getBalance({ address: vaultAddress }), retainedWei)
+
+      const recipientBefore = await publicClient.getBalance({
+        address: other.account.address,
+      })
+      await vaultAsSeller.write.withdrawFromMarketTo([
+        punks.address,
+        other.account.address,
+      ])
+
+      assert.equal(await punks.read.pendingWithdrawals([vaultAddress]), 0n)
+      assert.equal(await publicClient.getBalance({ address: vaultAddress }), retainedWei)
+      assert.equal(
+        await publicClient.getBalance({ address: other.account.address })
+          - recipientBefore,
+        saleWei,
+      )
     })
   })
 

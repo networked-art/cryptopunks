@@ -126,6 +126,12 @@ interface IPunkVault {
     /// @dev Owner-only.
     function withdrawFromMarket(address market) external;
 
+    /// @notice Pulls this vault's `pendingWithdrawals` on `market` and
+    ///         forwards the withdrawn ETH to `recipient`.
+    /// @dev Owner-only. Only the ETH received from this withdraw call is
+    ///      forwarded; any pre-existing vault balance remains in the vault.
+    function withdrawFromMarketTo(address market, address recipient) external;
+
     // ──────────────── Owner-only generic execution ────────────────────────
 
     /// @notice Calls `target` with `value` ETH and `data`. The path for
