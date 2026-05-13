@@ -335,7 +335,6 @@ export type OfferSlotInput = CompileOfferSlotInput
 
 export type PlaceOfferInput = {
   amountWei: bigint
-  receiver?: Address
   query?: PunkQuery
   standard?: PunkStandardRef
   includeIds?: Iterable<number>
@@ -621,7 +620,7 @@ export class PunksAuctionClient {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'placeOffer',
-        args: [input.amountWei, input.receiver ?? ZERO_ADDRESS, slots],
+        args: [input.amountWei, slots],
         value: input.amountWei,
       },
     }

@@ -101,5 +101,5 @@ concept by mousedev.eth and kilo.
 - Canonical CryptoPunks and unwrapped V1 CryptoPunks each get their own clone-based escrow.
 - Sellers deposit punks into their deterministic vault before creating a lot.
 - Settlement uses the same PunkBought round-trip as `NetworkedAuctions`; if delivery fails, settlement reverts and can be retried.
-- Native ETH offers follow MouseDev's max willingness-to-pay model with optional settlement bounties, receiver addresses, inclusion/exclusion Punk IDs, and external trait filters.
+- Native ETH offers follow MouseDev's max willingness-to-pay model with inclusion/exclusion Punk IDs and external trait filters.
 - Immediate offer acceptance requires the Punk to be listed to the auctions contract on the original CryptoPunks marketplace; offer-to-auction acceptance requires seller vault custody and opens a 24 hour auction.

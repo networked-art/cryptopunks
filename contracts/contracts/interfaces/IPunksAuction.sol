@@ -46,7 +46,6 @@ interface IPunksAuction {
     struct Offer {
         uint96 amountWei;
         address offerer;
-        address receiver;
         OfferSlot[] slots;
     }
 
@@ -98,7 +97,6 @@ interface IPunksAuction {
     event OfferPlaced(
         uint256 indexed offerId,
         address indexed offerer,
-        address indexed receiver,
         uint96 amountWei,
         uint8 slotCount
     );
@@ -117,7 +115,6 @@ interface IPunksAuction {
         uint256 indexed punkId,
         address indexed seller,
         address offerer,
-        address receiver,
         uint256 amountWei
     );
     event OfferAcceptedFromLot(
@@ -125,7 +122,6 @@ interface IPunksAuction {
         uint256 indexed lotId,
         address indexed seller,
         address offerer,
-        address receiver,
         uint96 amountWei
     );
     event OfferAuctionInitialised(
@@ -134,7 +130,6 @@ interface IPunksAuction {
         uint256 indexed lotId,
         address seller,
         address offerer,
-        address receiver,
         uint96 amountWei
     );
 
@@ -212,7 +207,6 @@ interface IPunksAuction {
     /// @notice Places an ETH offer for Punks that match a list of slot criteria.
     function placeOffer(
         uint96 amountWei,
-        address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId);
 

@@ -179,11 +179,9 @@ async function placeOffer(
   offerer: any,
   {
     amountWei = parseEther('1'),
-    receiver = zeroAddress,
     slots = [wildcardSlot()],
   }: {
     amountWei?: bigint
-    receiver?: `0x${string}`
     slots?: OfferSlotInput[]
   } = {},
 ) {
@@ -193,7 +191,7 @@ async function placeOffer(
     { client: { wallet: offerer } },
   )
   await auctionsAsOfferer.write.placeOffer(
-    [amountWei, receiver, slots],
+    [amountWei, slots],
     { value: amountWei },
   )
   return ctx.auctions.read.lastOfferId() as Promise<bigint>
@@ -1272,11 +1270,10 @@ describe('PunksAuction', () => {
   describe('offers', () => {
     it('lets offerers place, adjust, inspect, and cancel native ETH offers', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, bidder1, other } = ctx
+      const { auctions, bidder1 } = ctx
 
       const offerId = await placeOffer(ctx, bidder1, {
         amountWei: parseEther('1'),
-        receiver: other.account.address,
         slots: [
           {
             criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
@@ -1290,7 +1287,6 @@ describe('PunksAuction', () => {
       let offer = await auctions.read.offers([offerId])
       assert.equal(offer[0], parseEther('1'))
       assert.equal(offer[1].toLowerCase(), bidder1.account.address.toLowerCase())
-      assert.equal(offer[2].toLowerCase(), other.account.address.toLowerCase())
 
       const slots = await auctions.read.getOfferSlots([offerId])
       assert.equal(slots.length, 1)
@@ -1384,7 +1380,6 @@ describe('PunksAuction', () => {
         auctionsAsOfferer.write.placeOffer(
           [
             parseEther('1'),
-            zeroAddress,
             [
               {
                 criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(120) },
@@ -1405,7 +1400,6 @@ describe('PunksAuction', () => {
         auctionsAsOfferer.write.placeOffer(
           [
             parseEther('1'),
-            zeroAddress,
             [
               {
                 criteria: {
@@ -1430,7 +1424,6 @@ describe('PunksAuction', () => {
         auctionsAsOfferer.write.placeOffer(
           [
             parseEther('1'),
-            zeroAddress,
             [
               {
                 criteria: {
@@ -1455,7 +1448,6 @@ describe('PunksAuction', () => {
         auctionsAsOfferer.write.placeOffer(
           [
             parseEther('1'),
-            zeroAddress,
             [
               {
                 criteria: { ...emptyCriteria(), minColorCount: 1, maxColorCount: 15 },
@@ -1476,7 +1468,6 @@ describe('PunksAuction', () => {
         auctionsAsOfferer.write.placeOffer(
           [
             parseEther('1'),
-            zeroAddress,
             [
               {
                 criteria: { ...emptyCriteria(), minColorCount: 8, maxColorCount: 4 },
@@ -1504,7 +1495,7 @@ describe('PunksAuction', () => {
 
       await ctx.viem.assertions.revertWithCustomError(
         auctionsAsOfferer.write.placeOffer(
-          [parseEther('1'), zeroAddress, []],
+          [parseEther('1'), []],
           { value: parseEther('1') },
         ),
         auctions,
@@ -1514,7 +1505,7 @@ describe('PunksAuction', () => {
       const tooMany = Array.from({ length: 81 }, () => wildcardSlot())
       await ctx.viem.assertions.revertWithCustomError(
         auctionsAsOfferer.write.placeOffer(
-          [parseEther('1'), zeroAddress, tooMany],
+          [parseEther('1'), tooMany],
           { value: parseEther('1') },
         ),
         auctions,
@@ -1523,7 +1514,7 @@ describe('PunksAuction', () => {
 
       const maxSlots = Array.from({ length: 80 }, () => wildcardSlot())
       await auctionsAsOfferer.write.placeOffer(
-        [parseEther('1'), zeroAddress, maxSlots],
+        [parseEther('1'), maxSlots],
         { value: parseEther('1') },
       )
       const storedSlots = await auctions.read.getOfferSlots([1n])
@@ -1532,14 +1523,13 @@ describe('PunksAuction', () => {
 
     it('accepts a canonical Punk offer through the original marketplace and pays the full offer amount', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, punks, seller, bidder1, other, attacker } = ctx
+      const { auctions, punks, seller, bidder1, attacker } = ctx
 
       await assignPunk(ctx, seller, 700n)
       await offerPunkToAuctions(ctx, seller, 700n, parseEther('0.9'))
 
       const offerId = await placeOffer(ctx, bidder1, {
         amountWei: parseEther('1'),
-        receiver: other.account.address,
       })
 
       const publicClient = await ctx.viem.getPublicClient()
@@ -1560,7 +1550,7 @@ describe('PunksAuction', () => {
 
       assert.equal(
         ((await punks.read.punkIndexToAddress([700n])) as string).toLowerCase(),
-        other.account.address.toLowerCase(),
+        bidder1.account.address.toLowerCase(),
       )
       assert.equal(await punks.read.pendingWithdrawals([seller.account.address]), parseEther('1'))
       assert.equal(
@@ -1763,7 +1753,7 @@ describe('PunksAuction', () => {
 
     it('initializes a 24h auction from an offer using a stored lot', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, punks, seller, bidder1, other } = ctx
+      const { auctions, punks, seller, bidder1, bidder2 } = ctx
 
       await assignPunk(ctx, seller, 950n)
       await depositPunk(ctx, seller, 950n)
@@ -1773,7 +1763,6 @@ describe('PunksAuction', () => {
 
       const offerId = await placeOffer(ctx, bidder1, {
         amountWei: parseEther('1'),
-        receiver: other.account.address,
         slots: [punkSlot(950)],
       })
 
@@ -1793,16 +1782,26 @@ describe('PunksAuction', () => {
       assert.equal(auction[0].toLowerCase(), seller.account.address.toLowerCase())
       assert.equal(auction[1].toLowerCase(), bidder1.account.address.toLowerCase())
       assert.equal(auction[2], parseEther('1'))
-      assert.equal(
-        ((await auctions.read.winnerReceivers([1n])) as string).toLowerCase(),
-        other.account.address.toLowerCase(),
+
+      const auctionsAsBidder2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
       )
+      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+
+      const auctionsAsBidder1 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      await auctionsAsBidder1.write.bid([1n], { value: parseEther('1.21') })
 
       await ctx.connection.networkHelpers.time.increase(DAY + 1)
       await auctions.write.settle([1n])
       assert.equal(
         ((await punks.read.punkIndexToAddress([950n])) as string).toLowerCase(),
-        other.account.address.toLowerCase(),
+        bidder1.account.address.toLowerCase(),
       )
     })
 

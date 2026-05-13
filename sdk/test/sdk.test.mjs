@@ -60,14 +60,12 @@ describe('PunksSdk', () => {
 
     const plan = punks.offers.preparePlace({
       amountWei: 10n,
-      receiver: BUYER,
       query: { attributes: { required: ['Hoodie'] } },
     })
     assert.equal(plan.request.address, AUCTION)
     assert.equal(plan.request.functionName, 'placeOffer')
     assert.equal(plan.request.value, 10n)
-    assert.equal(plan.request.args[1], BUYER)
-    assert.equal(plan.request.args[2][0].criteria.requiredTraitMask, 1n << 62n)
+    assert.equal(plan.request.args[1][0].criteria.requiredTraitMask, 1n << 62n)
 
     assert.throws(
       () => punks.offers.slot({ query: { text: 'zombie hoodie' } }),

@@ -41,7 +41,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @notice Places an ETH offer for one or more Punks that match the slot criteria.
     function placeOffer(
         uint96 amountWei,
-        address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId) {
         if (amountWei == 0) revert InvalidAmount();
@@ -60,13 +59,11 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         Offer storage stored = offers[offerId];
         stored.amountWei = amountWei;
         stored.offerer = msg.sender;
-        stored.receiver = receiver;
         _storeOfferSlots(stored, slots);
 
         emit OfferPlaced(
             offerId,
             msg.sender,
-            receiver,
             amountWei,
             uint8(slotCount)
         );
@@ -132,7 +129,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
 
         delete offers[offerId];
 
-        address recipient = _offerRecipient(offer);
+        address recipient = offer.offerer;
         _buyListedOfferPunk(standard, punkId, offer.amountWei, seller, recipient);
 
         emit OfferAccepted(
@@ -140,7 +137,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             punkId,
             seller,
             offer.offerer,
-            recipient,
             offer.amountWei
         );
     }
@@ -266,11 +262,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         if (minValue > amountWei) revert ListingPriceTooHigh();
 
         return (listingSeller, minValue);
-    }
-
-    /// @dev Returns the requested receiver, or the offerer when none is set.
-    function _offerRecipient(Offer memory offer) internal pure returns (address) {
-        return offer.receiver == address(0) ? offer.offerer : offer.receiver;
     }
 
     /// @dev Resolves the Punk market for an offer standard.

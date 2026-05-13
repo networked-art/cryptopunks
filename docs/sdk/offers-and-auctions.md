@@ -46,8 +46,6 @@ Place a single-slot offer:
 ```ts
 await punks.offers.place({
   amountWei: 50n * 10n ** 18n,
-  settlementWei: 1n * 10n ** 18n,
-  receiver,
   query: {
     type: 'Zombie',
     colorCount: { max: 4 },
@@ -82,12 +80,6 @@ await punks.offers.adjustAmount({
   offerId: 12n,
   amountWei: 5n * 10n ** 18n,
   increase: true,
-})
-
-await punks.offers.adjustSettlement({
-  offerId: 12n,
-  amountWei: 1n * 10n ** 18n,
-  increase: false,
 })
 ```
 

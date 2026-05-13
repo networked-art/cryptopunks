@@ -36,9 +36,6 @@ contract PunksAuction is IPunksAuction, Offers {
     mapping(uint256 => Lot) public lots;
     /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
     mapping(uint256 => Auction) public auctions;
-    /// @notice Returns the receiver set for an auction winner.
-    mapping(uint256 => address) public winnerReceivers;
-
     /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
     /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
     ///         entry reserves that Punk for one lot at a time — first-wins.
@@ -176,7 +173,7 @@ contract PunksAuction is IPunksAuction, Offers {
         delete lots[id];
         delete lotItems[id];
 
-        auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei, address(0));
+        auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei);
     }
 
     /// @notice Places a bid on a live auction.
@@ -194,7 +191,6 @@ contract PunksAuction is IPunksAuction, Offers {
 
         auction.latestBidder = msg.sender;
         auction.latestBidWei = bidWei;
-        delete winnerReceivers[auctionId];
 
         _maybeExtend(auctionId, auction);
 
@@ -246,8 +242,7 @@ contract PunksAuction is IPunksAuction, Offers {
             }
         }
 
-        address recipient = _offerRecipient(offer);
-        _settleBundleDelivery(items, offer.amountWei, recipient);
+        _settleBundleDelivery(items, offer.amountWei, offer.offerer);
 
         _pushOrCredit(lot.seller, offer.amountWei);
 
@@ -256,7 +251,6 @@ contract PunksAuction is IPunksAuction, Offers {
             lotId,
             lot.seller,
             offer.offerer,
-            recipient,
             offer.amountWei
         );
     }
@@ -297,13 +291,11 @@ contract PunksAuction is IPunksAuction, Offers {
         delete lots[lotId];
         delete lotItems[lotId];
 
-        address recipient = _offerRecipient(offer);
         auctionId = _createAuctionFromItems(
             lot.seller,
             items,
             offer.offerer,
-            offer.amountWei,
-            recipient
+            offer.amountWei
         );
 
         emit OfferAuctionInitialised(
@@ -312,7 +304,6 @@ contract PunksAuction is IPunksAuction, Offers {
             lotId,
             lot.seller,
             offer.offerer,
-            recipient,
             offer.amountWei
         );
     }
@@ -364,7 +355,7 @@ contract PunksAuction is IPunksAuction, Offers {
 
         LotItem[] memory items = auctionItems[auctionId];
         uint96 totalWei = auction.latestBidWei;
-        address recipient = _auctionRecipient(auctionId, auction.latestBidder);
+        address recipient = auction.latestBidder;
 
         uint256 itemCount = items.length;
         uint256 allocated;
@@ -405,8 +396,7 @@ contract PunksAuction is IPunksAuction, Offers {
         address seller,
         LotItem[] memory items,
         address initialBidder,
-        uint96 bidWei,
-        address receiver
+        uint96 bidWei
     ) internal returns (uint256 auctionId) {
         unchecked {
             auctionId = ++lastAuctionId;
@@ -425,10 +415,6 @@ contract PunksAuction is IPunksAuction, Offers {
             itemHash: itemHash,
             settled: false
         });
-        if (receiver != address(0) && receiver != initialBidder) {
-            winnerReceivers[auctionId] = receiver;
-        }
-
         LotItem[] storage storedItems = auctionItems[auctionId];
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
@@ -594,12 +580,6 @@ contract PunksAuction is IPunksAuction, Offers {
             PUNKS_V1.transferPunk(recipient, punkId);
             _pushOrCredit(seller, purchaseWei);
         }
-    }
-
-    /// @dev Returns the custom receiver for a winner, or the bidder when none is set.
-    function _auctionRecipient(uint256 auctionId, address bidder) internal view returns (address) {
-        address receiver = winnerReceivers[auctionId];
-        return receiver == address(0) ? bidder : receiver;
     }
 
     /// @dev Extends an auction when a bid arrives inside the grace period.

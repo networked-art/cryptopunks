@@ -126,6 +126,13 @@ factory.renounceRoles
 const punks = createPunksSdk()
 const punksData = createPunksDataClient({})
 const punksDataHash: Promise<Hex> = punksData.datasetHash()
+const offerPlan: ContractWritePlan = punks.offers.preparePlace({
+  amountWei: 10n,
+  includeIds: [8348],
+})
+
+// @ts-expect-error Offers always deliver to the offerer; custom receivers are not supported.
+punks.offers.preparePlace({ amountWei: 10n, receiver, includeIds: [8348] })
 
 // @ts-expect-error PunksData contract client is read-only and does not accept wallet clients.
 createPunksDataClient({ walletClient })

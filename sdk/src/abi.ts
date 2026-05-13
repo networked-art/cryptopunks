@@ -1309,7 +1309,6 @@ export const punksAuctionAbi = [
     outputs: [
       { name: 'amountWei', type: 'uint96' },
       { name: 'offerer', type: 'address' },
-      { name: 'receiver', type: 'address' },
     ],
     stateMutability: 'view',
   },
@@ -1431,7 +1430,6 @@ export const punksAuctionAbi = [
     name: 'placeOffer',
     inputs: [
       { name: 'amountWei', type: 'uint96' },
-      { name: 'receiver', type: 'address' },
       { name: 'slots', type: 'tuple[]', components: offerSlotAbi },
     ],
     outputs: [{ name: 'offerId', type: 'uint256' }],
