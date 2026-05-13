@@ -751,7 +751,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('restricts vault market withdrawals to the owner', async () => {
+    it('restricts vault market withdrawals to owner or operator', async () => {
       const ctx = await deployAuctionStack()
       const { punks, seller, attacker } = ctx
 
@@ -765,7 +765,7 @@ describe('PunksAuction', () => {
       await ctx.viem.assertions.revertWithCustomError(
         vaultAsAttacker.write.withdrawFromMarket([punks.address]),
         vaultAsAttacker,
-        'NotOwner',
+        'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
         vaultAsAttacker.write.withdrawFromMarketTo([
@@ -773,7 +773,7 @@ describe('PunksAuction', () => {
           attacker.account.address,
         ]),
         vaultAsAttacker,
-        'NotOwner',
+        'NotAuthorized',
       )
 
       const vaultAsSeller = await ctx.viem.getContractAt(
