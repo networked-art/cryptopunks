@@ -118,7 +118,7 @@ interface IPunksAuction {
         address indexed seller,
         address offerer,
         address receiver,
-        uint256 listingWei
+        uint256 amountWei
     );
     event OfferAcceptedFromLot(
         uint256 indexed offerId,
@@ -222,7 +222,7 @@ interface IPunksAuction {
     /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
     function adjustOfferAmount(uint256 offerId, uint96 newAmountWei) external payable;
 
-    /// @notice Accepts a single-slot offer for a listed Punk at the expected listing price.
+    /// @notice Accepts a single-slot offer for a listed Punk using a pinned listing price.
     function acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei) external;
 
     /// @notice Accepts an offer against a stored lot when it still meets the caller's minimum.

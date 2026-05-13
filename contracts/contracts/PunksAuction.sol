@@ -581,18 +581,18 @@ contract PunksAuction is IPunksAuction, Offers {
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
-        uint256 listingWei,
+        uint256 purchaseWei,
         address seller,
         address recipient
     ) internal override {
         if (standard == TokenStandard.CRYPTOPUNKS) {
-            PUNKS.buyPunk{value: listingWei}(punkId);
+            PUNKS.buyPunk{value: purchaseWei}(punkId);
             PUNKS.transferPunk(recipient, punkId);
         } else {
-            PUNKS_V1.buyPunk{value: listingWei}(punkId);
+            PUNKS_V1.buyPunk{value: purchaseWei}(punkId);
             PUNKS_V1.withdraw();
             PUNKS_V1.transferPunk(recipient, punkId);
-            _pushOrCredit(seller, listingWei);
+            _pushOrCredit(seller, purchaseWei);
         }
     }
 

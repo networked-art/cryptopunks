@@ -232,7 +232,8 @@ unchanged; only types of offer struct fields move under the hood.
   excludeIds + standard.
 - Require the live listing price to equal `expectedListingWei`.
 - Existing market arbitrage flow follows: `_requireAcceptableListing`,
-  `_buyListedOfferPunk`, refund excess, pay settlement.
+  `_buyListedOfferPunk` with `offer.amountWei` so the seller receives the full
+  offer amount.
 
 `acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`:
 
@@ -432,7 +433,7 @@ to 10_000). The off-by-rounding is at most `itemCount` wei.
 
 V1 bundle items each call `withdraw()` between buy and transfer. Within a
 single bundle, this means the V1 escrow's pending balance is drained item
-by item. The escrow's `_pushOrCredit(seller, listingWei)` call inside the V1
+by item. The escrow's `_pushOrCredit(seller, itemWei)` call inside the V1
 branch of `_deliverPunk` continues to work: each call adds to the seller's
 pending pull balance, which they sweep separately. No accounting drift.
 

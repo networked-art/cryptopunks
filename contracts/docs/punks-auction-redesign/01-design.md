@@ -404,9 +404,10 @@ Validation:
 State changes:
 
 1. Delete the offer.
-2. Buy from market; transfer to `offer.receiver` (or offerer if zero).
-3. Pay msg.sender `offer.settlementWei`.
-4. Refund excess `offer.amountWei - listingWei` to offerer.
+2. Buy from market with `offer.amountWei`; transfer to `offer.receiver` (or
+   offerer if zero).
+3. The seller receives the full offer amount even when the pinned listing
+   price is lower.
 
 Events: `OfferAccepted`.
 
@@ -511,12 +512,13 @@ A V1+V2 pair of #4156 runs two sequential `_deliverPunk` calls:
 The two market sale events recorded onchain will have the seller's chosen
 `weightBps` allocation as their per-item prices.
 
-### 6.4 Excess refund (acceptOffer fast path only)
+### 6.4 Listed Punk offer amount
 
 The market-arbitrage `acceptOffer` path checks the Punk's market listing
-price (`minValue`) and refunds `offer.amountWei - listingWei` to the offerer
-if positive. This is an artifact of the market-listing flow: the seller chose
-their listing price, which can be less than the offer.
+price (`minValue`) but buys the Punk with the full `offer.amountWei`. This
+keeps the seller-facing behavior aligned with accepting an offer: a Punk
+listed to the auction contract at 5 ETH that matches an 8 ETH offer settles
+for 8 ETH, not 5 ETH plus a 3 ETH refund to the offerer.
 
 The lot path has no equivalent — the bundle's `totalWei` is exactly the
 offer's `amountWei`, split per `weightBps`. There is no listing price to
@@ -657,8 +659,7 @@ event OfferAccepted(
     address indexed seller,
     address offerer,
     address receiver,
-    uint256 listingWei,
-    uint256 settlementWei
+    uint256 amountWei
 );
 
 event OfferAcceptedFromLot(

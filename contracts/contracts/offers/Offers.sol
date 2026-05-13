@@ -109,7 +109,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferAmountAdjusted(offerId, newAmountWei);
     }
 
-    /// @notice Accepts a single-slot offer for a marketplace-listed Punk.
+    /// @notice Accepts a single-slot offer for a marketplace-listed Punk using a pinned listing price.
     function acceptOffer(
         uint256 offerId,
         uint16 punkId,
@@ -123,7 +123,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         _requireSlotMatchesPunk(slot, standard, punkId);
 
         ICryptoPunksMarket market = _offerMarket(standard);
-        (address seller, uint256 listingWei) = _requireAcceptableListing(
+        (address seller,) = _requireAcceptableListing(
             market,
             punkId,
             offer.amountWei,
@@ -133,10 +133,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         delete offers[offerId];
 
         address recipient = _offerRecipient(offer);
-        _buyListedOfferPunk(standard, punkId, listingWei, seller, recipient);
-
-        uint256 excess = uint256(offer.amountWei) - listingWei;
-        if (excess > 0) _pushOrCredit(offer.offerer, excess);
+        _buyListedOfferPunk(standard, punkId, offer.amountWei, seller, recipient);
 
         emit OfferAccepted(
             offerId,
@@ -144,7 +141,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             seller,
             offer.offerer,
             recipient,
-            listingWei
+            offer.amountWei
         );
     }
 
@@ -287,7 +284,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
-        uint256 listingWei,
+        uint256 purchaseWei,
         address seller,
         address recipient
     ) internal virtual;

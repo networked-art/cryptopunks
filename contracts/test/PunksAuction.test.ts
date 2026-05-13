@@ -1530,7 +1530,7 @@ describe('PunksAuction', () => {
       assert.equal(storedSlots.length, 80)
     })
 
-    it('accepts a canonical Punk offer through the original marketplace and refunds excess', async () => {
+    it('accepts a canonical Punk offer through the original marketplace and pays the full offer amount', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punks, seller, bidder1, other, attacker } = ctx
 
@@ -1562,10 +1562,10 @@ describe('PunksAuction', () => {
         ((await punks.read.punkIndexToAddress([700n])) as string).toLowerCase(),
         other.account.address.toLowerCase(),
       )
-      assert.equal(await punks.read.pendingWithdrawals([seller.account.address]), parseEther('0.9'))
+      assert.equal(await punks.read.pendingWithdrawals([seller.account.address]), parseEther('1'))
       assert.equal(
         await publicClient.getBalance({ address: bidder1.account.address }) - bidderBefore,
-        parseEther('0.1'),
+        0n,
       )
 
       const settlerAfter = await publicClient.getBalance({ address: attacker.account.address })
@@ -1723,7 +1723,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('accepts a V1 Punk offer through the bug-aware marketplace path', async () => {
+    it('accepts a V1 Punk offer through the bug-aware marketplace path and pays the full offer amount', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punksV1, seller, bidder1, attacker } = ctx
 
@@ -1752,11 +1752,11 @@ describe('PunksAuction', () => {
       )
       assert.equal(
         await publicClient.getBalance({ address: seller.account.address }) - sellerBefore,
-        parseEther('0.8'),
+        parseEther('1'),
       )
       assert.equal(
         await publicClient.getBalance({ address: bidder1.account.address }) - bidderBefore,
-        parseEther('0.2'),
+        0n,
       )
       assert.equal(await punksV1.read.pendingWithdrawals([auctions.address]), 0n)
     })
