@@ -657,16 +657,6 @@ describe('PunksAuction', () => {
 
       // owner() must not return a garbage slice of the impl's own runtime.
       await assert.rejects(impl.read.owner(), /NotClone/)
-
-      // Owner-gated paths route through owner() and therefore also revert.
-      await assert.rejects(
-        impl.read.isAuthorized([
-          ctx.punks.address,
-          0n,
-          ctx.seller.account.address,
-        ]),
-        /NotClone/,
-      )
     })
 
     it('vault.transferPunk reverts when the vault does not hold the Punk on that market', async () => {

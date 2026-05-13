@@ -1543,17 +1543,6 @@ export const punkVaultAbi = [
   },
   {
     type: 'function',
-    name: 'approve',
-    inputs: [
-      { name: 'market', type: 'address' },
-      { name: 'punkIndex', type: 'uint256' },
-      { name: 'operator', type: 'address' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
     name: 'setOperator',
     inputs: [
       { name: 'operator', type: 'address' },
@@ -1564,29 +1553,8 @@ export const punkVaultAbi = [
   },
   {
     type: 'function',
-    name: 'getApproved',
-    inputs: [
-      { name: 'market', type: 'address' },
-      { name: 'punkIndex', type: 'uint256' },
-    ],
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
     name: 'isOperator',
     inputs: [{ name: 'operator', type: 'address' }],
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'isAuthorized',
-    inputs: [
-      { name: 'market', type: 'address' },
-      { name: 'punkIndex', type: 'uint256' },
-      { name: 'caller', type: 'address' },
-    ],
     outputs: [{ type: 'bool' }],
     stateMutability: 'view',
   },
@@ -1618,15 +1586,6 @@ export const punkVaultAbi = [
     ],
     outputs: [{ type: 'bytes' }],
     stateMutability: 'payable',
-  },
-  {
-    type: 'event',
-    name: 'Approval',
-    inputs: [
-      { name: 'market', type: 'address', indexed: true },
-      { name: 'punkIndex', type: 'uint256', indexed: true },
-      { name: 'operator', type: 'address', indexed: true },
-    ],
   },
   {
     type: 'event',

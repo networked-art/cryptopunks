@@ -5,8 +5,8 @@ pragma solidity 0.8.34;
 /// @notice External surface of `PunkVault` — a deterministic, user-owned
 ///         smart account for CryptoPunks custody. Holds punks across any
 ///         CryptoPunks-compatible market at a single address per user.
-///         Protocols integrate by being approved as operators, ERC721-style;
-///         the owner uses `execute` for everything else.
+///         Protocols integrate by being approved as operators; the owner
+///         uses `execute` for everything else.
 /// @author 1001
 interface IPunkVault {
     struct Call {
@@ -22,16 +22,6 @@ interface IPunkVault {
     error AlreadyInitialized();
     error ExecutionFailed(bytes returnData);
     error ZeroAddress();
-
-    /// @dev Mirrors ERC721 semantics. Per-punk approval is cleared
-    ///      automatically when the punk is transferred via this vault's
-    ///      market surface; not cleared if the owner uses `execute` to
-    ///      call the market directly.
-    event Approval(
-        address indexed market,
-        uint256 indexed punkIndex,
-        address indexed operator
-    );
 
     /// @dev Deliberately not named `ApprovalForAll`: this vault's operator
     ///      role is strictly stronger than ERC-721's (it also conveys ETH
@@ -53,41 +43,27 @@ interface IPunkVault {
     ///         allowed to call `factoryInitialize`.
     function FACTORY() external view returns (address);
 
-    // ─────────────────── Approvals (ERC721-like) ──────────────────────────
-
-    /// @notice Approves `operator` to move the punk at `(market, punkIndex)`.
-    ///         Cleared automatically when the punk is transferred via this
-    ///         vault's market surface.
-    function approve(address market, uint256 punkIndex, address operator) external;
+    // ───────────────────────── Operator role ──────────────────────────────
 
     /// @notice Approves `operator` as a full-trust agent for this vault.
     ///         Operators may move any punk this vault holds on any market
     ///         (transfer to any recipient, list at any price including zero,
     ///         accept any standing bid) AND spend the vault's ETH balance
     ///         via `buyPunk` / `enterBidForPunk` up to `address(this).balance`.
-    ///         Per-token `approve` does not extend ETH-spending rights —
-    ///         only operators get that. Prefer per-token approvals for
-    ///         one-off integrations; reserve operator status for protocols
-    ///         you'd grant ERC721 `setApprovalForAll` AND an ETH allowance to.
+    ///         There is no narrower per-punk delegation: the owner is the
+    ///         only path for one-off custody moves, via `execute` or by
+    ///         calling the delegated surface directly.
     /// @dev    Deliberately not named `setApprovalForAll`: this role is
     ///         strictly stronger than the ERC-721 setter of the same name,
     ///         and the distinct selector keeps wallets / integrators from
     ///         under-pricing the authority through ERC-721 heuristics.
     function setOperator(address operator, bool approved) external;
 
-    function getApproved(address market, uint256 punkIndex) external view returns (address);
     function isOperator(address operator) external view returns (bool);
-
-    /// @notice True if `caller` may move `(market, punkIndex)` — owner,
-    ///         the per-token approved address, or any operator. Convenience
-    ///         for integrators that want to pre-check.
-    function isAuthorized(address market, uint256 punkIndex, address caller)
-        external view returns (bool);
 
     // ──────────────── Punk market — delegated surface ─────────────────────
     //
-    // All approval-gated. Per-token approvals cleared before the external
-    // call for transfer-equivalent operations (CEI).
+    // Owner-or-operator gated.
 
     /// @notice Clean replacement for `offerPunkForSaleToAddress(.., 0, x)`:
     ///         moves a punk out of the vault without polluting the canonical
@@ -122,11 +98,10 @@ interface IPunkVault {
 
     // ──────────────── Punk market — spending surface ──────────────────────
     //
-    // Owner-or-operator gated. Per-token approval does not apply — the vault
-    // does not yet own the Punk being bought / bid on. `payable` so callers
-    // may top up the vault inline; `value` is what the market sees and may
-    // exceed `msg.value` by drawing on existing balance. Surplus `msg.value`
-    // beyond `value` stays in the vault.
+    // Owner-or-operator gated. `payable` so callers may top up the vault
+    // inline; `value` is what the market sees and may exceed `msg.value`
+    // by drawing on existing balance. Surplus `msg.value` beyond `value`
+    // stays in the vault.
 
     /// @notice Buys the Punk at `(market, punkIndex)`, forwarding `value`
     ///         wei to the market. Funded from any combination of the

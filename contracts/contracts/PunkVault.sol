@@ -14,8 +14,7 @@ import "./interfaces/IStashFactory.sol";
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
 ///         Holds Punks across every CryptoPunks-compatible market at a
 ///         single address per user. Protocols integrate by being approved
-///         as operators, ERC721-style; the owner uses `execute`
-///         for everything else.
+///         as operators; the owner uses `execute` for everything else.
 ///
 ///         No wrapping. No marketplace-listing pollution. No per-protocol
 ///         custody glue. The vault is the Punk's canonical owner on each
@@ -46,11 +45,6 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
 
     mapping(address operator => bool) private _operatorApproved;
 
-    /// @dev Per-token approval keyed by (market, punkIndex). Cross-market
-    ///      addressable because the vault holds Punks on every market it
-    ///      knows about.
-    mapping(address market => mapping(uint256 punkIndex => address)) private _tokenApproved;
-
     /// @notice Deploys the implementation. Clones inherit `FACTORY` via the
     ///         shared runtime bytecode and read `owner` from their own
     ///         immutable args.
@@ -69,7 +63,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         // Reject calls on the bare implementation: it carries no immutable
         // args, so `extcodecopy` would return a deterministic-but-arbitrary
         // slice of the impl's own runtime. That value could mislead
-        // `isAuthorized` callers and offchain indexers.
+        // `isOperator` callers and offchain indexers.
         if (address(this) == _SELF) revert NotClone();
 
         // The ERC-1167 proxy runtime is exactly 45 (0x2d) bytes; OZ
@@ -88,14 +82,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///         arbitrary inbound transfers (airdrops, ENS refunds, etc.).
     receive() external payable {}
 
-    // ─────────────────── Approvals (ERC721-like) ──────────────────────────
-
-    /// @inheritdoc IPunkVault
-    function approve(address market, uint256 punkIndex, address operator) external {
-        if (msg.sender != owner()) revert NotOwner();
-        _tokenApproved[market][punkIndex] = operator;
-        emit Approval(market, punkIndex, operator);
-    }
+    // ───────────────────────── Operator role ──────────────────────────────
 
     /// @inheritdoc IPunkVault
     function setOperator(address operator, bool approved) external {
@@ -106,72 +93,47 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     }
 
     /// @inheritdoc IPunkVault
-    function getApproved(address market, uint256 punkIndex) external view returns (address) {
-        return _tokenApproved[market][punkIndex];
-    }
-
-    /// @inheritdoc IPunkVault
     function isOperator(address operator) external view returns (bool) {
         return _operatorApproved[operator];
-    }
-
-    /// @inheritdoc IPunkVault
-    function isAuthorized(address market, uint256 punkIndex, address caller)
-        public
-        view
-        returns (bool)
-    {
-        if (caller == owner()) return true;
-        if (caller == _tokenApproved[market][punkIndex]) return true;
-        return _operatorApproved[caller];
     }
 
     // ──────────────── Punk market — delegated surface ─────────────────────
 
     /// @inheritdoc IPunkVault
     function transferPunk(address market, uint256 punkIndex, address to) external {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
-        _clearTokenApproval(market, punkIndex);
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).transferPunk(to, punkIndex);
     }
 
     /// @inheritdoc IPunkVault
-    /// @dev    Clears any per-token approval: once offered, the punk can be
-    ///         filled by a buyer hitting the market directly, in which case
-    ///         the vault never sees the transfer and stale approval would
-    ///         survive an eventual reacquisition.
     function offerPunkForSale(address market, uint256 punkIndex, uint256 minSalePriceWei)
         external
     {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
-        _clearTokenApproval(market, punkIndex);
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).offerPunkForSale(punkIndex, minSalePriceWei);
     }
 
     /// @inheritdoc IPunkVault
-    /// @dev    See {offerPunkForSale} for the approval-clearing rationale.
     function offerPunkForSaleToAddress(
         address market,
         uint256 punkIndex,
         uint256 minSalePriceWei,
         address toAddress
     ) external {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
-        _clearTokenApproval(market, punkIndex);
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market)
             .offerPunkForSaleToAddress(punkIndex, minSalePriceWei, toAddress);
     }
 
     /// @inheritdoc IPunkVault
     function punkNoLongerForSale(address market, uint256 punkIndex) external {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).punkNoLongerForSale(punkIndex);
     }
 
     /// @inheritdoc IPunkVault
     function acceptBidForPunk(address market, uint256 punkIndex, uint256 minPrice) external {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
-        _clearTokenApproval(market, punkIndex);
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).acceptBidForPunk(punkIndex, minPrice);
     }
 
@@ -211,8 +173,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///         used without needing the vault to implement ERC-1271 or
     ///         satisfy Stash's `tx.origin == owner` checks.
     function stash(address market, uint256 punkIndex) external {
-        if (!isAuthorized(market, punkIndex, msg.sender)) revert NotAuthorized();
-        _clearTokenApproval(market, punkIndex);
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         address eoaOwner = owner();
         address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
         if (stashAddr.code.length == 0) {
@@ -356,19 +317,10 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
 
     // ─────────────────────────── Internals ────────────────────────────────
 
-    /// @dev Spend-tier auth: owner or any operator. Distinct from
-    ///      `isAuthorized`, which also honors per-token approval — that
-    ///      tier never extends to ETH-spending.
+    /// @dev The vault's single auth tier: owner or any operator. Used for
+    ///      every non-owner-only path; gates both the delegated market
+    ///      surface and the ETH-spending surface.
     function _isOwnerOrOperator(address caller) private view returns (bool) {
         return caller == owner() || _operatorApproved[caller];
-    }
-
-    /// @dev Clears any per-token approval before a transfer-equivalent
-    ///      call. Mirrors ERC721's `_approve` clearance on transfer.
-    function _clearTokenApproval(address market, uint256 punkIndex) private {
-        if (_tokenApproved[market][punkIndex] != address(0)) {
-            delete _tokenApproved[market][punkIndex];
-            emit Approval(market, punkIndex, address(0));
-        }
     }
 }

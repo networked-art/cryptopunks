@@ -84,11 +84,8 @@ function ifaceId(signatures: readonly string[]): Hex {
 const punkVaultInterfaceId = ifaceId([
   'owner()',
   'FACTORY()',
-  'approve(address,uint256,address)',
   'setOperator(address,bool)',
-  'getApproved(address,uint256)',
   'isOperator(address)',
-  'isAuthorized(address,uint256,address)',
   'transferPunk(address,uint256,address)',
   'offerPunkForSale(address,uint256,uint256)',
   'offerPunkForSaleToAddress(address,uint256,uint256,address)',
@@ -109,7 +106,7 @@ const punkVaultInterfaceId = ifaceId([
 async function deployVaultFixture() {
   const connection: any = await network.create()
   const { viem } = connection
-  const [deployer, owner, operator, approved, buyer, seller, other, attacker] =
+  const [deployer, owner, operator, buyer, seller, other, attacker] =
     await viem.getWalletClients()
 
   const punks = await viem.deployContract('MockCryptoPunksMarket')
@@ -133,9 +130,6 @@ async function deployVaultFixture() {
   const vaultAsOperator = await viem.getContractAt('PunkVault', vaultAddress, {
     client: { wallet: operator },
   })
-  const vaultAsApproved = await viem.getContractAt('PunkVault', vaultAddress, {
-    client: { wallet: approved },
-  })
   const vaultAsAttacker = await viem.getContractAt('PunkVault', vaultAddress, {
     client: { wallet: attacker },
   })
@@ -146,7 +140,6 @@ async function deployVaultFixture() {
     deployer,
     owner,
     operator,
-    approved,
     buyer,
     seller,
     other,
@@ -159,7 +152,6 @@ async function deployVaultFixture() {
     vault,
     vaultAsOwner,
     vaultAsOperator,
-    vaultAsApproved,
     vaultAsAttacker,
   }
 }
@@ -238,14 +230,6 @@ describe('PunkVault', () => {
         impl,
         'NotClone',
       )
-      await assert.rejects(
-        impl.read.isAuthorized([
-          ctx.punks.address,
-          1n,
-          ctx.owner.account.address,
-        ]),
-        /NotClone/,
-      )
     })
   })
 
@@ -284,7 +268,7 @@ describe('PunkVault', () => {
       await ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]])
       assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
       await assert.rejects(
-        ctx.factoryAsOwner.write.ensureMyVault([[ctx.approved.account.address]]),
+        ctx.factoryAsOwner.write.ensureMyVault([[ctx.attacker.account.address]]),
         /AlreadyInitialized/,
       )
     })
@@ -316,73 +300,9 @@ describe('PunkVault', () => {
     })
   })
 
-  describe('approvals and authorization', () => {
-    it('scopes per-token approvals by market and punk id', async () => {
+  describe('operator role', () => {
+    it('restricts setOperator to the owner and rejects the zero address', async () => {
       const ctx = await deployVaultFixture()
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        11n,
-        ctx.approved.account.address,
-      ])
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
-
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 11n]) as string),
-        lc(ctx.approved.account.address),
-      )
-      assert.equal(
-        await ctx.vault.read.isAuthorized([
-          ctx.punks.address,
-          11n,
-          ctx.owner.account.address,
-        ]),
-        true,
-      )
-      assert.equal(
-        await ctx.vault.read.isAuthorized([
-          ctx.punks.address,
-          11n,
-          ctx.approved.account.address,
-        ]),
-        true,
-      )
-      assert.equal(
-        await ctx.vault.read.isAuthorized([
-          ctx.punks.address,
-          12n,
-          ctx.approved.account.address,
-        ]),
-        false,
-      )
-      assert.equal(
-        await ctx.vault.read.isAuthorized([
-          ctx.punksV1.address,
-          11n,
-          ctx.approved.account.address,
-        ]),
-        false,
-      )
-      assert.equal(
-        await ctx.vault.read.isAuthorized([
-          ctx.punks.address,
-          999n,
-          ctx.operator.account.address,
-        ]),
-        true,
-      )
-    })
-
-    it('restricts approval mutation to the owner', async () => {
-      const ctx = await deployVaultFixture()
-      await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsAttacker.write.approve([
-          ctx.punks.address,
-          1n,
-          ctx.attacker.account.address,
-        ]),
-        ctx.vaultAsAttacker,
-        'NotOwner',
-      )
       await ctx.viem.assertions.revertWithCustomError(
         ctx.vaultAsAttacker.write.setOperator([
           ctx.attacker.account.address,
@@ -397,19 +317,17 @@ describe('PunkVault', () => {
         'ZeroAddress',
       )
 
-      await ctx.vaultAsOwner.write.approve([ctx.punks.address, 1n, zeroAddress])
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 1n]) as string),
-        lc(zeroAddress),
-      )
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, false])
+      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
     })
   })
 
   describe('movement and listing surface', () => {
-    it('allows owner, per-token approved, and operator transfers while clearing token approval', async () => {
+    it('allows owner and operator transfers', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 21n)
-      await depositPunk(ctx, 22n)
       await depositPunk(ctx, 23n)
 
       await ctx.vaultAsOwner.write.transferPunk([
@@ -420,21 +338,6 @@ describe('PunkVault', () => {
       assert.equal(
         lc(await ctx.punks.read.punkIndexToAddress([21n]) as string),
         lc(ctx.owner.account.address),
-      )
-
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        22n,
-        ctx.approved.account.address,
-      ])
-      await ctx.vaultAsApproved.write.transferPunk([
-        ctx.punks.address,
-        22n,
-        ctx.other.account.address,
-      ])
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 22n]) as string),
-        lc(zeroAddress),
       )
 
       await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
@@ -449,39 +352,22 @@ describe('PunkVault', () => {
       )
     })
 
-    it('clears per-token approval on listing while delisting leaves approvals untouched', async () => {
+    it('routes offerPunkForSale and punkNoLongerForSale through operator auth', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 31n)
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        31n,
-        ctx.approved.account.address,
-      ])
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
 
-      await ctx.vaultAsApproved.write.offerPunkForSale([ctx.punks.address, 31n, 123n])
+      await ctx.vaultAsOperator.write.offerPunkForSale([ctx.punks.address, 31n, 123n])
       let offer = await ctx.punks.read.punksOfferedForSale([31n]) as any
       assert.equal(offer[0], true)
       assert.equal(offer[3], 123n)
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 31n]) as string),
-        lc(zeroAddress),
-      )
 
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        31n,
-        ctx.approved.account.address,
-      ])
-      await ctx.vaultAsApproved.write.punkNoLongerForSale([ctx.punks.address, 31n])
+      await ctx.vaultAsOperator.write.punkNoLongerForSale([ctx.punks.address, 31n])
       offer = await ctx.punks.read.punksOfferedForSale([31n]) as any
       assert.equal(offer[0], false)
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 31n]) as string),
-        lc(ctx.approved.account.address),
-      )
     })
 
-    it('supports directed sales and acceptBidForPunk with approval clearing', async () => {
+    it('supports directed sales and acceptBidForPunk by operator', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 41n)
       await depositV1Punk(ctx, 42n)
@@ -504,22 +390,13 @@ describe('PunkVault', () => {
         { client: { wallet: ctx.buyer } },
       )
       await punksAsBuyer.write.enterBidForPunk([42n], { value: bid })
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punksV1.address,
-        42n,
-        ctx.approved.account.address,
-      ])
-      await ctx.vaultAsApproved.write.acceptBidForPunk([ctx.punksV1.address, 42n, bid])
+      await ctx.vaultAsOperator.write.acceptBidForPunk([ctx.punksV1.address, 42n, bid])
 
       assert.equal(
         lc(await ctx.punksV1.read.punkIndexToAddress([42n]) as string),
         lc(ctx.buyer.account.address),
       )
       assert.equal(await ctx.punksV1.read.pendingWithdrawals([ctx.vaultAddress]), bid)
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punksV1.address, 42n]) as string),
-        lc(zeroAddress),
-      )
     })
 
     it('rejects unauthorized movement and listing calls', async () => {
@@ -594,30 +471,25 @@ describe('PunkVault', () => {
       assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), bid)
     })
 
-    it('does not let per-token approved callers spend vault ETH', async () => {
+    it('rejects buy/bid/withdrawBid from non-owner non-operator callers', async () => {
       const ctx = await deployVaultFixture()
       await ctx.punks.write.setInitialOwner([ctx.seller.account.address, 81n])
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        81n,
-        ctx.approved.account.address,
-      ])
 
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsApproved.write.buyPunk([ctx.punks.address, 81n, 1n]),
-        ctx.vaultAsApproved,
+        ctx.vaultAsAttacker.write.buyPunk([ctx.punks.address, 81n, 1n]),
+        ctx.vaultAsAttacker,
         'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsApproved.write.enterBidForPunk([ctx.punks.address, 81n, 1n], {
+        ctx.vaultAsAttacker.write.enterBidForPunk([ctx.punks.address, 81n, 1n], {
           value: 1n,
         }),
-        ctx.vaultAsApproved,
+        ctx.vaultAsAttacker,
         'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsApproved.write.withdrawBidForPunk([ctx.punks.address, 81n]),
-        ctx.vaultAsApproved,
+        ctx.vaultAsAttacker.write.withdrawBidForPunk([ctx.punks.address, 81n]),
+        ctx.vaultAsAttacker,
         'NotAuthorized',
       )
     })
@@ -918,14 +790,9 @@ describe('PunkVault', () => {
       )
     })
 
-    it('uses the configured StashFactory and clears per-token approval', async () => {
+    it('uses the configured StashFactory', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 121n)
-      await ctx.vaultAsOwner.write.approve([
-        ctx.punks.address,
-        121n,
-        ctx.approved.account.address,
-      ])
 
       const mockStashFactory = await ctx.viem.deployContract('MockStashFactory')
       const publicClient = await ctx.viem.getPublicClient()
@@ -941,10 +808,6 @@ describe('PunkVault', () => {
       assert.equal(
         lc(await ctx.punks.read.punkIndexToAddress([121n]) as string),
         lc(stashAddress),
-      )
-      assert.equal(
-        lc(await ctx.vault.read.getApproved([ctx.punks.address, 121n]) as string),
-        lc(zeroAddress),
       )
       const stashCode = await publicClient.getCode({ address: stashAddress })
       assert.ok(stashCode && stashCode !== '0x')
