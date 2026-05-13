@@ -426,3 +426,143 @@ The hard part is not PNG assembly; it is reproducing the exact compressed
 stream that produced the reference file. Different zlib versions and
 strategies produce different valid streams that all decode to the same
 pixels.
+
+## Reference zlib Reproduction Notes
+
+A full token-stream comparison against the reference `punks.png` confirms the
+compressed stream is reproducible from the inflated scanline bytes by zlib
+1.3.1 with default level-9 settings. It does not require hidden per-image
+hints, but it does require reproducing zlib's exact LZ77 and dynamic-Huffman
+choices.
+
+The matching compressor profile is:
+
+```text
+zlib version: 1.3.1
+windowBits: 15
+memLevel: 8
+level: 9
+strategy: Z_DEFAULT_STRATEGY
+wrapper: zlib
+method: deflate_slow
+good_length: 32
+max_lazy: 258
+nice_length: 258
+max_chain: 4096
+hash_bits: 15
+hash_shift: 5
+window size: 32768
+max distance: 32506
+TOO_FAR: 4096
+symbol buffer: 16383 non-EOB tokens per full block
+```
+
+Important edge cases:
+
+- zlib uses `NIL == 0`, so the string at absolute input position `0` is never
+  a valid match head. The reference stream begins with two zero literals, then
+  distance-1 matches.
+- Default strategy still rejects length-3 matches farther than `TOO_FAR`
+  (`4096`). Omitting this rule diverges from the reference stream at output
+  byte `115350`.
+- Near end-of-input, zlib may read guard bytes while searching; match lengths
+  are still capped to `lookahead`, so the output is deterministic.
+- Match length `258` is encoded with literal/length symbol `285` and no extra
+  bits. Do not let a naive range search encode it as symbol `284` with extra
+  value `31`.
+
+The parsed reference stream has:
+
+```text
+dynamic DEFLATE blocks: 23
+non-EOB tokens: 363963
+literals: 55934
+matches: 308029
+```
+
+Block non-EOB token counts:
+
+```text
+22 blocks * 16383 tokens, final block * 3537 tokens
+```
+
+Inflated output ranges per DEFLATE block:
+
+```text
+0:  0        .. 1075553
+1:  1075553  .. 2181796
+2:  2181796  .. 3247978
+3:  3247978  .. 4293495
+4:  4293495  .. 5376040
+5:  5376040  .. 6386042
+6:  6386042  .. 7458564
+7:  7458564  .. 8470335
+8:  8470335  .. 9545347
+9:  9545347  .. 10564580
+10: 10564580 .. 11632119
+11: 11632119 .. 12628996
+12: 12628996 .. 13693158
+13: 13693158 .. 14680234
+14: 14680234 .. 15737120
+15: 15737120 .. 16723822
+16: 16723822 .. 17759827
+17: 17759827 .. 18782505
+18: 18782505 .. 19786532
+19: 19786532 .. 20825577
+20: 20825577 .. 21793818
+21: 21793818 .. 22851278
+22: 22851278 .. 23042400
+```
+
+Compressed raw-DEFLATE bit ranges per block, excluding the 2-byte zlib header
+and 4-byte Adler-32 trailer:
+
+```text
+0:  0       .. 304576
+1:  304576  .. 612155
+2:  612155  .. 919475
+3:  919475  .. 1224474
+4:  1224474 .. 1528708
+5:  1528708 .. 1833212
+6:  1833212 .. 2137876
+7:  2137876 .. 2445230
+8:  2445230 .. 2750826
+9:  2750826 .. 3056217
+10: 3056217 .. 3361045
+11: 3361045 .. 3667211
+12: 3667211 .. 3972211
+13: 3972211 .. 4277027
+14: 4277027 .. 4581609
+15: 4581609 .. 4886183
+16: 4886183 .. 5189839
+17: 5189839 .. 5493763
+18: 5493763 .. 5800597
+19: 5800597 .. 6104207
+20: 6104207 .. 6409532
+21: 6409532 .. 6715796
+22: 6715796 .. 6782488
+```
+
+This narrows Milestone 2 to a concrete Solidity port of zlib 1.3.1's level-9
+pipeline:
+
+1. Generate the canonical scanline stream from `PunksData`.
+2. Run zlib's `deflate_slow` LZ77 tokenization with the parameters above.
+3. Split blocks at zlib's symbol-buffer boundary.
+4. Build the dynamic literal/length, distance, and bit-length trees exactly as
+   zlib `trees.c` does.
+5. Emit the zlib wrapper, dynamic DEFLATE blocks, Adler-32 trailer, and PNG
+   chunks with the reference 32,768-byte IDAT split.
+
+The `analyze:punks-deflate` script checks all five requirements offchain:
+it simulates zlib's level-9 LZ77 tokenization, rebuilds the dynamic
+literal/length and distance code lengths from the token frequencies with
+zlib's heap and overflow rules, builds the bit-length tree/header, and
+re-emits the full dynamic DEFLATE payload byte-for-byte from the generated
+token stream. It then wraps those generated DEFLATE bytes in the zlib container,
+computes Adler-32, splits IDAT payloads into the reference 32,768-byte PNG
+chunks, computes PNG CRC32 values, and verifies the final PNG bytes match the
+reference `punks.png`. The reference stream is still parsed as the comparison
+target, but not as the source for the emitter. That catches match-selection,
+tree-length, tree-header, bit-order, extra-bit, checksum, and chunk-framing
+mistakes before the algorithm is ported to Solidity.

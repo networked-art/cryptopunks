@@ -56,7 +56,7 @@ async function main() {
   const chainId = await publicClient.getChainId()
   const contract = await viem.getContractAt('PunksData', address)
   const state = await loadOrInitState(address, chainId)
-  state.sealed = await contract.read.isSealed()
+  state.sealed = await contract.read.isSealed() as boolean
   await saveState(state)
 
   console.log(`PunksData ${contract.address} (chain ${chainId})`)
@@ -131,7 +131,7 @@ async function main() {
   }
 
   if (SEAL_AFTER_LOAD || state.sealed) {
-    const onchainHash = await contract.read.datasetHash()
+    const onchainHash = await contract.read.datasetHash() as Hex
     if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
       throw new Error(`datasetHash mismatch: ${onchainHash}`)
     }

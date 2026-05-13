@@ -5,6 +5,10 @@
   "scripts": {
     "generate:punks-data": "hardhat run scripts/generate-punks-data.ts",
     "snapshot:source": "hardhat run scripts/snapshot-source.ts",
+    "analyze:punks-deflate": "hardhat run scripts/analyze-punks-deflate.ts",
+    "verify:punks-png": "hardhat run scripts/verify-punks-png.ts",
+    "verify:punks-png:deflate-block": "hardhat run scripts/verify-punks-png-deflate-block.ts",
+    "verify:punks-png:composite-chunks": "hardhat run scripts/verify-punks-png-composite-chunks.ts",
     "load:punks-data": "hardhat run scripts/load-punks-data.ts --network mainnet",
     "seal:punks-data": "PUNKS_DATA_SEAL=1 hardhat run scripts/load-punks-data.ts --network mainnet",
     "test": "hardhat test",
