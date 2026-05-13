@@ -1551,7 +1551,11 @@ describe('PunksAuction', () => {
         auctions.address,
         { client: { wallet: attacker } },
       )
-      const hash = await auctionsAsSettler.write.acceptOffer([offerId, 700])
+      const hash = await auctionsAsSettler.write.acceptOffer([
+        offerId,
+        700,
+        parseEther('0.9'),
+      ])
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
 
       assert.equal(
@@ -1582,7 +1586,7 @@ describe('PunksAuction', () => {
       })
 
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 1]),
+        auctions.write.acceptOffer([offerId, 1, parseEther('1')]),
         auctions,
         'MultiSlotOfferRequiresLot',
       )
@@ -1599,16 +1603,36 @@ describe('PunksAuction', () => {
 
       await offerPunkToAuctions(ctx, seller, 701n, parseEther('0.9'), other.account.address)
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 701]),
+        auctions.write.acceptOffer([offerId, 701, parseEther('0.9')]),
         auctions,
         'ListingNotValid',
       )
 
       await offerPunkToAuctions(ctx, seller, 701n, parseEther('1.1'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 701]),
+        auctions.write.acceptOffer([offerId, 701, parseEther('1.1')]),
         auctions,
         'ListingPriceTooHigh',
+      )
+    })
+
+    it('rejects immediate acceptance when the listing price changed from the caller expectation', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 702n)
+      await offerPunkToAuctions(ctx, seller, 702n, parseEther('0.9'))
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+      })
+
+      await offerPunkToAuctions(ctx, seller, 702n, parseEther('1'))
+
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.acceptOffer([offerId, 702, parseEther('0.9')]),
+        auctions,
+        'ListingPriceMismatch',
       )
     })
 
@@ -1642,7 +1666,7 @@ describe('PunksAuction', () => {
       await assignPunk(ctx, seller, 799n)
       await offerPunkToAuctions(ctx, seller, 799n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 799]),
+        auctions.write.acceptOffer([offerId, 799, parseEther('0.9')]),
         auctions,
         'PunkNotIncluded',
       )
@@ -1650,7 +1674,7 @@ describe('PunksAuction', () => {
       await assignPunk(ctx, seller, 802n)
       await offerPunkToAuctions(ctx, seller, 802n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 802]),
+        auctions.write.acceptOffer([offerId, 802, parseEther('0.9')]),
         auctions,
         'PunkExcluded',
       )
@@ -1658,14 +1682,14 @@ describe('PunksAuction', () => {
       await assignPunk(ctx, seller, 801n)
       await offerPunkToAuctions(ctx, seller, 801n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 801]),
+        auctions.write.acceptOffer([offerId, 801, parseEther('0.9')]),
         auctions,
         'PunkCriteriaMismatch',
       )
 
       await assignPunk(ctx, seller, 800n)
       await offerPunkToAuctions(ctx, seller, 800n, parseEther('0.9'))
-      await auctions.write.acceptOffer([offerId, 800])
+      await auctions.write.acceptOffer([offerId, 800, parseEther('0.9')])
     })
 
     it('rejects offers when the matched Punk is outside the color count range', async () => {
@@ -1693,7 +1717,7 @@ describe('PunksAuction', () => {
       await assignPunk(ctx, seller, 900n)
       await offerPunkToAuctions(ctx, seller, 900n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 900]),
+        auctions.write.acceptOffer([offerId, 900, parseEther('0.9')]),
         auctions,
         'PunkCriteriaMismatch',
       )
@@ -1720,7 +1744,7 @@ describe('PunksAuction', () => {
         auctions.address,
         { client: { wallet: attacker } },
       )
-      await auctionsAsSettler.write.acceptOffer([offerId, 905])
+      await auctionsAsSettler.write.acceptOffer([offerId, 905, parseEther('0.8')])
 
       assert.equal(
         ((await punksV1.read.punkIndexToAddress([905n])) as string).toLowerCase(),

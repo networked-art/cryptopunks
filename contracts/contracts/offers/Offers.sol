@@ -110,7 +110,11 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     }
 
     /// @notice Accepts a single-slot offer for a marketplace-listed Punk.
-    function acceptOffer(uint256 offerId, uint16 punkId) external nonReentrant {
+    function acceptOffer(
+        uint256 offerId,
+        uint16 punkId,
+        uint96 expectedListingWei
+    ) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
         if (offer.slots.length != 1) revert MultiSlotOfferRequiresLot();
 
@@ -119,7 +123,12 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         _requireSlotMatchesPunk(slot, standard, punkId);
 
         ICryptoPunksMarket market = _offerMarket(standard);
-        (address seller, uint256 listingWei) = _requireAcceptableListing(market, punkId, offer.amountWei);
+        (address seller, uint256 listingWei) = _requireAcceptableListing(
+            market,
+            punkId,
+            offer.amountWei,
+            expectedListingWei
+        );
 
         delete offers[offerId];
 
@@ -244,7 +253,8 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     function _requireAcceptableListing(
         ICryptoPunksMarket market,
         uint16 punkId,
-        uint96 amountWei
+        uint96 amountWei,
+        uint96 expectedListingWei
     ) internal view returns (address seller, uint256 listingWei) {
         (bool isForSale,, address listingSeller, uint256 minValue, address onlySellTo) =
             market.punksOfferedForSale(punkId);
@@ -253,6 +263,9 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             revert ListingNotValid();
         }
         if (market.punkIndexToAddress(punkId) != listingSeller) revert ListingNotValid();
+        if (minValue != expectedListingWei) {
+            revert ListingPriceMismatch(expectedListingWei, minValue);
+        }
         if (minValue > amountWei) revert ListingPriceTooHigh();
 
         return (listingSeller, minValue);

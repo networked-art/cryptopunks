@@ -151,6 +151,7 @@ interface IPunksAuction {
     error NotOfferer();
     error OfferNotActive();
     error ListingNotValid();
+    error ListingPriceMismatch(uint96 expectedListingWei, uint256 actualListingWei);
     error ListingPriceTooHigh();
     error PunkNotIncluded();
     error PunkExcluded();
@@ -221,8 +222,8 @@ interface IPunksAuction {
     /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
     function adjustOfferAmount(uint256 offerId, uint96 newAmountWei) external payable;
 
-    /// @notice Accepts a single-slot offer for a listed Punk.
-    function acceptOffer(uint256 offerId, uint16 punkId) external;
+    /// @notice Accepts a single-slot offer for a listed Punk at the expected listing price.
+    function acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei) external;
 
     /// @notice Accepts an offer against a stored lot when it still meets the caller's minimum.
     function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;

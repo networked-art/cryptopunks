@@ -42,8 +42,9 @@ Reshape signatures:
 - `placeOffer(uint96 amountWei, address receiver, OfferSlot[] calldata slots)`
   — drops top-level `standard`,
   `traitFilters`, `includeIds`, `excludeIds`.
-- `acceptOffer(uint256 offerId, uint16 punkId)` — unchanged signature.
-  Behaviour limited to `slots.length == 1` (singleton fast path).
+- `acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei)`
+  — adds a listing-price pin. Behaviour limited to `slots.length == 1`
+  (singleton fast path).
 - New: `acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`.
 - `startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)`
   — second arg changes from `uint16 punkId` to `uint256 lotId`; third arg
@@ -224,11 +225,12 @@ function placeOffer(
 `cancelOffer`, `adjustOfferAmount`, `adjustOfferSettlement` — semantics
 unchanged; only types of offer struct fields move under the hood.
 
-`acceptOffer(uint256 offerId, uint16 punkId)`:
+`acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei)`:
 
 - Require `offer.slots.length == 1`.
 - `_requireSlotMatchesPunk(slots[0], punkId)` — does criteria + includeIds +
   excludeIds + standard.
+- Require the live listing price to equal `expectedListingWei`.
 - Existing market arbitrage flow follows: `_requireAcceptableListing`,
   `_buyListedOfferPunk`, refund excess, pay settlement.
 
@@ -365,7 +367,7 @@ New coverage:
 - Multi-slot offer place + match: V1+V2 pair, "couple of zombies".
 - Slot/item count mismatch reverts.
 - Slot/item standard mismatch reverts.
-- Multi-slot offer rejected by `acceptOffer(offerId, punkId)`.
+- Multi-slot offer rejected by `acceptOffer(offerId, punkId, expectedListingWei)`.
 - Single-slot offer accepted via either path (market or lot).
 - Color count range matching (lower-only, upper-only, exact bracket, miss).
 - Place-time mask validation: bits beyond canonical, required/forbidden

@@ -181,8 +181,8 @@ Three motivating cases drop in cleanly:
   empty `includeIds`/`excludeIds`, both `standard: CRYPTOPUNKS`.
 
 The `Offer` struct does not carry a top-level `standard` — each slot carries
-its own. The singleton-fast-path `acceptOffer(offerId, punkId)` uses
-`slots[0].standard` to decide which CryptoPunks market to look at.
+its own. The singleton-fast-path `acceptOffer(offerId, punkId, expectedListingWei)`
+uses `slots[0].standard` to decide which CryptoPunks market to look at.
 
 ### 2.6 Constants
 
@@ -387,7 +387,7 @@ Semantics unchanged from current single-Punk path.
 ### 5.4 acceptOffer (singleton fast path)
 
 ```solidity
-function acceptOffer(uint256 offerId, uint16 punkId) external;
+function acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei) external;
 ```
 
 The CryptoPunks-market arbitrage path. Requires `offer.slots.length == 1`.
@@ -397,8 +397,8 @@ Validation:
 - `offer.slots.length == 1`.
 - `slot = offer.slots[0]` matches `(slot.standard, punkId)` per §5.2.
 - The Punk is offered for sale on the appropriate market for the auction
-  contract at `minValue <= offer.amountWei`, with `onlySellTo == auction
-  contract`.
+  contract at `minValue == expectedListingWei` and
+  `minValue <= offer.amountWei`, with `onlySellTo == auction contract`.
 - The seller (= market listing seller) still owns the Punk.
 
 State changes:
@@ -555,6 +555,7 @@ match against.
 | --- | --- | --- |
 | Slot count == item count (lot path) | acceptOfferFromLot, startAuctionFromOffer | `SlotItemCountMismatch` |
 | Slot count == 1 (market path) | acceptOffer | `MultiSlotOfferRequiresLot` |
+| Listing price matches caller expectation | acceptOffer | `ListingPriceMismatch` |
 | Slot.standard matches item/punk | matching | `OfferStandardMismatch` |
 | includeIds match | matching | `PunkNotIncluded` |
 | excludeIds clear | matching | `PunkExcluded` |
