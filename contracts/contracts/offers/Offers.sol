@@ -9,7 +9,7 @@ import "../lib/PushPullEscrow.sol";
 
 /// @title  Offers
 /// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
-///         Inspired by MouseDev's CryptoPunksBids, concept by mousedev.eth and kilo.
+///         Inspired by MouseDev's CryptoPunksBids.
 abstract contract Offers is IPunksAuction, PushPullEscrow {
     using Punks for Punks.Filter;
 
