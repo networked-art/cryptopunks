@@ -517,7 +517,7 @@ describe('PunkVault', () => {
   })
 
   describe('proceeds', () => {
-    it('restricts market withdrawals to owner and forwards only newly withdrawn ETH', async () => {
+    it('allows owner or operator to withdraw market proceeds and forwards only newly withdrawn ETH', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 101n)
       const price = parseEther('1')
@@ -540,7 +540,15 @@ describe('PunkVault', () => {
       await ctx.viem.assertions.revertWithCustomError(
         ctx.vaultAsAttacker.write.withdrawFromMarket([ctx.punks.address]),
         ctx.vaultAsAttacker,
-        'NotOwner',
+        'NotAuthorized',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.vaultAsAttacker.write.withdrawFromMarketTo([
+          ctx.punks.address,
+          ctx.attacker.account.address,
+        ]),
+        ctx.vaultAsAttacker,
+        'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
         ctx.vaultAsOwner.write.withdrawFromMarketTo([ctx.punks.address, zeroAddress]),
@@ -552,7 +560,8 @@ describe('PunkVault', () => {
       const recipientBefore = await publicClient.getBalance({
         address: ctx.other.account.address,
       })
-      await ctx.vaultAsOwner.write.withdrawFromMarketTo([
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOperator.write.withdrawFromMarketTo([
         ctx.punks.address,
         ctx.other.account.address,
       ])

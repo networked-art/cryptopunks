@@ -139,13 +139,17 @@ interface IPunkVault {
 
     /// @notice Pulls this vault's `pendingWithdrawals` on `market` into
     ///         the vault's ETH balance.
-    /// @dev Owner-only.
+    /// @dev Owner or operator. Operators already have unbounded ETH-spend
+    ///      authority via `buyPunk` / `enterBidForPunk`, so gating proceeds
+    ///      collection separately would be security theater — the trust
+    ///      assumption is unchanged.
     function withdrawFromMarket(address market) external;
 
     /// @notice Pulls this vault's `pendingWithdrawals` on `market` and
     ///         forwards the withdrawn ETH to `recipient`.
-    /// @dev Owner-only. Only the ETH received from this withdraw call is
-    ///      forwarded; any pre-existing vault balance remains in the vault.
+    /// @dev Owner or operator. Only the ETH received from this withdraw
+    ///      call is forwarded; any pre-existing vault balance remains in
+    ///      the vault.
     function withdrawFromMarketTo(address market, address recipient) external;
 
     // ──────────────── Owner-only generic execution ────────────────────────

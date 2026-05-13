@@ -186,13 +186,13 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
 
     /// @inheritdoc IPunkVault
     function withdrawFromMarket(address market) external {
-        if (msg.sender != owner()) revert NotOwner();
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).withdraw();
     }
 
     /// @inheritdoc IPunkVault
     function withdrawFromMarketTo(address market, address recipient) external {
-        if (msg.sender != owner()) revert NotOwner();
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         if (recipient == address(0)) revert ZeroAddress();
         uint256 balanceBefore = address(this).balance;
         ICryptoPunksMarket(market).withdraw();
