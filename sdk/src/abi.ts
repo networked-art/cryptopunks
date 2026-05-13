@@ -1456,6 +1456,7 @@ export const punksAuctionAbi = [
     inputs: [
       { name: 'offerId', type: 'uint256' },
       { name: 'punkId', type: 'uint16' },
+      { name: 'expectedListingWei', type: 'uint96' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -1466,6 +1467,7 @@ export const punksAuctionAbi = [
     inputs: [
       { name: 'offerId', type: 'uint256' },
       { name: 'lotId', type: 'uint256' },
+      { name: 'minAmountWei', type: 'uint96' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -1476,6 +1478,7 @@ export const punksAuctionAbi = [
     inputs: [
       { name: 'offerId', type: 'uint256' },
       { name: 'lotId', type: 'uint256' },
+      { name: 'minAmountWei', type: 'uint96' },
     ],
     outputs: [{ name: 'auctionId', type: 'uint256' }],
     stateMutability: 'nonpayable',

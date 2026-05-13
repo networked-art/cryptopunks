@@ -660,33 +660,46 @@ export class PunksAuctionClient {
     return this.write(this.prepareAdjustOfferAmount(params))
   }
 
-  prepareAcceptOffer(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {
+  prepareAcceptOffer(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
+    assertWei('expectedListingWei', params.expectedListingWei)
     return simpleAuctionWrite(this.requireAddress(), 'Accept CryptoPunks offer', 'acceptOffer', [
       BigInt(params.offerId),
       params.punkId,
+      params.expectedListingWei,
     ])
   }
 
-  acceptOffer(params: { offerId: bigint | number; punkId: number }): Promise<TransactionHash> {
+  acceptOffer(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareAcceptOffer(params))
   }
 
   prepareAcceptOfferFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): ContractWritePlan {
+    assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
       'Accept CryptoPunks offer from lot',
       'acceptOfferFromLot',
-      [BigInt(params.offerId), BigInt(params.lotId)],
+      [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
     )
   }
 
   acceptOfferFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.write(this.prepareAcceptOfferFromLot(params))
   }
@@ -694,18 +707,21 @@ export class PunksAuctionClient {
   prepareStartAuctionFromOffer(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): ContractWritePlan {
+    assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
       'Start CryptoPunks auction from offer',
       'startAuctionFromOffer',
-      [BigInt(params.offerId), BigInt(params.lotId)],
+      [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
     )
   }
 
   startAuctionFromOffer(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.write(this.prepareStartAuctionFromOffer(params))
   }
