@@ -3,10 +3,9 @@ pragma solidity 0.8.34;
 
 /// @title  IPunkVaultFactory
 /// @notice Deterministic per-user `PunkVault` deployer. Salt is the user's
-///         address, so a vault's address is stable across networks and
-///         predictable offchain. Counterfactual deposits to
-///         `predictVault(user)` are safe regardless of when the vault is
-///         deployed or by whom.
+///         address, so a vault's address is predictable offchain.
+///         Counterfactual deposits to `predictVault(user)` are safe
+///         regardless of when the vault is deployed or by whom.
 /// @author 1001
 interface IPunkVaultFactory {
     error ZeroAddress();

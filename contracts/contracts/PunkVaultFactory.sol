@@ -9,9 +9,9 @@ import "./PunkVault.sol";
 
 /// @title  PunkVaultFactory
 /// @notice Deploys deterministic per-user `PunkVault` clones. Salt is the
-///         user's address, so the vault address is stable across networks
-///         and predictable offchain — counterfactual deposits to
-///         `predictVault(user)` are safe before deployment.
+///         user's address, so the vault address is predictable offchain —
+///         counterfactual deposits to `predictVault(user)` are safe before
+///         deployment.
 /// @author 1001
 contract PunkVaultFactory is IPunkVaultFactory {
     /// @inheritdoc IPunkVaultFactory
@@ -64,8 +64,7 @@ contract PunkVaultFactory is IPunkVaultFactory {
     }
 
     /// @dev Salt the deterministic clone with the user's address so the
-    ///      vault address is the same across every chain this factory is
-    ///      deployed at the same address on.
+    ///      vault address is a pure function of the user.
     function _salt(address user) private pure returns (bytes32) {
         return bytes32(uint256(uint160(user)));
     }
