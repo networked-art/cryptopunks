@@ -3,6 +3,8 @@ pragma solidity 0.8.34;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
@@ -24,7 +26,7 @@ import "./interfaces/IStashFactory.sol";
 ///         redeem ERC20 / ERC721 / ERC1155 tokens that flow in, and
 ///         integrate with protocols that don't yet exist.
 /// @author 1001
-contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
+contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
     address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
@@ -277,12 +279,32 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver {
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
 
+    // ──────────────── ERC-1271 ────────────────────────────────────────────
+
+    /// @notice EIP-1271 signature check. The vault is a valid signer of any
+    ///         hash the owner has signed — directly via ECDSA if the owner
+    ///         is an EOA, or by forwarding to the owner's own 1271 surface
+    ///         if the owner is itself a contract account (Safe, 4337, 7702).
+    /// @dev    Lets the vault address participate as a first-class signer
+    ///         in Seaport / Permit2 / SIWE / Snapshot and any other protocol
+    ///         that consumes 1271, without exposing the owner EOA.
+    function isValidSignature(bytes32 hash, bytes calldata signature)
+        external
+        view
+        returns (bytes4)
+    {
+        return SignatureChecker.isValidSignatureNowCalldata(owner(), hash, signature)
+            ? IERC1271.isValidSignature.selector
+            : bytes4(0xffffffff);
+    }
+
     // ──────────────── ERC-165 ─────────────────────────────────────────────
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IPunkVault).interfaceId
             || interfaceId == type(IERC721Receiver).interfaceId
             || interfaceId == type(IERC1155Receiver).interfaceId
+            || interfaceId == type(IERC1271).interfaceId
             || interfaceId == 0x01ffc9a7; // ERC-165 itself
     }
 
