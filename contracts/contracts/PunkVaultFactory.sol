@@ -63,9 +63,11 @@ contract PunkVaultFactory is IPunkVaultFactory {
         emit VaultDeployed(user, vault);
     }
 
-    /// @dev Salt the deterministic clone with the user's address so the
-    ///      vault address is a pure function of the user.
-    function _salt(address user) private pure returns (bytes32) {
-        return bytes32(uint256(uint160(user)));
+    /// @dev Salt the deterministic clone with `(user, block.chainid)` so a
+    ///      future redeploy of this factory on another chain derives a
+    ///      different vault address for the same user, blocking cross-chain
+    ///      ERC-1271 replay against a sibling vault at the same address.
+    function _salt(address user) private view returns (bytes32) {
+        return keccak256(abi.encode(user, block.chainid));
     }
 }
