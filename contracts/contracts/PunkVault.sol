@@ -166,9 +166,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
     ///         and its EOA owner resolve to different Stashes — sending
     ///         to `stashAddressFor(owner())` lands the Punk in the EOA's
-    ///         existing Stash (or a freshly deployed one), where it can be
-    ///         used without needing the vault to implement ERC-1271 or
-    ///         satisfy Stash's `tx.origin == owner` checks.
+    ///         existing Stash (or a freshly deployed one).
     function stash(uint256 punkIndex) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         address eoaOwner = owner();
