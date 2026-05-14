@@ -5,7 +5,7 @@ import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/IPunkVaultFactory.sol";
-import "./offers/Offers.sol";
+import "./offers/PunkPurchaseOffers.sol";
 
 /// @title PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
@@ -13,7 +13,7 @@ import "./offers/Offers.sol";
 ///         `PunkVaultFactory`) and approve this contract as operator. The
 ///         auction pulls Punks straight from the vault at sale start and
 ///         performs the canonical settlement round-trip from its own custody.
-contract PunksAuction is IPunksAuction, Offers {
+contract PunksAuction is IPunksAuction, PunkPurchaseOffers {
     uint256 internal constant BPS = 10_000;
     uint256 internal constant BID_INCREASE_BPS = 1_000;
     uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
@@ -46,7 +46,7 @@ contract PunksAuction is IPunksAuction, Offers {
 
     /// @notice Creates the auction house wired to both Punk markets and the vault factory.
     constructor(address punks, address punksV1, address punksData, address vaultFactory)
-        Offers(punksData)
+        PunkPurchaseOffers(punksData)
     {
         if (punks == address(0) || punksV1 == address(0) || vaultFactory == address(0)) {
             revert ZeroAddress();

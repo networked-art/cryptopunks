@@ -215,7 +215,7 @@ of init code.
 ## Auction Contract Changes
 
 These contracts are pre-deployment. There is no live oracle to migrate
-from and no live offers to preserve, so `Offers.sol` consumes the rich
+from and no live offers to preserve, so `PunkPurchaseOffers.sol` consumes the rich
 predicate interface on `PunksData` directly.
 
 Replace dynamic `TraitFilter[]` storage with three mask values:
@@ -401,7 +401,7 @@ forever after.
 4. Implement `PunksData` with immutable blob pointers, sealed-initializer
    pattern (`loadBlobChunk(BlobId, ...)` + one-shot
    `seal(DatasetCommitment)` that emits `DatasetCommitted`).
-5. Rewrite `Offers.sol` to consume `IPunksDataCriteria.hasTraits` directly
+5. Rewrite `PunkPurchaseOffers.sol` to consume `IPunksDataCriteria.hasTraits` directly
    with the mask trio (`requiredMask`, `forbiddenMask`, `anyOfMask`).
    Rewrite `MockCryptoPunksTraits` accordingly.
 6. Implement `PunksSvg` and `PunksMetadata` over `PunksData` indexed

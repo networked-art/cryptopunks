@@ -4,7 +4,7 @@ pragma solidity 0.8.34;
 import "../interfaces/IPunksData.sol";
 
 /// @notice Mock of the PunksData slice consumed by the offer matcher.
-/// @dev Implements just the criteria + visual surface used by `Offers`.
+/// @dev Implements just the criteria + visual surface used by `PunkPurchaseOffers`.
 ///      All other interface methods revert `Unimplemented`.
 contract MockPunksData is IPunksDataErrors, IPunksDataCriteria, IPunksDataVisual {
     /// @notice Hardcoded trait bit count, mirrors the production dataset.

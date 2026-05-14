@@ -88,7 +88,7 @@ semantic.
    is correct in spirit, but the corollary is: the current
    `ICryptoPunksTraits.hasTrait` interface, the `TraitFilter[]` storage
    layout, and the `_requireOfferMatchesPunk` per-filter loop in
-   `contracts/offers/Offers.sol:243-250` are all freely editable. The V2
+   `contracts/offers/PunkPurchaseOffers.sol:243-250` are all freely editable. The V2
    data contract should be consumed *directly* by `Offers`, with mask
    filters as the native shape — not via a compat adapter that bridges
    the smaller interface. The compat adapter is still worth shipping for

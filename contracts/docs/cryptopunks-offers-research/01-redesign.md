@@ -17,7 +17,7 @@
 
 ## Context
 
-The current `contracts/offers/Offers.sol` (inspired by
+The current `contracts/offers/PunkPurchaseOffers.sol` (inspired by
 [`cryptopunks-bids`](https://github.com/MouseDev/cryptopunks-bids)) accepts a
 `TraitFilter[] { bool required; uint16 traitId; }` array and validates each
 filter at settlement by calling `ICryptoPunksTraits.hasTrait(punkId, traitId)`
@@ -44,7 +44,7 @@ color-count extension, the resulting `Offers` shape, and the file-by-file plan.
 | Trait introspection | `hasTrait`, `traitMaskOf`, `traitCount`, `traitName`, `traitKind`, `traitSupply`, `traitBitmapWord` | For UI / discovery. |
 | Color predicates | `colorMaskOf`, `hasColor`, `colorBitmapWord`, `colorSupply` | All 222 visible palette entries fit in one `uint256`. |
 | Visual scalars | `pixelCountOf`, `colorCountOf`, `attributeCountOf`, `pixelCountBitmapWord`, `colorCountBitmapWord` | Packed scalar SLOAD per Punk. |
-| Indexed pixels | `indexedPixelsOf`, `colorAt`, `paletteRgba/Rgb/Alpha Bytes` | Renderer concern; not used by `Offers`. |
+| Indexed pixels | `indexedPixelsOf`, `colorAt`, `paletteRgba/Rgb/Alpha Bytes` | Renderer concern; not used by `PunkPurchaseOffers`. |
 
 `attributeCount` is already encoded in the canonical trait bit space (bits
 16–23) so "exactly N attributes" or "≤ N attributes" expressions piggyback on
@@ -196,7 +196,7 @@ still revalidates via `hasTraits`'s own checks.
 
 - Delete.
 
-### `contracts/offers/Offers.sol`
+### `contracts/offers/PunkPurchaseOffers.sol`
 
 - Replace `import "../interfaces/ICryptoPunksTraits.sol"` with
   `import "../interfaces/IPunksData.sol"`.
@@ -221,7 +221,7 @@ still revalidates via `hasTraits`'s own checks.
 ### `contracts/PunksAuction.sol`
 
 - Constructor third arg renamed `traits` → `punksData`. Forward to
-  `Offers(punksData)`.
+  `PunkPurchaseOffers(punksData)`.
 
 ### `contracts/mocks/MockCryptoPunksTraits.sol`
 

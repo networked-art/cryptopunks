@@ -2,7 +2,7 @@
 
 ## 1. Context
 
-`contracts/PunksAuction.sol` and `contracts/offers/Offers.sol` currently model
+`contracts/PunksAuction.sol` and `contracts/offers/PunkPurchaseOffers.sol` currently model
 a lot, an auction, and an offer as exactly one Punk. The public structs hold
 one `(tokenContract, tokenId, standard)` tuple, `createLot` validates one
 Punk, `openAuction` pulls one Punk into escrow, `settle` delivers one Punk,

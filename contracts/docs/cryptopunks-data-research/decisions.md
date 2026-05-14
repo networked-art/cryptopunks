@@ -9,7 +9,7 @@ input to implement against.
 - Renderer architecture is split: data contract + per-format encoder
   contracts (`...Png`, `...Svg`, `...Metadata`). Encoders are pluggable
   and read primitives via public views.
-- `Offers.sol` consumes the rich predicate interface directly. The
+- `PunkPurchaseOffers.sol` consumes the rich predicate interface directly. The
   single-method `hasTrait` shim is an optional third-party deployment,
   not on this repo's critical path.
 - No PNG bytes are stored anywhere. Every output byte is derived from

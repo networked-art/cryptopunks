@@ -64,7 +64,7 @@ hook.
   mainnet `eth_call`.
 - Probed representative view gas with `cast estimate`.
 - Compared the live contract to the local auction integration surface in
-  `contracts/interfaces/ICryptoPunksTraits.sol` and `contracts/offers/Offers.sol`.
+  `contracts/interfaces/ICryptoPunksTraits.sol` and `contracts/offers/PunkPurchaseOffers.sol`.
 - Reviewed relevant standards and public references:
   - Larva Labs onchain CryptoPunks announcement:
     https://larvalabs.com/writing/2021-8-18-18-0/on-chain-cryptopunks

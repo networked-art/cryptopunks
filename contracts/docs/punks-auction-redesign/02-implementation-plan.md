@@ -108,7 +108,7 @@ Offers`. Constructor changes:
 ```solidity
 constructor(address punks, address punksV1, address punksData)
     PunksEscrowManager(punks, punksV1)
-    Offers(punksData)
+    PunkPurchaseOffers(punksData)
 {}
 ```
 
@@ -186,7 +186,7 @@ Internal helpers added:
 - `_releaseLotSlots(address seller, LotItem[] memory items)`.
 - `_settleBundleDelivery(LotItem[] memory items, uint96 totalWei, address recipient)`.
 
-### 2.2 `contracts/offers/Offers.sol` — major rewrite
+### 2.2 `contracts/offers/PunkPurchaseOffers.sol` — major rewrite
 
 Constructor:
 
@@ -401,7 +401,7 @@ Recommended commit / PR sequence:
 1. **Interface rewrite** — `IPunksAuction.sol`, delete `ICryptoPunksTraits.sol`.
    Compiles by itself but breaks downstream contracts.
 2. **MockPunksData** — new mock; delete `MockCryptoPunksTraits`.
-3. **Offers.sol rewrite** — depends on the new interface and mock.
+3. **PunkPurchaseOffers.sol rewrite** — depends on the new interface and mock.
 4. **PunksAuction.sol rewrite** — bundle-aware createLot / openAuction /
    settle / startAuctionFromOffer.
 5. **Test rewrite** — migrate existing tests + add bundle coverage.

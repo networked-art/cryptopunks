@@ -7,10 +7,10 @@ import "../interfaces/IPunksData.sol";
 import "../lib/Punks.sol";
 import "../lib/PushPullEscrow.sol";
 
-/// @title  Offers
+/// @title  PunkPurchaseOffers
 /// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
 ///         Inspired by MouseDev's CryptoPunksBids.
-abstract contract Offers is IPunksAuction, PushPullEscrow {
+abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     using Punks for Punks.Filter;
 
     /// @notice Maximum Punks per lot or offer.

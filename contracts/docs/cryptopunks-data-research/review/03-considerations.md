@@ -57,13 +57,13 @@ The cleaner sequence:
    rich predicate interface from doc 04 §"Core Data Scope" — `hasTrait`,
    `traitMaskOf`, `hasTraits`. Plus the `anyOfMask` extension recommended
    in [01 Disagreements §2](./01-disagreements.md#2-missing-any-of-mask-semantic).
-2. Rewrite `contracts/offers/Offers.sol` so that:
+2. Rewrite `contracts/offers/PunkPurchaseOffers.sol` so that:
    - `Offer.traitFilters` (currently `TraitFilter[]`) is replaced by the
      mask trio: `requiredMask`, `forbiddenMask`, `anyOfMask` (or just the
      pair if the team wants to skip "any-of" for v1).
    - `_requireOfferMatchesPunk` calls `TRAITS.hasTraits(...)` once per
      offer, not once per filter
-     (`contracts/offers/Offers.sol:243-250`).
+     (`contracts/offers/PunkPurchaseOffers.sol:243-250`).
    - `placeOffer` takes mask args directly, not `TraitFilter[] calldata`.
    - Events emit the masks.
 3. Replace `ICryptoPunksTraits` with the richer interface
