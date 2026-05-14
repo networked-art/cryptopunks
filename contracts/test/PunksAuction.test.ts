@@ -472,7 +472,7 @@ describe('PunksAuction', () => {
     assert.equal(await punks.read.pendingWithdrawals([auctions.address]), 0n)
   })
 
-  it('reverts settlement without paying the seller when delivery fails', async () => {
+  it('reverts atomically without paying the seller when the Punk market buy fails', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, punks, seller, bidder1 } = ctx
 
