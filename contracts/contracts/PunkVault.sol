@@ -24,10 +24,10 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     address public immutable FACTORY;
 
     /// @inheritdoc IPunkVault
-    address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
+    address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
 
     /// @inheritdoc IPunkVault
-    address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
+    address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
     /// @inheritdoc IPunkVault
     address public owner;
