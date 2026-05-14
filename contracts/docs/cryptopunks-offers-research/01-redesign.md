@@ -17,7 +17,7 @@
 
 ## Context
 
-The current `contracts/offers/PunkPurchaseOffers.sol` (inspired by
+The current `contracts/auction/PunkPurchaseOffers.sol` (inspired by
 [`cryptopunks-bids`](https://github.com/MouseDev/cryptopunks-bids)) accepts a
 `TraitFilter[] { bool required; uint16 traitId; }` array and validates each
 filter at settlement by calling `ICryptoPunksTraits.hasTrait(punkId, traitId)`
@@ -196,7 +196,7 @@ still revalidates via `hasTraits`'s own checks.
 
 - Delete.
 
-### `contracts/offers/PunkPurchaseOffers.sol`
+### `contracts/auction/PunkPurchaseOffers.sol`
 
 - Replace `import "../interfaces/ICryptoPunksTraits.sol"` with
   `import "../interfaces/IPunksData.sol"`.

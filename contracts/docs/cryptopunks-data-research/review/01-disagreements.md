@@ -243,7 +243,7 @@ A useful addition before any Solidity is written:
 Numbers are illustrative and rounded, but the shape matters: the new
 predicate path saves an order of magnitude per filter at settlement vs the
 current N×`hasTrait` external calls in `_requireOfferMatchesPunk`
-(`contracts/offers/PunkPurchaseOffers.sol:243-250`). That is the headline value of V2 for
+(`contracts/auction/PunkPurchaseOffers.sol:243-250`). That is the headline value of V2 for
 the auction system and the doc should make it explicit.
 
 ## 7. "Fork Test Every Punk Against The Source Contract" Is Necessary But

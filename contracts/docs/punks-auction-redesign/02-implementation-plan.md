@@ -186,7 +186,7 @@ Internal helpers added:
 - `_releaseLotSlots(address seller, LotItem[] memory items)`.
 - `_settleBundleDelivery(LotItem[] memory items, uint96 totalWei, address recipient)`.
 
-### 2.2 `contracts/offers/PunkPurchaseOffers.sol` — major rewrite
+### 2.2 `contracts/auction/PunkPurchaseOffers.sol` — major rewrite
 
 Constructor:
 
