@@ -152,6 +152,20 @@ async function offerPunkToAuctions(
   await punksAsSeller.write.offerPunkForSaleToAddress([punkId, priceWei, to])
 }
 
+async function offerPunkPublic(
+  ctx: Ctx,
+  seller: any,
+  punkId: bigint,
+  priceWei: bigint,
+) {
+  const punksAsSeller = await ctx.viem.getContractAt(
+    'MockCryptoPunksMarket',
+    ctx.punks.address,
+    { client: { wallet: seller } },
+  )
+  await punksAsSeller.write.offerPunkForSale([punkId, priceWei])
+}
+
 async function offerPunkV1ToAuctions(
   ctx: Ctx,
   seller: any,
@@ -1526,6 +1540,38 @@ describe('PunksAuction', () => {
       assert.equal(offer[1], zeroAddress)
     })
 
+    it('accepts a canonical Punk offer from a public marketplace listing', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, punks, seller, bidder1, attacker } = ctx
+
+      await assignPunk(ctx, seller, 710n)
+      await offerPunkPublic(ctx, seller, 710n, parseEther('0.9'))
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+      })
+
+      const auctionsAsSettler = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: attacker } },
+      )
+      await auctionsAsSettler.write.acceptOffer([
+        offerId,
+        710,
+        parseEther('0.9'),
+      ])
+
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([710n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+      assert.equal(await punks.read.pendingWithdrawals([seller.account.address]), parseEther('1'))
+
+      const offer = await auctions.read.offers([offerId])
+      assert.equal(offer[1], zeroAddress)
+    })
+
     it('rejects acceptOffer when the offer has more than one slot', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, bidder1 } = ctx
@@ -1542,7 +1588,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('rejects immediate acceptance unless the Punk is listed to the auctions contract at or below the offer amount', async () => {
+    it('rejects immediate acceptance when the listing is directed elsewhere or above the offer amount', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller, bidder1, other } = ctx
 

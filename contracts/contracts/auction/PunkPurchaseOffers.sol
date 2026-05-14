@@ -252,7 +252,11 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         (bool isForSale,, address listingSeller, uint256 minValue, address onlySellTo) =
             market.punksOfferedForSale(punkId);
 
-        if (!isForSale || listingSeller == address(0) || onlySellTo != address(this)) {
+        if (
+            !isForSale
+                || listingSeller == address(0)
+                || (onlySellTo != address(0) && onlySellTo != address(this))
+        ) {
             revert ListingNotValid();
         }
         if (market.punkIndexToAddress(punkId) != listingSeller) revert ListingNotValid();
