@@ -73,7 +73,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
 
     /// @notice Accept ETH from anywhere. Punks-market `withdraw()` requires
     ///         it, and the vault is a smart account that may receive
-    ///         arbitrary inbound transfers (airdrops, ENS refunds, etc.).
+    ///         arbitrary inbound transfers.
     receive() external payable {}
 
     // ───────────────────────── Operator role ──────────────────────────────
