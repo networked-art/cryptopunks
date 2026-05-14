@@ -37,6 +37,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///      can never be hijacked.
     bool private _initialized;
 
+    /// @dev Tracks which operators are approved to use owner-or-operator gated vault flows.
     mapping(address operator => bool) private _operatorApproved;
 
     /// @notice Deploys the implementation. Clones inherit `FACTORY` via the
