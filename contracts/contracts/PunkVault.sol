@@ -138,23 +138,6 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         ICryptoPunksMarket(market).withdrawBidForPunk(punkIndex);
     }
 
-    // ─────────────────────────── Stash ────────────────────────────────────
-
-    /// @inheritdoc IPunkVault
-    /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
-    ///         and its EOA owner resolve to different Stashes — sending
-    ///         to `stashAddressFor(owner)` lands the Punk in the EOA's
-    ///         existing Stash (or a freshly deployed one).
-    function stash(uint256 punkIndex) external {
-        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
-        address eoaOwner = owner;
-        address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
-        if (stashAddr.code.length == 0) {
-            IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
-        }
-        ICryptoPunksMarket(CRYPTOPUNKS).transferPunk(stashAddr, punkIndex);
-    }
-
     // ─────────────────────────── Proceeds ─────────────────────────────────
 
     /// @inheritdoc IPunkVault
@@ -174,6 +157,23 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
             (bool ok, bytes memory ret) = recipient.call{value: withdrawn}("");
             if (!ok) revert ExecutionFailed(ret);
         }
+    }
+
+    // ─────────────────────────── Stash ────────────────────────────────────
+
+    /// @inheritdoc IPunkVault
+    /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
+    ///         and its EOA owner resolve to different Stashes — sending
+    ///         to `stashAddressFor(owner)` lands the Punk in the EOA's
+    ///         existing Stash (or a freshly deployed one).
+    function stash(uint256 punkIndex) external {
+        if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        address eoaOwner = owner;
+        address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
+        if (stashAddr.code.length == 0) {
+            IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
+        }
+        ICryptoPunksMarket(CRYPTOPUNKS).transferPunk(stashAddr, punkIndex);
     }
 
     // ──────────────── Owner-only generic execution ────────────────────────
