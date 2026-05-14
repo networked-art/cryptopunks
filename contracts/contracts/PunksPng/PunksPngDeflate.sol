@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./interfaces/IPunksData.sol";
-import "./interfaces/IPunksPng.sol";
-import "./lib/ZlibDynamicBlock.sol";
-import "./lib/ZlibSlow.sol";
+import "../interfaces/IPunksData.sol";
+import "../interfaces/IPunksPng.sol";
+import "../lib/ZlibDynamicBlock.sol";
+import "../lib/ZlibSlow.sol";
 
 /// @title  PunksPngDeflate
 /// @notice Canonical `punks.png` dynamic-DEFLATE block encoder over `PunksData`.

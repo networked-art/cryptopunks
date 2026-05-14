@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./lib/ZlibDynamicBlock.sol";
-import "./lib/ZlibSlow.sol";
+import "../lib/ZlibDynamicBlock.sol";
+import "../lib/ZlibSlow.sol";
 
 /// @title  PunksPngZlib
 /// @notice Stateless helper for the canonical `punks.png` zlib compressor path.

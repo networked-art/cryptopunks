@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "./interfaces/IPunksData.sol";
-import "./interfaces/IPunksPng.sol";
-import "./lib/Crc32.sol";
-import "./lib/PngEncoder.sol";
+import "../interfaces/IPunksData.sol";
+import "../interfaces/IPunksPng.sol";
+import "../lib/Crc32.sol";
+import "../lib/PngEncoder.sol";
 import "./PunksPngDeflate.sol";
 
 /// @title  PunksPng
