@@ -50,6 +50,16 @@ npx hardhat ignition verify chain-<chainId>
 
 The Etherscan API key is read from the `ETHERSCAN_API_KEY` config variable.
 
+### Deploy `PunksPng`
+
+`PunksPng` is deployed with the existing `PunksData` module as its dependency:
+
+```sh
+npx hardhat ignition deploy ignition/modules/PunksPng.ts --network <network>
+```
+
+The module reuses the `PunksData` deployment from Ignition state when one is already present for the target deployment ID. `PunksPngDeflate` is created by the `PunksPng` constructor; it is not a separate Ignition module.
+
 ### 3. Load and seal the dataset
 
 ```sh
