@@ -36,9 +36,6 @@ contract PunksAuction is IPunksAuction, Offers {
     mapping(uint256 => Lot) public lots;
     /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
     mapping(uint256 => Auction) public auctions;
-    /// @notice Returns the receiver set for an auction winner.
-    mapping(uint256 => address) public winnerReceivers;
-
     /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
     /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
     ///         entry reserves that Punk for one lot at a time — first-wins.
@@ -74,11 +71,9 @@ contract PunksAuction is IPunksAuction, Offers {
     ///         instead of at pull time.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     ) external returns (uint256 id) {
         if (reserveWei == 0) revert InvalidAmount();
-        if (expiresAt <= block.timestamp) revert InvalidExpiry();
         _requireAuctionApproved(msg.sender);
         _validateLotItems(items);
 
@@ -92,12 +87,11 @@ contract PunksAuction is IPunksAuction, Offers {
         lots[id] = Lot({
             seller: msg.sender,
             reserveWei: reserveWei,
-            expiresAt: expiresAt,
             itemCount: itemCount,
             itemHash: itemHash
         });
 
-        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, expiresAt);
+        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei);
 
         LotItem[] storage storedItems = lotItems[id];
         for (uint256 i; i < itemCount;) {
@@ -112,18 +106,16 @@ contract PunksAuction is IPunksAuction, Offers {
         }
     }
 
-    /// @notice Updates the reserve price and expiry for your lot.
-    function updateLot(uint256 id, uint96 reserveWei, uint40 expiresAt) external {
+    /// @notice Updates the reserve price for your lot.
+    function updateLot(uint256 id, uint96 reserveWei) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
         if (lot.seller != msg.sender) revert NotSeller();
         if (reserveWei == 0) revert InvalidAmount();
-        if (expiresAt <= block.timestamp) revert InvalidExpiry();
 
         lot.reserveWei = reserveWei;
-        lot.expiresAt = expiresAt;
 
-        emit LotUpdated(id, reserveWei, expiresAt);
+        emit LotUpdated(id, reserveWei);
     }
 
     /// @notice Cancels your lot.
@@ -139,12 +131,12 @@ contract PunksAuction is IPunksAuction, Offers {
         emit LotCancelled(id);
     }
 
-    /// @notice Clears one lot that is expired or no longer valid.
+    /// @notice Clears one lot that is no longer valid.
     function clearStaleLot(uint256 id) external {
         _clearStaleLot(id);
     }
 
-    /// @notice Clears several lots that are expired or no longer valid.
+    /// @notice Clears several lots that are no longer valid.
     function clearStaleLots(uint256[] calldata ids) external {
         uint256 len = ids.length;
         for (uint256 i; i < len;) {
@@ -162,7 +154,6 @@ contract PunksAuction is IPunksAuction, Offers {
     ) external payable nonReentrant returns (uint256 auctionId) {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
         if (lot.reserveWei != expectedReserveWei) {
             revert ReserveMismatch(expectedReserveWei, lot.reserveWei);
         }
@@ -176,7 +167,7 @@ contract PunksAuction is IPunksAuction, Offers {
         delete lots[id];
         delete lotItems[id];
 
-        auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei, address(0));
+        auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei);
     }
 
     /// @notice Places a bid on a live auction.
@@ -194,7 +185,6 @@ contract PunksAuction is IPunksAuction, Offers {
 
         auction.latestBidder = msg.sender;
         auction.latestBidWei = bidWei;
-        delete winnerReceivers[auctionId];
 
         _maybeExtend(auctionId, auction);
 
@@ -206,11 +196,17 @@ contract PunksAuction is IPunksAuction, Offers {
     }
 
     /// @notice Accepts an offer against a stored lot.
-    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external nonReentrant {
+    function acceptOfferFromLot(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    ) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < minAmountWei) {
+            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
+        }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
@@ -239,8 +235,7 @@ contract PunksAuction is IPunksAuction, Offers {
             }
         }
 
-        address recipient = _offerRecipient(offer);
-        _settleBundleDelivery(items, offer.amountWei, recipient);
+        _settleBundleDelivery(items, offer.amountWei, offer.offerer);
 
         _pushOrCredit(lot.seller, offer.amountWei);
 
@@ -249,13 +244,16 @@ contract PunksAuction is IPunksAuction, Offers {
             lotId,
             lot.seller,
             offer.offerer,
-            recipient,
             offer.amountWei
         );
     }
 
     /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
-    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
+    function startAuctionFromOffer(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    )
         external
         nonReentrant
         returns (uint256 auctionId)
@@ -263,7 +261,9 @@ contract PunksAuction is IPunksAuction, Offers {
         Offer memory offer = _activeOffer(offerId);
         Lot memory lot = lots[lotId];
         if (lot.seller == address(0)) revert LotNotFound();
-        if (block.timestamp >= lot.expiresAt) revert LotExpired();
+        if (offer.amountWei < minAmountWei) {
+            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
+        }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
 
         LotItem[] memory items = lotItems[lotId];
@@ -283,13 +283,11 @@ contract PunksAuction is IPunksAuction, Offers {
         delete lots[lotId];
         delete lotItems[lotId];
 
-        address recipient = _offerRecipient(offer);
         auctionId = _createAuctionFromItems(
             lot.seller,
             items,
             offer.offerer,
-            offer.amountWei,
-            recipient
+            offer.amountWei
         );
 
         emit OfferAuctionInitialised(
@@ -298,7 +296,6 @@ contract PunksAuction is IPunksAuction, Offers {
             lotId,
             lot.seller,
             offer.offerer,
-            recipient,
             offer.amountWei
         );
     }
@@ -350,7 +347,7 @@ contract PunksAuction is IPunksAuction, Offers {
 
         LotItem[] memory items = auctionItems[auctionId];
         uint96 totalWei = auction.latestBidWei;
-        address recipient = _auctionRecipient(auctionId, auction.latestBidder);
+        address recipient = auction.latestBidder;
 
         uint256 itemCount = items.length;
         uint256 allocated;
@@ -391,8 +388,7 @@ contract PunksAuction is IPunksAuction, Offers {
         address seller,
         LotItem[] memory items,
         address initialBidder,
-        uint96 bidWei,
-        address receiver
+        uint96 bidWei
     ) internal returns (uint256 auctionId) {
         unchecked {
             auctionId = ++lastAuctionId;
@@ -411,10 +407,6 @@ contract PunksAuction is IPunksAuction, Offers {
             itemHash: itemHash,
             settled: false
         });
-        if (receiver != address(0) && receiver != initialBidder) {
-            winnerReceivers[auctionId] = receiver;
-        }
-
         LotItem[] storage storedItems = auctionItems[auctionId];
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
@@ -430,13 +422,13 @@ contract PunksAuction is IPunksAuction, Offers {
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Removes a lot that is expired, no longer approved, or whose custody slipped out of the vault.
+    /// @dev Removes a lot that is no longer approved or whose custody slipped out of the vault.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        bool stale = block.timestamp >= lot.expiresAt || !_auctionStillApproved(lot.seller);
+        bool stale = !_auctionStillApproved(lot.seller);
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
@@ -567,25 +559,19 @@ contract PunksAuction is IPunksAuction, Offers {
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
-        uint256 listingWei,
+        uint256 purchaseWei,
         address seller,
         address recipient
     ) internal override {
         if (standard == TokenStandard.CRYPTOPUNKS) {
-            PUNKS.buyPunk{value: listingWei}(punkId);
+            PUNKS.buyPunk{value: purchaseWei}(punkId);
             PUNKS.transferPunk(recipient, punkId);
         } else {
-            PUNKS_V1.buyPunk{value: listingWei}(punkId);
+            PUNKS_V1.buyPunk{value: purchaseWei}(punkId);
             PUNKS_V1.withdraw();
             PUNKS_V1.transferPunk(recipient, punkId);
-            _pushOrCredit(seller, listingWei);
+            _pushOrCredit(seller, purchaseWei);
         }
-    }
-
-    /// @dev Returns the custom receiver for a winner, or the bidder when none is set.
-    function _auctionRecipient(uint256 auctionId, address bidder) internal view returns (address) {
-        address receiver = winnerReceivers[auctionId];
-        return receiver == address(0) ? bidder : receiver;
     }
 
     /// @dev Extends an auction when a bid arrives inside the grace period.

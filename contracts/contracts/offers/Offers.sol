@@ -41,7 +41,6 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     /// @notice Places an ETH offer for one or more Punks that match the slot criteria.
     function placeOffer(
         uint96 amountWei,
-        address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId) {
         if (amountWei == 0) revert InvalidAmount();
@@ -60,13 +59,11 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         Offer storage stored = offers[offerId];
         stored.amountWei = amountWei;
         stored.offerer = msg.sender;
-        stored.receiver = receiver;
         _storeOfferSlots(stored, slots);
 
         emit OfferPlaced(
             offerId,
             msg.sender,
-            receiver,
             amountWei,
             uint8(slotCount)
         );
@@ -109,8 +106,12 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         emit OfferAmountAdjusted(offerId, newAmountWei);
     }
 
-    /// @notice Accepts a single-slot offer for a marketplace-listed Punk.
-    function acceptOffer(uint256 offerId, uint16 punkId) external nonReentrant {
+    /// @notice Accepts a single-slot offer for a marketplace-listed Punk using a pinned listing price.
+    function acceptOffer(
+        uint256 offerId,
+        uint16 punkId,
+        uint96 expectedListingWei
+    ) external nonReentrant {
         Offer memory offer = _activeOffer(offerId);
         if (offer.slots.length != 1) revert MultiSlotOfferRequiresLot();
 
@@ -119,23 +120,24 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         _requireSlotMatchesPunk(slot, standard, punkId);
 
         ICryptoPunksMarket market = _offerMarket(standard);
-        (address seller, uint256 listingWei) = _requireAcceptableListing(market, punkId, offer.amountWei);
+        (address seller,) = _requireAcceptableListing(
+            market,
+            punkId,
+            offer.amountWei,
+            expectedListingWei
+        );
 
         delete offers[offerId];
 
-        address recipient = _offerRecipient(offer);
-        _buyListedOfferPunk(standard, punkId, listingWei, seller, recipient);
-
-        uint256 excess = uint256(offer.amountWei) - listingWei;
-        if (excess > 0) _pushOrCredit(offer.offerer, excess);
+        address recipient = offer.offerer;
+        _buyListedOfferPunk(standard, punkId, offer.amountWei, seller, recipient);
 
         emit OfferAccepted(
             offerId,
             punkId,
             seller,
             offer.offerer,
-            recipient,
-            listingWei
+            offer.amountWei
         );
     }
 
@@ -244,7 +246,8 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     function _requireAcceptableListing(
         ICryptoPunksMarket market,
         uint16 punkId,
-        uint96 amountWei
+        uint96 amountWei,
+        uint96 expectedListingWei
     ) internal view returns (address seller, uint256 listingWei) {
         (bool isForSale,, address listingSeller, uint256 minValue, address onlySellTo) =
             market.punksOfferedForSale(punkId);
@@ -253,14 +256,12 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
             revert ListingNotValid();
         }
         if (market.punkIndexToAddress(punkId) != listingSeller) revert ListingNotValid();
+        if (minValue != expectedListingWei) {
+            revert ListingPriceMismatch(expectedListingWei, minValue);
+        }
         if (minValue > amountWei) revert ListingPriceTooHigh();
 
         return (listingSeller, minValue);
-    }
-
-    /// @dev Returns the requested receiver, or the offerer when none is set.
-    function _offerRecipient(Offer memory offer) internal pure returns (address) {
-        return offer.receiver == address(0) ? offer.offerer : offer.receiver;
     }
 
     /// @dev Resolves the Punk market for an offer standard.
@@ -274,7 +275,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
-        uint256 listingWei,
+        uint256 purchaseWei,
         address seller,
         address recipient
     ) internal virtual;

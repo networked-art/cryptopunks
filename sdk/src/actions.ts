@@ -335,7 +335,6 @@ export type OfferSlotInput = CompileOfferSlotInput
 
 export type PlaceOfferInput = {
   amountWei: bigint
-  receiver?: Address
   query?: PunkQuery
   standard?: PunkStandardRef
   includeIds?: Iterable<number>
@@ -488,18 +487,16 @@ export class PunksAuctionClient {
   prepareCreateLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
-    expiresAt: number
   }): ContractWritePlan {
     const items = normalizeLotItems(params.items)
     assertWei('reserveWei', params.reserveWei)
-    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
     return {
       description: 'Create CryptoPunks auction lot',
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'createLot',
-        args: [items, params.reserveWei, params.expiresAt],
+        args: [items, params.reserveWei],
       },
     }
   }
@@ -507,7 +504,6 @@ export class PunksAuctionClient {
   createLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
-    expiresAt: number
   }): Promise<TransactionHash> {
     return this.write(this.prepareCreateLot(params))
   }
@@ -515,17 +511,15 @@ export class PunksAuctionClient {
   prepareUpdateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
-    expiresAt: number
   }): ContractWritePlan {
     assertWei('reserveWei', params.reserveWei)
-    assertIntegerInRange('expiresAt', params.expiresAt, 1, Number.MAX_SAFE_INTEGER)
     return {
       description: `Update CryptoPunks lot ${params.lotId.toString()}`,
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'updateLot',
-        args: [BigInt(params.lotId), params.reserveWei, params.expiresAt],
+        args: [BigInt(params.lotId), params.reserveWei],
       },
     }
   }
@@ -533,7 +527,6 @@ export class PunksAuctionClient {
   updateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
-    expiresAt: number
   }): Promise<TransactionHash> {
     return this.write(this.prepareUpdateLot(params))
   }
@@ -621,7 +614,7 @@ export class PunksAuctionClient {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'placeOffer',
-        args: [input.amountWei, input.receiver ?? ZERO_ADDRESS, slots],
+        args: [input.amountWei, slots],
         value: input.amountWei,
       },
     }
@@ -667,33 +660,46 @@ export class PunksAuctionClient {
     return this.write(this.prepareAdjustOfferAmount(params))
   }
 
-  prepareAcceptOffer(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {
+  prepareAcceptOffer(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
+    assertWei('expectedListingWei', params.expectedListingWei)
     return simpleAuctionWrite(this.requireAddress(), 'Accept CryptoPunks offer', 'acceptOffer', [
       BigInt(params.offerId),
       params.punkId,
+      params.expectedListingWei,
     ])
   }
 
-  acceptOffer(params: { offerId: bigint | number; punkId: number }): Promise<TransactionHash> {
+  acceptOffer(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareAcceptOffer(params))
   }
 
   prepareAcceptOfferFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): ContractWritePlan {
+    assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
       'Accept CryptoPunks offer from lot',
       'acceptOfferFromLot',
-      [BigInt(params.offerId), BigInt(params.lotId)],
+      [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
     )
   }
 
   acceptOfferFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.write(this.prepareAcceptOfferFromLot(params))
   }
@@ -701,18 +707,21 @@ export class PunksAuctionClient {
   prepareStartAuctionFromOffer(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): ContractWritePlan {
+    assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
       'Start CryptoPunks auction from offer',
       'startAuctionFromOffer',
-      [BigInt(params.offerId), BigInt(params.lotId)],
+      [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
     )
   }
 
   startAuctionFromOffer(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.write(this.prepareStartAuctionFromOffer(params))
   }

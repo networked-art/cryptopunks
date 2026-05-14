@@ -37,16 +37,18 @@ Reshape:
 
 Reshape signatures:
 
-- `createLot(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`
+- `createLot(LotItem[] calldata items, uint96 reserveWei)`
   — drops `tokenContract`, `tokenId`, `standard` (now per-item).
-- `placeOffer(uint96 amountWei, uint96 settlementWei, address receiver,
-  OfferSlot[] calldata slots)` — drops top-level `standard`,
+- `placeOffer(uint96 amountWei, address receiver, OfferSlot[] calldata slots)`
+  — drops top-level `standard`,
   `traitFilters`, `includeIds`, `excludeIds`.
-- `acceptOffer(uint256 offerId, uint16 punkId)` — unchanged signature.
-  Behaviour limited to `slots.length == 1` (singleton fast path).
-- New: `acceptOfferFromLot(uint256 offerId, uint256 lotId)`.
-- `startAuctionFromOffer(uint256 offerId, uint256 lotId)` — second arg
-  changes from `uint16 punkId` to `uint256 lotId`.
+- `acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei)`
+  — adds a listing-price pin. Behaviour limited to `slots.length == 1`
+  (singleton fast path).
+- New: `acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`.
+- `startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)`
+  — second arg changes from `uint16 punkId` to `uint256 lotId`; third arg
+  pins the minimum acceptable offer amount.
 - New accessors: `getLotItems(lotId)`, `getAuctionItems(auctionId)`,
   `getOfferSlots(offerId)`. `getOfferFilters` is dropped.
 
@@ -76,11 +78,11 @@ Add errors:
 
 Keep errors:
 
-- `InvalidAmount`, `InvalidExpiry`, `TooManyTokens`,
+- `InvalidAmount`, `TooManyTokens`,
   `IncorrectPayment`, `NotOfferer`, `OfferNotActive`,
   `NegativeAdjustmentHigherThanCurrentOffer`, `ListingNotValid`,
   `ListingPriceTooHigh`, `PunkNotIncluded`, `PunkExcluded`,
-  `PunkTraitMismatch`, `LotNotFound`, `LotExpired`, `LotNotStale`,
+  `PunkTraitMismatch`, `LotNotFound`, `LotNotStale`,
   `NotSeller`, `ReserveMismatch`, `ReserveNotMet`, `AuctionDoesNotExist`,
   `AuctionNotActive`, `AuctionAlreadySettled`, `AuctionNotComplete`,
   `MinimumBidNotMet`, `PunkNotInVault`, `PunkContractMismatch`, `NotAuctions`,
@@ -136,7 +138,7 @@ the slot. See 01-design §2.3 for the single-listing constraint.
 
 `clearStaleLot`, `_clearStaleLot`:
 
-- A lot is stale if expired OR any Punk left the seller vault.
+- A lot is stale if auction approval is revoked OR any Punk left the seller vault.
 - Release every item's `lotForPunk` slot, then delete the lot.
 
 `openAuction`:
@@ -167,8 +169,7 @@ the slot. See 01-design §2.3 for the single-listing constraint.
 `_buyListedOfferPunk` — unchanged (still used by the singleton `acceptOffer`
 fast path).
 
-`_validateLotArgs` — replaced by `_validateLotItems(items, reserveWei,
-expiresAt)`.
+`_validateLotArgs` — replaced by `_validateLotItems(items)`.
 
 `_tokenContractFor(standard)` — small private helper (currently inlined in
 `_offerTokenContract` and the escrow router). Hoist to a shared util used by
@@ -179,7 +180,7 @@ Punks variants, every value is supported by construction.
 
 Internal helpers added:
 
-- `_validateLotItems(LotItem[] calldata items, uint96 reserveWei, uint40 expiresAt)`.
+- `_validateLotItems(LotItem[] calldata items)`.
 - `_validateLotItemNoDuplicates(LotItem[] calldata items)` — O(N²); for N≤40
   this is bounded and clean.
 - `_releaseLotSlots(address seller, LotItem[] memory items)`.
@@ -223,27 +224,30 @@ function placeOffer(
 `cancelOffer`, `adjustOfferAmount`, `adjustOfferSettlement` — semantics
 unchanged; only types of offer struct fields move under the hood.
 
-`acceptOffer(uint256 offerId, uint16 punkId)`:
+`acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei)`:
 
 - Require `offer.slots.length == 1`.
 - `_requireSlotMatchesPunk(slots[0], punkId)` — does criteria + includeIds +
   excludeIds + standard.
+- Require the live listing price to equal `expectedListingWei`.
 - Existing market arbitrage flow follows: `_requireAcceptableListing`,
-  `_buyListedOfferPunk`, refund excess, pay settlement.
+  `_buyListedOfferPunk` with `offer.amountWei` so the seller receives the full
+  offer amount.
 
-`acceptOfferFromLot(uint256 offerId, uint256 lotId)`:
+`acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei)`:
 
 - Required for any N>1; usable for N=1 if seller chose to escrow.
+- Require `offer.amountWei >= minAmountWei`.
 - Validate slot/item count match, every slot matches its item, lot not stale.
 - Delete offer + lot.
 - Pull every item, settle with `_settleBundleDelivery(items, offer.amountWei,
   recipient)`.
-- Pay msg.sender `offer.settlementWei`.
+- Pay seller `offer.amountWei`.
 
-`startAuctionFromOffer(uint256 offerId, uint256 lotId)`:
+`startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)`:
 
 - Same matching as acceptOfferFromLot.
-- Refund offer.settlementWei to offerer.
+- Require `offer.amountWei >= minAmountWei`.
 - Open the auction in same shape as `openAuction(lotId)` but with the offer
   as the first bid.
 
@@ -363,7 +367,7 @@ New coverage:
 - Multi-slot offer place + match: V1+V2 pair, "couple of zombies".
 - Slot/item count mismatch reverts.
 - Slot/item standard mismatch reverts.
-- Multi-slot offer rejected by `acceptOffer(offerId, punkId)`.
+- Multi-slot offer rejected by `acceptOffer(offerId, punkId, expectedListingWei)`.
 - Single-slot offer accepted via either path (market or lot).
 - Color count range matching (lower-only, upper-only, exact bracket, miss).
 - Place-time mask validation: bits beyond canonical, required/forbidden
@@ -385,7 +389,7 @@ Replace `MockCryptoPunksTraits` deploy + `setTrait` calls with `MockPunksData`
 Existing harness pieces that move:
 
 - The lot-creation helper: takes `items` (array) instead of `(tokenContract,
-  tokenId, standard, reserveWei, expiresAt)`.
+  tokenId, standard, reserveWei)`.
 - The auction settler helper: still takes `auctionId`; reads items via
   `getAuctionItems`.
 - The offer placement helper: takes `slots` array.
@@ -428,7 +432,7 @@ to 10_000). The off-by-rounding is at most `itemCount` wei.
 
 V1 bundle items each call `withdraw()` between buy and transfer. Within a
 single bundle, this means the V1 escrow's pending balance is drained item
-by item. The escrow's `_pushOrCredit(seller, listingWei)` call inside the V1
+by item. The escrow's `_pushOrCredit(seller, itemWei)` call inside the V1
 branch of `_deliverPunk` continues to work: each call adds to the seller's
 pending pull balance, which they sweep separately. No accounting drift.
 

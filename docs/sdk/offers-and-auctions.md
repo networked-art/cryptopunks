@@ -46,8 +46,6 @@ Place a single-slot offer:
 ```ts
 await punks.offers.place({
   amountWei: 50n * 10n ** 18n,
-  settlementWei: 1n * 10n ** 18n,
-  receiver,
   query: {
     type: 'Zombie',
     colorCount: { max: 4 },
@@ -82,12 +80,6 @@ await punks.offers.adjustAmount({
   offerId: 12n,
   amountWei: 5n * 10n ** 18n,
   increase: true,
-})
-
-await punks.offers.adjustSettlement({
-  offerId: 12n,
-  amountWei: 1n * 10n ** 18n,
-  increase: false,
 })
 ```
 
@@ -140,18 +132,19 @@ await punks.auctions.createLot({
     { punkId: 4156, weightBps: 10_000 },
   ],
   reserveWei: 250n * 10n ** 18n,
-  expiresAt: 1_800_000_000,
 })
 
 await punks.auctions.updateLot({
   lotId: 7n,
   reserveWei: 260n * 10n ** 18n,
-  expiresAt: 1_800_100_000,
 })
 
 await punks.auctions.cancelLot(7n)
 await punks.auctions.clearStaleLot(7n)
 ```
+
+Lots do not expire. `clearStaleLot` only removes lots that became invalid
+because custody or vault approval changed.
 
 Open, bid, settle, and start auctions from offers:
 

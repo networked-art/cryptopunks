@@ -28,7 +28,6 @@ interface IPunksAuction {
     struct Lot {
         address seller;
         uint96 reserveWei;
-        uint40 expiresAt;
         uint8 itemCount;
         bytes32 itemHash;
     }
@@ -46,7 +45,6 @@ interface IPunksAuction {
     struct Offer {
         uint96 amountWei;
         address offerer;
-        address receiver;
         OfferSlot[] slots;
     }
 
@@ -55,8 +53,7 @@ interface IPunksAuction {
         address indexed seller,
         bytes32 indexed itemHash,
         uint8 itemCount,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     );
     event LotItemDetail(
         uint256 indexed lotId,
@@ -67,7 +64,7 @@ interface IPunksAuction {
     );
     event LotCancelled(uint256 indexed lotId);
     event LotCleared(uint256 indexed lotId, address indexed cleaner);
-    event LotUpdated(uint256 indexed lotId, uint96 reserveWei, uint40 expiresAt);
+    event LotUpdated(uint256 indexed lotId, uint96 reserveWei);
 
     event AuctionInitialised(
         uint256 indexed auctionId,
@@ -98,7 +95,6 @@ interface IPunksAuction {
     event OfferPlaced(
         uint256 indexed offerId,
         address indexed offerer,
-        address indexed receiver,
         uint96 amountWei,
         uint8 slotCount
     );
@@ -117,15 +113,13 @@ interface IPunksAuction {
         uint256 indexed punkId,
         address indexed seller,
         address offerer,
-        address receiver,
-        uint256 listingWei
+        uint256 amountWei
     );
     event OfferAcceptedFromLot(
         uint256 indexed offerId,
         uint256 indexed lotId,
         address indexed seller,
         address offerer,
-        address receiver,
         uint96 amountWei
     );
     event OfferAuctionInitialised(
@@ -134,14 +128,12 @@ interface IPunksAuction {
         uint256 indexed lotId,
         address seller,
         address offerer,
-        address receiver,
         uint96 amountWei
     );
 
     error ZeroAddress();
     error UnexpectedEtherSender();
     error InvalidAmount();
-    error InvalidExpiry();
     error TooManyTokens();
     error PunkNotInVault();
     error VaultNotDeployed();
@@ -151,6 +143,7 @@ interface IPunksAuction {
     error NotOfferer();
     error OfferNotActive();
     error ListingNotValid();
+    error ListingPriceMismatch(uint96 expectedListingWei, uint256 actualListingWei);
     error ListingPriceTooHigh();
     error PunkNotIncluded();
     error PunkExcluded();
@@ -166,12 +159,12 @@ interface IPunksAuction {
     error TooManyIds();
 
     error LotNotFound();
-    error LotExpired();
     error LotNotStale();
     error NotSeller();
     error PunkAlreadyInLot(uint256 lotId);
     error ReserveMismatch(uint96 expectedReserveWei, uint96 actualReserveWei);
     error ReserveNotMet();
+    error OfferAmountBelowMinimum(uint96 minAmountWei, uint96 actualAmountWei);
 
     error AuctionDoesNotExist();
     error AuctionNotActive();
@@ -182,20 +175,19 @@ interface IPunksAuction {
     /// @notice Creates a lot of one or more Punks that can be opened as an auction.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei,
-        uint40 expiresAt
+        uint96 reserveWei
     ) external returns (uint256 lotId);
 
-    /// @notice Updates the reserve price and expiry for your lot.
-    function updateLot(uint256 lotId, uint96 reserveWei, uint40 expiresAt) external;
+    /// @notice Updates the reserve price for your lot.
+    function updateLot(uint256 lotId, uint96 reserveWei) external;
 
     /// @notice Cancels your lot.
     function cancelLot(uint256 lotId) external;
 
-    /// @notice Clears one lot that is expired or no longer valid.
+    /// @notice Clears one lot that is no longer valid.
     function clearStaleLot(uint256 lotId) external;
 
-    /// @notice Clears several lots that are expired or no longer valid.
+    /// @notice Clears several lots that are no longer valid.
     function clearStaleLots(uint256[] calldata lotIds) external;
 
     /// @notice Opens a lot as a live auction with your first bid.
@@ -210,7 +202,6 @@ interface IPunksAuction {
     /// @notice Places an ETH offer for Punks that match a list of slot criteria.
     function placeOffer(
         uint96 amountWei,
-        address receiver,
         OfferSlot[] calldata slots
     ) external payable returns (uint256 offerId);
 
@@ -220,14 +211,14 @@ interface IPunksAuction {
     /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
     function adjustOfferAmount(uint256 offerId, uint96 newAmountWei) external payable;
 
-    /// @notice Accepts a single-slot offer for a listed Punk.
-    function acceptOffer(uint256 offerId, uint16 punkId) external;
+    /// @notice Accepts a single-slot offer for a listed Punk using a pinned listing price.
+    function acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei) external;
 
-    /// @notice Accepts an offer against a stored lot.
-    function acceptOfferFromLot(uint256 offerId, uint256 lotId) external;
+    /// @notice Accepts an offer against a stored lot when it still meets the caller's minimum.
+    function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;
 
-    /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
-    function startAuctionFromOffer(uint256 offerId, uint256 lotId)
+    /// @notice Starts an auction from an offer when it still meets the caller's minimum.
+    function startAuctionFromOffer(uint256 offerId, uint256 lotId, uint96 minAmountWei)
         external
         returns (uint256 auctionId);
 

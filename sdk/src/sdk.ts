@@ -196,17 +196,26 @@ export class PunksOffersFacade {
     return this.auctions.adjustOfferAmount(params)
   }
 
-  prepareAccept(params: { offerId: bigint | number; punkId: number }): ContractWritePlan {
+  prepareAccept(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): ContractWritePlan {
     return this.auctions.prepareAcceptOffer(params)
   }
 
-  accept(params: { offerId: bigint | number; punkId: number }): Promise<TransactionHash> {
+  accept(params: {
+    offerId: bigint | number
+    punkId: number
+    expectedListingWei: bigint
+  }): Promise<TransactionHash> {
     return this.auctions.acceptOffer(params)
   }
 
   prepareAcceptFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): ContractWritePlan {
     return this.auctions.prepareAcceptOfferFromLot(params)
   }
@@ -214,6 +223,7 @@ export class PunksOffersFacade {
   acceptFromLot(params: {
     offerId: bigint | number
     lotId: bigint | number
+    minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.auctions.acceptOfferFromLot(params)
   }
