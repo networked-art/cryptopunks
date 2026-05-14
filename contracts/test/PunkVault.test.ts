@@ -95,7 +95,8 @@ const punkVaultInterfaceId = ifaceId([
   'enterBidForPunk(address,uint256,uint256)',
   'withdrawBidForPunk(address,uint256)',
   'STASH_FACTORY()',
-  'stash(address,uint256)',
+  'CRYPTOPUNKS()',
+  'stash(uint256)',
   'withdrawFromMarket(address)',
   'withdrawFromMarketTo(address,address)',
   'execute(address,uint256,bytes)',
@@ -164,6 +165,24 @@ async function depositPunk(ctx: Ctx, punkId: bigint) {
     { client: { wallet: ctx.owner } },
   )
   await punksAsOwner.write.transferPunk([ctx.vaultAddress, punkId])
+}
+
+async function depositCanonicalPunk(ctx: Ctx, punkId: bigint) {
+  const publicClient = await ctx.viem.getPublicClient()
+  const code = await publicClient.getCode({ address: ctx.punks.address })
+  await ctx.connection.networkHelpers.setCode(CRYPTOPUNKS, code)
+  const canonicalPunks = await ctx.viem.getContractAt(
+    'MockCryptoPunksMarket',
+    CRYPTOPUNKS,
+  )
+  await canonicalPunks.write.setInitialOwner([ctx.owner.account.address, punkId])
+  const canonicalPunksAsOwner = await ctx.viem.getContractAt(
+    'MockCryptoPunksMarket',
+    CRYPTOPUNKS,
+    { client: { wallet: ctx.owner } },
+  )
+  await canonicalPunksAsOwner.write.transferPunk([ctx.vaultAddress, punkId])
+  return canonicalPunks
 }
 
 async function depositV1Punk(ctx: Ctx, punkId: bigint) {
@@ -793,7 +812,7 @@ describe('PunkVault', () => {
     it('rejects unauthorized stash calls before touching StashFactory', async () => {
       const ctx = await deployVaultFixture()
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsAttacker.write.stash([ctx.punks.address, 1n]),
+        ctx.vaultAsAttacker.write.stash([1n]),
         ctx.vaultAsAttacker,
         'NotAuthorized',
       )
@@ -801,7 +820,7 @@ describe('PunkVault', () => {
 
     it('uses the configured StashFactory', async () => {
       const ctx = await deployVaultFixture()
-      await depositPunk(ctx, 121n)
+      const canonicalPunks = await depositCanonicalPunk(ctx, 121n)
 
       const mockStashFactory = await ctx.viem.deployContract('MockStashFactory')
       const publicClient = await ctx.viem.getPublicClient()
@@ -812,10 +831,10 @@ describe('PunkVault', () => {
         ctx.owner.account.address,
       ])) as Address
 
-      await ctx.vaultAsOwner.write.stash([ctx.punks.address, 121n])
+      await ctx.vaultAsOwner.write.stash([121n])
 
       assert.equal(
-        lc(await ctx.punks.read.punkIndexToAddress([121n]) as string),
+        lc(await canonicalPunks.read.punkIndexToAddress([121n]) as string),
         lc(stashAddress),
       )
       const stashCode = await publicClient.getCode({ address: stashAddress })
@@ -859,7 +878,7 @@ describeIfMainnetRpc('PunkVault mainnet fork', () => {
     const stashFactory = await viem.getContractAt('MockStashFactory', STASH_FACTORY)
     const stashAddress = (await stashFactory.read.stashAddressFor([holder])) as Address
 
-    await vaultAsHolder.write.stash([CRYPTOPUNKS, punkId])
+    await vaultAsHolder.write.stash([punkId])
 
     assert.equal(
       lc(await punks.read.punkIndexToAddress([punkId]) as string),

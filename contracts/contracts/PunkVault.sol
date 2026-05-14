@@ -26,6 +26,9 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
     address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
+    /// @inheritdoc IPunkVault
+    address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
+
     /// @dev Implementation address baked into the runtime bytecode. Clones
     ///      delegatecall into this same bytecode, so they read the impl's
     ///      address through this immutable — `address(this) == _SELF`
@@ -166,14 +169,14 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///         existing Stash (or a freshly deployed one), where it can be
     ///         used without needing the vault to implement ERC-1271 or
     ///         satisfy Stash's `tx.origin == owner` checks.
-    function stash(address market, uint256 punkIndex) external {
+    function stash(uint256 punkIndex) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         address eoaOwner = owner();
         address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
         if (stashAddr.code.length == 0) {
             IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
         }
-        ICryptoPunksMarket(market).transferPunk(stashAddr, punkIndex);
+        ICryptoPunksMarket(CRYPTOPUNKS).transferPunk(stashAddr, punkIndex);
     }
 
     // ─────────────────────────── Proceeds ─────────────────────────────────

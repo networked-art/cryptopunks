@@ -128,12 +128,17 @@ interface IPunkVault {
     ///         used by `stash` to resolve the EOA owner's Stash address.
     function STASH_FACTORY() external view returns (address);
 
+    /// @notice The canonical CryptoPunksMarket V2 contract on Ethereum
+    ///         mainnet, used by `stash` because Stash only supports
+    ///         canonical V2 Punks.
+    function CRYPTOPUNKS() external view returns (address);
+
     /// @notice Forwards a Punk to the EOA owner's canonical Stash on Yuga
     ///         Labs' StashFactory, deploying the Stash on first use. The
     ///         Stash is owned by the EOA (not the vault), so listings,
     ///         bids, and withdrawals from the Stash proceed through normal
     ///         EOA tooling rather than this vault.
-    function stash(address market, uint256 punkIndex) external;
+    function stash(uint256 punkIndex) external;
 
     // ─────────────────────────── Proceeds ─────────────────────────────────
 
