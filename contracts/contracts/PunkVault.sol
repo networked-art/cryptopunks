@@ -12,12 +12,12 @@ import "./interfaces/IStashFactory.sol";
 
 /// @title  PunkVault
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
-///         Protocols integrate as operators rather than by wrapping punks,
-///         so sales clear through the canonical CryptoPunksMarket.
 ///
-///         The owner uses `execute` and `isValidSignature` for everything
-///         else — managing ENS records on the vault address, managing other
-///         asset classes and using third party protocols.
+///         Protocols integrate as approved operators on the vault, so they can
+///         manage canonical punks with the same flexibility as wrapped assets
+///         while ensuring sales clear through the original CryptoPunksMarket.
+///
+///         The owner uses `execute` and `isValidSignature` for everything else.
 /// @author 1001
 contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
