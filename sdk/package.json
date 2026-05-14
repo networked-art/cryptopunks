@@ -27,6 +27,10 @@
     "./offline-pixel-data": {
       "types": "./dist/offline-pixel-data.d.ts",
       "import": "./dist/offline-pixel-data.js"
+    },
+    "./canonical-png": {
+      "types": "./dist/canonical-png.d.ts",
+      "import": "./dist/canonical-png.js"
     }
   },
   "scripts": {

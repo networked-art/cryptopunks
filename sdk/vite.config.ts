@@ -10,6 +10,7 @@ export default defineConfig({
         offline: resolve(__dirname, 'src/offline.ts'),
         'offline-data': resolve(__dirname, 'src/offline-data.ts'),
         'offline-pixel-data': resolve(__dirname, 'src/offline-pixel-data.ts'),
+        'canonical-png': resolve(__dirname, 'src/canonical-png.ts'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,
