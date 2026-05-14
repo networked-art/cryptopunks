@@ -101,7 +101,7 @@ const punkVaultInterfaceId = ifaceId([
   'withdrawFromMarketTo(address,address)',
   'execute(address,uint256,bytes)',
   'executeBatch((address,uint256,bytes)[])',
-  'factoryInitialize(address[])',
+  'factoryInitialize(address,address[])',
 ])
 
 async function deployVaultFixture() {
@@ -234,7 +234,7 @@ describe('PunkVault', () => {
       )
     })
 
-    it('rejects zero-address factory inputs and bare implementation calls', async () => {
+    it('rejects zero-address factory inputs and leaves implementation owner unset', async () => {
       const ctx = await deployVaultFixture()
       await ctx.viem.assertions.revertWithCustomError(
         ctx.vaultFactory.write.ensureVault([zeroAddress]),
@@ -244,11 +244,7 @@ describe('PunkVault', () => {
 
       const implAddress = (await ctx.vaultFactory.read.IMPLEMENTATION()) as Address
       const impl = await ctx.viem.getContractAt('PunkVault', implAddress)
-      await ctx.viem.assertions.revertWithCustomError(
-        impl.read.owner(),
-        impl,
-        'NotClone',
-      )
+      assert.equal(lc(await impl.read.owner() as string), lc(zeroAddress))
     })
   })
 
@@ -280,16 +276,16 @@ describe('PunkVault', () => {
       )
     })
 
-    it('keeps an empty first ensureMyVault available for later one-shot approvals', async () => {
+    it('requires setOperator after an empty factory initialization', async () => {
       const ctx = await deployVaultFixture()
       assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
 
-      await ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]])
-      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
       await assert.rejects(
-        ctx.factoryAsOwner.write.ensureMyVault([[ctx.attacker.account.address]]),
+        ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]]),
         /AlreadyInitialized/,
       )
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
     })
 
     it('rejects zero pre-approval operators and direct non-factory initialization', async () => {
@@ -312,7 +308,10 @@ describe('PunkVault', () => {
         client: { wallet: owner },
       })
       await viem.assertions.revertWithCustomError(
-        vaultAsOwner.write.factoryInitialize([[owner.account.address]]),
+        vaultAsOwner.write.factoryInitialize([
+          owner.account.address,
+          [owner.account.address],
+        ]),
         vaultAsOwner,
         'NotFactory',
       )
@@ -738,7 +737,7 @@ describe('PunkVault', () => {
       assert.equal(await ctx.vault.read.supportsInterface(['0xdeadbeef']), false)
     })
 
-    it('validates EOA signatures for the immutable owner', async () => {
+    it('validates EOA signatures for the initialized owner', async () => {
       const ctx = await deployVaultFixture()
       const signer = privateKeyToAccount(
         '0x59c6995e998f97a5a0044966f0945380531bc9e161a58aef6d2b73d3a5f1d5f5',

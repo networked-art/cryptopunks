@@ -20,16 +20,18 @@ interface IPunkVaultFactory {
     function predictVault(address user) external view returns (address);
 
     /// @notice Deploys `user`'s vault if not yet deployed. Idempotent and
-    ///         open — a third-party deploy can only produce an empty,
-    ///         user-owned vault. The user sets approvals afterwards.
+    ///         open — a third-party deploy can only produce an initialized,
+    ///         user-owned vault with no operators. The user sets approvals
+    ///         afterwards.
     function ensureVault(address user) external returns (address vault);
 
     /// @notice Deploys (or returns) `msg.sender`'s vault and pre-approves
-    ///         `operators` in the same tx. `msg.sender`-gated so only the
-    ///         owner can opt into pre-approvals at deploy time.
-    /// @dev    Pre-approval is one-shot per vault: subsequent calls revert
-    ///         with `AlreadyInitialized`. After deployment, use
-    ///         `setOperator` on the vault directly.
+    ///         `operators` only if the vault is created in the same tx.
+    ///         `msg.sender`-gated so only the owner can opt into
+    ///         pre-approvals at deploy time.
+    /// @dev    Initialization is one-shot per vault: subsequent calls with
+    ///         operators revert with `AlreadyInitialized`. After deployment,
+    ///         use `setOperator` on the vault directly.
     function ensureMyVault(address[] calldata operators)
         external returns (address vault);
 }

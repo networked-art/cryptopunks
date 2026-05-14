@@ -23,9 +23,8 @@ contract PunkVaultFactory is IPunkVaultFactory {
 
     /// @inheritdoc IPunkVaultFactory
     function predictVault(address user) public view returns (address) {
-        return Clones.predictDeterministicAddressWithImmutableArgs(
+        return Clones.predictDeterministicAddress(
             IMPLEMENTATION,
-            abi.encodePacked(user),
             _salt(user),
             address(this)
         );
@@ -34,7 +33,7 @@ contract PunkVaultFactory is IPunkVaultFactory {
     /// @inheritdoc IPunkVaultFactory
     function ensureVault(address user) external returns (address vault) {
         if (user == address(0)) revert ZeroAddress();
-        vault = _deployIfMissing(user);
+        (vault,) = _deployIfMissing(user, new address[](0));
     }
 
     /// @inheritdoc IPunkVaultFactory
@@ -42,25 +41,26 @@ contract PunkVaultFactory is IPunkVaultFactory {
         external
         returns (address vault)
     {
-        vault = _deployIfMissing(msg.sender);
-        if (operators.length > 0) {
-            IPunkVault(vault).factoryInitialize(operators);
+        bool deployed;
+        (vault, deployed) = _deployIfMissing(msg.sender, operators);
+        if (!deployed && operators.length > 0) {
+            IPunkVault(vault).factoryInitialize(msg.sender, operators);
         }
     }
 
     /// @dev Returns the deterministic vault for `user`, deploying it via
-    ///      `cloneDeterministicWithImmutableArgs` if it doesn't yet exist.
-    ///      The clone's runtime code carries `user` as immutable args so
-    ///      the vault's `owner()` reads it from its own bytecode.
-    function _deployIfMissing(address user) private returns (address vault) {
+    ///      `cloneDeterministic` and initializing owner/operators if it
+    ///      doesn't yet exist.
+    function _deployIfMissing(address user, address[] memory operators)
+        private
+        returns (address vault, bool deployed)
+    {
         vault = predictVault(user);
-        if (vault.code.length != 0) return vault;
-        vault = Clones.cloneDeterministicWithImmutableArgs(
-            IMPLEMENTATION,
-            abi.encodePacked(user),
-            _salt(user)
-        );
+        if (vault.code.length != 0) return (vault, false);
+        vault = Clones.cloneDeterministic(IMPLEMENTATION, _salt(user));
         emit VaultDeployed(user, vault);
+        IPunkVault(vault).factoryInitialize(user, operators);
+        return (vault, true);
     }
 
     /// @dev Salt the deterministic clone with `(user, block.chainid)` so a

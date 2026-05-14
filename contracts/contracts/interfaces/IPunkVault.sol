@@ -18,7 +18,6 @@ interface IPunkVault {
     error NotOwner();
     error NotAuthorized();
     error NotFactory();
-    error NotClone();
     error AlreadyInitialized();
     error ExecutionFailed(bytes returnData);
     error ZeroAddress();
@@ -35,8 +34,8 @@ interface IPunkVault {
 
     // ─────────────────────────── Identity ─────────────────────────────────
 
-    /// @notice The immutable owner of this vault. Bound for life at deploy
-    ///         via clone immutable args.
+    /// @notice The permanent owner of this vault. Bound for life during
+    ///         factory initialization.
     function owner() external view returns (address);
 
     /// @notice The factory that deployed every clone. The only address
@@ -175,8 +174,8 @@ interface IPunkVault {
 
     // ──────────────── Factory-only one-shot init ──────────────────────────
 
-    /// @notice Pre-approves `operators` at deploy time. Callable exactly
-    ///         once, only by `FACTORY`. After this, only the owner may
-    ///         change approvals via `setOperator`.
-    function factoryInitialize(address[] calldata operators) external;
+    /// @notice Sets the vault owner and pre-approves `operators` at deploy
+    ///         time. Callable exactly once, only by `FACTORY`. After this,
+    ///         only the owner may change approvals via `setOperator`.
+    function factoryInitialize(address owner, address[] calldata operators) external;
 }

@@ -29,11 +29,8 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
     address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
 
-    /// @dev Implementation address baked into the runtime bytecode. Clones
-    ///      delegatecall into this same bytecode, so they read the impl's
-    ///      address through this immutable — `address(this) == _SELF`
-    ///      identifies a direct call on the bare implementation.
-    address private immutable _SELF = address(this);
+    /// @inheritdoc IPunkVault
+    address public owner;
 
     /// @dev True once `factoryInitialize` has run. Pre-set on the
     ///      implementation itself by the constructor so the template
@@ -43,33 +40,14 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     mapping(address operator => bool) private _operatorApproved;
 
     /// @notice Deploys the implementation. Clones inherit `FACTORY` via the
-    ///         shared runtime bytecode and read `owner` from their own
-    ///         immutable args.
+    ///         shared runtime bytecode and receive their owner through
+    ///         `factoryInitialize`.
     /// @dev    The implementation itself is sealed against `factoryInitialize`
     ///         here so it cannot be co-opted by anyone who calls it directly.
     constructor(address factory_) {
         if (factory_ == address(0)) revert ZeroAddress();
         FACTORY = factory_;
         _initialized = true;
-    }
-
-    // ─────────────────────────── Identity ─────────────────────────────────
-
-    /// @inheritdoc IPunkVault
-    function owner() public view returns (address ownerAddr) {
-        // Reject calls on the bare implementation: it carries no immutable
-        // args, so `extcodecopy` would return a deterministic-but-arbitrary
-        // slice of the impl's own runtime. That value could mislead
-        // `isOperator` callers and offchain indexers.
-        if (address(this) == _SELF) revert NotClone();
-
-        // The ERC-1167 proxy runtime is exactly 45 (0x2d) bytes; OZ
-        // `cloneDeterministicWithImmutableArgs` appends our 20 bytes of
-        // owner directly after.
-        assembly ("memory-safe") {
-            extcodecopy(address(), 0x00, 0x2d, 0x14)
-            ownerAddr := shr(96, mload(0x00))
-        }
     }
 
     // ─────────────────────────── Receive ──────────────────────────────────
@@ -83,7 +61,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
 
     /// @inheritdoc IPunkVault
     function setOperator(address operator, bool approved) external {
-        if (msg.sender != owner()) revert NotOwner();
+        if (msg.sender != owner) revert NotOwner();
         if (operator == address(0)) revert ZeroAddress();
         _operatorApproved[operator] = approved;
         emit OperatorSet(operator, approved);
@@ -165,11 +143,11 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
     /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
     ///         and its EOA owner resolve to different Stashes — sending
-    ///         to `stashAddressFor(owner())` lands the Punk in the EOA's
+    ///         to `stashAddressFor(owner)` lands the Punk in the EOA's
     ///         existing Stash (or a freshly deployed one).
     function stash(uint256 punkIndex) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
-        address eoaOwner = owner();
+        address eoaOwner = owner;
         address stashAddr = IStashFactory(STASH_FACTORY).stashAddressFor(eoaOwner);
         if (stashAddr.code.length == 0) {
             IStashFactory(STASH_FACTORY).deployStash(eoaOwner);
@@ -206,7 +184,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         payable
         returns (bytes memory)
     {
-        if (msg.sender != owner()) revert NotOwner();
+        if (msg.sender != owner) revert NotOwner();
         (bool ok, bytes memory ret) = target.call{value: value}(data);
         if (!ok) revert ExecutionFailed(ret);
         emit Executed(target, value, data);
@@ -219,7 +197,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         payable
         returns (bytes[] memory results)
     {
-        if (msg.sender != owner()) revert NotOwner();
+        if (msg.sender != owner) revert NotOwner();
         uint256 len = calls.length;
         results = new bytes[](len);
         for (uint256 i; i < len;) {
@@ -235,9 +213,11 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     // ──────────────── Factory-only one-shot init ──────────────────────────
 
     /// @inheritdoc IPunkVault
-    function factoryInitialize(address[] calldata operators) external {
+    function factoryInitialize(address owner_, address[] calldata operators) external {
         if (msg.sender != FACTORY) revert NotFactory();
         if (_initialized) revert AlreadyInitialized();
+        if (owner_ == address(0)) revert ZeroAddress();
+        owner = owner_;
         _initialized = true;
         uint256 len = operators.length;
         for (uint256 i; i < len;) {
@@ -301,7 +281,7 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         view
         returns (bytes4)
     {
-        return SignatureChecker.isValidSignatureNowCalldata(owner(), hash, signature)
+        return SignatureChecker.isValidSignatureNowCalldata(owner, hash, signature)
             ? IERC1271.isValidSignature.selector
             : bytes4(0xffffffff);
     }
@@ -322,6 +302,6 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///      every non-owner-only path; gates both the delegated market
     ///      surface and the ETH-spending surface.
     function _isOwnerOrOperator(address caller) private view returns (bool) {
-        return caller == owner() || _operatorApproved[caller];
+        return caller == owner || _operatorApproved[caller];
     }
 }

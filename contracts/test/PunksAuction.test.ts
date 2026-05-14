@@ -620,15 +620,17 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('rejects calls on the bare implementation', async () => {
+    it('leaves the bare implementation owner unset', async () => {
       const ctx = await deployAuctionStack()
       const { vaultFactory } = ctx
 
       const implAddress = (await vaultFactory.read.IMPLEMENTATION()) as `0x${string}`
       const impl = await ctx.viem.getContractAt('PunkVault', implAddress)
 
-      // owner() must not return a garbage slice of the impl's own runtime.
-      await assert.rejects(impl.read.owner(), /NotClone/)
+      assert.equal(
+        ((await impl.read.owner()) as string).toLowerCase(),
+        zeroAddress.toLowerCase(),
+      )
     })
 
     it('vault.transferPunk reverts when the vault does not hold the Punk on that market', async () => {
