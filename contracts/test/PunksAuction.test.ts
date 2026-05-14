@@ -1099,7 +1099,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('keeps a valid lot reserved after time passes', async () => {
+    it('does not make a valid lot stale just because time passes', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
       await assignPunk(ctx, seller, 81n)
