@@ -12,25 +12,19 @@ import "./interfaces/IStashFactory.sol";
 
 /// @title  PunkVault
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
-///         Holds Punks across every CryptoPunks-compatible market at a
-///         single address per user. Protocols integrate by being approved
-///         as operators; the owner uses `execute` for everything else.
+///         Protocols integrate as operators rather than by wrapping punks,
+///         so sales clear through the canonical CryptoPunksMarket.
 ///
-///         No wrapping. No marketplace-listing pollution. No per-protocol
-///         custody glue. The vault is the Punk's canonical owner on each
-///         market; outgoing transfers go straight through `transferPunk`.
-///
-///         The vault is also a smart account: arbitrary `execute` calls let
-///         the owner manage ENS records on the vault address, receive and
-///         redeem ERC20 / ERC721 / ERC1155 tokens that flow in, and
-///         integrate with protocols that don't yet exist.
+///         The owner uses `execute` and `isValidSignature` for everything
+///         else — managing ENS records on the vault address, managing other
+///         asset classes and using third party protocols.
 /// @author 1001
 contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     /// @inheritdoc IPunkVault
-    address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
+    address public immutable FACTORY;
 
     /// @inheritdoc IPunkVault
-    address public immutable FACTORY;
+    address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
     /// @dev Implementation address baked into the runtime bytecode. Clones
     ///      delegatecall into this same bytecode, so they read the impl's
