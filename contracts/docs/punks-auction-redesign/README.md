@@ -26,10 +26,10 @@ is small (~2 storage slots, ~32 calldata bytes for the array indirection).
 
 | # | Decision |
 | --- | --- |
-| 1 | Lots hold `LotItem[]` of length 1..`MAX_LOT_ITEMS`. Offers carry `OfferSlot[]` of length 1..`MAX_LOT_ITEMS`. N=1 is the singleton case. |
+| 1 | Lots hold `LotItem[]` of length 1..`MAX_PUNKS`. Offers carry `OfferSlot[]` of length 1..`MAX_PUNKS`. N=1 is the singleton case. |
 | 2 | Offer slots bind to lot items by index — `offer.slots[i] ↔ lot.items[i]`. No permutation matching. |
 | 3 | `weightBps` is mandatory on every `LotItem` and must sum to exactly 10_000 across the lot. Frontends default to equal split. |
-| 4 | `MAX_LOT_ITEMS = 80`. Gas-bounded: worst-case (80 V1 items) settlement is ~13M, comfortably under the 30M L1 block limit with additional headroom under congestion. |
+| 4 | `MAX_PUNKS = 80`. Gas-bounded: worst-case (80 V1 items) settlement is ~13M, comfortably under the 30M L1 block limit with additional headroom under congestion. |
 | 5 | `TokenStandard` is Punks-only: `{ CRYPTOPUNKS, CRYPTOPUNKS_V1 }`. The `ERC721`/`ERC1155` placeholders are removed. Every slot and every item names its standard explicitly; no "any standard" sentinel — order is index-bound, so the bidder is specific. |
 | 6 | Two offer acceptance paths share one `Offer` struct: `acceptOffer(offerId, punkId, expectedListingWei)` keeps the singleton CryptoPunks-market arbitrage path (no escrow) while pinning the live listing price; `acceptOfferFromLot(offerId, lotId, minAmountWei)` is the lot-binding path that handles any N (including N=1 escrowed) while pinning a minimum current offer amount. |
 | 7 | One auction lifecycle: `createLot` → `openAuction` → `bid` → `settle`. N=1 collapses to the current single-Punk path. No separate `BundleLot`/`BundleAuction` namespaces. |

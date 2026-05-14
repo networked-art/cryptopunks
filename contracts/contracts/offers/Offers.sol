@@ -13,8 +13,8 @@ import "../lib/PushPullEscrow.sol";
 abstract contract Offers is IPunksAuction, PushPullEscrow {
     using Punks for Punks.Filter;
 
-    /// @notice Maximum slots per offer. Mirrors the lot item bound.
-    uint8 internal constant MAX_LOT_ITEMS = 80;
+    /// @notice Maximum Punks per lot or offer.
+    uint8 internal constant MAX_PUNKS = 80;
     /// @notice Maximum entries in `OfferSlot.includeIds` per slot.
     uint8 internal constant MAX_INCLUDE_IDS = 64;
     /// @notice Maximum entries in `OfferSlot.excludeIds` per slot.
@@ -47,7 +47,7 @@ abstract contract Offers is IPunksAuction, PushPullEscrow {
         if (msg.value != amountWei) revert IncorrectPayment();
 
         uint256 slotCount = slots.length;
-        if (slotCount == 0 || slotCount > MAX_LOT_ITEMS) revert InvalidSlotCount();
+        if (slotCount == 0 || slotCount > MAX_PUNKS) revert InvalidSlotCount();
 
         for (uint256 i; i < slotCount;) {
             _requireValidSlot(slots[i]);

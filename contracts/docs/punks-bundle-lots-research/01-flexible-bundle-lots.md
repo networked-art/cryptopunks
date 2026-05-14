@@ -12,7 +12,7 @@
 >
 > Carryover: weighted-split settlement, `itemHash` commitment, per-item
 > versioning, atomic delivery, and the test plan all survive into the
-> merged spec. Changed: `MAX_LOT_ITEMS` raised from 8 to 40; `BundleLot` /
+> merged spec. Changed: `MAX_PUNKS` raised from 8 to 40; `BundleLot` /
 > `BundleAuction` namespaces dropped (everything is now bundle-shaped); the
 > "offers stay single-Punk for now" deferral was reversed.
 >
@@ -45,7 +45,7 @@ Add bounded Punk bundle lots. Do not make lots unbounded, and do not generalize
 to arbitrary token standards in the first version.
 
 ```solidity
-uint8 internal constant MAX_LOT_ITEMS = 9;
+uint8 internal constant MAX_PUNKS = 9;
 
 struct LotItem {
     TokenStandard standard; // CRYPTOPUNKS or CRYPTOPUNKS_V1
@@ -54,7 +54,7 @@ struct LotItem {
 }
 ```
 
-The flexible surface should support 1 to `MAX_LOT_ITEMS` items. A one-item
+The flexible surface should support 1 to `MAX_PUNKS` items. A one-item
 bundle is equivalent to the current single-Punk lot. A V1 + V2 pair is a
 two-item bundle with the same `punkId` and different standards. A six-Punk lot
 is six items, any supported mix, subject to duplicate checks and gas bounds.
@@ -139,7 +139,7 @@ removing it because it preserves existing frontend and indexer assumptions.
 
 At lot creation:
 
-- `items.length` must be between 1 and `MAX_LOT_ITEMS`.
+- `items.length` must be between 1 and `MAX_PUNKS`.
 - Every item standard must be `CRYPTOPUNKS` or `CRYPTOPUNKS_V1`.
 - No duplicate `{standard, punkId}` items in the same lot.
 - The seller must have every Punk in the right vault.
@@ -355,7 +355,7 @@ Every major bundle operation is linear in `itemCount`:
 - Settlement runs one Punk market sale path per item.
 - Clearing stale lots checks every item.
 
-This is why the design needs `MAX_LOT_ITEMS`. A limit of 8 is conservative and
+This is why the design needs `MAX_PUNKS`. A limit of 8 is conservative and
 still covers V1 + V2 pairs and six-Punk lots. A limit of 16 may be reasonable
 after gas tests, but should not be assumed without measuring mixed V1/V2
 settlement.
@@ -386,7 +386,7 @@ Minimum test coverage:
 - Creates and settles a V1 + V2 pair for the same `punkId`.
 - Creates and settles a six-Punk mixed bundle.
 - Rejects empty bundles.
-- Rejects bundles over `MAX_LOT_ITEMS`.
+- Rejects bundles over `MAX_PUNKS`.
 - Rejects duplicate `{standard, punkId}` items.
 - Rejects unsupported standards.
 - Rejects creation when any Punk is missing from the seller vault.
@@ -409,7 +409,7 @@ Minimum test coverage:
   separate ID spaces?
 - Should bundle auctions and single-Punk auctions share `lastAuctionId`, or
   should frontends call separate read paths?
-- Is `MAX_LOT_ITEMS = 8` enough, or do real sellers need 16?
+- Is `MAX_PUNKS = 8` enough, or do real sellers need 16?
 - Should pair lots get a convenience wrapper such as `createPairLot(uint16
 punkId, ...)`, or should the generic bundle function be the only new path?
 - Should item order be seller-defined, canonicalized by `{standard,punkId}`, or
@@ -417,7 +417,7 @@ punkId, ...)`, or should the generic bundle function be the only new path?
 
 ## Current Lean
 
-Use bounded Punk-specific bundles with `MAX_LOT_ITEMS = 8`, weighted settlement
+Use bounded Punk-specific bundles with `MAX_PUNKS = 8`, weighted settlement
 splits, item arrays stored separately from compact public summary structs, and
 additive bundle APIs. Keep offers single-Punk for now. Keep the current
 single-Punk API as a compatibility wrapper once the bundle path is proven.

@@ -12,7 +12,7 @@
 > [`02-implementation-plan.md`](../punks-auction-redesign/02-implementation-plan.md).
 >
 > The body below is preserved for historical context — the bounded
-> Punk-specific bundle approach, weighted ETH split, and `MAX_LOT_ITEMS`
+> Punk-specific bundle approach, weighted ETH split, and `MAX_PUNKS`
 > rationale carry over (with the bound raised from 8 to 40) into the merged
 > spec.
 
@@ -28,7 +28,7 @@ such as six-Punk bundles.
 
 Bundle lots are feasible, but they should be bounded and Punk-specific rather
 than fully generic arbitrary-token lots. The safest first design is a lot made
-from 1 to `MAX_LOT_ITEMS` Punk items, where each item is a
+from 1 to `MAX_PUNKS` Punk items, where each item is a
 `{standard, punkId}` pair using the existing canonical and V1 Punk escrow
 routes.
 

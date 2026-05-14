@@ -163,7 +163,7 @@ struct Offer {
     uint96  settlementWei;
     address offerer;
     address receiver;
-    OfferSlot[] slots;             // 1..MAX_LOT_ITEMS
+    OfferSlot[] slots;             // 1..MAX_PUNKS
 }
 
 mapping(uint256 => Offer) public offers;
@@ -187,7 +187,7 @@ uses `slots[0].standard` to decide which CryptoPunks market to look at.
 ### 2.6 Constants
 
 ```solidity
-uint8  internal constant MAX_LOT_ITEMS    = 80;
+uint8  internal constant MAX_PUNKS    = 80;
 uint16 internal constant TOTAL_WEIGHT_BPS = 10_000;
 uint8  internal constant COLOR_COUNT_MAX  = 14;
 uint16 internal constant BPS              = 10_000;
@@ -209,7 +209,7 @@ function createLot(
 
 Validation:
 
-- `items.length` ∈ `[1, MAX_LOT_ITEMS]`.
+- `items.length` ∈ `[1, MAX_PUNKS]`.
 - No duplicate `(standard, punkId)` within the lot.
 - Every `item.weightBps > 0` and Σ `weightBps == TOTAL_WEIGHT_BPS`.
 - Every Punk is in the seller vault for its standard. (Vault ownership is the
@@ -345,7 +345,7 @@ Validation:
 
 - `amountWei > 0`.
 - `msg.value == amountWei + settlementWei`.
-- `slots.length` ∈ `[1, MAX_LOT_ITEMS]`.
+- `slots.length` ∈ `[1, MAX_PUNKS]`.
 - For every slot: criteria masks pass `_requireValidCriteria` (canonical bit
   range, no required/forbidden overlap, no forbidden/anyOf overlap, color
   count range valid if enabled).
@@ -529,7 +529,7 @@ match against.
 
 | Check | Where | Error |
 | --- | --- | --- |
-| `items.length` ∈ `[1, MAX_LOT_ITEMS]` | createLot | `InvalidItemCount` |
+| `items.length` ∈ `[1, MAX_PUNKS]` | createLot | `InvalidItemCount` |
 | No duplicate `(standard, punkId)` | createLot | `DuplicateLotItem` |
 | Σ `weightBps == TOTAL_WEIGHT_BPS` and every weight > 0 | createLot | `InvalidWeights` |
 | Every Punk in seller vault | createLot, openAuction, clearStaleLot | `PunkNotInVault` |
@@ -542,7 +542,7 @@ match against.
 
 | Check | Where | Error |
 | --- | --- | --- |
-| `slots.length` ∈ `[1, MAX_LOT_ITEMS]` | placeOffer | `InvalidSlotCount` |
+| `slots.length` ∈ `[1, MAX_PUNKS]` | placeOffer | `InvalidSlotCount` |
 | Mask validity per slot | placeOffer | `InvalidTraitMask` |
 | Color count range valid per slot | placeOffer | `InvalidColorCountRange` |
 | `includeIds.length <= MAX_INCLUDE_IDS` | placeOffer | `TooManyIds` |
@@ -722,7 +722,7 @@ between forbidden and anyOf.
 
 ## 10. Gas analysis
 
-`MAX_LOT_ITEMS = 80` is chosen to cover plausible curated baskets (large
+`MAX_PUNKS = 80` is chosen to cover plausible curated baskets (large
 artist collections, exchange treasury bundles) while keeping worst-case
 settlement well under the L1 mainnet 30M block limit.
 
@@ -766,7 +766,7 @@ Per item: ~25k storage + ~10k validation + ~3k slot reservation = ~38k.
 
 ### 10.6 Conclusion
 
-At MAX_LOT_ITEMS=80, worst-case settlement (~13M) stays below half a block.
+At MAX_PUNKS=80, worst-case settlement (~13M) stays below half a block.
 The bound leaves more headroom under congestion than the earlier 100-item
 design while still covering larger curated collections that 40 would exclude.
 

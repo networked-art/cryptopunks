@@ -217,7 +217,7 @@ function placeOffer(
 
 - Drop top-level `standard` arg; drop `traitFilters`, `includeIds`,
   `excludeIds`.
-- Validate `slots.length` ∈ `[1, MAX_LOT_ITEMS]`, payment, every slot's
+- Validate `slots.length` ∈ `[1, MAX_PUNKS]`, payment, every slot's
   criteria + standard + ID arrays.
 - Store offer + slots; emit `OfferPlaced` plus one `OfferSlotDetail` per slot.
 
@@ -405,7 +405,7 @@ Recommended commit / PR sequence:
 4. **PunksAuction.sol rewrite** — bundle-aware createLot / openAuction /
    settle / startAuctionFromOffer.
 5. **Test rewrite** — migrate existing tests + add bundle coverage.
-6. **Gas profiling pass** — measure actual per-item costs at MAX_LOT_ITEMS;
+6. **Gas profiling pass** — measure actual per-item costs at MAX_PUNKS;
    tighten the bound only if measurements demand it.
 
 Each step compiles after the previous. Steps 3–4 can be split across
@@ -436,9 +436,9 @@ by item. The escrow's `_pushOrCredit(seller, itemWei)` call inside the V1
 branch of `_deliverPunk` continues to work: each call adds to the seller's
 pending pull balance, which they sweep separately. No accounting drift.
 
-### 5.4 MAX_LOT_ITEMS tightening
+### 5.4 MAX_PUNKS tightening
 
-`MAX_LOT_ITEMS = 80` is chosen for use-case coverage with more measured
+`MAX_PUNKS = 80` is chosen for use-case coverage with more measured
 headroom than the earlier 100-item design. If post-implementation gas
 measurements reveal real overhead beyond the estimates in 01-design §10,
 MAX should be reduced further. Better to ship with measured headroom than
@@ -464,7 +464,7 @@ Cancelling a maxed offer is gas-expensive but linearly bounded. Acceptable.
   `OfferSlot[]`.
 - New bundle test cases pass (V1+V2 pair, 6-Punk lot, 80-Punk lot,
   single-listing rejection on overlap, atomic delivery revert).
-- Gas profile output recorded against MAX_LOT_ITEMS=80 worst case;
+- Gas profile output recorded against MAX_PUNKS=80 worst case;
   decision to keep or tighten the bound documented.
 - `docs/punks-auction-redesign/02-implementation-plan.md` updated with any
   spec deviations discovered during implementation.

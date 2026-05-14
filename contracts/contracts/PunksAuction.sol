@@ -454,7 +454,7 @@ contract PunksAuction is IPunksAuction, Offers {
     ///      vault custody, and per-item slot availability (one lot per Punk).
     function _validateLotItems(LotItem[] calldata items) internal view {
         uint256 n = items.length;
-        if (n == 0 || n > MAX_LOT_ITEMS) revert InvalidItemCount();
+        if (n == 0 || n > MAX_PUNKS) revert InvalidItemCount();
 
         uint256 weightSum;
         for (uint256 i; i < n;) {
