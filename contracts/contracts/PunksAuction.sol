@@ -9,15 +9,23 @@ import "./auction/PunkLots.sol";
 import "./auction/PunkPurchaseOffers.sol";
 
 /// @title  PunksAuction
+///
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
+///
 /// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
 ///         `PunksVaultFactory`) and approve this contract as operator. The
 ///         auction pulls Punks straight from the vault at sale start and
 ///         performs the canonical settlement round-trip from its own custody.
+///
+/// @author VV × 1001
 contract PunksAuction is PunkLots, PunkPurchaseOffers {
+    /// @notice Basis point denominator used for bid increments.
     uint256 internal constant BPS = 10_000;
+    /// @notice Minimum increase over the previous bid.
     uint256 internal constant BID_INCREASE_BPS = 1_000;
+    /// @notice Duration of every auction from initialization.
     uint40 internal constant AUCTION_DURATION = 24 hours;
+    /// @notice Minimum time remaining after a late bid.
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
 
     /// @notice Returns the canonical CryptoPunks market.
@@ -33,6 +41,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
     mapping(uint256 => Auction) public auctions;
 
+    /// @dev Dynamic item arrays for live auctions, keyed by auction id.
     mapping(uint256 => LotItem[]) internal auctionItems;
 
     /// @notice Creates the auction house wired to both Punk markets and the vault factory.
@@ -48,6 +57,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         VAULTS = IPunksVaultFactory(vaultFactory);
     }
 
+    // ─────────────────────────────────── ETH ────────────────────────────────────
+
     /// @notice Receives ETH from the two Punk markets during settlement
     ///         `withdraw()` calls. Nothing else.
     receive() external payable {
@@ -56,7 +67,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         }
     }
 
-    /// @notice Opens a lot as a live auction with your first bid.
+    // ───────────────────────────────── Auctions ────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function openAuction(
         uint256 id,
         uint96 expectedReserveWei
@@ -79,7 +92,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         auctionId = _createAuctionFromItems(lot.seller, items, msg.sender, bidWei);
     }
 
-    /// @notice Places a bid on a live auction.
+    /// @inheritdoc IPunksAuction
     function bid(uint256 auctionId) external payable nonReentrant {
         Auction storage auction = auctions[auctionId];
         if (auction.endTimestamp == 0) revert AuctionDoesNotExist();
@@ -104,7 +117,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         emit Bid(auctionId, msg.sender, bidWei);
     }
 
-    /// @notice Accepts an offer against a stored lot.
+    /// @inheritdoc IPunksAuction
     function acceptOfferFromLot(
         uint256 offerId,
         uint256 lotId,
@@ -157,7 +170,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         );
     }
 
-    /// @notice Starts an auction by using an existing offer as the first bid for a stored lot.
+    /// @inheritdoc IPunksAuction
     function startAuctionFromOffer(
         uint256 offerId,
         uint256 lotId,
@@ -209,28 +222,32 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         );
     }
 
-    /// @notice Returns the minimum bid needed for an auction.
+    // ─────────────────────────────────── Views ──────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function currentMinBidWei(uint256 auctionId) external view returns (uint96) {
         return _currentMinBidWei(auctions[auctionId].latestBidWei);
     }
 
-    /// @notice Checks whether an auction is still open.
+    /// @inheritdoc IPunksAuction
     function auctionActive(uint256 auctionId) external view returns (bool) {
         Auction storage auction = auctions[auctionId];
         return auction.endTimestamp != 0 && block.timestamp <= auction.endTimestamp;
     }
 
-    /// @notice Returns when an auction ends.
+    /// @inheritdoc IPunksAuction
     function endTimestampOf(uint256 auctionId) external view returns (uint40) {
         return auctions[auctionId].endTimestamp;
     }
 
-    /// @notice Returns the items stored on an auction.
+    /// @inheritdoc IPunksAuction
     function getAuctionItems(uint256 auctionId) external view returns (LotItem[] memory) {
         return auctionItems[auctionId];
     }
 
-    /// @notice Settles a completed auction.
+    // ───────────────────────────────── Settlement ───────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function settle(uint256 auctionId) external nonReentrant {
         Auction storage storedAuction = auctions[auctionId];
         Auction memory auction = storedAuction;
@@ -278,6 +295,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         );
     }
 
+    // ───────────────────────────────── Internals ─────────────────────────────────
+
     /// @dev Creates auction storage, pulls the items into custody, and emits the first bid.
     function _createAuctionFromItems(
         address seller,
@@ -317,7 +336,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Per-item delivery loop with weighted ETH allocation.
+    /// @dev Delivers each bundled Punk with its weighted ETH allocation.
     function _settleBundleDelivery(
         LotItem[] memory items,
         uint96 totalWei,
@@ -390,7 +409,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         return uint96(value);
     }
 
-    // ───────────────────── Vault interaction helpers ──────────────────────
+    // ─────────────────────────── Vault interactions ─────────────────────────────
 
     /// @dev Resolves the Punk market contract for a standard.
     function _marketFor(TokenStandard standard) private view returns (ICryptoPunksMarket) {

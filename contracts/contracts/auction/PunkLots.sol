@@ -4,7 +4,13 @@ pragma solidity 0.8.34;
 import "../interfaces/IPunksAuction.sol";
 
 /// @title  PunkLots
+///
 /// @notice Stored seller lots and per-Punk lot reservations for the auction house.
+///
+/// @dev    The concrete auction contract supplies the vault and market-specific
+///         hooks used to validate custody and release reservations.
+///
+/// @author VV × 1001
 abstract contract PunkLots is IPunksAuction {
     /// @notice Maximum Punks per lot.
     uint8 internal constant MAX_LOT_ITEMS = 80;
@@ -18,12 +24,15 @@ abstract contract PunkLots is IPunksAuction {
     mapping(uint256 => Lot) public lots;
     /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
     /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
-    ///         entry reserves that Punk for one lot at a time -- first-wins.
+    ///         entry reserves that Punk for one lot at a time — first-wins.
     mapping(bytes32 => uint256) public lotForPunk;
 
+    /// @dev Dynamic item arrays for stored lots, keyed by lot id.
     mapping(uint256 => LotItem[]) internal lotItems;
 
-    /// @notice Creates a lot of one or more Punks that can be opened as an auction.
+    // ─────────────────────────────────── Lots ───────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     /// @dev    Pre-checks that the seller's vault is deployed and has approved
     ///         this auction as operator, surfacing misconfiguration up front.
     function createLot(
@@ -63,7 +72,7 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
-    /// @notice Updates the reserve price for your lot.
+    /// @inheritdoc IPunksAuction
     function updateLot(uint256 id, uint96 reserveWei) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -75,7 +84,7 @@ abstract contract PunkLots is IPunksAuction {
         emit LotUpdated(id, reserveWei);
     }
 
-    /// @notice Cancels your lot.
+    /// @inheritdoc IPunksAuction
     function cancelLot(uint256 id) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -88,12 +97,12 @@ abstract contract PunkLots is IPunksAuction {
         emit LotCancelled(id);
     }
 
-    /// @notice Clears one lot that is no longer valid.
+    /// @inheritdoc IPunksAuction
     function clearStaleLot(uint256 id) external {
         _clearStaleLot(id);
     }
 
-    /// @notice Clears several lots that are no longer valid.
+    /// @inheritdoc IPunksAuction
     function clearStaleLots(uint256[] calldata ids) external {
         uint256 len = ids.length;
         for (uint256 i; i < len;) {
@@ -104,7 +113,9 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
-    /// @notice Returns the items stored on a lot.
+    // ─────────────────────────────────── Views ──────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function getLotItems(uint256 lotId) external view returns (LotItem[] memory) {
         return lotItems[lotId];
     }
@@ -118,7 +129,10 @@ abstract contract PunkLots is IPunksAuction {
         return lotForPunk[_tokenKey(seller, _tokenContractFor(standard), punkId)];
     }
 
-    /// @dev Removes a lot that is no longer approved or whose custody slipped out of the vault.
+    // ───────────────────────────────── Internals ─────────────────────────────────
+
+    /// @dev Removes a lot that is no longer approved or whose custody slipped
+    ///      out of the vault.
     function _clearStaleLot(uint256 id) internal {
         Lot memory lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
@@ -229,6 +243,8 @@ abstract contract PunkLots is IPunksAuction {
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(seller, tokenContract, tokenId));
     }
+
+    // ─────────────────────────────────── Hooks ──────────────────────────────────
 
     function _requireAuctionApproved(address seller) internal view virtual;
 

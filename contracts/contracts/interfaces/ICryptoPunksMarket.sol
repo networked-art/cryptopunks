@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @notice The subset of CryptoPunksMarket used by the auction house.
+/// @title  ICryptoPunksMarket
+///
+/// @notice Minimal surface of the original CryptoPunksMarket contract used by
+///         vaults, auctions, and bid books in this repo.
 interface ICryptoPunksMarket {
+    /// @notice Active sell offer tuple from the original CryptoPunksMarket.
     struct Offer {
         bool isForSale;
         uint256 punkIndex;
@@ -10,6 +14,8 @@ interface ICryptoPunksMarket {
         uint256 minValue;
         address onlySellTo;
     }
+
+    // ─────────────────────────────────── Sales ──────────────────────────────────
 
     /// @notice Returns sale details for a Punk.
     function punksOfferedForSale(uint256 punkIndex)
@@ -45,6 +51,8 @@ interface ICryptoPunksMarket {
     /// @notice Transfers a Punk to another address.
     function transferPunk(address to, uint256 punkIndex) external;
 
+    // ─────────────────────────────────── Bids ───────────────────────────────────
+
     /// @notice Places a bid on a Punk. The market locks `msg.value` and
     ///         refunds any previously outbid bidder via `pendingWithdrawals`.
     function enterBidForPunk(uint256 punkIndex) external payable;
@@ -55,6 +63,8 @@ interface ICryptoPunksMarket {
 
     /// @notice Accepts the standing bid for a Punk at >= minPrice.
     function acceptBidForPunk(uint256 punkIndex, uint256 minPrice) external;
+
+    // ───────────────────────────────── Proceeds ─────────────────────────────────
 
     /// @notice Withdraws pending ETH from the Punk market.
     function withdraw() external;

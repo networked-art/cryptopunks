@@ -8,8 +8,14 @@ import "../lib/Punks.sol";
 import "../lib/PushPullEscrow.sol";
 
 /// @title  PunkPurchaseOffers
+///
 /// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
 ///         Inspired by MouseDev's CryptoPunksBids.
+///
+/// @dev    The concrete auction contract supplies the market-specific purchase
+///         path used when an offer is accepted.
+///
+/// @author VV × 1001
 abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     using Punks for Punks.Filter;
 
@@ -23,7 +29,8 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
 
-    /// @notice Returns the scalar fields of an offer (the dynamic `slots` are read via `getOfferSlots`).
+    /// @notice Returns the scalar fields of an offer.
+    /// @dev    Dynamic `slots` are read via `getOfferSlots`.
     mapping(uint256 => Offer) public offers;
 
     /// @notice Returns the trait predicate contract used for offer matching.
@@ -38,7 +45,9 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         PUNKS_VISUAL = IPunksDataVisual(punksData);
     }
 
-    /// @notice Places an ETH offer for one or more Punks that match the slot criteria.
+    // ────────────────────────────────── Offers ─────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function placeOffer(
         uint96 amountWei,
         OfferSlot[] calldata slots
@@ -70,7 +79,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         _emitOfferSlotDetails(offerId, slots);
     }
 
-    /// @notice Cancels your active offer and refunds its ETH.
+    /// @inheritdoc IPunksAuction
     function cancelOffer(uint256 offerId) external nonReentrant {
         Offer storage offer = _offerForOfferer(offerId);
         uint96 refundWei = offer.amountWei;
@@ -81,7 +90,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         emit OfferCancelled(offerId);
     }
 
-    /// @notice Sets the offer amount. `msg.value` must equal the increase, or be zero for a decrease.
+    /// @inheritdoc IPunksAuction
     function adjustOfferAmount(uint256 offerId, uint96 newAmountWei)
         external
         payable
@@ -106,7 +115,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         emit OfferAmountAdjusted(offerId, newAmountWei);
     }
 
-    /// @notice Accepts a single-slot offer for a marketplace-listed Punk using a pinned listing price.
+    /// @inheritdoc IPunksAuction
     function acceptOffer(
         uint256 offerId,
         uint16 punkId,
@@ -141,10 +150,14 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         );
     }
 
-    /// @notice Returns the slots stored on an offer.
+    // ─────────────────────────────────── Views ──────────────────────────────────
+
+    /// @inheritdoc IPunksAuction
     function getOfferSlots(uint256 offerId) external view returns (OfferSlot[] memory) {
         return offers[offerId].slots;
     }
+
+    // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev Loads an active offer copy and reverts if it is missing.
     function _activeOffer(uint256 offerId) internal view returns (Offer memory offer) {
