@@ -35,7 +35,8 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
     ///      can never be hijacked.
     bool private _initialized;
 
-    /// @dev Tracks which operators are approved to use owner-or-operator gated vault flows.
+    /// @dev Tracks operators authorized to invoke owner-or-operator
+    ///      gated flows.
     mapping(address operator => bool) private _operatorApproved;
 
     /// @notice Deploys the implementation. Clones inherit `FACTORY` via the
@@ -49,7 +50,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         _initialized = true;
     }
 
-    // ───────────────────────── Operator role ──────────────────────────────
+    // ─────────────────────────────── Operator role ───────────────────────────────
 
     /// @inheritdoc IPunkVault
     function setOperator(address operator, bool approved) external {
@@ -64,7 +65,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         return _operatorApproved[operator];
     }
 
-    // ──────────────── Punk market — delegated surface ─────────────────────
+    // ────────────────────── Punk market — delegated surface ──────────────────────
 
     /// @inheritdoc IPunkVault
     function transferPunk(address market, uint256 punkIndex, address to) external {
@@ -104,7 +105,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(market).acceptBidForPunk(punkIndex, minPrice);
     }
 
-    // ──────────────── Punk market — spending surface ──────────────────────
+    // ────────────────────── Punk market — spending surface ───────────────────────
 
     /// @inheritdoc IPunkVault
     function buyPunk(address market, uint256 punkIndex, uint256 value)
@@ -130,7 +131,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(market).withdrawBidForPunk(punkIndex);
     }
 
-    // ─────────────────────────── Proceeds ─────────────────────────────────
+    // ───────────────────────────────── Proceeds ──────────────────────────────────
 
     /// @inheritdoc IPunkVault
     function withdrawFromMarket(address market) external {
@@ -151,7 +152,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         }
     }
 
-    // ─────────────────────────── Stash ────────────────────────────────────
+    // ─────────────────────────────────── Stash ───────────────────────────────────
 
     /// @inheritdoc IPunkVault
     /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
@@ -168,7 +169,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(CRYPTOPUNKS).transferPunk(stashAddr, punkIndex);
     }
 
-    // ──────────────── Owner-only generic execution ────────────────────────
+    // ─────────────────────── Owner-only generic execution ────────────────────────
 
     /// @inheritdoc IPunkVault
     function execute(address target, uint256 value, bytes calldata data)
@@ -202,7 +203,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         }
     }
 
-    // ──────────────── Factory-only one-shot init ──────────────────────────
+    // ──────────────────────── Factory-only one-shot init ─────────────────────────
 
     /// @inheritdoc IPunkVault
     function factoryInitialize(address owner_, address[] calldata operators) external {
@@ -221,7 +222,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         }
     }
 
-    // ─────────────────────────── Internals ────────────────────────────────
+    // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev The vault's single auth tier: owner or any operator. Used for
     ///      every non-owner-only path; gates both the delegated market
@@ -236,7 +237,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         override
         returns (string memory name, string memory version)
     {
-        name = "1001 PunkVault";
+        name = "PunkVault";
         version = "1";
     }
 
