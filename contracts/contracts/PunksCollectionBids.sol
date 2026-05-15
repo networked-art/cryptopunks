@@ -94,6 +94,12 @@ contract PunksCollectionBids is PushPullEscrow {
     /// @notice Places an ETH bid for any canonical Punk that satisfies the criteria.
     /// @dev `msg.value` must equal `bidWei + settlementWei`. The criteria is
     ///      validated against the canonical trait/color bit space at place time.
+    /// @param bidWei         Maximum wei the bidder will pay for a matching Punk.
+    /// @param settlementWei  Bounty paid to whoever fulfils the bid; may be zero.
+    /// @param criteria       Trait/visual filter the matched Punk must satisfy.
+    /// @param includeIds     Optional whitelist; if non-empty the matched Punk must appear here.
+    /// @param excludeIds     Optional blacklist; the matched Punk must not appear here.
+    /// @return bidId         Identifier of the newly created bid.
     function placeBid(
         uint96 bidWei,
         uint96 settlementWei,
@@ -138,6 +144,7 @@ contract PunksCollectionBids is PushPullEscrow {
     }
 
     /// @notice Cancels your active bid and refunds the locked ETH (bid + settlement).
+    /// @param bidId  Identifier of the caller's active bid.
     function cancelBid(uint256 bidId) external nonReentrant {
         Bid storage bid = _bidForBidder(bidId);
         uint96 refundWei = bid.bidWei + bid.settlementWei;
@@ -152,6 +159,9 @@ contract PunksCollectionBids is PushPullEscrow {
     /// @dev `increase=true` requires `msg.value == weiToAdjust`. `increase=false`
     ///      must be a zero-value call and refunds `weiToAdjust` to the caller.
     ///      The bid amount must remain strictly positive after the adjustment.
+    /// @param bidId         Identifier of the caller's active bid.
+    /// @param weiToAdjust   Wei to add to or subtract from `bidWei`.
+    /// @param increase      True to top up the bid, false to claw wei back.
     function adjustBidPrice(uint256 bidId, uint96 weiToAdjust, bool increase)
         external
         payable
@@ -180,6 +190,9 @@ contract PunksCollectionBids is PushPullEscrow {
     /// @dev Buys the Punk at the current listing price, transfers it to the
     ///      bidder, refunds the bidder for any excess, and pays the
     ///      settlement reward to the caller.
+    /// @param bidId               Identifier of the active bid to settle.
+    /// @param punkId              Canonical Punk id whose listing fulfils the bid.
+    /// @param expectedListingWei  Listing price the caller pins; must equal the live listing's `minValue`.
     function acceptBid(uint256 bidId, uint16 punkId, uint96 expectedListingWei)
         external
         nonReentrant
