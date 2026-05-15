@@ -25,6 +25,9 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
     address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
 
     /// @inheritdoc IPunksVault
+    address public constant CRYPTOPUNKS_V1 = 0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D;
+
+    /// @inheritdoc IPunksVault
     address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
     /// @inheritdoc IPunksVault
@@ -79,6 +82,7 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
         external
     {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        _requireNoBrokenV1SaleMarket(market);
         ICryptoPunksMarket(market).offerPunkForSale(punkIndex, minSalePriceWei);
     }
 
@@ -90,6 +94,7 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
         address toAddress
     ) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        _requireNoBrokenV1SaleMarket(market);
         ICryptoPunksMarket(market)
             .offerPunkForSaleToAddress(punkIndex, minSalePriceWei, toAddress);
     }
@@ -114,6 +119,7 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
         payable
     {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
+        _requireNoBrokenV1SaleMarket(market);
         ICryptoPunksMarket(market).buyPunk{value: value}(punkIndex);
     }
 
@@ -249,6 +255,10 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
     ///      surface and the ETH-spending surface.
     function _isOwnerOrOperator(address caller) private view returns (bool) {
         return caller == owner || _operatorApproved[caller];
+    }
+
+    function _requireNoBrokenV1SaleMarket(address market) private pure {
+        if (market == CRYPTOPUNKS_V1) revert BrokenPunksV1MarketUnsupported();
     }
 
     function _domainNameAndVersion()

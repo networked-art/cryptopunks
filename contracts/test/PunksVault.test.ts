@@ -22,6 +22,7 @@ import { etchReverseRegistrar } from './helpers/fixtures.js'
 
 const STASH_FACTORY = '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
 const CRYPTOPUNKS = '0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB' as const
+const CRYPTOPUNKS_V1 = '0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D' as const
 const ERC1271_MAGIC = '0x1626ba7e'
 const ERC1271_INVALID = '0xffffffff'
 const ERC7739_MAGIC = '0x77390001'
@@ -229,6 +230,25 @@ async function depositV1Punk(ctx: Ctx, punkId: bigint) {
   await punksAsOwner.write.transferPunk([ctx.vaultAddress, punkId])
 }
 
+async function etchMainnetV1PunksMarket(ctx: Ctx) {
+  const publicClient = await ctx.viem.getPublicClient()
+  const code = await publicClient.getCode({ address: ctx.punksV1.address })
+  await ctx.connection.networkHelpers.setCode(CRYPTOPUNKS_V1, code)
+  return ctx.viem.getContractAt('MockCryptoPunksMarketV1Buggy', CRYPTOPUNKS_V1)
+}
+
+async function depositMainnetV1Punk(ctx: Ctx, punkId: bigint) {
+  const punksV1 = await etchMainnetV1PunksMarket(ctx)
+  await punksV1.write.setInitialOwner([ctx.owner.account.address, punkId])
+  const punksV1AsOwner = await ctx.viem.getContractAt(
+    'MockCryptoPunksMarketV1Buggy',
+    CRYPTOPUNKS_V1,
+    { client: { wallet: ctx.owner } },
+  )
+  await punksV1AsOwner.write.transferPunk([ctx.vaultAddress, punkId])
+  return punksV1
+}
+
 async function sendEth(ctx: Ctx, to: Address, value: bigint) {
   const publicClient = await ctx.viem.getPublicClient()
   const hash = await ctx.other.sendTransaction({ to, value })
@@ -269,6 +289,8 @@ describe('PunksVault', () => {
       const vault = await viem.getContractAt('PunksVault', predicted)
       assert.equal(lc(await vault.read.owner() as string), lc(owner.account.address))
       assert.equal(lc(await vault.read.FACTORY() as string), lc(vaultFactory.address))
+      assert.equal(lc(await vault.read.CRYPTOPUNKS() as string), lc(CRYPTOPUNKS))
+      assert.equal(lc(await vault.read.CRYPTOPUNKS_V1() as string), lc(CRYPTOPUNKS_V1))
 
       await factoryAsOther.write.ensureVault([owner.account.address])
       assert.equal(
@@ -499,6 +521,36 @@ describe('PunksVault', () => {
       assert.equal(await ctx.punksV1.read.pendingWithdrawals([ctx.vaultAddress]), bid)
     })
 
+    it('rejects sale listings through the original V1 market', async () => {
+      const ctx = await deployVaultFixture()
+      const punksV1 = await depositMainnetV1Punk(ctx, 43n)
+      const price = parseEther('1')
+
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.vaultAsOperator.write.offerPunkForSale([CRYPTOPUNKS_V1, 43n, price]),
+        ctx.vaultAsOperator,
+        'BrokenPunksV1MarketUnsupported',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.vaultAsOperator.write.offerPunkForSaleToAddress([
+          CRYPTOPUNKS_V1,
+          43n,
+          price,
+          ctx.buyer.account.address,
+        ]),
+        ctx.vaultAsOperator,
+        'BrokenPunksV1MarketUnsupported',
+      )
+
+      const offer = await punksV1.read.punksOfferedForSale([43n]) as any
+      assert.equal(offer[0], false)
+      assert.equal(
+        lc(await punksV1.read.punkIndexToAddress([43n]) as string),
+        lc(ctx.vaultAddress),
+      )
+    })
+
     it('rejects unauthorized movement and listing calls', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 51n)
@@ -547,6 +599,35 @@ describe('PunksVault', () => {
       )
       assert.equal(await ctx.punks.read.pendingWithdrawals([ctx.seller.account.address]), price)
       assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), retained)
+    })
+
+    it('rejects buying through the original V1 market', async () => {
+      const ctx = await deployVaultFixture()
+      const punksV1 = await etchMainnetV1PunksMarket(ctx)
+      const price = parseEther('1')
+
+      await punksV1.write.setInitialOwner([ctx.seller.account.address, 62n])
+      const punksV1AsSeller = await ctx.viem.getContractAt(
+        'MockCryptoPunksMarketV1Buggy',
+        CRYPTOPUNKS_V1,
+        { client: { wallet: ctx.seller } },
+      )
+      await punksV1AsSeller.write.offerPunkForSale([62n, price])
+
+      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.vaultAsOperator.write.buyPunk([CRYPTOPUNKS_V1, 62n, price], {
+          value: price,
+        }),
+        ctx.vaultAsOperator,
+        'BrokenPunksV1MarketUnsupported',
+      )
+
+      assert.equal(
+        lc(await punksV1.read.punkIndexToAddress([62n]) as string),
+        lc(ctx.seller.account.address),
+      )
+      assert.equal(await punksV1.read.pendingWithdrawals([ctx.vaultAddress]), 0n)
     })
 
     it('allows only owner or operator to enter and withdraw bids', async () => {

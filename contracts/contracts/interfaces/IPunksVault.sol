@@ -21,6 +21,7 @@ interface IPunksVault {
     error AlreadyInitialized();
     error ExecutionFailed(bytes returnData);
     error ZeroAddress();
+    error BrokenPunksV1MarketUnsupported();
 
     /// @dev Deliberately not named `ApprovalForAll`: this vault's operator
     ///      role is strictly stronger than ERC-721's (it also conveys ETH
@@ -131,6 +132,11 @@ interface IPunksVault {
     ///         mainnet, used by `stash` because Stash only supports
     ///         canonical V2 Punks.
     function CRYPTOPUNKS() external view returns (address);
+
+    /// @notice The bugged CryptoPunks V1 market on Ethereum mainnet.
+    /// @dev    Direct sales through this market misattribute sale proceeds,
+    ///         so vault sale listings and buys reject this address.
+    function CRYPTOPUNKS_V1() external view returns (address);
 
     /// @notice Forwards a Punk to the EOA owner's canonical Stash on Yuga
     ///         Labs' StashFactory, deploying the Stash on first use. The
