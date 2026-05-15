@@ -521,7 +521,7 @@ describe('PunksVault', () => {
       assert.equal(await ctx.punksV1.read.pendingWithdrawals([ctx.vaultAddress]), bid)
     })
 
-    it('rejects sale listings through the original V1 market', async () => {
+    it('rejects public V1 listings but allows directed V1 listings', async () => {
       const ctx = await deployVaultFixture()
       const punksV1 = await depositMainnetV1Punk(ctx, 43n)
       const price = parseEther('1')
@@ -532,19 +532,17 @@ describe('PunksVault', () => {
         ctx.vaultAsOperator,
         'BrokenPunksV1MarketUnsupported',
       )
-      await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsOperator.write.offerPunkForSaleToAddress([
-          CRYPTOPUNKS_V1,
-          43n,
-          price,
-          ctx.buyer.account.address,
-        ]),
-        ctx.vaultAsOperator,
-        'BrokenPunksV1MarketUnsupported',
-      )
+      await ctx.vaultAsOperator.write.offerPunkForSaleToAddress([
+        CRYPTOPUNKS_V1,
+        43n,
+        price,
+        ctx.buyer.account.address,
+      ])
 
       const offer = await punksV1.read.punksOfferedForSale([43n]) as any
-      assert.equal(offer[0], false)
+      assert.equal(offer[0], true)
+      assert.equal(offer[3], price)
+      assert.equal(lc(offer[4]), lc(ctx.buyer.account.address))
       assert.equal(
         lc(await punksV1.read.punkIndexToAddress([43n]) as string),
         lc(ctx.vaultAddress),
