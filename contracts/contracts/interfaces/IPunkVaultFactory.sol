@@ -25,13 +25,11 @@ interface IPunkVaultFactory {
     ///         afterwards.
     function ensureVault(address user) external returns (address vault);
 
-    /// @notice Deploys (or returns) `msg.sender`'s vault and pre-approves
-    ///         `operators` only if the vault is created in the same tx.
-    ///         `msg.sender`-gated so only the owner can opt into
-    ///         pre-approvals at deploy time.
-    /// @dev    Initialization is one-shot per vault: subsequent calls with
-    ///         operators revert with `AlreadyInitialized`. After deployment,
-    ///         use `setOperator` on the vault directly.
+    /// @notice Deploys (or returns) `msg.sender`'s vault and additively
+    ///         approves `operators`.
+    /// @dev    `msg.sender`-gated so only the owner can opt into approvals.
+    ///         If a third party already deployed the vault via `ensureVault`,
+    ///         the owner can still call this later to approve operators.
     function ensureMyVault(address[] calldata operators)
         external returns (address vault);
 }

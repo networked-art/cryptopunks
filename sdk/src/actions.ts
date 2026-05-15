@@ -438,11 +438,11 @@ export class PunksAuctionClient {
     return this.write(await this.prepareEnsureVault(user))
   }
 
-  /// Owner-only deploy path: bundles deploy + one-shot operator pre-approval
-  /// in one tx. msg.sender becomes the immutable owner.
+  /// Owner-only setup path: deploys the vault if needed and additively
+  /// approves operators. msg.sender is the immutable owner.
   async prepareEnsureMyVault(operators: readonly Address[]): Promise<ContractWritePlan> {
     return {
-      description: 'Deploy your vault and pre-approve operators',
+      description: 'Deploy your vault and approve operators',
       request: {
         address: await this.vaultFactoryAddress(),
         abi: punkVaultFactoryAbi,

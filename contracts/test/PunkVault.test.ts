@@ -288,7 +288,7 @@ describe('PunkVault', () => {
   })
 
   describe('factory initialization', () => {
-    it('pre-approves operators exactly once when operators are supplied', async () => {
+    it('pre-approves operators at deploy and additively approves later', async () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, operator, other, attacker] = await viem.getWalletClients()
@@ -309,25 +309,48 @@ describe('PunkVault', () => {
 
       assert.equal(await vault.read.isOperator([operator.account.address]), true)
       assert.equal(await vault.read.isOperator([other.account.address]), true)
-      await assert.rejects(
-        factoryAsOwner.write.ensureMyVault([[attacker.account.address]]),
-        /AlreadyInitialized/,
-      )
+      assert.equal(await vault.read.isOperator([attacker.account.address]), false)
+
+      await factoryAsOwner.write.ensureMyVault([[attacker.account.address]])
+      assert.equal(await vault.read.isOperator([attacker.account.address]), true)
     })
 
-    it('requires setOperator after an empty factory initialization', async () => {
+    it('allows ensureMyVault to add operators after empty initialization', async () => {
       const ctx = await deployVaultFixture()
       assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
 
-      await assert.rejects(
-        ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]]),
-        /AlreadyInitialized/,
-      )
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]])
       assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
     })
 
-    it('rejects zero pre-approval operators and direct non-factory initialization', async () => {
+    it('lets the owner approve operators after third-party deployment', async () => {
+      const connection: any = await network.create()
+      const { viem } = connection
+      const [, owner, operator, other] = await viem.getWalletClients()
+      const vaultFactory = await viem.deployContract('PunkVaultFactory')
+      const factoryAsOther = await viem.getContractAt(
+        'PunkVaultFactory',
+        vaultFactory.address,
+        { client: { wallet: other } },
+      )
+      const factoryAsOwner = await viem.getContractAt(
+        'PunkVaultFactory',
+        vaultFactory.address,
+        { client: { wallet: owner } },
+      )
+
+      await factoryAsOther.write.ensureVault([owner.account.address])
+      const vaultAddress = (await vaultFactory.read.predictVault([
+        owner.account.address,
+      ])) as Address
+      const vault = await viem.getContractAt('PunkVault', vaultAddress)
+      assert.equal(await vault.read.isOperator([operator.account.address]), false)
+
+      await factoryAsOwner.write.ensureMyVault([[operator.account.address]])
+      assert.equal(await vault.read.isOperator([operator.account.address]), true)
+    })
+
+    it('rejects zero factory operators and direct non-factory setup', async () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner] = await viem.getWalletClients()
@@ -353,6 +376,19 @@ describe('PunkVault', () => {
         ]),
         vaultAsOwner,
         'NotFactory',
+      )
+      await viem.assertions.revertWithCustomError(
+        vaultAsOwner.write.factoryApproveOperators([
+          owner.account.address,
+          [owner.account.address],
+        ]),
+        vaultAsOwner,
+        'NotFactory',
+      )
+      await viem.assertions.revertWithCustomError(
+        factoryAsOwner.write.ensureMyVault([[zeroAddress]]),
+        vaultAsOwner,
+        'ZeroAddress',
       )
     })
   })

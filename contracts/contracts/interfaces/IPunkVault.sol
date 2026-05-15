@@ -172,10 +172,18 @@ interface IPunkVault {
     function executeBatch(Call[] calldata calls)
         external payable returns (bytes[] memory);
 
-    // ──────────────── Factory-only one-shot init ──────────────────────────
+    // ──────────────── Factory-only setup paths ────────────────────────────
 
     /// @notice Sets the vault owner and pre-approves `operators` at deploy
-    ///         time. Callable exactly once, only by `FACTORY`. After this,
-    ///         only the owner may change approvals via `setOperator`.
+    ///         time. Callable exactly once, only by `FACTORY`.
     function factoryInitialize(address owner, address[] calldata operators) external;
+
+    /// @notice Additively approves `operators` after deployment when routed
+    ///         through the factory by the current vault owner.
+    /// @dev    Callable only by `FACTORY`; `expectedOwner` must match the
+    ///         vault's owner. Cannot revoke approvals or change ownership.
+    function factoryApproveOperators(
+        address expectedOwner,
+        address[] calldata operators
+    ) external;
 }

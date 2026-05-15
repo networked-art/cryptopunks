@@ -33,7 +33,7 @@ async function ensureVaultApprovingAuctions(ctx: Ctx, owner: any) {
   const deployed = !!code && code !== '0x'
 
   if (!deployed) {
-    // First-time setup: deploy + pre-approve auctions in one tx.
+    // First-time setup: deploy + approve auctions in one tx.
     const factoryAsOwner = await ctx.viem.getContractAt(
       'PunkVaultFactory',
       ctx.vaultFactory.address,
@@ -279,7 +279,7 @@ describe('PunksAuction', () => {
     const { auctions, vaultFactory, seller } = ctx
     await assignPunk(ctx, seller, 501n)
 
-    // Deploy the vault without pre-approving the auction.
+    // Deploy the vault without approving the auction.
     const factoryAsSeller = await ctx.viem.getContractAt(
       'PunkVaultFactory',
       vaultFactory.address,
@@ -670,7 +670,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('exposes one-shot factory pre-approval, with subsequent calls reverting', async () => {
+    it('exposes additive factory approval for the owner', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, vaultFactory, seller } = ctx
 
@@ -686,14 +686,16 @@ describe('PunksAuction', () => {
         true,
       )
 
-      // Second factory pre-approval reverts — owner must use setOperator.
+      // Subsequent factory approval calls are additive and idempotent.
       const factoryAsSeller = await ctx.viem.getContractAt(
         'PunkVaultFactory',
         vaultFactory.address,
         { client: { wallet: seller } },
       )
-      await assert.rejects(
-        factoryAsSeller.write.ensureMyVault([[auctions.address]]),
+      await factoryAsSeller.write.ensureMyVault([[auctions.address]])
+      assert.equal(
+        (await vault.read.isOperator([auctions.address])) as boolean,
+        true,
       )
     })
 

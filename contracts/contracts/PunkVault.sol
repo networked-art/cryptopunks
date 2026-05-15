@@ -203,7 +203,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         }
     }
 
-    // ──────────────────────── Factory-only one-shot init ─────────────────────────
+    // ───────────────────────── Factory-only setup paths ─────────────────────────
 
     /// @inheritdoc IPunkVault
     function factoryInitialize(address owner_, address[] calldata operators) external {
@@ -212,6 +212,22 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         if (owner_ == address(0)) revert ZeroAddress();
         owner = owner_;
         _initialized = true;
+        _setOperators(operators);
+    }
+
+    /// @inheritdoc IPunkVault
+    function factoryApproveOperators(
+        address expectedOwner,
+        address[] calldata operators
+    ) external {
+        if (msg.sender != FACTORY) revert NotFactory();
+        if (owner != expectedOwner) revert NotOwner();
+        _setOperators(operators);
+    }
+
+    // ───────────────────────────────── Internals ─────────────────────────────────
+
+    function _setOperators(address[] calldata operators) private {
         uint256 len = operators.length;
         for (uint256 i; i < len;) {
             address op = operators[i];
@@ -221,8 +237,6 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
             unchecked { ++i; }
         }
     }
-
-    // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev The vault's single auth tier: owner or any operator. Used for
     ///      every non-owner-only path; gates both the delegated market

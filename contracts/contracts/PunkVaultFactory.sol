@@ -41,10 +41,13 @@ contract PunkVaultFactory is IPunkVaultFactory {
         external
         returns (address vault)
     {
-        bool deployed;
-        (vault, deployed) = _deployIfMissing(msg.sender, operators);
-        if (!deployed && operators.length > 0) {
+        vault = predictVault(msg.sender);
+        if (vault.code.length == 0) {
+            vault = LibClone.cloneDeterministic(IMPLEMENTATION, _salt(msg.sender));
+            emit VaultDeployed(msg.sender, vault);
             IPunkVault(vault).factoryInitialize(msg.sender, operators);
+        } else if (operators.length != 0) {
+            IPunkVault(vault).factoryApproveOperators(msg.sender, operators);
         }
     }
 
