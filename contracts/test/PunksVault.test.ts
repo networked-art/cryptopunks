@@ -18,6 +18,8 @@ import {
 import { privateKeyToAccount } from 'viem/accounts'
 import { wrapTypedDataSignature } from 'viem/experimental/erc7739'
 
+import { etchReverseRegistrar } from './helpers/fixtures.js'
+
 const STASH_FACTORY = '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
 const CRYPTOPUNKS = '0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB' as const
 const ERC1271_MAGIC = '0x1626ba7e'
@@ -143,6 +145,7 @@ async function deployVaultFixture() {
 
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
+  await etchReverseRegistrar(connection)
   const vaultFactory = await viem.deployContract('PunksVaultFactory')
   const factoryAsOwner = await viem.getContractAt(
     'PunksVaultFactory',
@@ -246,6 +249,7 @@ describe('PunksVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, other] = await viem.getWalletClients()
+      await etchReverseRegistrar(connection)
       const vaultFactory = await viem.deployContract('PunksVaultFactory')
 
       const predicted = (await vaultFactory.read.predictVault([
@@ -292,6 +296,7 @@ describe('PunksVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, operator, other, attacker] = await viem.getWalletClients()
+      await etchReverseRegistrar(connection)
       const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOwner = await viem.getContractAt(
         'PunksVaultFactory',
@@ -327,6 +332,7 @@ describe('PunksVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, operator, other] = await viem.getWalletClients()
+      await etchReverseRegistrar(connection)
       const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOther = await viem.getContractAt(
         'PunksVaultFactory',
@@ -354,6 +360,7 @@ describe('PunksVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner] = await viem.getWalletClients()
+      await etchReverseRegistrar(connection)
       const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOwner = await viem.getContractAt(
         'PunksVaultFactory',

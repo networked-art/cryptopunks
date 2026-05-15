@@ -5,6 +5,7 @@ import {LibClone} from "solady/src/utils/LibClone.sol";
 
 import "./interfaces/IPunksVault.sol";
 import "./interfaces/IPunksVaultFactory.sol";
+import "./interfaces/IReverseRegistrar.sol";
 import "./PunksVault.sol";
 
 /// @title  PunksVaultFactory
@@ -19,6 +20,9 @@ contract PunksVaultFactory is IPunksVaultFactory {
 
     constructor() {
         IMPLEMENTATION = address(new PunksVault(address(this)));
+
+        IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
+            .setName("punksvaultfactory.eth");
     }
 
     /// @inheritdoc IPunksVaultFactory

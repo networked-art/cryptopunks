@@ -1,5 +1,19 @@
 import { network } from 'hardhat'
 
+// Canonical ENS L1 Reverse Registrar; `PunksVaultFactory`'s constructor
+// unconditionally calls `setName` on it, so local networks need code at
+// this address before the factory is deployed.
+export const REVERSE_REGISTRAR =
+  '0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb' as const
+
+export async function etchReverseRegistrar(connection: any): Promise<void> {
+  const { viem } = connection
+  const mock = await viem.deployContract('ReverseRegistrarMock')
+  const publicClient = await viem.getPublicClient()
+  const code = await publicClient.getCode({ address: mock.address })
+  await connection.networkHelpers.setCode(REVERSE_REGISTRAR, code)
+}
+
 export const DAY = 24 * 60 * 60
 export const WEEK = 7 * DAY
 
@@ -89,6 +103,7 @@ export async function deployAuctionStack() {
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
   const punksData = await viem.deployContract('MockPunksData')
+  await etchReverseRegistrar(connection)
   const vaultFactory = await viem.deployContract('PunksVaultFactory')
   const auctions = await viem.deployContract('PunksAuction', [
     punks.address,
