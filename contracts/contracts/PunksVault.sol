@@ -4,11 +4,11 @@ pragma solidity 0.8.34;
 import {ERC1271} from "solady/src/accounts/ERC1271.sol";
 import {Receiver} from "solady/src/accounts/Receiver.sol";
 
-import "./interfaces/IPunkVault.sol";
+import "./interfaces/IPunksVault.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./interfaces/IStashFactory.sol";
 
-/// @title  PunkVault
+/// @title  PunksVault
 /// @notice Deterministic, user-owned smart account for CryptoPunks custody.
 ///
 ///         Protocols integrate as approved operators on the vault, so they can
@@ -17,17 +17,17 @@ import "./interfaces/IStashFactory.sol";
 ///
 ///         The owner uses `execute` and `isValidSignature` for everything else.
 /// @author 1001
-contract PunkVault is IPunkVault, Receiver, ERC1271 {
-    /// @inheritdoc IPunkVault
+contract PunksVault is IPunksVault, Receiver, ERC1271 {
+    /// @inheritdoc IPunksVault
     address public immutable FACTORY;
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     address public constant CRYPTOPUNKS = 0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     address public constant STASH_FACTORY = 0x000000000000A6fA31F5fC51c1640aAc76866750;
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     address public owner;
 
     /// @dev True once `factoryInitialize` has run. Pre-set on the
@@ -52,7 +52,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ─────────────────────────────── Operator role ───────────────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function setOperator(address operator, bool approved) external {
         if (msg.sender != owner) revert NotOwner();
         if (operator == address(0)) revert ZeroAddress();
@@ -61,20 +61,20 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         emit OperatorSet(operator, approved);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function isOperator(address operator) external view returns (bool) {
         return _operatorApproved[operator];
     }
 
     // ────────────────────── Punk market — delegated surface ──────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function transferPunk(address market, uint256 punkIndex, address to) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).transferPunk(to, punkIndex);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function offerPunkForSale(address market, uint256 punkIndex, uint256 minSalePriceWei)
         external
     {
@@ -82,7 +82,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(market).offerPunkForSale(punkIndex, minSalePriceWei);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function offerPunkForSaleToAddress(
         address market,
         uint256 punkIndex,
@@ -94,13 +94,13 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
             .offerPunkForSaleToAddress(punkIndex, minSalePriceWei, toAddress);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function punkNoLongerForSale(address market, uint256 punkIndex) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).punkNoLongerForSale(punkIndex);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function acceptBidForPunk(address market, uint256 punkIndex, uint256 minPrice) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).acceptBidForPunk(punkIndex, minPrice);
@@ -108,7 +108,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ────────────────────── Punk market — spending surface ───────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function buyPunk(address market, uint256 punkIndex, uint256 value)
         external
         payable
@@ -117,7 +117,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(market).buyPunk{value: value}(punkIndex);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function enterBidForPunk(address market, uint256 punkIndex, uint256 value)
         external
         payable
@@ -126,7 +126,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         ICryptoPunksMarket(market).enterBidForPunk{value: value}(punkIndex);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function withdrawBidForPunk(address market, uint256 punkIndex) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).withdrawBidForPunk(punkIndex);
@@ -134,13 +134,13 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ───────────────────────────────── Proceeds ──────────────────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function withdrawFromMarket(address market) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         ICryptoPunksMarket(market).withdraw();
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function withdrawFromMarketTo(address market, address recipient) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         if (recipient == address(0)) revert ZeroAddress();
@@ -155,7 +155,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ─────────────────────────────────── Stash ───────────────────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     /// @dev    The Stash CREATE2 derivation is owner-keyed, so the vault
     ///         and its EOA owner resolve to different Stashes — sending
     ///         to `stashAddressFor(owner)` lands the Punk in the EOA's
@@ -172,7 +172,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ─────────────────────── Owner-only generic execution ────────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function execute(address target, uint256 value, bytes calldata data)
         external
         payable
@@ -185,7 +185,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         return ret;
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function executeBatch(Call[] calldata calls)
         external
         payable
@@ -206,7 +206,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
 
     // ───────────────────────── Factory-only setup paths ─────────────────────────
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function factoryInitialize(address owner_, address[] calldata operators) external {
         if (msg.sender != FACTORY) revert NotFactory();
         if (_initialized) revert AlreadyInitialized();
@@ -216,7 +216,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         _setOperators(operators);
     }
 
-    /// @inheritdoc IPunkVault
+    /// @inheritdoc IPunksVault
     function factoryApproveOperators(
         address expectedOwner,
         address[] calldata operators
@@ -254,7 +254,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         override
         returns (string memory name, string memory version)
     {
-        name = "PunkVault";
+        name = "PunksVault";
         version = "1";
     }
 

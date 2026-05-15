@@ -3,15 +3,15 @@ pragma solidity 0.8.34;
 
 import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
-import "./interfaces/IPunkVault.sol";
-import "./interfaces/IPunkVaultFactory.sol";
+import "./interfaces/IPunksVault.sol";
+import "./interfaces/IPunksVaultFactory.sol";
 import "./auction/PunkLots.sol";
 import "./auction/PunkPurchaseOffers.sol";
 
 /// @title  PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
-/// @dev    Sellers custody Punks in their own `PunkVault` (deployed via the
-///         `PunkVaultFactory`) and approve this contract as operator. The
+/// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
+///         `PunksVaultFactory`) and approve this contract as operator. The
 ///         auction pulls Punks straight from the vault at sale start and
 ///         performs the canonical settlement round-trip from its own custody.
 contract PunksAuction is PunkLots, PunkPurchaseOffers {
@@ -24,8 +24,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     ICryptoPunksMarket public immutable PUNKS;
     /// @notice Returns the CryptoPunks V1 market.
     ICryptoPunksMarket public immutable PUNKS_V1;
-    /// @notice Returns the per-user `PunkVault` factory.
-    IPunkVaultFactory public immutable PUNK_VAULTS;
+    /// @notice Returns the per-user `PunksVault` factory.
+    IPunksVaultFactory public immutable VAULTS;
 
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
@@ -45,7 +45,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (punks == punksV1) revert ZeroAddress();
         PUNKS = ICryptoPunksMarket(punks);
         PUNKS_V1 = ICryptoPunksMarket(punksV1);
-        PUNK_VAULTS = IPunkVaultFactory(vaultFactory);
+        VAULTS = IPunksVaultFactory(vaultFactory);
     }
 
     /// @notice Receives ETH from the two Punk markets during settlement
@@ -405,18 +405,18 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @dev Pre-check at lot create time: the seller's vault must be
     ///      deployed and the auction must be approved as operator on it.
     function _requireAuctionApproved(address seller) internal view override {
-        address vault = PUNK_VAULTS.predictVault(seller);
+        address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) revert VaultNotDeployed();
-        if (!IPunkVault(vault).isOperator(address(this))) {
+        if (!IPunksVault(vault).isOperator(address(this))) {
             revert AuctionNotApproved();
         }
     }
 
     /// @dev Best-effort approval check for stale-lot cleanup.
     function _auctionStillApproved(address seller) internal view override returns (bool) {
-        address vault = PUNK_VAULTS.predictVault(seller);
+        address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) return false;
-        try IPunkVault(vault).isOperator(address(this)) returns (bool approved) {
+        try IPunksVault(vault).isOperator(address(this)) returns (bool approved) {
             return approved;
         } catch {
             return false;
@@ -431,7 +431,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     ) internal view override {
         if (
             _marketFor(standard).punkIndexToAddress(punkIndex)
-                != PUNK_VAULTS.predictVault(seller)
+                != VAULTS.predictVault(seller)
         ) revert PunkNotInVault();
     }
 
@@ -441,7 +441,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         address seller,
         uint256 punkIndex
     ) internal view override returns (bool) {
-        address vault = PUNK_VAULTS.predictVault(seller);
+        address vault = VAULTS.predictVault(seller);
         try _marketFor(standard).punkIndexToAddress(punkIndex) returns (address holder) {
             return holder == vault;
         } catch {
@@ -455,7 +455,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         address seller,
         uint256 punkIndex
     ) private {
-        IPunkVault(PUNK_VAULTS.predictVault(seller))
+        IPunksVault(VAULTS.predictVault(seller))
             .transferPunk(_tokenContractFor(standard), punkIndex, address(this));
     }
 

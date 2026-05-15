@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title  IPunkVault
-/// @notice External surface of `PunkVault` — a deterministic, user-owned
+/// @title  IPunksVault
+/// @notice External surface of `PunksVault` — a deterministic, user-owned
 ///         smart account for CryptoPunks custody. Holds punks across any
 ///         CryptoPunks-compatible market at a single address per user.
 ///         Protocols integrate by being approved as operators; the owner
 ///         uses `execute` for everything else.
 /// @author 1001
-interface IPunkVault {
+interface IPunksVault {
     struct Call {
         address target;
         uint256 value;

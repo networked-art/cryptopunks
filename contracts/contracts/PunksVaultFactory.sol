@@ -3,25 +3,25 @@ pragma solidity 0.8.34;
 
 import {LibClone} from "solady/src/utils/LibClone.sol";
 
-import "./interfaces/IPunkVault.sol";
-import "./interfaces/IPunkVaultFactory.sol";
-import "./PunkVault.sol";
+import "./interfaces/IPunksVault.sol";
+import "./interfaces/IPunksVaultFactory.sol";
+import "./PunksVault.sol";
 
-/// @title  PunkVaultFactory
-/// @notice Deploys deterministic per-user `PunkVault` clones. The vault
+/// @title  PunksVaultFactory
+/// @notice Deploys deterministic per-user `PunksVault` clones. The vault
 ///         address is keyed by `user` and predictable offchain, so
 ///         counterfactual deposits to `predictVault(user)` are safe
 ///         before deployment.
 /// @author 1001
-contract PunkVaultFactory is IPunkVaultFactory {
-    /// @inheritdoc IPunkVaultFactory
+contract PunksVaultFactory is IPunksVaultFactory {
+    /// @inheritdoc IPunksVaultFactory
     address public immutable IMPLEMENTATION;
 
     constructor() {
-        IMPLEMENTATION = address(new PunkVault(address(this)));
+        IMPLEMENTATION = address(new PunksVault(address(this)));
     }
 
-    /// @inheritdoc IPunkVaultFactory
+    /// @inheritdoc IPunksVaultFactory
     function predictVault(address user) public view returns (address) {
         return LibClone.predictDeterministicAddress(
             IMPLEMENTATION,
@@ -30,13 +30,13 @@ contract PunkVaultFactory is IPunkVaultFactory {
         );
     }
 
-    /// @inheritdoc IPunkVaultFactory
+    /// @inheritdoc IPunksVaultFactory
     function ensureVault(address user) external returns (address vault) {
         if (user == address(0)) revert ZeroAddress();
         (vault,) = _deployIfMissing(user, new address[](0));
     }
 
-    /// @inheritdoc IPunkVaultFactory
+    /// @inheritdoc IPunksVaultFactory
     function ensureMyVault(address[] calldata operators)
         external
         returns (address vault)
@@ -45,9 +45,9 @@ contract PunkVaultFactory is IPunkVaultFactory {
         if (vault.code.length == 0) {
             vault = LibClone.cloneDeterministic(IMPLEMENTATION, _salt(msg.sender));
             emit VaultDeployed(msg.sender, vault);
-            IPunkVault(vault).factoryInitialize(msg.sender, operators);
+            IPunksVault(vault).factoryInitialize(msg.sender, operators);
         } else if (operators.length != 0) {
-            IPunkVault(vault).factoryApproveOperators(msg.sender, operators);
+            IPunksVault(vault).factoryApproveOperators(msg.sender, operators);
         }
     }
 
@@ -62,7 +62,7 @@ contract PunkVaultFactory is IPunkVaultFactory {
         if (vault.code.length != 0) return (vault, false);
         vault = LibClone.cloneDeterministic(IMPLEMENTATION, _salt(user));
         emit VaultDeployed(user, vault);
-        IPunkVault(vault).factoryInitialize(user, operators);
+        IPunksVault(vault).factoryInitialize(user, operators);
         return (vault, true);
     }
 

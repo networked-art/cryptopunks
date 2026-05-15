@@ -89,7 +89,7 @@ export async function deployAuctionStack() {
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
   const punksData = await viem.deployContract('MockPunksData')
-  const vaultFactory = await viem.deployContract('PunkVaultFactory')
+  const vaultFactory = await viem.deployContract('PunksVaultFactory')
   const auctions = await viem.deployContract('PunksAuction', [
     punks.address,
     punksV1.address,

@@ -303,7 +303,7 @@ function _pullPunks(LotItem[] memory items, address from) internal {
 If kept, mirror with `_deliverPunks(items, totalWei, recipient)` for the
 settlement loop.
 
-### 2.4 `contracts/escrow/PunksEscrow.sol`, `PunkVault.sol` — no changes
+### 2.4 `contracts/escrow/PunksEscrow.sol`, `PunksVault.sol` — no changes
 
 Both already operate on a single Punk; bundle loops live one level up.
 

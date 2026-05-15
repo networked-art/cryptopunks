@@ -782,7 +782,7 @@ be re-validated against measured numbers before mainnet.
 
 The auction house owns one `PunksEscrow` that brokers custody for both
 canonical CryptoPunks and CryptoPunks V1. Each user has exactly one
-`PunkVault` clone, deployed deterministically at `predictVault(user)`,
+`PunksVault` clone, deployed deterministically at `predictVault(user)`,
 that holds Punks of either standard.
 
 ```
@@ -791,9 +791,9 @@ PunksAuction
    │
    └── PunksEscrow                         (one per deployment)
           │   immutables: PUNKS, PUNKS_V1, AUCTIONS, VAULT_IMPLEMENTATION
-          │   storage:    mapping(user => PunkVault)
+          │   storage:    mapping(user => PunksVault)
           │
-          └── PunkVault                    (one EIP-1167 clone per user)
+          └── PunksVault                    (one EIP-1167 clone per user)
                 immutable: OWNER (the escrow)
                 only entry: transfer(market, punkIndex, to)  -- onlyOwner
 ```

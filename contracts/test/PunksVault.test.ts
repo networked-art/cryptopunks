@@ -25,8 +25,8 @@ const ERC1271_INVALID = '0xffffffff'
 const ERC7739_MAGIC = '0x77390001'
 const ERC7739_DETECTION_HASH =
   '0x7739773977397739773977397739773977397739773977397739773977397739' as const
-const PUNK_VAULT_DOMAIN_NAME = 'PunkVault'
-const PUNK_VAULT_DOMAIN_VERSION = '1'
+const PUNKS_VAULT_DOMAIN_NAME = 'PunksVault'
+const PUNKS_VAULT_DOMAIN_VERSION = '1'
 
 const callTargetAbi = [
   {
@@ -143,9 +143,9 @@ async function deployVaultFixture() {
 
   const punks = await viem.deployContract('MockCryptoPunksMarket')
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
-  const vaultFactory = await viem.deployContract('PunkVaultFactory')
+  const vaultFactory = await viem.deployContract('PunksVaultFactory')
   const factoryAsOwner = await viem.getContractAt(
-    'PunkVaultFactory',
+    'PunksVaultFactory',
     vaultFactory.address,
     { client: { wallet: owner } },
   )
@@ -155,14 +155,14 @@ async function deployVaultFixture() {
   ])) as Address
   await factoryAsOwner.write.ensureMyVault([[]])
 
-  const vault = await viem.getContractAt('PunkVault', vaultAddress)
-  const vaultAsOwner = await viem.getContractAt('PunkVault', vaultAddress, {
+  const vault = await viem.getContractAt('PunksVault', vaultAddress)
+  const vaultAsOwner = await viem.getContractAt('PunksVault', vaultAddress, {
     client: { wallet: owner },
   })
-  const vaultAsOperator = await viem.getContractAt('PunkVault', vaultAddress, {
+  const vaultAsOperator = await viem.getContractAt('PunksVault', vaultAddress, {
     client: { wallet: operator },
   })
-  const vaultAsAttacker = await viem.getContractAt('PunkVault', vaultAddress, {
+  const vaultAsAttacker = await viem.getContractAt('PunksVault', vaultAddress, {
     client: { wallet: attacker },
   })
 
@@ -240,19 +240,19 @@ async function assertInvalidOrReverts(check: Promise<unknown>) {
   }
 }
 
-describe('PunkVault', () => {
+describe('PunksVault', () => {
   describe('factory and identity', () => {
     it('deploys deterministic user-owned clones idempotently', async () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, other] = await viem.getWalletClients()
-      const vaultFactory = await viem.deployContract('PunkVaultFactory')
+      const vaultFactory = await viem.deployContract('PunksVaultFactory')
 
       const predicted = (await vaultFactory.read.predictVault([
         owner.account.address,
       ])) as Address
       const factoryAsOther = await viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: other } },
       )
@@ -262,7 +262,7 @@ describe('PunkVault', () => {
       const code = await publicClient.getCode({ address: predicted })
       assert.ok(code && code !== '0x')
 
-      const vault = await viem.getContractAt('PunkVault', predicted)
+      const vault = await viem.getContractAt('PunksVault', predicted)
       assert.equal(lc(await vault.read.owner() as string), lc(owner.account.address))
       assert.equal(lc(await vault.read.FACTORY() as string), lc(vaultFactory.address))
 
@@ -282,7 +282,7 @@ describe('PunkVault', () => {
       )
 
       const implAddress = (await ctx.vaultFactory.read.IMPLEMENTATION()) as Address
-      const impl = await ctx.viem.getContractAt('PunkVault', implAddress)
+      const impl = await ctx.viem.getContractAt('PunksVault', implAddress)
       assert.equal(lc(await impl.read.owner() as string), lc(zeroAddress))
     })
   })
@@ -292,9 +292,9 @@ describe('PunkVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, operator, other, attacker] = await viem.getWalletClients()
-      const vaultFactory = await viem.deployContract('PunkVaultFactory')
+      const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOwner = await viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: owner } },
       )
@@ -305,7 +305,7 @@ describe('PunkVault', () => {
       const vaultAddress = (await vaultFactory.read.predictVault([
         owner.account.address,
       ])) as Address
-      const vault = await viem.getContractAt('PunkVault', vaultAddress)
+      const vault = await viem.getContractAt('PunksVault', vaultAddress)
 
       assert.equal(await vault.read.isOperator([operator.account.address]), true)
       assert.equal(await vault.read.isOperator([other.account.address]), true)
@@ -327,14 +327,14 @@ describe('PunkVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner, operator, other] = await viem.getWalletClients()
-      const vaultFactory = await viem.deployContract('PunkVaultFactory')
+      const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOther = await viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: other } },
       )
       const factoryAsOwner = await viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: owner } },
       )
@@ -343,7 +343,7 @@ describe('PunkVault', () => {
       const vaultAddress = (await vaultFactory.read.predictVault([
         owner.account.address,
       ])) as Address
-      const vault = await viem.getContractAt('PunkVault', vaultAddress)
+      const vault = await viem.getContractAt('PunksVault', vaultAddress)
       assert.equal(await vault.read.isOperator([operator.account.address]), false)
 
       await factoryAsOwner.write.ensureMyVault([[operator.account.address]])
@@ -354,9 +354,9 @@ describe('PunkVault', () => {
       const connection: any = await network.create()
       const { viem } = connection
       const [, owner] = await viem.getWalletClients()
-      const vaultFactory = await viem.deployContract('PunkVaultFactory')
+      const vaultFactory = await viem.deployContract('PunksVaultFactory')
       const factoryAsOwner = await viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: owner } },
       )
@@ -366,7 +366,7 @@ describe('PunkVault', () => {
       const vaultAddress = (await vaultFactory.read.predictVault([
         owner.account.address,
       ])) as Address
-      const vaultAsOwner = await viem.getContractAt('PunkVault', vaultAddress, {
+      const vaultAsOwner = await viem.getContractAt('PunksVault', vaultAddress, {
         client: { wallet: owner },
       })
       await viem.assertions.revertWithCustomError(
@@ -842,8 +842,8 @@ describe('PunkVault', () => {
         extensions,
       ] = await ctx.vault.read.eip712Domain()
       assert.equal(fields, '0x0f')
-      assert.equal(name, PUNK_VAULT_DOMAIN_NAME)
-      assert.equal(version, PUNK_VAULT_DOMAIN_VERSION)
+      assert.equal(name, PUNKS_VAULT_DOMAIN_NAME)
+      assert.equal(version, PUNKS_VAULT_DOMAIN_VERSION)
       assert.equal(domainChainId, BigInt(chainId))
       assert.equal(lc(verifyingContract), lc(ctx.vault.address))
       assert.equal(salt, zeroHash)
@@ -860,7 +860,7 @@ describe('PunkVault', () => {
         signer.address,
       ])) as Address
       const publicClient = await ctx.viem.getPublicClient()
-      const hash = keccak256(toBytes('punk vault eoa signature'))
+      const hash = keccak256(toBytes('punks vault eoa signature'))
       const signature = await signer.sign({ hash })
 
       await assertInvalidOrReverts(
@@ -884,12 +884,12 @@ describe('PunkVault', () => {
       ])) as Address
       const publicClient = await ctx.viem.getPublicClient()
       const chainId = await publicClient.getChainId()
-      const message = 'punk vault erc7739 personal'
+      const message = 'punks vault erc7739 personal'
       const hash = hashMessage(message)
       const signature = await signer.signTypedData({
         domain: {
-          name: PUNK_VAULT_DOMAIN_NAME,
-          version: PUNK_VAULT_DOMAIN_VERSION,
+          name: PUNKS_VAULT_DOMAIN_NAME,
+          version: PUNKS_VAULT_DOMAIN_VERSION,
           chainId,
           verifyingContract: vaultAddress,
         },
@@ -912,7 +912,7 @@ describe('PunkVault', () => {
         ERC1271_MAGIC,
       )
 
-      const siblingFactory = await ctx.viem.deployContract('PunkVaultFactory')
+      const siblingFactory = await ctx.viem.deployContract('PunksVaultFactory')
       await siblingFactory.write.ensureVault([signer.address])
       const siblingVaultAddress = (await siblingFactory.read.predictVault([
         signer.address,
@@ -977,8 +977,8 @@ describe('PunkVault', () => {
         primaryType: 'TypedDataSign',
         message: {
           contents: message,
-          name: PUNK_VAULT_DOMAIN_NAME,
-          version: PUNK_VAULT_DOMAIN_VERSION,
+          name: PUNKS_VAULT_DOMAIN_NAME,
+          version: PUNKS_VAULT_DOMAIN_VERSION,
           chainId,
           verifyingContract: vaultAddress,
           salt: zeroHash,
@@ -1011,13 +1011,13 @@ describe('PunkVault', () => {
         owner1271.address,
       ])) as Address
       const publicClient = await ctx.viem.getPublicClient()
-      const message = 'punk vault contract signature'
+      const message = 'punks vault contract signature'
       const hash = hashMessage(message)
       const signature = '0x123456' as Hex
       const nestedHash = hashTypedData({
         domain: {
-          name: PUNK_VAULT_DOMAIN_NAME,
-          version: PUNK_VAULT_DOMAIN_VERSION,
+          name: PUNKS_VAULT_DOMAIN_NAME,
+          version: PUNKS_VAULT_DOMAIN_VERSION,
           chainId: await publicClient.getChainId(),
           verifyingContract: vaultAddress,
         },
@@ -1080,7 +1080,7 @@ describe('PunkVault', () => {
 
 const describeIfMainnetRpc = process.env.MAINNET_RPC_URL ? describe : describe.skip
 
-describeIfMainnetRpc('PunkVault mainnet fork', () => {
+describeIfMainnetRpc('PunksVault mainnet fork', () => {
   it('stashes a real Punk into the holder Stash on a fork', async () => {
     const connection: any = await network.create({
       network: 'hardhatMainnet',
@@ -1090,7 +1090,7 @@ describeIfMainnetRpc('PunkVault mainnet fork', () => {
     const publicClient = await viem.getPublicClient()
     const [deployer] = await viem.getWalletClients()
 
-    const vaultFactory = await viem.deployContract('PunkVaultFactory')
+    const vaultFactory = await viem.deployContract('PunksVaultFactory')
     const punks = await viem.getContractAt('MockCryptoPunksMarket', CRYPTOPUNKS)
     const punkId = 0n
     const holder = getAddress(await punks.read.punkIndexToAddress([punkId]) as string)
@@ -1107,7 +1107,7 @@ describeIfMainnetRpc('PunkVault mainnet fork', () => {
     })
     await punksAsHolder.write.transferPunk([vaultAddress, punkId])
 
-    const vaultAsHolder = await viem.getContractAt('PunkVault', vaultAddress, {
+    const vaultAsHolder = await viem.getContractAt('PunksVault', vaultAddress, {
       client: { wallet: holderClient },
     })
     const stashFactory = await viem.getContractAt('MockStashFactory', STASH_FACTORY)

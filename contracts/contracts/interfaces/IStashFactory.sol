@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @notice Minimal slice of Yuga Labs' StashFactory used by `PunkVault.stash`
+/// @notice Minimal slice of Yuga Labs' StashFactory used by `PunksVault.stash`
 ///         to look up and (if needed) deploy the EOA owner's canonical Stash.
 interface IStashFactory {
     /// @notice CREATE2-derived address of the Stash for `owner`. Returns the

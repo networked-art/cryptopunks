@@ -35,7 +35,7 @@ async function ensureVaultApprovingAuctions(ctx: Ctx, owner: any) {
   if (!deployed) {
     // First-time setup: deploy + approve auctions in one tx.
     const factoryAsOwner = await ctx.viem.getContractAt(
-      'PunkVaultFactory',
+      'PunksVaultFactory',
       ctx.vaultFactory.address,
       { client: { wallet: owner } },
     )
@@ -44,12 +44,12 @@ async function ensureVaultApprovingAuctions(ctx: Ctx, owner: any) {
   }
 
   // Already deployed — confirm the auction is approved as operator.
-  const vaultContract = await ctx.viem.getContractAt('PunkVault', vault)
+  const vaultContract = await ctx.viem.getContractAt('PunksVault', vault)
   const approved = (await vaultContract.read.isOperator([
     ctx.auctions.address,
   ])) as boolean
   if (!approved) {
-    const vaultAsOwner = await ctx.viem.getContractAt('PunkVault', vault, {
+    const vaultAsOwner = await ctx.viem.getContractAt('PunksVault', vault, {
       client: { wallet: owner },
     })
     await vaultAsOwner.write.setOperator([ctx.auctions.address, true])
@@ -220,7 +220,7 @@ describe('PunksAuction', () => {
       punksV1.address.toLowerCase(),
     )
     assert.equal(
-      ((await auctions.read.PUNK_VAULTS()) as string).toLowerCase(),
+      ((await auctions.read.VAULTS()) as string).toLowerCase(),
       vaultFactory.address.toLowerCase(),
     )
   })
@@ -235,7 +235,7 @@ describe('PunksAuction', () => {
 
     // Anyone can deploy a user's vault — the salt is the user's address.
     const factoryAsOther = await ctx.viem.getContractAt(
-      'PunkVaultFactory',
+      'PunksVaultFactory',
       vaultFactory.address,
       { client: { wallet: other } },
     )
@@ -281,7 +281,7 @@ describe('PunksAuction', () => {
 
     // Deploy the vault without approving the auction.
     const factoryAsSeller = await ctx.viem.getContractAt(
-      'PunkVaultFactory',
+      'PunksVaultFactory',
       vaultFactory.address,
       { client: { wallet: seller } },
     )
@@ -600,7 +600,7 @@ describe('PunksAuction', () => {
       await depositPunkV1(ctx, seller, 5n)
 
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
@@ -639,7 +639,7 @@ describe('PunksAuction', () => {
       const { vaultFactory } = ctx
 
       const implAddress = (await vaultFactory.read.IMPLEMENTATION()) as `0x${string}`
-      const impl = await ctx.viem.getContractAt('PunkVault', implAddress)
+      const impl = await ctx.viem.getContractAt('PunksVault', implAddress)
 
       assert.equal(
         ((await impl.read.owner()) as string).toLowerCase(),
@@ -655,7 +655,7 @@ describe('PunksAuction', () => {
       const vaultAddress = await depositPunk(ctx, seller, 6n)
 
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
@@ -680,7 +680,7 @@ describe('PunksAuction', () => {
       const vaultAddress = (await vaultFactory.read.predictVault([
         seller.account.address,
       ])) as `0x${string}`
-      const vault = await ctx.viem.getContractAt('PunkVault', vaultAddress)
+      const vault = await ctx.viem.getContractAt('PunksVault', vaultAddress)
       assert.equal(
         (await vault.read.isOperator([auctions.address])) as boolean,
         true,
@@ -688,7 +688,7 @@ describe('PunksAuction', () => {
 
       // Subsequent factory approval calls are additive and idempotent.
       const factoryAsSeller = await ctx.viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: seller } },
       )
@@ -717,7 +717,7 @@ describe('PunksAuction', () => {
 
       // Seller deploys their vault without approving the attacker.
       const factoryAsSeller = await ctx.viem.getContractAt(
-        'PunkVaultFactory',
+        'PunksVaultFactory',
         vaultFactory.address,
         { client: { wallet: seller } },
       )
@@ -726,7 +726,7 @@ describe('PunksAuction', () => {
       const vaultAddress = (await vaultFactory.read.predictVault([
         seller.account.address,
       ])) as `0x${string}`
-      const vault = await ctx.viem.getContractAt('PunkVault', vaultAddress, {
+      const vault = await ctx.viem.getContractAt('PunksVault', vaultAddress, {
         client: { wallet: attacker },
       })
 
@@ -747,7 +747,7 @@ describe('PunksAuction', () => {
 
       const vaultAddress = await ensureVaultApprovingAuctions(ctx, seller)
       const vaultAsAttacker = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: attacker } },
       )
@@ -767,7 +767,7 @@ describe('PunksAuction', () => {
       )
 
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
@@ -793,7 +793,7 @@ describe('PunksAuction', () => {
       const retainedWei = parseEther('0.123')
 
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
@@ -1160,7 +1160,7 @@ describe('PunksAuction', () => {
 
       // Seller pulls the Punk back out of the vault, invalidating the lot.
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
@@ -1190,7 +1190,7 @@ describe('PunksAuction', () => {
       await createSinglePunkLot(ctx, seller, 85n, parseEther('1'))
 
       const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunkVault',
+        'PunksVault',
         vaultAddress,
         { client: { wallet: seller } },
       )
