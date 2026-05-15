@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {LibClone} from "solady/src/utils/LibClone.sol";
 
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/IPunkVaultFactory.sol";
 import "./PunkVault.sol";
 
 /// @title  PunkVaultFactory
-/// @notice Deploys deterministic per-user `PunkVault` clones. Salt is the
-///         user's address, so the vault address is predictable offchain —
-///         counterfactual deposits to `predictVault(user)` are safe before
-///         deployment.
+/// @notice Deploys deterministic per-user `PunkVault` clones. The vault
+///         address is keyed by `user` and predictable offchain, so
+///         counterfactual deposits to `predictVault(user)` are safe
+///         before deployment.
 /// @author 1001
 contract PunkVaultFactory is IPunkVaultFactory {
     /// @inheritdoc IPunkVaultFactory
@@ -23,7 +23,7 @@ contract PunkVaultFactory is IPunkVaultFactory {
 
     /// @inheritdoc IPunkVaultFactory
     function predictVault(address user) public view returns (address) {
-        return Clones.predictDeterministicAddress(
+        return LibClone.predictDeterministicAddress(
             IMPLEMENTATION,
             _salt(user),
             address(this)
@@ -48,25 +48,23 @@ contract PunkVaultFactory is IPunkVaultFactory {
         }
     }
 
-    /// @dev Returns the deterministic vault for `user`, deploying it via
-    ///      `cloneDeterministic` and initializing owner/operators if it
-    ///      doesn't yet exist.
+    /// @dev Returns the deterministic vault for `user`. If it does not
+    ///      yet exist, deploys via `cloneDeterministic` and initializes
+    ///      owner and operators.
     function _deployIfMissing(address user, address[] memory operators)
         private
         returns (address vault, bool deployed)
     {
         vault = predictVault(user);
         if (vault.code.length != 0) return (vault, false);
-        vault = Clones.cloneDeterministic(IMPLEMENTATION, _salt(user));
+        vault = LibClone.cloneDeterministic(IMPLEMENTATION, _salt(user));
         emit VaultDeployed(user, vault);
         IPunkVault(vault).factoryInitialize(user, operators);
         return (vault, true);
     }
 
-    /// @dev Salt the deterministic clone with `(user, block.chainid)` so a
-    ///      future redeploy of this factory on another chain derives a
-    ///      different vault address for the same user, blocking cross-chain
-    ///      ERC-1271 replay against a sibling vault at the same address.
+    /// @dev Salts the clone with `keccak256(user, block.chainid)` so each
+    ///      deployment yields its own vault address for a given user.
     function _salt(address user) private view returns (bytes32) {
         return keccak256(abi.encode(user, block.chainid));
     }
