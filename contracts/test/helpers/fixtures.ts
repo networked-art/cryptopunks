@@ -94,6 +94,34 @@ export async function futureTs(connection: any, seconds: number): Promise<bigint
   return block.timestamp + BigInt(seconds)
 }
 
+export async function deployCollectionBidsStack() {
+  const connection: any = await network.create()
+  const { viem } = connection
+  const [deployer, seller, bidder, settler, other, attacker] =
+    await viem.getWalletClients()
+
+  const punks = await viem.deployContract('MockCryptoPunksMarket')
+  const punksData = await viem.deployContract('MockPunksData')
+  const bids = await viem.deployContract('PunksCollectionBids', [
+    punks.address,
+    punksData.address,
+  ])
+
+  return {
+    connection,
+    viem,
+    punks,
+    punksData,
+    bids,
+    deployer,
+    seller,
+    bidder,
+    settler,
+    other,
+    attacker,
+  }
+}
+
 export async function deployAuctionStack() {
   const connection: any = await network.create()
   const { viem } = connection
