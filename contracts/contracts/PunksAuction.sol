@@ -7,6 +7,7 @@ import "./interfaces/IPunksVault.sol";
 import "./interfaces/IPunksVaultFactory.sol";
 import "./auction/PunkLots.sol";
 import "./auction/PunkPurchaseOffers.sol";
+import "./PunksAuctionEscrow.sol";
 
 /// @title  PunksAuction
 ///
@@ -14,8 +15,10 @@ import "./auction/PunkPurchaseOffers.sol";
 ///
 /// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
 ///         `PunksVaultFactory`) and approve this contract as operator. The
-///         auction pulls Punks straight from the vault at sale start and
-///         performs the canonical settlement round-trip from its own custody.
+///         auction pulls Punks straight from the vault at sale start into a
+///         dedicated `PunksAuctionEscrow` and performs settlement from there,
+///         so the canonical marketplace records the escrow as the seller and
+///         this contract as the buyer.
 ///
 /// @author VV × 1001
 contract PunksAuction is PunkLots, PunkPurchaseOffers {
@@ -34,6 +37,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     ICryptoPunksMarket public immutable PUNKS_V1;
     /// @notice Returns the per-user `PunksVault` factory.
     IPunksVaultFactory public immutable VAULTS;
+    /// @notice Returns the dedicated escrow that custodies Punks during auctions.
+    PunksAuctionEscrow public immutable ESCROW;
 
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
@@ -55,14 +60,20 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         PUNKS = ICryptoPunksMarket(punks);
         PUNKS_V1 = ICryptoPunksMarket(punksV1);
         VAULTS = IPunksVaultFactory(vaultFactory);
+        ESCROW = new PunksAuctionEscrow(punks, punksV1);
     }
 
     // ─────────────────────────────────── ETH ────────────────────────────────────
 
     /// @notice Receives ETH from the two Punk markets during settlement
-    ///         `withdraw()` calls. Nothing else.
+    ///         `withdraw()` calls and from the escrow when it forwards
+    ///         the canonical-market proceeds. Nothing else.
     receive() external payable {
-        if (msg.sender != address(PUNKS) && msg.sender != address(PUNKS_V1)) {
+        if (
+            msg.sender != address(PUNKS)
+                && msg.sender != address(PUNKS_V1)
+                && msg.sender != address(ESCROW)
+        ) {
             revert UnexpectedEtherSender();
         }
     }
@@ -468,20 +479,23 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         }
     }
 
-    /// @dev Pulls a Punk from the seller's vault into this contract's custody.
+    /// @dev Pulls a Punk from the seller's vault into the escrow.
     function _pullPunk(
         TokenStandard standard,
         address seller,
         uint256 punkIndex
     ) private {
         IPunksVault(VAULTS.predictVault(seller))
-            .transferPunk(_tokenContractFor(standard), punkIndex, address(this));
+            .transferPunk(_tokenContractFor(standard), punkIndex, address(ESCROW));
     }
 
-    /// @dev Delivers a Punk that is already in this contract's custody to the
-    ///      winner. Round-trips the hammer through `buyPunk` so the market
-    ///      emits a real-priced `PunkBought`. Net ETH movement is zero — the
-    ///      proceeds land back here via `withdraw()`.
+    /// @dev Delivers a Punk held by the escrow to the winner. The escrow
+    ///      lists the punk to this contract at the hammer price and this
+    ///      contract buys it, so the canonical market records the escrow
+    ///      as the seller and the auction as the buyer in `PunkBought`.
+    ///      Net ETH movement is zero — V2 proceeds come back via the
+    ///      escrow's `sweepProceeds`; V1 proceeds (credited to the buyer
+    ///      by its storage-reference bug) come back via `market.withdraw()`.
     function _deliverPunk(
         TokenStandard standard,
         uint256 punkIndex,
@@ -489,9 +503,13 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 hammerWei
     ) private {
         ICryptoPunksMarket market = _marketFor(standard);
-        market.offerPunkForSaleToAddress(punkIndex, hammerWei, address(this));
+        ESCROW.listForSettlement(address(market), punkIndex, uint96(hammerWei));
         market.buyPunk{value: hammerWei}(punkIndex);
-        market.withdraw();
+        if (standard == TokenStandard.CRYPTOPUNKS) {
+            ESCROW.sweepProceeds(address(market));
+        } else {
+            market.withdraw();
+        }
         market.transferPunk(to, punkIndex);
     }
 }

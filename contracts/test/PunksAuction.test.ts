@@ -323,9 +323,9 @@ describe('PunksAuction', () => {
     )
   })
 
-  it('opens an auction by pulling the punk from the seller vault into auction custody', async () => {
+  it('opens an auction by pulling the punk from the seller vault into the auction escrow', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, punks, seller, bidder1 } = ctx
+    const { auctions, escrow, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 100n)
     const vault = await depositPunk(ctx, seller, 100n)
@@ -340,7 +340,7 @@ describe('PunksAuction', () => {
 
     assert.equal(
       ((await punks.read.punkIndexToAddress([100n])) as string).toLowerCase(),
-      auctions.address.toLowerCase(),
+      escrow.address.toLowerCase(),
     )
 
     const auction = await auctions.read.auctions([1n])
@@ -435,7 +435,7 @@ describe('PunksAuction', () => {
 
   it('settles canonical Punks with a PunkBought round-trip and zero fees', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, punks, seller, bidder1 } = ctx
+    const { auctions, escrow, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 200n)
     await depositPunk(ctx, seller, 200n)
@@ -477,18 +477,21 @@ describe('PunksAuction', () => {
     })) as Array<{ args: { value: bigint; fromAddress: string; toAddress: string } }>
     assert.equal(bought.length, 1)
     assert.equal(bought[0].args.value, bidWei)
-    // Round-trip happens from the auction's custody, so it appears as
-    // both the seller and the buyer of the canonical PunkBought.
-    assert.equal(bought[0].args.fromAddress.toLowerCase(), auctions.address.toLowerCase())
+    // Settlement routes through the dedicated escrow, so the canonical
+    // PunkBought records the escrow as the seller and the auction as
+    // the buyer.
+    assert.equal(bought[0].args.fromAddress.toLowerCase(), escrow.address.toLowerCase())
     assert.equal(bought[0].args.toAddress.toLowerCase(), auctions.address.toLowerCase())
 
     assert.equal(await publicClient.getBalance({ address: auctions.address }), 0n)
+    assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
     assert.equal(await punks.read.pendingWithdrawals([auctions.address]), 0n)
+    assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
   })
 
   it('reverts atomically without paying the seller when the Punk market buy fails', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, punks, seller, bidder1 } = ctx
+    const { auctions, escrow, punks, seller, bidder1 } = ctx
 
     await assignPunk(ctx, seller, 201n)
     await depositPunk(ctx, seller, 201n)
@@ -512,9 +515,10 @@ describe('PunksAuction', () => {
     assert.equal(sellerAfter, sellerBefore)
     assert.equal(
       ((await punks.read.punkIndexToAddress([201n])) as string).toLowerCase(),
-      auctions.address.toLowerCase(),
+      escrow.address.toLowerCase(),
     )
     assert.equal(await punks.read.pendingWithdrawals([auctions.address]), 0n)
+    assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
 
     const auction = await auctions.read.auctions([1n])
     assert.equal(auction[6], false)
@@ -522,7 +526,7 @@ describe('PunksAuction', () => {
 
   it('settles V1 Punks through the bug-aware withdraw path with zero fees', async () => {
     const ctx = await deployAuctionStack()
-    const { auctions, punksV1, seller, bidder1 } = ctx
+    const { auctions, escrow, punksV1, seller, bidder1 } = ctx
 
     await assignPunkV1(ctx, seller, 300n)
     await depositPunkV1(ctx, seller, 300n)
@@ -548,6 +552,8 @@ describe('PunksAuction', () => {
       bidder1.account.address.toLowerCase(),
     )
     assert.equal(await punksV1.read.pendingWithdrawals([auctions.address]), 0n)
+    assert.equal(await punksV1.read.pendingWithdrawals([escrow.address]), 0n)
+    assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
   })
 
   it('rejects arbitrary ETH sends outside bidding and Punk settlement', async () => {
@@ -940,7 +946,7 @@ describe('PunksAuction', () => {
   describe('lots — bundle lifecycle', () => {
     it('creates a V1+V2 pair lot, opens it, and settles each item with weighted prices', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, punks, punksV1, seller, bidder1 } = ctx
+      const { auctions, escrow, punks, punksV1, seller, bidder1 } = ctx
 
       await assignPunkV1(ctx, seller, 4156n)
       await depositPunkV1(ctx, seller, 4156n)
@@ -991,18 +997,25 @@ describe('PunksAuction', () => {
         fromBlock: receipt.blockNumber,
         toBlock: receipt.blockNumber,
         args: { punkIndex: 4156n },
-      })) as Array<{ args: { value: bigint } }>
+      })) as Array<{
+        args: { value: bigint; fromAddress: string; toAddress: string }
+      }>
       const v1Logs = (await publicClient.getLogs({
         address: punksV1.address,
         event: punkBoughtAbi,
         fromBlock: receipt.blockNumber,
         toBlock: receipt.blockNumber,
         args: { punkIndex: 4156n },
-      })) as Array<{ args: { value: bigint } }>
+      })) as Array<{
+        args: { value: bigint; fromAddress: string; toAddress: string }
+      }>
       assert.equal(v2Logs.length, 1)
       assert.equal(v1Logs.length, 1)
       assert.equal(v1Logs[0].args.value, parseEther('0.5'))
       assert.equal(v2Logs[0].args.value, parseEther('9.5'))
+      // V2 reports the escrow as seller and the auction as buyer.
+      assert.equal(v2Logs[0].args.fromAddress.toLowerCase(), escrow.address.toLowerCase())
+      assert.equal(v2Logs[0].args.toAddress.toLowerCase(), auctions.address.toLowerCase())
     })
 
     it('splits hammer with rounding remainder added to the last item', async () => {
@@ -1782,7 +1795,7 @@ describe('PunksAuction', () => {
       const publicClient = await ctx.viem.getPublicClient()
       assert.equal(
         ((await punks.read.punkIndexToAddress([950n])) as string).toLowerCase(),
-        auctions.address.toLowerCase(),
+        ctx.escrow.address.toLowerCase(),
       )
       const auction = await auctions.read.auctions([1n])
       assert.equal(auction[0].toLowerCase(), seller.account.address.toLowerCase())

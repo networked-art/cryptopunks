@@ -98,8 +98,8 @@ concept by mousedev.eth and kilo.
 
 - No lot creation fee.
 - No settlement fee. The seller receives the full hammer price.
-- Canonical CryptoPunks and unwrapped V1 CryptoPunks each get their own clone-based escrow.
-- Sellers deposit punks into their deterministic vault before creating a lot.
-- Settlement uses the same PunkBought round-trip as `NetworkedAuctions`; if delivery fails, settlement reverts and can be retried.
+- Each seller's punks live in their own clone-based `PunksVault` (one vault per seller, deterministic via the `PunksVaultFactory`, shared across the canonical and V1 markets).
+- Sellers deposit punks into their vault and approve `PunksAuction` as operator before creating a lot.
+- Settlement routes through a dedicated `PunksAuctionEscrow` so the canonical CryptoPunks market records the escrow as seller and the auction as buyer on `PunkBought`. Same round-trip as `NetworkedAuctions`; if delivery fails, settlement reverts and can be retried.
 - Native ETH offers follow MouseDev's max willingness-to-pay model with inclusion/exclusion Punk IDs and external trait filters.
 - Immediate offer acceptance requires the Punk to be listed to the auctions contract on the original CryptoPunks marketplace; offer-to-auction acceptance requires seller vault custody and opens a 24 hour auction.

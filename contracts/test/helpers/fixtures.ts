@@ -139,6 +139,8 @@ export async function deployAuctionStack() {
     punksData.address,
     vaultFactory.address,
   ])
+  const escrowAddress = (await auctions.read.ESCROW()) as `0x${string}`
+  const escrow = await viem.getContractAt('PunksAuctionEscrow', escrowAddress)
 
   return {
     connection,
@@ -147,6 +149,7 @@ export async function deployAuctionStack() {
     punksV1,
     punksData,
     auctions,
+    escrow,
     vaultFactory,
     deployer,
     seller,
