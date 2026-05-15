@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {ERC1271} from "solady/src/accounts/ERC1271.sol";
+import {Receiver} from "solady/src/accounts/Receiver.sol";
 
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
@@ -18,7 +17,7 @@ import "./interfaces/IStashFactory.sol";
 ///
 ///         The owner uses `execute` and `isValidSignature` for everything else.
 /// @author 1001
-contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, ERC1271 {
+contract PunkVault is IPunkVault, Receiver, ERC1271 {
     /// @inheritdoc IPunkVault
     address public immutable FACTORY;
 
@@ -49,13 +48,6 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, ERC1271 {
         FACTORY = factory_;
         _initialized = true;
     }
-
-    // ─────────────────────────── Receive ──────────────────────────────────
-
-    /// @notice Accept ETH from anywhere. Punks-market `withdraw()` requires
-    ///         it, and the vault is a smart account that may receive
-    ///         arbitrary inbound transfers.
-    receive() external payable {}
 
     // ───────────────────────── Operator role ──────────────────────────────
 
@@ -227,48 +219,6 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, ERC1271 {
             emit OperatorSet(op, true);
             unchecked { ++i; }
         }
-    }
-
-    // ──────────────── Token receiver hooks ────────────────────────────────
-
-    /// @notice Accepts any ERC721 transferred via `safeTransferFrom`. The
-    ///         vault is a smart account; receipts are not gated.
-    function onERC721Received(address, address, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
-        return IERC721Receiver.onERC721Received.selector;
-    }
-
-    /// @notice Accepts any ERC1155 transferred via `safeTransferFrom`.
-    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
-        return IERC1155Receiver.onERC1155Received.selector;
-    }
-
-    /// @notice Accepts any ERC1155 batch.
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        return IERC1155Receiver.onERC1155BatchReceived.selector;
-    }
-
-    // ──────────────── ERC-165 ─────────────────────────────────────────────
-
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IPunkVault).interfaceId
-            || interfaceId == type(IERC721Receiver).interfaceId
-            || interfaceId == type(IERC1155Receiver).interfaceId
-            || interfaceId == ERC1271.isValidSignature.selector
-            || interfaceId == 0x01ffc9a7; // ERC-165 itself
     }
 
     // ─────────────────────────── Internals ────────────────────────────────

@@ -9,7 +9,6 @@ import {
   keccak256,
   parseEther,
   toBytes,
-  toFunctionSelector,
   toPrefixedMessage,
   zeroAddress,
   zeroHash,
@@ -90,6 +89,44 @@ const vaultAbi = [
     ],
     stateMutability: 'view',
   },
+  {
+    type: 'function',
+    name: 'onERC721Received',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'from', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'onERC1155Received',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'from', type: 'address' },
+      { name: 'id', type: 'uint256' },
+      { name: 'value', type: 'uint256' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'onERC1155BatchReceived',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'from', type: 'address' },
+      { name: 'ids', type: 'uint256[]' },
+      { name: 'values', type: 'uint256[]' },
+      { name: 'data', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+    stateMutability: 'nonpayable',
+  },
 ] as const
 
 type Ctx = Awaited<ReturnType<typeof deployVaultFixture>>
@@ -97,37 +134,6 @@ type Ctx = Awaited<ReturnType<typeof deployVaultFixture>>
 function lc(value: string): string {
   return value.toLowerCase()
 }
-
-function ifaceId(signatures: readonly string[]): Hex {
-  let id = 0n
-  for (const sig of signatures) {
-    id ^= BigInt(toFunctionSelector(sig))
-  }
-  return `0x${id.toString(16).padStart(8, '0')}` as Hex
-}
-
-const punkVaultInterfaceId = ifaceId([
-  'owner()',
-  'FACTORY()',
-  'setOperator(address,bool)',
-  'isOperator(address)',
-  'transferPunk(address,uint256,address)',
-  'offerPunkForSale(address,uint256,uint256)',
-  'offerPunkForSaleToAddress(address,uint256,uint256,address)',
-  'punkNoLongerForSale(address,uint256)',
-  'acceptBidForPunk(address,uint256,uint256)',
-  'buyPunk(address,uint256,uint256)',
-  'enterBidForPunk(address,uint256,uint256)',
-  'withdrawBidForPunk(address,uint256)',
-  'STASH_FACTORY()',
-  'CRYPTOPUNKS()',
-  'stash(uint256)',
-  'withdrawFromMarket(address)',
-  'withdrawFromMarketTo(address,address)',
-  'execute(address,uint256,bytes)',
-  'executeBatch((address,uint256,bytes)[])',
-  'factoryInitialize(address,address[])',
-])
 
 async function deployVaultFixture() {
   const connection: any = await network.create()
@@ -729,45 +735,50 @@ describe('PunkVault', () => {
     })
   })
 
-  describe('receivers, ERC-165, and ERC-1271', () => {
-    it('returns receiver selectors and supported interfaces', async () => {
+  describe('receivers and ERC-1271', () => {
+    it('returns receiver selectors', async () => {
       const ctx = await deployVaultFixture()
+      const publicClient = await ctx.viem.getPublicClient()
       assert.equal(
-        await ctx.vault.read.onERC721Received([
-          ctx.owner.account.address,
-          ctx.owner.account.address,
-          1n,
-          '0x',
-        ]),
+        await publicClient.readContract({
+          address: ctx.vault.address,
+          abi: vaultAbi,
+          functionName: 'onERC721Received',
+          args: [ctx.owner.account.address, ctx.owner.account.address, 1n, '0x'],
+        }),
         '0x150b7a02',
       )
       assert.equal(
-        await ctx.vault.read.onERC1155Received([
-          ctx.owner.account.address,
-          ctx.owner.account.address,
-          1n,
-          1n,
-          '0x',
-        ]),
+        await publicClient.readContract({
+          address: ctx.vault.address,
+          abi: vaultAbi,
+          functionName: 'onERC1155Received',
+          args: [
+            ctx.owner.account.address,
+            ctx.owner.account.address,
+            1n,
+            1n,
+            '0x',
+          ],
+        }),
         '0xf23a6e61',
       )
       assert.equal(
-        await ctx.vault.read.onERC1155BatchReceived([
-          ctx.owner.account.address,
-          ctx.owner.account.address,
-          [1n],
-          [1n],
-          '0x',
-        ]),
+        await publicClient.readContract({
+          address: ctx.vault.address,
+          abi: vaultAbi,
+          functionName: 'onERC1155BatchReceived',
+          args: [
+            ctx.owner.account.address,
+            ctx.owner.account.address,
+            [1n],
+            [1n],
+            '0x',
+          ],
+        }),
         '0xbc197c81',
       )
 
-      assert.equal(await ctx.vault.read.supportsInterface([punkVaultInterfaceId]), true)
-      assert.equal(await ctx.vault.read.supportsInterface(['0x01ffc9a7']), true)
-      assert.equal(await ctx.vault.read.supportsInterface(['0x150b7a02']), true)
-      assert.equal(await ctx.vault.read.supportsInterface(['0x4e2312e0']), true)
-      assert.equal(await ctx.vault.read.supportsInterface(['0x1626ba7e']), true)
-      assert.equal(await ctx.vault.read.supportsInterface(['0xdeadbeef']), false)
     })
 
     it('advertises ERC-7739 and exposes the vault EIP-712 domain', async () => {
