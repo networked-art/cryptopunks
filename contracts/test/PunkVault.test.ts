@@ -4,20 +4,30 @@ import { network } from 'hardhat'
 import {
   encodeFunctionData,
   getAddress,
+  hashMessage,
+  hashTypedData,
   keccak256,
   parseEther,
   toBytes,
   toFunctionSelector,
+  toPrefixedMessage,
   zeroAddress,
+  zeroHash,
   type Address,
   type Hex,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { wrapTypedDataSignature } from 'viem/experimental/erc7739'
 
 const STASH_FACTORY = '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
 const CRYPTOPUNKS = '0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB' as const
 const ERC1271_MAGIC = '0x1626ba7e'
 const ERC1271_INVALID = '0xffffffff'
+const ERC7739_MAGIC = '0x77390001'
+const ERC7739_DETECTION_HASH =
+  '0x7739773977397739773977397739773977397739773977397739773977397739' as const
+const PUNK_VAULT_DOMAIN_NAME = '1001 PunkVault'
+const PUNK_VAULT_DOMAIN_VERSION = '1'
 
 const callTargetAbi = [
   {
@@ -64,6 +74,21 @@ const vaultAbi = [
     ],
     outputs: [{ type: 'bytes' }],
     stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'eip712Domain',
+    inputs: [],
+    outputs: [
+      { name: 'fields', type: 'bytes1' },
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' },
+      { name: 'extensions', type: 'uint256[]' },
+    ],
+    stateMutability: 'view',
   },
 ] as const
 
@@ -199,6 +224,14 @@ async function sendEth(ctx: Ctx, to: Address, value: bigint) {
   const publicClient = await ctx.viem.getPublicClient()
   const hash = await ctx.other.sendTransaction({ to, value })
   await publicClient.waitForTransactionReceipt({ hash })
+}
+
+async function assertInvalidOrReverts(check: Promise<unknown>) {
+  try {
+    assert.equal(await check, ERC1271_INVALID)
+  } catch (err) {
+    assert.match((err as Error).message, /invalid opcode|reverted/)
+  }
 }
 
 describe('PunkVault', () => {
@@ -737,13 +770,43 @@ describe('PunkVault', () => {
       assert.equal(await ctx.vault.read.supportsInterface(['0xdeadbeef']), false)
     })
 
-    it('validates EOA signatures for the initialized owner', async () => {
+    it('advertises ERC-7739 and exposes the vault EIP-712 domain', async () => {
+      const ctx = await deployVaultFixture()
+      const publicClient = await ctx.viem.getPublicClient()
+      const chainId = await publicClient.getChainId()
+
+      assert.equal(
+        await publicClient.readContract({
+          address: ctx.vault.address,
+          abi: vaultAbi,
+          functionName: 'isValidSignature',
+          args: [ERC7739_DETECTION_HASH, '0x'],
+        }),
+        ERC7739_MAGIC,
+      )
+
+      const [
+        fields,
+        name,
+        version,
+        domainChainId,
+        verifyingContract,
+        salt,
+        extensions,
+      ] = await ctx.vault.read.eip712Domain()
+      assert.equal(fields, '0x0f')
+      assert.equal(name, PUNK_VAULT_DOMAIN_NAME)
+      assert.equal(version, PUNK_VAULT_DOMAIN_VERSION)
+      assert.equal(domainChainId, BigInt(chainId))
+      assert.equal(lc(verifyingContract), lc(ctx.vault.address))
+      assert.equal(salt, zeroHash)
+      assert.deepEqual(extensions, [])
+    })
+
+    it('does not add a vault-specific raw EOA-signature fallback', async () => {
       const ctx = await deployVaultFixture()
       const signer = privateKeyToAccount(
         '0x59c6995e998f97a5a0044966f0945380531bc9e161a58aef6d2b73d3a5f1d5f5',
-      )
-      const wrongSigner = privateKeyToAccount(
-        '0x8b3a350cf5c34c9194ca3a545d74bdff0f93f4f7a3f85e3ea4a633f98a6d3dc1',
       )
       await ctx.vaultFactory.write.ensureVault([signer.address])
       const vaultAddress = (await ctx.vaultFactory.read.predictVault([
@@ -752,7 +815,45 @@ describe('PunkVault', () => {
       const publicClient = await ctx.viem.getPublicClient()
       const hash = keccak256(toBytes('punk vault eoa signature'))
       const signature = await signer.sign({ hash })
-      const wrongSignature = await wrongSigner.sign({ hash })
+
+      await assertInvalidOrReverts(
+        publicClient.readContract({
+          address: vaultAddress,
+          abi: vaultAbi,
+          functionName: 'isValidSignature',
+          args: [hash, signature],
+        }),
+      )
+    })
+
+    it('validates ERC-7739 personal-sign signatures for the initialized owner', async () => {
+      const ctx = await deployVaultFixture()
+      const signer = privateKeyToAccount(
+        '0x59c6995e998f97a5a0044966f0945380531bc9e161a58aef6d2b73d3a5f1d5f5',
+      )
+      await ctx.vaultFactory.write.ensureVault([signer.address])
+      const vaultAddress = (await ctx.vaultFactory.read.predictVault([
+        signer.address,
+      ])) as Address
+      const publicClient = await ctx.viem.getPublicClient()
+      const chainId = await publicClient.getChainId()
+      const message = 'punk vault erc7739 personal'
+      const hash = hashMessage(message)
+      const signature = await signer.signTypedData({
+        domain: {
+          name: PUNK_VAULT_DOMAIN_NAME,
+          version: PUNK_VAULT_DOMAIN_VERSION,
+          chainId,
+          verifyingContract: vaultAddress,
+        },
+        types: {
+          PersonalSign: [{ name: 'prefixed', type: 'bytes' }],
+        },
+        primaryType: 'PersonalSign',
+        message: {
+          prefixed: toPrefixedMessage(message),
+        },
+      })
 
       assert.equal(
         await publicClient.readContract({
@@ -763,14 +864,95 @@ describe('PunkVault', () => {
         }),
         ERC1271_MAGIC,
       )
+
+      const siblingFactory = await ctx.viem.deployContract('PunkVaultFactory')
+      await siblingFactory.write.ensureVault([signer.address])
+      const siblingVaultAddress = (await siblingFactory.read.predictVault([
+        signer.address,
+      ])) as Address
+      assert.notEqual(lc(siblingVaultAddress), lc(vaultAddress))
+      await assertInvalidOrReverts(
+        publicClient.readContract({
+          address: siblingVaultAddress,
+          abi: vaultAbi,
+          functionName: 'isValidSignature',
+          args: [hash, signature],
+        }),
+      )
+    })
+
+    it('validates ERC-7739 typed-data signatures for the initialized owner', async () => {
+      const ctx = await deployVaultFixture()
+      const signer = privateKeyToAccount(
+        '0x59c6995e998f97a5a0044966f0945380531bc9e161a58aef6d2b73d3a5f1d5f5',
+      )
+      await ctx.vaultFactory.write.ensureVault([signer.address])
+      const vaultAddress = (await ctx.vaultFactory.read.predictVault([
+        signer.address,
+      ])) as Address
+      const publicClient = await ctx.viem.getPublicClient()
+      const chainId = await publicClient.getChainId()
+      const domain = {
+        name: 'Punk App',
+        version: '1',
+        chainId,
+        verifyingContract: ctx.punks.address,
+      } as const
+      const types = {
+        PunkIntent: [
+          { name: 'buyer', type: 'address' },
+          { name: 'punkIndex', type: 'uint256' },
+        ],
+      } as const
+      const message = {
+        buyer: ctx.buyer.account.address,
+        punkIndex: 1001n,
+      } as const
+      const hash = hashTypedData({
+        domain,
+        types,
+        primaryType: 'PunkIntent',
+        message,
+      })
+      const signature = await signer.signTypedData({
+        domain,
+        types: {
+          ...types,
+          TypedDataSign: [
+            { name: 'contents', type: 'PunkIntent' },
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+            { name: 'salt', type: 'bytes32' },
+          ],
+        },
+        primaryType: 'TypedDataSign',
+        message: {
+          contents: message,
+          name: PUNK_VAULT_DOMAIN_NAME,
+          version: PUNK_VAULT_DOMAIN_VERSION,
+          chainId,
+          verifyingContract: vaultAddress,
+          salt: zeroHash,
+        },
+      })
+      const wrappedSignature = wrapTypedDataSignature({
+        domain,
+        types,
+        primaryType: 'PunkIntent',
+        message,
+        signature,
+      })
+
       assert.equal(
         await publicClient.readContract({
           address: vaultAddress,
           abi: vaultAbi,
           functionName: 'isValidSignature',
-          args: [hash, wrongSignature],
+          args: [hash, wrappedSignature],
         }),
-        ERC1271_INVALID,
+        ERC1271_MAGIC,
       )
     })
 
@@ -782,19 +964,26 @@ describe('PunkVault', () => {
         owner1271.address,
       ])) as Address
       const publicClient = await ctx.viem.getPublicClient()
-      const hash = keccak256(toBytes('punk vault contract signature'))
+      const message = 'punk vault contract signature'
+      const hash = hashMessage(message)
       const signature = '0x123456' as Hex
+      const nestedHash = hashTypedData({
+        domain: {
+          name: PUNK_VAULT_DOMAIN_NAME,
+          version: PUNK_VAULT_DOMAIN_VERSION,
+          chainId: await publicClient.getChainId(),
+          verifyingContract: vaultAddress,
+        },
+        types: {
+          PersonalSign: [{ name: 'prefixed', type: 'bytes' }],
+        },
+        primaryType: 'PersonalSign',
+        message: {
+          prefixed: toPrefixedMessage(message),
+        },
+      })
 
-      assert.equal(
-        await publicClient.readContract({
-          address: vaultAddress,
-          abi: vaultAbi,
-          functionName: 'isValidSignature',
-          args: [hash, signature],
-        }),
-        ERC1271_INVALID,
-      )
-      await owner1271.write.setValid([hash, signature, true])
+      await owner1271.write.setValid([nestedHash, signature, true])
       assert.equal(
         await publicClient.readContract({
           address: vaultAddress,

@@ -17,6 +17,7 @@
     "@openzeppelin/contracts": "^5.6.1",
     "@types/node": "^22.19.11",
     "hardhat": "^3.4.5",
+    "solady": "^0.1.26",
     "typescript": "~5.8.3",
     "viem": "^2.48.11"
   }

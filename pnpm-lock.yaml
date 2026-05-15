@@ -25,6 +25,9 @@ importers:
       hardhat:
         specifier: ^3.4.5
         version: 3.4.5
+      solady:
+        specifier: ^0.1.26
+        version: 0.1.26
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -1448,6 +1451,9 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+
+  solady@0.1.26:
+    resolution: {integrity: sha512-dhGr/ptJFdea/1KE6xgqgwEdbMhUiSfRc6A+jLeltPe16zyt9qtED3PElIBVRnzEmUO5aZTjKVAr6SlqXBBcIw==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -3091,6 +3097,8 @@ snapshots:
       '@types/hast': 3.0.4
 
   sisteransi@1.0.5: {}
+
+  solady@0.1.26: {}
 
   source-map-js@1.2.1: {}
 

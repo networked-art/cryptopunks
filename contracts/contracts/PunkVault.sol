@@ -3,8 +3,7 @@ pragma solidity 0.8.34;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {ERC1271} from "solady/src/accounts/ERC1271.sol";
 
 import "./interfaces/IPunkVault.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
@@ -19,7 +18,7 @@ import "./interfaces/IStashFactory.sol";
 ///
 ///         The owner uses `execute` and `isValidSignature` for everything else.
 /// @author 1001
-contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
+contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, ERC1271 {
     /// @inheritdoc IPunkVault
     address public immutable FACTORY;
 
@@ -262,38 +261,13 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
 
-    // ──────────────── ERC-1271 ────────────────────────────────────────────
-
-    /// @notice EIP-1271 signature check. The vault is a valid signer of any
-    ///         hash the owner has signed — directly via ECDSA if the owner
-    ///         is an EOA, or by forwarding to the owner's own 1271 surface
-    ///         if the owner is itself a contract account (Safe, 4337, 7702).
-    /// @dev    Lets the vault address participate as a first-class signer
-    ///         in Seaport / Permit2 / SIWE / Snapshot and any other protocol
-    ///         that consumes 1271, without exposing the owner EOA.
-    ///
-    ///         `hash` is forwarded unmodified: wrapping would break every
-    ///         off-the-shelf signing flow (Seaport, Permit2, …). Consumers
-    ///         that don't bind `verifyingContract` themselves may see
-    ///         signatures replay across sibling 1271 wallets backed by the
-    ///         same key — they must bind it to be safe.
-    function isValidSignature(bytes32 hash, bytes calldata signature)
-        external
-        view
-        returns (bytes4)
-    {
-        return SignatureChecker.isValidSignatureNowCalldata(owner, hash, signature)
-            ? IERC1271.isValidSignature.selector
-            : bytes4(0xffffffff);
-    }
-
     // ──────────────── ERC-165 ─────────────────────────────────────────────
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IPunkVault).interfaceId
             || interfaceId == type(IERC721Receiver).interfaceId
             || interfaceId == type(IERC1155Receiver).interfaceId
-            || interfaceId == type(IERC1271).interfaceId
+            || interfaceId == ERC1271.isValidSignature.selector
             || interfaceId == 0x01ffc9a7; // ERC-165 itself
     }
 
@@ -304,5 +278,19 @@ contract PunkVault is IPunkVault, IERC721Receiver, IERC1155Receiver, IERC1271 {
     ///      surface and the ETH-spending surface.
     function _isOwnerOrOperator(address caller) private view returns (bool) {
         return caller == owner || _operatorApproved[caller];
+    }
+
+    function _domainNameAndVersion()
+        internal
+        pure
+        override
+        returns (string memory name, string memory version)
+    {
+        name = "1001 PunkVault";
+        version = "1";
+    }
+
+    function _erc1271Signer() internal view override returns (address) {
+        return owner;
     }
 }
