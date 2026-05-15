@@ -56,6 +56,7 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
     function setOperator(address operator, bool approved) external {
         if (msg.sender != owner) revert NotOwner();
         if (operator == address(0)) revert ZeroAddress();
+        if (_operatorApproved[operator] == approved) return;
         _operatorApproved[operator] = approved;
         emit OperatorSet(operator, approved);
     }
@@ -232,8 +233,10 @@ contract PunkVault is IPunkVault, Receiver, ERC1271 {
         for (uint256 i; i < len;) {
             address op = operators[i];
             if (op == address(0)) revert ZeroAddress();
-            _operatorApproved[op] = true;
-            emit OperatorSet(op, true);
+            if (!_operatorApproved[op]) {
+                _operatorApproved[op] = true;
+                emit OperatorSet(op, true);
+            }
             unchecked { ++i; }
         }
     }
