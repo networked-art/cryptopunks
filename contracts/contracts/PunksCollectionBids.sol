@@ -58,7 +58,6 @@ contract PunksCollectionBids is PushPullEscrow {
     );
     event BidCancelled(uint256 indexed bidId);
     event BidAdjusted(uint256 indexed bidId, uint96 newBidWei);
-    event BidSettlementAdjusted(uint256 indexed bidId, uint96 newSettlementWei);
     event BidAccepted(
         uint256 indexed bidId,
         uint256 indexed punkId,
@@ -175,34 +174,6 @@ contract PunksCollectionBids is PushPullEscrow {
         if (!increase) _pushOrCredit(msg.sender, weiToAdjust);
 
         emit BidAdjusted(bidId, newBidWei);
-    }
-
-    /// @notice Adjusts the settlement reward of your active bid.
-    /// @dev `increase=true` requires `msg.value == weiToAdjust`. `increase=false`
-    ///      must be a zero-value call and refunds `weiToAdjust` to the caller.
-    ///      The settlement reward may decrease all the way to zero.
-    function adjustBidSettlementPrice(uint256 bidId, uint96 weiToAdjust, bool increase)
-        external
-        payable
-        nonReentrant
-    {
-        if (weiToAdjust == 0) revert InvalidAmount();
-        Bid storage bid = _bidForBidder(bidId);
-
-        uint96 newSettlementWei;
-        if (increase) {
-            if (msg.value != weiToAdjust) revert IncorrectPayment();
-            newSettlementWei = bid.settlementWei + weiToAdjust;
-        } else {
-            if (msg.value != 0) revert IncorrectPayment();
-            if (weiToAdjust > bid.settlementWei) revert AdjustmentTooLarge();
-            newSettlementWei = bid.settlementWei - weiToAdjust;
-        }
-
-        bid.settlementWei = newSettlementWei;
-        if (!increase) _pushOrCredit(msg.sender, weiToAdjust);
-
-        emit BidSettlementAdjusted(bidId, newSettlementWei);
     }
 
     /// @notice Accepts a bid for a canonical marketplace-listed Punk using a pinned listing price.
