@@ -1,4 +1,6 @@
 {
   "PunksData#PunksData": "0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C",
-  "PunksRenderer#PunksRenderer": "0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741"
+  "PunksRenderer#PunksRenderer": "0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741",
+  "PunksVaultFactory#PunksVaultFactory": "0xf3381B259B2FE142c0A87bffF463695d935D6F66",
+  "PunksVaultFactory#PunksVault": "0x5d646850ad7E7bDa91d83A182529e050785CfDC3"
 }
