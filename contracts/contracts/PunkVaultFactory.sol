@@ -66,9 +66,9 @@ contract PunkVaultFactory is IPunkVaultFactory {
         return (vault, true);
     }
 
-    /// @dev Salts the clone with `keccak256(user, block.chainid)` so each
-    ///      deployment yields its own vault address for a given user.
-    function _salt(address user) private view returns (bytes32) {
-        return keccak256(abi.encode(user, block.chainid));
+    /// @dev Salts the clone with the user address so vault addresses are
+    ///      predictable offchain for counterfactual deposits.
+    function _salt(address user) private pure returns (bytes32) {
+        return keccak256(abi.encode(user));
     }
 }
