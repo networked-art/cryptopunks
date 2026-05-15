@@ -8,7 +8,7 @@ import "./interfaces/IPunkVaultFactory.sol";
 import "./auction/PunkLots.sol";
 import "./auction/PunkPurchaseOffers.sol";
 
-/// @title PunksAuction
+/// @title  PunksAuction
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
 /// @dev    Sellers custody Punks in their own `PunkVault` (deployed via the
 ///         `PunkVaultFactory`) and approve this contract as operator. The
