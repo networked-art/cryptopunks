@@ -72,6 +72,26 @@ contract RejectEther {
     }
 }
 
+/// @notice Market whose `withdraw()` sends the caller this contract's entire
+///         balance, ignoring the value reported by `pendingWithdrawals`. Used
+///         to exercise the `withdrawFromMarketTo` cap that prevents forwarding
+///         ETH the market didn't actually owe.
+contract MockOverpayingMarket {
+    mapping(address => uint256) public pendingWithdrawals;
+
+    function setPending(address claimant, uint256 amount) external {
+        pendingWithdrawals[claimant] = amount;
+    }
+
+    function withdraw() external {
+        pendingWithdrawals[msg.sender] = 0;
+        (bool ok,) = payable(msg.sender).call{value: address(this).balance}("");
+        require(ok, "withdraw failed");
+    }
+
+    receive() external payable {}
+}
+
 contract MockStash {
     address public immutable owner;
 

@@ -58,4 +58,7 @@ interface ICryptoPunksMarket {
 
     /// @notice Withdraws pending ETH from the Punk market.
     function withdraw() external;
+
+    /// @notice ETH owed to `claimant` and awaiting withdrawal.
+    function pendingWithdrawals(address claimant) external view returns (uint256);
 }

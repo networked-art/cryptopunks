@@ -144,9 +144,12 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
     function withdrawFromMarketTo(address market, address recipient) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
         if (recipient == address(0)) revert ZeroAddress();
+        uint256 pending = ICryptoPunksMarket(market).pendingWithdrawals(address(this));
         uint256 balanceBefore = address(this).balance;
         ICryptoPunksMarket(market).withdraw();
         uint256 withdrawn = address(this).balance - balanceBefore;
+        // Cap at pre-call pending so any other ETH that lands here mid-call isn't forwarded.
+        if (withdrawn > pending) withdrawn = pending;
         if (withdrawn != 0) {
             (bool ok, bytes memory ret) = recipient.call{value: withdrawn}("");
             if (!ok) revert ExecutionFailed(ret);

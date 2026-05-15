@@ -673,6 +673,36 @@ describe('PunksVault', () => {
       )
     })
 
+    it('caps forwarded ETH at pre-call pendingWithdrawals when the market over-pays', async () => {
+      const ctx = await deployVaultFixture()
+      const market = await ctx.viem.deployContract('MockOverpayingMarket')
+
+      const pending = parseEther('1')
+      const surplus = parseEther('0.5')
+      await sendEth(ctx, market.address, pending + surplus)
+      await market.write.setPending([ctx.vaultAddress, pending])
+
+      const publicClient = await ctx.viem.getPublicClient()
+      const recipientBefore = await publicClient.getBalance({
+        address: ctx.other.account.address,
+      })
+
+      await ctx.vaultAsOwner.write.withdrawFromMarketTo([
+        market.address,
+        ctx.other.account.address,
+      ])
+
+      assert.equal(
+        await publicClient.getBalance({ address: ctx.other.account.address })
+          - recipientBefore,
+        pending,
+      )
+      assert.equal(
+        await publicClient.getBalance({ address: ctx.vaultAddress }),
+        surplus,
+      )
+    })
+
     it('reverts withdrawFromMarketTo when the recipient rejects ETH', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 111n)
