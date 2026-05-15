@@ -21,10 +21,14 @@ import "./lib/PushPullEscrow.sol";
 contract PunksCollectionBids is PushPullEscrow {
     using Punks for Punks.Filter;
 
+    // ──────────────────────────────── Constants ────────────────────────────────
+
     /// @notice Maximum entries in `Bid.includeIds`.
     uint8 internal constant MAX_INCLUDE_IDS = 64;
     /// @notice Maximum entries in `Bid.excludeIds`.
     uint8 internal constant MAX_EXCLUDE_IDS = 64;
+
+    // ────────────────────────────────── Types ──────────────────────────────────
 
     struct Bid {
         uint96 bidWei;
@@ -34,6 +38,8 @@ contract PunksCollectionBids is PushPullEscrow {
         uint16[] includeIds;
         uint16[] excludeIds;
     }
+
+    // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice Returns the canonical CryptoPunks market.
     ICryptoPunksMarket public immutable PUNKS;
@@ -46,6 +52,8 @@ contract PunksCollectionBids is PushPullEscrow {
     uint256 public lastBidId;
 
     mapping(uint256 => Bid) internal _bids;
+
+    // ────────────────────────────────── Events ─────────────────────────────────
 
     event BidPlaced(
         uint256 indexed bidId,
@@ -69,19 +77,27 @@ contract PunksCollectionBids is PushPullEscrow {
         uint96 settlementWei
     );
 
+    // ────────────────────────────────── Errors ─────────────────────────────────
+
     error ZeroAddress();
+
     error InvalidAmount();
     error IncorrectPayment();
-    error NotBidder();
-    error BidNotActive();
     error TooManyIds();
     error AdjustmentTooLarge();
+
+    error NotBidder();
+    error BidNotActive();
+
     error ListingNotValid();
     error ListingPriceMismatch(uint96 expectedListingWei, uint256 actualListingWei);
     error ListingPriceTooHigh();
+
     error PunkNotIncluded();
     error PunkExcluded();
     error PunkCriteriaMismatch();
+
+    // ─────────────────────────────── Construction ──────────────────────────────
 
     /// @notice Creates the bid book bound to a Punks market and `PunksData` deployment.
     constructor(address punks, address punksData) {
@@ -90,6 +106,8 @@ contract PunksCollectionBids is PushPullEscrow {
         PUNKS_CRITERIA = IPunksDataCriteria(punksData);
         PUNKS_VISUAL = IPunksDataVisual(punksData);
     }
+
+    // ────────────────────────────── Bid lifecycle ──────────────────────────────
 
     /// @notice Places an ETH bid for any canonical Punk that satisfies the criteria.
     /// @dev `msg.value` must equal `bidWei + settlementWei`. The criteria is
@@ -114,23 +132,17 @@ contract PunksCollectionBids is PushPullEscrow {
         }
         Punks.validate(criteria);
 
-        unchecked { bidId = ++lastBidId; }
+        unchecked {
+            bidId = ++lastBidId;
+        }
 
         Bid storage stored = _bids[bidId];
         stored.bidWei = bidWei;
         stored.settlementWei = settlementWei;
         stored.bidder = msg.sender;
         stored.criteria = criteria;
-        uint256 incLen = includeIds.length;
-        for (uint256 i; i < incLen;) {
-            stored.includeIds.push(includeIds[i]);
-            unchecked { ++i; }
-        }
-        uint256 excLen = excludeIds.length;
-        for (uint256 i; i < excLen;) {
-            stored.excludeIds.push(excludeIds[i]);
-            unchecked { ++i; }
-        }
+        _copyIds(includeIds, stored.includeIds);
+        _copyIds(excludeIds, stored.excludeIds);
 
         emit BidPlaced(
             bidId,
@@ -186,6 +198,8 @@ contract PunksCollectionBids is PushPullEscrow {
         emit BidAdjusted(bidId, newBidWei);
     }
 
+    // ──────────────────────────────── Settlement ───────────────────────────────
+
     /// @notice Accepts a bid for a canonical marketplace-listed Punk using a pinned listing price.
     /// @dev Buys the Punk at the current listing price, transfers it to the
     ///      bidder, refunds the bidder for any excess, and pays the
@@ -224,6 +238,8 @@ contract PunksCollectionBids is PushPullEscrow {
         );
     }
 
+    // ────────────────────────────────── Views ──────────────────────────────────
+
     /// @notice Returns the scalar fields of a bid.
     function bids(uint256 bidId)
         external
@@ -249,6 +265,19 @@ contract PunksCollectionBids is PushPullEscrow {
         return _bids[bidId].excludeIds;
     }
 
+    // ──────────────────────────────── Internals ────────────────────────────────
+
+    /// @dev Copies calldata ids into storage.
+    function _copyIds(uint16[] calldata sourceIds, uint16[] storage targetIds) private {
+        uint256 sourceLen = sourceIds.length;
+        for (uint256 i; i < sourceLen;) {
+            targetIds.push(sourceIds[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @dev Loads bid storage and ensures the caller is the bidder.
     function _bidForBidder(uint256 bidId) private view returns (Bid storage bid) {
         bid = _bids[bidId];
@@ -266,7 +295,9 @@ contract PunksCollectionBids is PushPullEscrow {
                     included = true;
                     break;
                 }
-                unchecked { ++i; }
+                unchecked {
+                    ++i;
+                }
             }
             if (!included) revert PunkNotIncluded();
         }
@@ -274,7 +305,9 @@ contract PunksCollectionBids is PushPullEscrow {
         uint256 excludeLen = bid.excludeIds.length;
         for (uint256 i; i < excludeLen;) {
             if (bid.excludeIds[i] == punkId) revert PunkExcluded();
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         if (!bid.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
