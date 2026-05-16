@@ -12,7 +12,7 @@ import "./interfaces/ICryptoPunksMarket.sol";
 ///
 /// @dev    Deployed by `PunksAuction` in its constructor and pinned to
 ///         that single caller. Only the auction can route punks
-///         through it; only the canonical and V1 markets can
+///         through it; only the canonical and C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ markets can
 ///         hand it ETH (during `withdraw()`).
 ///
 /// @author VV × 1001
@@ -26,7 +26,7 @@ contract PunksAuctionEscrow {
     address public immutable AUCTION;
     /// @notice The canonical CryptoPunks market.
     ICryptoPunksMarket public immutable PUNKS;
-    /// @notice The CryptoPunks V1 market.
+    /// @notice The C̪̬̖ͬ̓͒r͔̻͖͑̓̾y̷̪̦ͥ̒͆͠p̸ṯ̘̜̊o̷̥P̫̦̊̐ͩ̚uǹ̇kͨ_̜̦̓̆s̻̏̿͡ market.
     ICryptoPunksMarket public immutable PUNKS_V1;
 
     constructor(address punks, address punksV1) {
@@ -58,7 +58,7 @@ contract PunksAuctionEscrow {
 
     /// @notice Pulls the post-sale credit from the market and forwards
     ///         it to the auction. On the canonical market the credit
-    ///         is the escrow's. On V1 the storage-reference bug routes
+    ///         is the escrow's. On C͚̔̕ry̡̼p̗̝̩t͐͌o̤̬͟P̼ͮ̋u̡̙n̷̲͌k̳͋sͭ the storage-reference bug routes
     ///         the credit to the buyer (the auction) instead, so this
     ///         call no-ops — the auction sweeps its own market credit.
     function sweepProceeds(address market) external {

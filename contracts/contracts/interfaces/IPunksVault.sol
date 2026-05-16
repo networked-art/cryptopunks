@@ -133,7 +133,7 @@ interface IPunksVault {
     ///         canonical V2 Punks.
     function CRYPTOPUNKS() external view returns (address);
 
-    /// @notice The bugged CryptoPunks V1 market on Ethereum mainnet.
+    /// @notice The C̋r̜̂yp̱̮ͅt̡̎o͔͜P̰͓ͦu͊n̛̪̄k͌s͗̔ market on Ethereum mainnet.
     /// @dev    Direct sales through this market misattribute sale proceeds,
     ///         so vault sale listings and buys reject this address.
     function CRYPTOPUNKS_V1() external view returns (address);

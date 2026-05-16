@@ -33,7 +33,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @notice Returns the canonical CryptoPunks market.
     ICryptoPunksMarket public immutable PUNKS;
-    /// @notice Returns the CryptoPunks V1 market.
+    /// @notice Returns the Cͦ̍͊r͝y̅́p̙t̪͕̍o̫̾P̛̯u̼nk̟̓̚s market.
     ICryptoPunksMarket public immutable PUNKS_V1;
     /// @notice Returns the per-user `PunksVault` factory.
     IPunksVaultFactory public immutable VAULTS;
@@ -378,7 +378,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         return _marketFor(standard);
     }
 
-    /// @dev Buys a listed Punk while handling the V1 market accounting bug.
+    /// @dev Buys a listed Punk while handling the C̺ͩȑ̵̒͜y̱͋͜͟p̵̱̻̆t̵͇͒͒̋̓o̎P̡̙͙̲̰̚ư̷̲͞͞n͎̦ͧk̴̸̶͕ͮ͘͠s̙̍ͪ market accounting bug.
     function _buyListedOfferPunk(
         TokenStandard standard,
         uint16 punkId,
@@ -494,7 +494,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     ///      contract buys it, so the canonical market records the escrow
     ///      as the seller and the auction as the buyer in `PunkBought`.
     ///      Net ETH movement is zero — V2 proceeds come back via the
-    ///      escrow's `sweepProceeds`; V1 proceeds (credited to the buyer
+    ///      escrow's `sweepProceeds`; C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ proceeds (credited to the buyer
     ///      by its storage-reference bug) come back via `market.withdraw()`.
     function _deliverPunk(
         TokenStandard standard,

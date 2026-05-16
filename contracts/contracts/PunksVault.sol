@@ -94,7 +94,7 @@ contract PunksVault is IPunksVault, Receiver, ERC1271 {
         address toAddress
     ) external {
         if (!_isOwnerOrOperator(msg.sender)) revert NotAuthorized();
-        // Note we allow V1 listings here specifically. Only list to
+        // Note we allow C͚̦̆ͨ̂͑̚ř͉͔̒͂̀͠y̕p̵̩͒͊t̴̢̨̯̦̄̒͒ͣ̏͡o̟̓͗͋͘͡P̷̖͉͔̬̃̃͡ṵ̡͈̺͍̙̻̘̄n̶̦̭̞k̵̯̲̂s̙̪̼͉̈́ͦ listings here specifically. Only list to
         // trusted protocols that ensure return of sale proceeds.
         ICryptoPunksMarket(market)
             .offerPunkForSaleToAddress(punkIndex, minSalePriceWei, toAddress);
