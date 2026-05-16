@@ -122,6 +122,35 @@ export async function deployCollectionBidsStack() {
   }
 }
 
+export async function deployPunksMarketStack() {
+  const connection: any = await network.create()
+  const { viem } = connection
+  const [deployer, seller, bidder, buyer, settler, other, attacker] =
+    await viem.getWalletClients()
+
+  const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
+  const punksData = await viem.deployContract('MockPunksData')
+  const market = await viem.deployContract('PunksMarket', [
+    punksV1.address,
+    punksData.address,
+  ])
+
+  return {
+    connection,
+    viem,
+    punksV1,
+    punksData,
+    market,
+    deployer,
+    seller,
+    bidder,
+    buyer,
+    settler,
+    other,
+    attacker,
+  }
+}
+
 export async function deployAuctionStack() {
   const connection: any = await network.create()
   const { viem } = connection
