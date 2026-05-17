@@ -43,6 +43,14 @@ contract PunksMarket is PushPullEscrow {
         uint16[] excludeIds;
     }
 
+    enum BidMatchResult {
+        Match,
+        Inactive,
+        NotIncluded,
+        Excluded,
+        CriteriaMismatch
+    }
+
     // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice The bugged C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ market.
@@ -235,10 +243,9 @@ contract PunksMarket is PushPullEscrow {
         external
         nonReentrant
     {
-        Bid memory bid = _bids[bidId];
-        if (bid.bidder == address(0)) revert BidNotActive();
-
-        _requireBidMatchesPunk(bid, punkId);
+        Bid storage stored = _bids[bidId];
+        _revertIfBidDoesNotMatch(_bidMatchResult(stored, punkId));
+        Bid memory bid = stored;
 
         delete _bids[bidId];
 
@@ -303,7 +310,7 @@ contract PunksMarket is PushPullEscrow {
     ///         accepted, or never-created bids return `false`; an invalid
     ///         `punkId` reverts.
     function matchesPunk(uint256 bidId, uint16 punkId) external view returns (bool) {
-        return _isBidMatchingPunk(bidId, punkId);
+        return _bidMatchResult(_bids[bidId], punkId) == BidMatchResult.Match;
     }
 
     /// @notice Returns the active bid ids matching `punkId` over a descending
@@ -334,7 +341,7 @@ contract PunksMarket is PushPullEscrow {
         uint256 found;
         for (uint256 i; i < scanCount;) {
             uint256 id = fromId - i;
-            if (_isBidMatchingPunkUnchecked(id, punkId)) {
+            if (_bidMatchResultUnchecked(_bids[id], punkId) == BidMatchResult.Match) {
                 bidIds[found] = id;
                 unchecked {
                     ++found;
@@ -376,22 +383,23 @@ contract PunksMarket is PushPullEscrow {
         if (punkId >= PUNK_COUNT) revert InvalidPunkId();
     }
 
-    /// @dev Returns true if `bidId` is active and its filter and id lists allow `punkId`.
-    ///      The non-reverting twin of `_requireBidMatchesPunk` used by the public
-    ///      view surface; mirrors its logic exactly so the two cannot drift.
-    function _isBidMatchingPunk(uint256 bidId, uint16 punkId) internal view returns (bool) {
+    /// @dev Returns why `bid` does or does not match `punkId`.
+    function _bidMatchResult(Bid storage bid, uint16 punkId)
+        private
+        view
+        returns (BidMatchResult)
+    {
         _requirePunkId(punkId);
-        return _isBidMatchingPunkUnchecked(bidId, punkId);
+        return _bidMatchResultUnchecked(bid, punkId);
     }
 
     /// @dev `punkId` must already have been validated.
-    function _isBidMatchingPunkUnchecked(uint256 bidId, uint16 punkId)
+    function _bidMatchResultUnchecked(Bid storage bid, uint16 punkId)
         private
         view
-        returns (bool)
+        returns (BidMatchResult)
     {
-        Bid storage bid = _bids[bidId];
-        if (bid.bidder == address(0)) return false;
+        if (bid.bidder == address(0)) return BidMatchResult.Inactive;
 
         uint256 includeLen = bid.includeIds.length;
         if (includeLen > 0) {
@@ -405,50 +413,30 @@ contract PunksMarket is PushPullEscrow {
                     ++i;
                 }
             }
-            if (!included) return false;
+            if (!included) return BidMatchResult.NotIncluded;
         }
 
         uint256 excludeLen = bid.excludeIds.length;
         for (uint256 i; i < excludeLen;) {
-            if (bid.excludeIds[i] == punkId) return false;
-            unchecked {
-                ++i;
-            }
-        }
-
-        return bid.criteria.matches(PUNKS_DATA, punkId);
-    }
-
-    /// @dev Reverts unless the bid's filter and id lists allow `punkId`.
-    function _requireBidMatchesPunk(Bid memory bid, uint16 punkId) internal view {
-        _requirePunkId(punkId);
-
-        uint256 includeLen = bid.includeIds.length;
-        if (includeLen > 0) {
-            bool included;
-            for (uint256 i; i < includeLen;) {
-                if (bid.includeIds[i] == punkId) {
-                    included = true;
-                    break;
-                }
-                unchecked {
-                    ++i;
-                }
-            }
-            if (!included) revert PunkNotIncluded();
-        }
-
-        uint256 excludeLen = bid.excludeIds.length;
-        for (uint256 i; i < excludeLen;) {
-            if (bid.excludeIds[i] == punkId) revert PunkExcluded();
+            if (bid.excludeIds[i] == punkId) return BidMatchResult.Excluded;
             unchecked {
                 ++i;
             }
         }
 
         if (!bid.criteria.matches(PUNKS_DATA, punkId)) {
-            revert PunkCriteriaMismatch();
+            return BidMatchResult.CriteriaMismatch;
         }
+        return BidMatchResult.Match;
+    }
+
+    /// @dev Preserves the existing settlement errors while sharing matcher logic.
+    function _revertIfBidDoesNotMatch(BidMatchResult result) private pure {
+        if (result == BidMatchResult.Match) return;
+        if (result == BidMatchResult.Inactive) revert BidNotActive();
+        if (result == BidMatchResult.NotIncluded) revert PunkNotIncluded();
+        if (result == BidMatchResult.Excluded) revert PunkExcluded();
+        revert PunkCriteriaMismatch();
     }
 
     /// @dev Executes a bug-aware Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ purchase for a listing directed to this market.
