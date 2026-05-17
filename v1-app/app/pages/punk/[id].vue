@@ -11,7 +11,7 @@
         <PunkImage
           :punk-id="id"
           :size="320"
-          :background="background"
+          background="transparent"
           glitch="always"
           :speed="0.1"
         />
@@ -112,8 +112,6 @@ useHead(() => ({ title: `Punk #${id.value} · punksmarket.xyz` }))
 const offline = usePunksOffline()
 const summary = computed(() => offline.get(id.value, { includeTraits: true }))
 const traits = computed(() => summary.value.traits ?? [])
-
-const background = computed(() => 'classic' as const)
 
 const { events: history, refresh: refreshHistory } = useActivityFeed({
   punkId: () => id.value,
