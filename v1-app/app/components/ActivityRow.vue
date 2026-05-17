@@ -25,13 +25,7 @@
           v-if="punkId !== undefined"
           :to="`/punk/${punkId}`"
           class="punk-id"
-          >Punk #{{ punkId }}</NuxtLink
-        >
-        <span
-          v-if="event.wrapped"
-          class="wrap-tag"
-          title="Wrapped as ERC-721"
-          >wrapped</span
+          >{{ event.wrapped ? 'Wrapped Punk' : 'Punk' }} #{{ punkId }}</NuxtLink
         >
       </div>
       <div class="row-line muted">
@@ -58,19 +52,20 @@
         v-if="event.amountWei !== undefined"
         :wei="event.amountWei"
       />
-      <span
-        v-if="timeAgo"
-        class="time-ago muted"
-        :title="absoluteTime"
-        >{{ timeAgo }}</span
-      >
       <a
         class="tx"
         :href="txUrl(event.txHash)"
         target="_blank"
         rel="noopener"
-        >↗</a
+        :title="absoluteTime"
       >
+        <span
+          v-if="timeAgo"
+          class="time-ago"
+          >{{ timeAgo }}</span
+        >
+        ↗
+      </a>
     </div>
   </li>
 </template>
@@ -226,6 +221,9 @@ const PM_SUFFIX = new Set([
 .tx {
   border: 0;
   color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .tx:hover {
@@ -235,17 +233,5 @@ const PM_SUFFIX = new Set([
 .time-ago {
   font-size: 11px;
   white-space: nowrap;
-  cursor: default;
-}
-
-.wrap-tag {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 1px 5px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  background: var(--bg-elevated);
 }
 </style>
