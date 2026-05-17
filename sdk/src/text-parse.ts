@@ -80,7 +80,11 @@ export function parseSearchText(input: string): ParsedSearchText {
 }
 
 /// Tokenizes a search text string the same way as the offline text-search
-/// path: double quotes mark exact terms; everything else splits on whitespace.
+/// path: closed double quotes mark exact terms; everything else splits on
+/// whitespace. An unclosed opening quote (the user is mid-typing `"cap forw`)
+/// produces a fuzzy token over the verbatim slice so incremental input still
+/// matches as a substring; the term only flips to `exact` once the closing
+/// quote is added.
 export function tokenizeSearchText(input: string): SearchTextTerm[] {
   const tokens: SearchTextTerm[] = []
   let cursor = 0
@@ -93,9 +97,10 @@ export function tokenizeSearchText(input: string): SearchTextTerm[] {
       cursor++
       const start = cursor
       while (cursor < input.length && input[cursor] !== '"') cursor++
+      const closed = cursor < input.length && input[cursor] === '"'
       const text = input.slice(start, cursor).trim()
-      if (cursor < input.length && input[cursor] === '"') cursor++
-      if (text) tokens.push({ text, exact: true })
+      if (closed) cursor++
+      if (text) tokens.push({ text, exact: closed })
       continue
     }
 

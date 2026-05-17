@@ -2237,9 +2237,13 @@ function readTextSearchTokens(input: string): OfflinePunksTextSearchTerm[] {
       cursor++
       const start = cursor
       while (cursor < input.length && input[cursor] !== '"') cursor++
+      // Only the closing quote flips the term to exact — an unclosed
+      // opening quote (mid-typing `"cap forw`) stays fuzzy so it can still
+      // match `cap forward` via substring lookup.
+      const closed = cursor < input.length && input[cursor] === '"'
       const text = input.slice(start, cursor).trim()
-      if (cursor < input.length && input[cursor] === '"') cursor++
-      if (text) tokens.push({ text, exact: true })
+      if (closed) cursor++
+      if (text) tokens.push({ text, exact: closed })
       continue
     }
 
