@@ -55,7 +55,25 @@
 
         <ul class="trait-list">
           <li
-            v-for="t in traits"
+            v-for="t in traitsBeforeColors"
+            :key="t.id"
+          >
+            <span class="trait-kind">{{ t.kind }}</span>
+            <NuxtLink
+              class="trait-name"
+              :to="searchHref(t.query)"
+              >{{ t.name }}</NuxtLink
+            >
+            <span class="muted trait-supply">{{ t.supply }}</span>
+          </li>
+
+          <li class="colors-row">
+            <span class="trait-kind">Colors</span>
+            <PunkColors :punk-id="id" />
+          </li>
+
+          <li
+            v-for="t in traitsAfterColors"
             :key="t.id"
           >
             <span class="trait-kind">{{ t.kind }}</span>
@@ -155,10 +173,10 @@ type DisplayTrait = {
   query: string
 }
 
-/// HeadVariant trait rows are reframed as "Skin Tone" using our Dark →
-/// Brown → Fair → Albino vocabulary. Alien / Ape / Zombie punks have no
-/// skin tone — the NormalizedType row already shows the type, so we drop
-/// the head-variant row entirely for them rather than showing nothing.
+/// HeadVariant trait rows are reframed as "Skin" using our Dark → Brown →
+/// Fair → Albino vocabulary. Alien / Ape / Zombie punks have no skin tone
+/// — the NormalizedType row already shows the type, so we drop the
+/// head-variant row entirely for them rather than showing nothing.
 const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
   (() => {
     const map: Partial<Record<HeadVariantName, SkinToneName>> = {}
@@ -170,22 +188,49 @@ const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
     return map
   })()
 
-const traits = computed<DisplayTrait[]>(() =>
+const displayTraits = computed<DisplayTrait[]>(() =>
   (summary.value.traits ?? []).flatMap((t): DisplayTrait[] => {
-    if (t.kind !== 'HeadVariant') {
-      return [{ ...t, query: quoteIfMultiword(t.name) }]
+    if (t.kind === 'HeadVariant') {
+      const tone = skinToneByHeadVariant[t.name as HeadVariantName]
+      if (!tone) return []
+      return [
+        {
+          ...t,
+          kind: 'Skin',
+          name: tone,
+          query: `${tone.toLowerCase()} skin`,
+        },
+      ]
     }
-    const tone = skinToneByHeadVariant[t.name as HeadVariantName]
-    if (!tone) return []
-    return [
-      {
-        ...t,
-        kind: 'Skin Tone',
-        name: tone,
-        query: `${tone.toLowerCase()} skin`,
-      },
-    ]
+    if (t.kind === 'NormalizedType') {
+      return [{ ...t, kind: 'Type', query: quoteIfMultiword(t.name) }]
+    }
+    if (t.kind === 'AttributeCount') {
+      return [{ ...t, kind: 'Attributes', query: quoteIfMultiword(t.name) }]
+    }
+    return [{ ...t, query: quoteIfMultiword(t.name) }]
   }),
+)
+
+/// Stable ordering: Skin → Type → Accessories → … → Attributes last. The
+/// Colors row is rendered between the last non-Attributes entry and the
+/// Attributes row, so split the list at that boundary.
+const KIND_ORDER: Record<string, number> = {
+  Skin: 0,
+  Type: 1,
+  Accessory: 2,
+  Attributes: 99,
+}
+const orderedTraits = computed(() =>
+  [...displayTraits.value].sort(
+    (a, b) => (KIND_ORDER[a.kind] ?? 50) - (KIND_ORDER[b.kind] ?? 50),
+  ),
+)
+const traitsBeforeColors = computed(() =>
+  orderedTraits.value.filter((t) => t.kind !== 'Attributes'),
+)
+const traitsAfterColors = computed(() =>
+  orderedTraits.value.filter((t) => t.kind === 'Attributes'),
 )
 
 function quoteIfMultiword(text: string) {
@@ -286,7 +331,7 @@ function searchHref(text: string) {
   color: var(--text-dim);
   font-size: 10px;
   letter-spacing: 0.06em;
-  width: 60px;
+  width: 76px;
   flex-shrink: 0;
 }
 
@@ -298,6 +343,12 @@ function searchHref(text: string) {
 
 .trait-name:hover {
   border-bottom-color: currentColor;
+}
+
+/* Swatches don't have a text baseline, so center them against the
+   label and supply column of a normal trait row. */
+.colors-row {
+  align-items: center;
 }
 
 .trait-supply {

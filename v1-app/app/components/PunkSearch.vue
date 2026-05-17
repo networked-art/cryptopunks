@@ -42,24 +42,34 @@ const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 /// search + grid re-render only run after the user pauses typing.
 const debouncedText = useDebounced(text, 80)
 
+/// The input is the single source of truth — URL is a derived persistence
+/// layer. We remember the last value we wrote to (or saw in) the URL so the
+/// inbound URL watcher can distinguish echoes of our own writes from genuine
+/// external navigations. Without this, a debounced write that lands a tick
+/// late would clobber whatever the user has typed in the meantime.
+let lastSyncedQ = typeof route.query.q === 'string' ? route.query.q : ''
+
 /// Persist the debounced query into `?q=…` so the search survives reloads,
 /// is shareable, and back/forward navigation works. `router.replace` so we
 /// don't litter history with one entry per keystroke.
 watch(debouncedText, (next) => {
   const q = next.trim()
-  const current = typeof route.query.q === 'string' ? route.query.q : ''
-  if (q === current) return
+  if (q === lastSyncedQ) return
+  lastSyncedQ = q
   const { q: _omit, ...rest } = route.query
   router.replace({ query: q ? { ...rest, q } : rest })
 })
 
 /// Pick up external query changes (back/forward, `/?q=hoodie` link from
-/// another page) and reflect them in the input.
+/// another page) and reflect them in the input. Echoes of our own debounced
+/// writes match `lastSyncedQ` and are ignored.
 watch(
   () => route.query.q,
   (q) => {
     const next = typeof q === 'string' ? q : ''
-    if (next !== text.value) text.value = next
+    if (next === lastSyncedQ) return
+    lastSyncedQ = next
+    text.value = next
   },
 )
 
