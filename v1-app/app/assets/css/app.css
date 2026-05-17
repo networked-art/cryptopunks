@@ -1,16 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
 
 :root {
+  color-scheme: light;
+
   --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --bg: #0a0a12;
-  --bg-elevated: #11111c;
-  --bg-soft: #15162244;
-  --border: #1f2030;
-  --border-strong: #2a2b3f;
-  --text: #f4f4f9;
-  --text-muted: #8a8aa3;
-  --text-dim: #5a5b75;
+  --bg: #ffffff;
+  --bg-elevated: #f7f7f8;
+  --bg-soft: #f0f0f344;
+  --border: #e5e5ec;
+  --border-strong: #d0d0dc;
+  --text: #0a0a12;
+  --text-muted: #6a6a82;
+  --text-dim: #9a9ab0;
   --accent: #e94560;
   --accent-soft: #e9456020;
   --punk-bg: #648595;

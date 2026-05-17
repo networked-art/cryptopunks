@@ -274,7 +274,7 @@ function actWithdrawProceeds() {
 
 .warn {
   font-size: 10px;
-  color: #f3a847;
+  color: #b8761c;
   margin-top: 4px;
 }
 

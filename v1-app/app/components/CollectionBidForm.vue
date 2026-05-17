@@ -197,7 +197,7 @@ label {
 }
 
 .warn {
-  color: #f3a847;
+  color: #b8761c;
   font-size: 12px;
   margin: 0;
 }

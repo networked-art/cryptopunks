@@ -14,21 +14,18 @@
 
       <ClientOnly>
         <div class="connect">
-          <NuxtLink v-if="address" :to="`/profile/${address}`" class="profile-link">
-            <AccountBadge :address="address" />
-          </NuxtLink>
-          <EvmConnect />
+          <EvmConnectDialog>
+            <template #connected="{ address }">
+              <NuxtLink :to="`/profile/${address}`" class="profile-link">
+                <AccountBadge :address="address" />
+              </NuxtLink>
+            </template>
+          </EvmConnectDialog>
         </div>
       </ClientOnly>
     </div>
   </header>
 </template>
-
-<script setup lang="ts">
-import { useAccount } from '@wagmi/vue'
-
-const { address } = useAccount()
-</script>
 
 <style scoped>
 .site-header {
