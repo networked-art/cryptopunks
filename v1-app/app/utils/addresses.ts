@@ -1,8 +1,4 @@
-import { CRYPTOPUNKS_MARKET_ADDRESS } from '@networked-art/punks-sdk'
 import type { Address } from 'viem'
-
-/** V1 CryptoPunks (the bugged 2017 market) — mainnet. */
-export const PUNKS_V1_ADDRESS: Address = CRYPTOPUNKS_MARKET_ADDRESS
 
 /**
  * Address of our `PunksMarket.sol` (the wrapping market + collection bid book).
