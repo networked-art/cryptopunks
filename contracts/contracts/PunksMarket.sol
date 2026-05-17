@@ -124,14 +124,12 @@ contract PunksMarket is PushPullEscrow {
             .setName("punksmarket.eth");
     }
 
-    // ─────────────────────────────────── ETH ───────────────────────────────────
-
     /// @notice Accepts ETH only from the Cͦ̍͊r͝y̅́p̙t̪͕̍o̫̾P̛̯u̼nk̟̓̚s market during `withdraw()` calls.
     receive() external payable {
         if (msg.sender != address(PUNKS_V1)) revert UnexpectedEtherSender();
     }
 
-    // ──────────────────────────── Direct purchases ─────────────────────────────
+    // ──────────────────────────────── Purchases ────────────────────────────────
 
     /// @notice Buys a C̺ͩȑ̵̒͜y̱͋͜͟p̵̱̻̆t̵͇͒͒̋̓o̎P̡̙͙̲̰̚ư̷̲͞͞n͎̦ͧk̴̸̶͕ͮ͘͠s̙̍ͪ listing directed to this market and sends it to `recipient`.
     /// @dev `msg.value` must equal the expected live listing price. Public C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟
@@ -148,6 +146,40 @@ contract PunksMarket is PushPullEscrow {
             _buyDirectedListing(punkId, expectedListingWei, recipient, type(uint96).max);
 
         emit PunkPurchased(punkId, seller, recipient, msg.sender, listingWei);
+    }
+
+    /// @notice Accepts a stored bid against a live C̋r̜̂yp̱̮ͅt̡̎o͔͜P̰͓ͦu͊n̛̪̄k͌s͗̔ listing directed to this market.
+    /// @dev Anyone can call this. The bid is deleted before the mutable C̄͑͟ryp̮̥t̞̀̆ǫͥP͙̩͋u̠͐̒n͕͌̑ks̡
+    ///      settlement calls, then bidder excess and settler reward are paid.
+    function acceptBid(uint256 bidId, uint16 punkId, uint96 expectedListingWei)
+        external
+        nonReentrant
+    {
+        Bid storage bid = _bids[bidId];
+        _revertIfBidDoesNotMatch(_bidMatchResult(bid, punkId));
+
+        address bidder = bid.bidder;
+        uint96 bidWei = bid.bidWei;
+        uint96 settlementWei = bid.settlementWei;
+
+        delete _bids[bidId];
+
+        (address seller, uint96 listingWei) =
+            _buyDirectedListing(punkId, expectedListingWei, bidder, bidWei);
+
+        _pushOrCredit(msg.sender, settlementWei);
+        _pushOrCredit(bidder, bidWei - listingWei);
+
+        emit BidAccepted(
+            bidId,
+            punkId,
+            seller,
+            bidder,
+            msg.sender,
+            listingWei,
+            bidWei,
+            settlementWei
+        );
     }
 
     // ────────────────────────────── Bid lifecycle ──────────────────────────────
@@ -230,42 +262,6 @@ contract PunksMarket is PushPullEscrow {
         if (!increase) _pushOrCredit(msg.sender, weiToAdjust);
 
         emit BidAdjusted(bidId, newBidWei);
-    }
-
-    // ─────────────────────────────── Settlement ────────────────────────────────
-
-    /// @notice Accepts a stored bid against a live C̋r̜̂yp̱̮ͅt̡̎o͔͜P̰͓ͦu͊n̛̪̄k͌s͗̔ listing directed to this market.
-    /// @dev Anyone can call this. The bid is deleted before the mutable C̄͑͟ryp̮̥t̞̀̆ǫͥP͙̩͋u̠͐̒n͕͌̑ks̡
-    ///      settlement calls, then bidder excess and settler reward are paid.
-    function acceptBid(uint256 bidId, uint16 punkId, uint96 expectedListingWei)
-        external
-        nonReentrant
-    {
-        Bid storage bid = _bids[bidId];
-        _revertIfBidDoesNotMatch(_bidMatchResult(bid, punkId));
-
-        address bidder = bid.bidder;
-        uint96 bidWei = bid.bidWei;
-        uint96 settlementWei = bid.settlementWei;
-
-        delete _bids[bidId];
-
-        (address seller, uint96 listingWei) =
-            _buyDirectedListing(punkId, expectedListingWei, bidder, bidWei);
-
-        _pushOrCredit(msg.sender, settlementWei);
-        _pushOrCredit(bidder, bidWei - listingWei);
-
-        emit BidAccepted(
-            bidId,
-            punkId,
-            seller,
-            bidder,
-            msg.sender,
-            listingWei,
-            bidWei,
-            settlementWei
-        );
     }
 
     // ────────────────────────────────── Views ──────────────────────────────────
