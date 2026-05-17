@@ -358,6 +358,18 @@ describe('PunksMarket', () => {
       )
     })
 
+    it('rejects invalid punk ids before listing validation', async () => {
+      const ctx = await deployPunksMarketStack()
+      const { market, bidder } = ctx
+      const bidId = await placeBid(ctx, bidder, { bidWei: parseEther('1') })
+
+      await ctx.viem.assertions.revertWithCustomError(
+        market.write.acceptBid([bidId, 10000, 0n]),
+        market,
+        'InvalidPunkId',
+      )
+    })
+
     it('enforces include, exclude, and PunksData criteria', async () => {
       const ctx = await deployPunksMarketStack()
       const { market, punksV1, punksData, seller, bidder } = ctx
@@ -429,6 +441,22 @@ describe('PunksMarket', () => {
       const ctx = await deployPunksMarketStack()
       assert.equal(await ctx.market.read.matchesPunk([1n, 0]), false)
       assert.equal(await ctx.market.read.matchesPunk([42n, 100]), false)
+    })
+
+    it('rejects invalid punk ids before matching', async () => {
+      const ctx = await deployPunksMarketStack()
+      const bidId = await placeBid(ctx, ctx.bidder)
+
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.market.read.matchesPunk([bidId, 10000]),
+        ctx.market,
+        'InvalidPunkId',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.market.read.matchesPunk([42n, 10000]),
+        ctx.market,
+        'InvalidPunkId',
+      )
     })
 
     it('returns true for an active wildcard bid against any punk', async () => {
@@ -507,6 +535,15 @@ describe('PunksMarket', () => {
       assert.equal(nextId, 0n)
     })
 
+    it('rejects invalid punk ids before scanning', async () => {
+      const ctx = await deployPunksMarketStack()
+      await ctx.viem.assertions.revertWithCustomError(
+        ctx.market.read.bidsMatchingPunk([10000, 0n, 100n]),
+        ctx.market,
+        'InvalidPunkId',
+      )
+    })
+
     it('returns empty when count is zero', async () => {
       const ctx = await deployPunksMarketStack()
       await placeBid(ctx, ctx.bidder)
@@ -531,7 +568,7 @@ describe('PunksMarket', () => {
       assert.equal(nextId, 0n)
     })
 
-    it('normalizes fromId == 0 to start at bid 1 and signals end with nextId == 0', async () => {
+    it('normalizes fromId == 0 to start at the latest bid and signals end with nextId == 0', async () => {
       const ctx = await deployPunksMarketStack()
       const a = await placeBid(ctx, ctx.bidder)
       const b = await placeBid(ctx, ctx.bidder)
@@ -541,7 +578,7 @@ describe('PunksMarket', () => {
         0n,
         100n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(ids, [a, b, c])
+      assert.deepEqual(ids, [c, b, a])
       assert.equal(nextId, 0n)
     })
 
@@ -565,11 +602,11 @@ describe('PunksMarket', () => {
         0n,
         100n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(ids, [idAny, idTrait])
+      assert.deepEqual(ids, [idTrait, idAny])
       assert.equal(nextId, 0n)
     })
 
-    it('paginates with a continuation cursor', async () => {
+    it('paginates newest-first with a continuation cursor', async () => {
       const ctx = await deployPunksMarketStack()
       const ids: bigint[] = []
       for (let i = 0; i < 5; i++) ids.push(await placeBid(ctx, ctx.bidder))
@@ -579,7 +616,7 @@ describe('PunksMarket', () => {
         0n,
         2n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(page1, ids.slice(0, 2))
+      assert.deepEqual(page1, [ids[4], ids[3]])
       assert.equal(next1, 3n)
 
       const [page2, next2] = (await ctx.market.read.bidsMatchingPunk([
@@ -587,15 +624,15 @@ describe('PunksMarket', () => {
         next1,
         2n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(page2, ids.slice(2, 4))
-      assert.equal(next2, 5n)
+      assert.deepEqual(page2, [ids[2], ids[1]])
+      assert.equal(next2, 1n)
 
       const [page3, next3] = (await ctx.market.read.bidsMatchingPunk([
         0,
         next2,
         2n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(page3, ids.slice(4, 5))
+      assert.deepEqual(page3, [ids[0]])
       assert.equal(next3, 0n)
     })
 
@@ -612,7 +649,7 @@ describe('PunksMarket', () => {
         0n,
         100n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(ids, [a, c])
+      assert.deepEqual(ids, [c, a])
       assert.equal(nextId, 0n)
     })
   })
