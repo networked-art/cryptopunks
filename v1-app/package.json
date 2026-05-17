@@ -8,7 +8,10 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
-    "bake:glitch": "node scripts/bake-glitch.mjs"
+    "bake:glitch": "node scripts/bake-glitch.mjs",
+    "kamal:setup": "set -a && . ./.env.production && set +a && kamal setup",
+    "kamal:deploy": "set -a && . ./.env.production && set +a && kamal deploy",
+    "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
   },
   "dependencies": {
     "@1001-digital/components.evm": "^3.5.3",

@@ -1,0 +1,43 @@
+service: v1-app
+
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/v1-app
+
+servers:
+  web:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+    options:
+      network: shared
+
+proxy:
+  ssl: true
+  hosts:
+    - <%= ENV["V1_APP_HOST"] %>
+  app_port: 3000
+  healthcheck:
+    path: /
+    interval: 5
+    timeout: 30
+
+registry:
+  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: ../Dockerfile.v1-app
+
+env:
+  clear:
+    NUXT_PUBLIC_INDEXER_URL: <%= ENV["NUXT_PUBLIC_INDEXER_URL"] %>
+    NUXT_PUBLIC_PUNKS_MARKET_ADDRESS: <%= ENV["NUXT_PUBLIC_PUNKS_MARKET_ADDRESS"] %>
+    # Cap Nitro's node-cluster preset at 4 workers (default = one per CPU).
+    NITRO_CLUSTER_WORKERS: "4"
+  secret:
+    - NUXT_RPC_URL
+    - NUXT_PUBLIC_EVM_WALLET_CONNECT_PROJECT_ID
+
+ssh:
+  user: root
