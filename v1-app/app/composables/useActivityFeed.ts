@@ -1,107 +1,136 @@
-import { getPublicClient } from '@wagmi/core'
-import { useConfig } from '@wagmi/vue'
-import { cryptoPunksMarketAbi } from '@networked-art/punks-sdk'
-import { punksMarketAbi } from '~/utils/punksMarketAbi'
-import { PUNKS_V1_ADDRESS, usePunksMarketAddress } from '~/utils/addresses'
-import type { Address, Hex, Log, PublicClient } from 'viem'
+import type { Address, Hex } from 'viem'
+import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export type ActivityKind =
-  | 'v1-listed'
-  | 'v1-unlisted'
-  | 'v1-sold'
-  | 'v1-bid-placed'
-  | 'v1-bid-withdrawn'
-  | 'pm-purchased'
-  | 'pm-bid-placed'
-  | 'pm-bid-cancelled'
-  | 'pm-bid-adjusted'
-  | 'pm-bid-accepted'
+  | 'assign'
+  | 'transfer'
+  | 'wrap'
+  | 'unwrap'
+  | 'listing'
+  | 'listing_cancelled'
+  | 'bid'
+  | 'bid_adjusted'
+  | 'bid_cancelled'
+  | 'sale'
+  | 'escrow_credit'
+  | 'escrow_withdrawal'
+
+export type ActivitySource =
+  | 'cryptopunks_v1'
+  | 'v1_wrapper'
+  | 'punks_market'
+  | string
 
 export type ActivityEvent = {
+  id: string
   kind: ActivityKind
-  blockNumber: bigint
-  txHash: Hex
-  logIndex: number
-  timestamp?: number
+  source: ActivitySource
   punkId?: number
-  amountWei?: bigint
   from?: Address
   to?: Address
+  amountWei?: bigint
   bidId?: bigint
+  txHash: Hex
+  blockNumber: bigint
+  logIndex: number
+  timestamp: number
 }
 
-const LOOKBACK_BLOCKS = 50_000n // ~1 week of mainnet
+type RawEvent = {
+  id: string
+  type: ActivityKind
+  source: ActivitySource
+  punk_id: string | null
+  actor: string | null
+  from: string | null
+  to: string | null
+  buyer: string | null
+  seller: string | null
+  bidder: string | null
+  wei_amount: string | null
+  listing_wei: string | null
+  bid_wei: string | null
+  bid_id: string | null
+  tx_hash: string
+  block_number: string
+  log_index: number
+  timestamp: string
+}
+
+const EVENTS_QUERY = `
+  query Events($where: eventFilter, $limit: Int!) {
+    events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit) {
+      items {
+        id
+        type
+        source
+        punk_id
+        actor
+        from
+        to
+        buyer
+        seller
+        bidder
+        wei_amount
+        listing_wei
+        bid_wei
+        bid_id
+        tx_hash
+        block_number
+        log_index
+        timestamp
+      }
+    }
+  }
+`
 
 export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
-    bidder?: MaybeRefOrGetter<Address | undefined>
-    seller?: MaybeRefOrGetter<Address | undefined>
+    address?: MaybeRefOrGetter<Address | undefined>
+    limit?: number
   } = {},
 ) {
-  const config = useConfig()
-  const punksMarket = usePunksMarketAddress()
-
   const events = ref<ActivityEvent[]>([])
   const pending = ref(false)
   const error = ref<string | null>(null)
 
   async function load() {
-    const client = getPublicClient(config) as PublicClient | undefined
-    if (!client) return
     pending.value = true
     error.value = null
-
     try {
-      const head = await client.getBlockNumber()
-      const from = head > LOOKBACK_BLOCKS ? head - LOOKBACK_BLOCKS : 0n
+      const where: Record<string, unknown> = {}
 
-      const v1Events = (
-        cryptoPunksMarketAbi as readonly { type: string }[]
-      ).filter((x) => x.type === 'event') as never
-      const v1Logs = await client.getLogs({
-        address: PUNKS_V1_ADDRESS,
-        fromBlock: from,
-        toBlock: head,
-        events: v1Events,
-      })
+      const punkId = toValue(opts.punkId)
+      if (punkId !== undefined) where.punk_id = String(punkId)
 
-      const pmEvents = (punksMarketAbi as readonly { type: string }[]).filter(
-        (x) => x.type === 'event',
-      ) as never
-      const pmLogs = punksMarket.value
-        ? await client.getLogs({
-            address: punksMarket.value,
-            fromBlock: from,
-            toBlock: head,
-            events: pmEvents,
-          })
-        : []
+      const address = toValue(opts.address)?.toLowerCase()
+      if (address) {
+        where.OR = [
+          { actor: address },
+          { from: address },
+          { to: address },
+          { buyer: address },
+          { seller: address },
+          { bidder: address },
+        ]
+      }
 
-      const punkFilter = toValue(opts.punkId)
-      const bidderFilter = toValue(opts.bidder)?.toLowerCase()
-      const sellerFilter = toValue(opts.seller)?.toLowerCase()
+      const data = await queryIndexer<{ events: { items: RawEvent[] } }>(
+        EVENTS_QUERY,
+        {
+          where: Object.keys(where).length ? where : undefined,
+          limit: opts.limit ?? 200,
+        },
+      )
 
-      const mapped: ActivityEvent[] = []
-      for (const log of v1Logs) mapMaybe(mapped, mapV1Log(log as never))
-      for (const log of pmLogs) mapMaybe(mapped, mapPmLog(log as never))
-
-      const filtered = mapped.filter((e) => {
-        if (punkFilter !== undefined && e.punkId !== punkFilter) return false
-        if (bidderFilter && e.from?.toLowerCase() !== bidderFilter) return false
-        if (sellerFilter && e.to?.toLowerCase() !== sellerFilter) return false
-        return true
-      })
-
-      filtered.sort((a, b) => {
-        if (a.blockNumber !== b.blockNumber)
-          return Number(b.blockNumber - a.blockNumber)
-        return b.logIndex - a.logIndex
-      })
-
-      events.value = filtered.slice(0, 200)
+      events.value = data.events.items.map(mapEvent)
     } catch (e) {
-      error.value = (e as Error).message
+      if (e instanceof IndexerNotConfigured) {
+        error.value = 'No indexer configured.'
+      } else {
+        error.value = (e as Error).message
+      }
       events.value = []
     } finally {
       pending.value = false
@@ -109,117 +138,50 @@ export function useActivityFeed(
   }
 
   watchEffect(() => {
-    // re-trigger when any of the filter refs change
     void toValue(opts.punkId)
-    void toValue(opts.bidder)
-    void toValue(opts.seller)
+    void toValue(opts.address)
     load()
   })
 
   return { events, pending, error, refresh: load }
 }
 
-function mapMaybe(out: ActivityEvent[], value: ActivityEvent | null) {
-  if (value) out.push(value)
-}
-
-function mapV1Log(
-  log: Log & { eventName?: string; args?: Record<string, unknown> },
-): ActivityEvent | null {
-  const args = log.args ?? {}
-  const base = {
-    blockNumber: log.blockNumber!,
-    txHash: log.transactionHash!,
-    logIndex: log.logIndex!,
-  }
-  switch (log.eventName) {
-    case 'PunkOffered':
-      return {
-        ...base,
-        kind: 'v1-listed',
-        punkId: Number(args.punkIndex),
-        amountWei: args.minValue as bigint,
-        to: args.toAddress as Address,
-      }
-    case 'PunkNoLongerForSale':
-      return { ...base, kind: 'v1-unlisted', punkId: Number(args.punkIndex) }
-    case 'PunkBought':
-      return {
-        ...base,
-        kind: 'v1-sold',
-        punkId: Number(args.punkIndex),
-        amountWei: args.value as bigint,
-        from: args.fromAddress as Address,
-        to: args.toAddress as Address,
-      }
-    case 'PunkBidEntered':
-      return {
-        ...base,
-        kind: 'v1-bid-placed',
-        punkId: Number(args.punkIndex),
-        amountWei: args.value as bigint,
-        from: args.fromAddress as Address,
-      }
-    case 'PunkBidWithdrawn':
-      return {
-        ...base,
-        kind: 'v1-bid-withdrawn',
-        punkId: Number(args.punkIndex),
-        amountWei: args.value as bigint,
-        from: args.fromAddress as Address,
-      }
-    default:
-      return null
+function mapEvent(row: RawEvent): ActivityEvent {
+  return {
+    id: row.id,
+    kind: row.type,
+    source: row.source,
+    punkId: row.punk_id != null ? Number(row.punk_id) : undefined,
+    from: pickFrom(row),
+    to: pickTo(row),
+    amountWei: pickAmount(row),
+    bidId: row.bid_id != null ? BigInt(row.bid_id) : undefined,
+    txHash: row.tx_hash as Hex,
+    blockNumber: BigInt(row.block_number),
+    logIndex: row.log_index,
+    timestamp: Number(row.timestamp),
   }
 }
 
-function mapPmLog(
-  log: Log & { eventName?: string; args?: Record<string, unknown> },
-): ActivityEvent | null {
-  const args = log.args ?? {}
-  const base = {
-    blockNumber: log.blockNumber!,
-    txHash: log.transactionHash!,
-    logIndex: log.logIndex!,
+function pickFrom(row: RawEvent): Address | undefined {
+  // Sales: prefer the explicit seller field; otherwise fall back to the
+  // generic from / actor.
+  if (row.type === 'sale') return (row.seller ?? row.from) as Address | undefined
+  if (row.type === 'bid' || row.type === 'bid_adjusted' || row.type === 'bid_cancelled') {
+    return (row.bidder ?? row.actor) as Address | undefined
   }
-  switch (log.eventName) {
-    case 'PunkPurchased':
-      return {
-        ...base,
-        kind: 'pm-purchased',
-        punkId: Number(args.punkId),
-        amountWei: args.listingWei as bigint,
-        from: args.seller as Address,
-        to: args.recipient as Address,
-      }
-    case 'BidPlaced':
-      return {
-        ...base,
-        kind: 'pm-bid-placed',
-        bidId: args.bidId as bigint,
-        amountWei: args.bidWei as bigint,
-        from: args.bidder as Address,
-      }
-    case 'BidCancelled':
-      return { ...base, kind: 'pm-bid-cancelled', bidId: args.bidId as bigint }
-    case 'BidAdjusted':
-      return {
-        ...base,
-        kind: 'pm-bid-adjusted',
-        bidId: args.bidId as bigint,
-        amountWei: args.newBidWei as bigint,
-      }
-    case 'BidAccepted':
-      return {
-        ...base,
-        kind: 'pm-bid-accepted',
-        bidId: args.bidId as bigint,
-        punkId: Number(args.punkId),
-        amountWei: args.bidWei as bigint,
-        from: args.seller as Address,
-        to: args.bidder as Address,
-      }
-    default:
-      return null
+  if (row.type === 'listing' || row.type === 'listing_cancelled') {
+    return (row.actor ?? row.from) as Address | undefined
   }
+  return (row.from ?? row.actor) as Address | undefined
+}
+
+function pickTo(row: RawEvent): Address | undefined {
+  if (row.type === 'sale') return (row.buyer ?? row.to) as Address | undefined
+  return (row.to ?? undefined) as Address | undefined
+}
+
+function pickAmount(row: RawEvent): bigint | undefined {
+  const raw = row.wei_amount ?? row.listing_wei ?? row.bid_wei
+  return raw != null ? BigInt(raw) : undefined
 }

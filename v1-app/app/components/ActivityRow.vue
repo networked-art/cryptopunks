@@ -73,26 +73,41 @@ const props = defineProps<{ event: ActivityEvent }>()
 
 const punkId = computed(() => props.event.punkId)
 
-const kindLabel = computed(() => KIND_LABEL[props.event.kind])
-const kindClass = computed(
-  () =>
-    `kind-${props.event.kind.split('-')[0]}-${props.event.kind.split('-').slice(1).join('-')}`,
-)
+const kindLabel = computed(() => {
+  const base = KIND_LABEL[props.event.kind] ?? props.event.kind
+  if (props.event.source === 'punks_market' && PM_SUFFIX.has(props.event.kind)) {
+    return `${base} (PM)`
+  }
+  return base
+})
+
+const kindClass = computed(() => `kind-${props.event.kind}`)
 </script>
 
 <script lang="ts">
 const KIND_LABEL: Record<string, string> = {
-  'v1-listed': 'Listed',
-  'v1-unlisted': 'Unlisted',
-  'v1-sold': 'Sold',
-  'v1-bid-placed': 'Bid placed',
-  'v1-bid-withdrawn': 'Bid withdrawn',
-  'pm-purchased': 'Bought (PM)',
-  'pm-bid-placed': 'Collection bid',
-  'pm-bid-cancelled': 'Bid cancelled',
-  'pm-bid-adjusted': 'Bid adjusted',
-  'pm-bid-accepted': 'Bid accepted',
+  assign: 'Claimed',
+  transfer: 'Transferred',
+  wrap: 'Wrapped',
+  unwrap: 'Unwrapped',
+  listing: 'Listed',
+  listing_cancelled: 'Unlisted',
+  bid: 'Bid placed',
+  bid_adjusted: 'Bid adjusted',
+  bid_cancelled: 'Bid cancelled',
+  sale: 'Sold',
+  escrow_credit: 'Escrow credit',
+  escrow_withdrawal: 'Escrow withdrawal',
 }
+
+// Event kinds that PunksMarket emits a distinct flavor of — used to tag
+// collection-bid activity apart from native V1 bids in the UI.
+const PM_SUFFIX = new Set([
+  'sale',
+  'bid',
+  'bid_adjusted',
+  'bid_cancelled',
+])
 </script>
 
 <style scoped>

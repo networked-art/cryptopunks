@@ -1,8 +1,5 @@
-import { getPublicClient } from '@wagmi/core'
-import { useConfig } from '@wagmi/vue'
-import type { Address, PublicClient } from 'viem'
-import { punksMarketAbi } from '~/utils/punksMarketAbi'
-import { usePunksMarketAddress } from '~/utils/addresses'
+import type { Address } from 'viem'
+import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export type CollectionBid = {
   id: bigint
@@ -15,99 +12,70 @@ export type CollectionBid = {
   placedAtBlock: bigint
 }
 
-const LOOKBACK_BLOCKS = 200_000n
+type RawMarketBid = {
+  bid_id: string
+  bidder: string
+  bid_wei: string
+  settlement_wei: string
+  active: boolean
+  block_number: string
+  include_ids_json: string
+  exclude_ids_json: string
+}
 
-/**
- * Reconstructs the active collection-bid book from `BidPlaced` / `BidCancelled`
- * / `BidAccepted` events on the PunksMarket contract.
- *
- * For production scale this should hit the indexer (`runtimeConfig.indexerUrl`)
- * instead — kept here as a zero-dependency fallback.
- */
+const BIDS_QUERY = `
+  query MarketBids($where: marketBidFilter, $limit: Int!) {
+    marketBids(where: $where, orderBy: "bid_wei", orderDirection: "desc", limit: $limit) {
+      items {
+        bid_id
+        bidder
+        bid_wei
+        settlement_wei
+        active
+        block_number
+        include_ids_json
+        exclude_ids_json
+      }
+    }
+  }
+`
+
 export function usePunksMarketBids(
-  opts: { bidder?: MaybeRefOrGetter<Address | undefined> } = {},
+  opts: {
+    bidder?: MaybeRefOrGetter<Address | undefined>
+    activeOnly?: boolean
+    limit?: number
+  } = {},
 ) {
-  const config = useConfig()
-  const punksMarket = usePunksMarketAddress()
-
   const bids = ref<CollectionBid[]>([])
   const pending = ref(false)
   const error = ref<string | null>(null)
 
   async function load() {
-    const client = getPublicClient(config) as PublicClient | undefined
-    const address = punksMarket.value
-    if (!client || !address) {
-      bids.value = []
-      return
-    }
-
     pending.value = true
     error.value = null
     try {
-      const head = await client.getBlockNumber()
-      const from = head > LOOKBACK_BLOCKS ? head - LOOKBACK_BLOCKS : 0n
-
-      const events = (punksMarketAbi as readonly { type: string }[]).filter(
-        (x) => x.type === 'event',
-      ) as never
-      const logs = await client.getLogs({
-        address,
-        fromBlock: from,
-        toBlock: head,
-        events,
-      })
-
-      const state = new Map<string, CollectionBid>()
-
-      for (const raw of logs) {
-        const log = raw as unknown as {
-          eventName?: string
-          args?: Record<string, unknown>
-          blockNumber: bigint
-        }
-        const args = log.args ?? {}
-        if (log.eventName === 'BidPlaced') {
-          const id = args.bidId as bigint
-          state.set(String(id), {
-            id,
-            bidder: args.bidder as Address,
-            bidWei: args.bidWei as bigint,
-            settlementWei: args.settlementWei as bigint,
-            includeIds:
-              (args.includeIds as number[] | undefined)?.map((n) =>
-                Number(n),
-              ) ?? [],
-            excludeIds:
-              (args.excludeIds as number[] | undefined)?.map((n) =>
-                Number(n),
-              ) ?? [],
-            active: true,
-            placedAtBlock: log.blockNumber,
-          })
-        } else if (log.eventName === 'BidAdjusted') {
-          const existing = state.get(String(args.bidId))
-          if (existing) existing.bidWei = args.newBidWei as bigint
-        } else if (
-          log.eventName === 'BidCancelled' ||
-          log.eventName === 'BidAccepted'
-        ) {
-          const existing = state.get(String(args.bidId))
-          if (existing) existing.active = false
-        }
-      }
+      const where: Record<string, unknown> = {}
+      if (opts.activeOnly !== false) where.active = true
 
       const bidder = toValue(opts.bidder)?.toLowerCase()
-      const all = [...state.values()].filter((b) => {
-        if (!b.active) return false
-        if (bidder && b.bidder.toLowerCase() !== bidder) return false
-        return true
-      })
+      if (bidder) where.bidder = bidder
 
-      all.sort((a, b) => Number(b.bidWei - a.bidWei))
-      bids.value = all
+      const data = await queryIndexer<{ marketBids: { items: RawMarketBid[] } }>(
+        BIDS_QUERY,
+        {
+          where: Object.keys(where).length ? where : undefined,
+          limit: opts.limit ?? 200,
+        },
+      )
+
+      bids.value = data.marketBids.items.map(mapBid)
     } catch (e) {
-      error.value = (e as Error).message
+      if (e instanceof IndexerNotConfigured) {
+        error.value = 'No indexer configured.'
+      } else {
+        error.value = (e as Error).message
+      }
       bids.value = []
     } finally {
       pending.value = false
@@ -120,4 +88,27 @@ export function usePunksMarketBids(
   })
 
   return { bids, pending, error, refresh: load }
+}
+
+function mapBid(row: RawMarketBid): CollectionBid {
+  return {
+    id: BigInt(row.bid_id),
+    bidder: row.bidder as Address,
+    bidWei: BigInt(row.bid_wei),
+    settlementWei: BigInt(row.settlement_wei),
+    includeIds: parseIds(row.include_ids_json),
+    excludeIds: parseIds(row.exclude_ids_json),
+    active: row.active,
+    placedAtBlock: BigInt(row.block_number),
+  }
+}
+
+function parseIds(raw: string | null | undefined): number[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.map((n) => Number(n)) : []
+  } catch {
+    return []
+  }
 }

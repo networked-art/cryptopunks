@@ -163,7 +163,7 @@ const { bids } = usePunksMarketBids({
   bidder: () => resolvedAddress.value ?? undefined,
 })
 const { events: activity } = useActivityFeed({
-  bidder: () => resolvedAddress.value ?? undefined,
+  address: () => resolvedAddress.value ?? undefined,
 })
 
 const {
