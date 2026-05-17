@@ -1,6 +1,12 @@
 import { ponder } from 'ponder:registry'
 import type { Context } from 'ponder:registry'
-import { event as activityEvent, listing, punk, punkBid } from 'ponder:schema'
+import {
+  ethUsdPrice,
+  event as activityEvent,
+  listing,
+  punk,
+  punkBid,
+} from 'ponder:schema'
 import { getAddress } from 'viem'
 
 import { CryptoPunksV2Abi } from '../abis/CryptoPunksV2Abi'
@@ -10,6 +16,13 @@ import {
   ZERO_ADDRESS,
   wrapperKindFor,
 } from '../utils/contracts'
+import {
+  PRICE_SOURCE_CHAINLINK,
+  chainlinkAnswerToCents,
+  dayUnix,
+  seedPreChainlinkPrices,
+  usdCentsForWei,
+} from './prices'
 
 type Address = `0x${string}`
 
@@ -33,6 +46,47 @@ const SOURCE_C721 = 'cryptopunks_721'
 
 const NATIVE_V1 = 'v1'
 const NATIVE_V2 = 'v2'
+
+// One-time seed of daily ETH/USD prices for the pre-Chainlink window
+// (V1 launch → mid-2021) from the committed CSV under `data/`. Runs before
+// the first V1 event so the earliest sale already has USD context. The CSV
+// was generated offline by `scripts/fetch-pre-chainlink-prices.ts`; the
+// runtime loader never hits any external API.
+ponder.on('CryptoPunksV1:setup', async ({ context }) => {
+  await seedPreChainlinkPrices(context)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chainlink ETH/USD — daily close, deduped via day-keyed upsert. The aggregator
+// fires `AnswerUpdated` ~20-30 times a day; each update overwrites the day's
+// row, so the final indexed value of every row is the day's last round.
+// ─────────────────────────────────────────────────────────────────────────────
+
+ponder.on('ChainlinkEthUsd:AnswerUpdated', async ({ event, context }) => {
+  const cents = chainlinkAnswerToCents(event.args.current)
+  if (cents <= 0n) return
+  const day = dayUnix(event.block.timestamp)
+
+  await context.db
+    .insert(ethUsdPrice)
+    .values({
+      day_unix: day,
+      eth_usd_cents: cents,
+      source: PRICE_SOURCE_CHAINLINK,
+      chainlink_round_id: event.args.roundId,
+      chainlink_updated_at: event.args.updatedAt,
+      block_number: event.block.number,
+      updated_at: event.block.timestamp,
+    })
+    .onConflictDoUpdate({
+      eth_usd_cents: cents,
+      source: PRICE_SOURCE_CHAINLINK,
+      chainlink_round_id: event.args.roundId,
+      chainlink_updated_at: event.args.updatedAt,
+      block_number: event.block.number,
+      updated_at: event.block.timestamp,
+    })
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // V1 — canonical only for blocks [start, 3_914_494]. Ponder's endBlock on the
@@ -813,7 +867,24 @@ async function insertActivity(
   context: Context,
   values: typeof activityEvent.$inferInsert,
 ) {
-  await context.db.insert(activityEvent).values(values).onConflictDoNothing()
+  // Auto-stamp USD cents whenever the event carries a wei amount. Callers can
+  // pre-set `usd_value_cents` to override (e.g. derived from listing_wei).
+  let usdValueCents = values.usd_value_cents ?? null
+  if (
+    usdValueCents === null &&
+    values.wei_amount !== null &&
+    values.wei_amount !== undefined
+  ) {
+    usdValueCents = await usdCentsForWei(
+      context,
+      values.wei_amount,
+      values.timestamp,
+    )
+  }
+  await context.db
+    .insert(activityEvent)
+    .values({ ...values, usd_value_cents: usdValueCents })
+    .onConflictDoNothing()
 }
 
 function eventId(event: PonderEvent): string {

@@ -2,11 +2,14 @@ import { loadBalance } from '@ponder/utils'
 import { createConfig } from 'ponder'
 import { fallback, http } from 'viem'
 
+import { ChainlinkAggregatorAbi } from './abis/ChainlinkAggregatorAbi'
 import { CryptoPunks721Abi } from './abis/CryptoPunks721Abi'
 import { CryptoPunksV1Abi } from './abis/CryptoPunksV1Abi'
 import { CryptoPunksV2Abi } from './abis/CryptoPunksV2Abi'
 import { WrappedPunksAbi } from './abis/WrappedPunksAbi'
 import {
+  CHAINLINK_ETH_USD_AGGREGATOR,
+  CHAINLINK_ETH_USD_START_BLOCK,
   CRYPTOPUNKS_721_ADDRESS,
   CRYPTOPUNKS_721_START_BLOCK,
   CRYPTOPUNKS_V1_ADDRESS,
@@ -70,6 +73,12 @@ export default createConfig({
       abi: CryptoPunks721Abi,
       address: CRYPTOPUNKS_721_ADDRESS,
       startBlock: CRYPTOPUNKS_721_START_BLOCK,
+    },
+    ChainlinkEthUsd: {
+      chain: 'mainnet',
+      abi: ChainlinkAggregatorAbi,
+      address: CHAINLINK_ETH_USD_AGGREGATOR,
+      startBlock: CHAINLINK_ETH_USD_START_BLOCK,
     },
   },
 })

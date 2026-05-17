@@ -37,6 +37,44 @@ transfer, listing, listing_cancelled, bid, bid_cancelled, sale, wrap,
 unwrap }`. Per-Punk current state lives in `punks`; native V2 marketplace
 state lives in `listings` and `punk_bids`.
 
+## USD pricing
+
+Every event row with a non-null `wei_amount` is stamped with
+`usd_value_cents` — Stripe-style integer USD cents (e.g. `$1234.56 →
+123_456`) using the ETH/USD price for the event's UTC day. The daily
+prices live in `eth_usd_prices` (`day_unix` PK, `eth_usd_cents`, `source`,
+plus Chainlink provenance columns).
+
+Two price sources, both written into the same table:
+
+1. **Chainlink (2021-07 onward, canonical)**. The indexer subscribes to the
+   ETH/USD aggregator's `AnswerUpdated` events. The aggregator fires ~20-30
+   updates per UTC day; each one upserts the row keyed on `day_unix`, so
+   the final indexed state of every row is the day's last Chainlink round
+   (≈ the daily close). `source = 'chainlink'` on these rows.
+2. **Bundled CSV (V1 launch → 2021-07-20)**. `data/eth_usd_pre_chainlink.csv`
+   is committed to the repo (1490 daily closes, one row per day). On
+   startup `CryptoPunksV1:setup` reads the CSV from disk and bulk-inserts
+   it under `source = 'csv:pre_chainlink_v1'`, guarded by a sentinel row in
+   `backfill_markers` so the seed is idempotent across restarts. **The
+   runtime never makes outbound HTTP for prices.**
+
+To regenerate the CSV (developer-side, off-runtime):
+
+```
+pnpm tsx scripts/fetch-pre-chainlink-prices.ts
+```
+
+The script hits CryptoCompare's free histoday endpoint, trims to the
+pre-Chainlink window, and rewrites the CSV — then bump
+`PRE_CHAINLINK_SEED_NAME` in `src/prices.ts` so the seed re-runs and
+commit both changes together.
+
+When stamping a sale, the handler reads the row for the event's UTC day or
+walks back up to a week to find the nearest preceding day. Conversion is
+`usd_value_cents = wei_amount * eth_usd_cents / 1e18`, with Chainlink's
+8-decimal answer rescaled to cents as `answer / 1e6`.
+
 ## Setup
 
 Copy `.env.local.example` to `.env.local` and set:

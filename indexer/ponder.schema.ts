@@ -75,10 +75,42 @@ export const punkBid = onchainTable(
   }),
 )
 
+// Daily ETH/USD close. Post-2021-07 rows come from Chainlink's onchain
+// ETH/USD oracle (`AnswerUpdated` upserts on the row keyed by UTC day, so the
+// final value is the day's last round ≈ daily close). Pre-Chainlink rows are
+// seeded once from `data/eth_usd_pre_chainlink.csv` — see the README. The
+// `chainlink_*` columns are null on seeded rows. `eth_usd_cents` is
+// Stripe-style integer cents (USD × 100, e.g. $1234.56 → 123_456) giving us
+// integer-only USD math via `usd_cents = wei * eth_usd_cents / 1e18`.
+export const ethUsdPrice = onchainTable(
+  'eth_usd_prices',
+  (t) => ({
+    day_unix: t.bigint().primaryKey(),
+    eth_usd_cents: t.bigint().notNull(),
+    source: t.text().notNull(),
+    chainlink_round_id: t.bigint(),
+    chainlink_updated_at: t.bigint(),
+    block_number: t.bigint(),
+    updated_at: t.bigint().notNull(),
+  }),
+  (table) => ({
+    dayIdx: index('eth_usd_price_day_idx').on(table.day_unix),
+    sourceIdx: index('eth_usd_price_source_idx').on(table.source),
+  }),
+)
+
+// Sentinel rows so the pre-Chainlink CSV seed is idempotent across restarts.
+// Bump the suffix in `src/prices.ts` to force a re-seed when the CSV changes.
+export const backfillMarker = onchainTable('backfill_markers', (t) => ({
+  name: t.text().primaryKey(),
+  completed_at: t.bigint().notNull(),
+}))
+
 // Unified user-facing activity stream. `source` ∈ { cryptopunks_v1,
 // cryptopunks_v2, wrapped_punks, cryptopunks_721 }. `type` ∈ { assign,
 // transfer, listing, listing_cancelled, bid, bid_cancelled, sale, wrap,
-// unwrap }.
+// unwrap }. `usd_value_cents` is populated whenever `wei_amount` is set —
+// it's `wei_amount` converted to USD cents at the day's ETH/USD close.
 export const event = onchainTable(
   'events',
   (t) => ({
@@ -94,6 +126,7 @@ export const event = onchainTable(
     seller: t.hex(),
     bidder: t.hex(),
     wei_amount: t.bigint(),
+    usd_value_cents: t.bigint(),
     listing_wei: t.bigint(),
     only_sell_to: t.hex(),
     tx_hash: t.hex().notNull(),
