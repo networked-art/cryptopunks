@@ -21,13 +21,13 @@
     </label>
 
     <div class="actions">
-      <button
+      <Button
         class="primary"
         :disabled="!address || !marketAddress || bidWei === null"
         @click="actPlace"
       >
         {{ address ? 'Place bid' : 'Connect wallet' }}
-      </button>
+      </Button>
     </div>
 
     <EvmTransactionFlowDialog

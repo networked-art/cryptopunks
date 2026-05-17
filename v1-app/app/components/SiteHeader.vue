@@ -93,6 +93,16 @@
   font-size: 13px;
 }
 
+@media (max-width: 640px) {
+  .nav {
+    display: none;
+  }
+
+  .brand {
+    margin-right: auto;
+  }
+}
+
 .nav a {
   border: 0;
   color: var(--text-muted);

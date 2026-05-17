@@ -95,27 +95,27 @@
               min="0"
               placeholder="ETH"
             />
-            <button
+            <Button
               class="primary"
               :disabled="!parsedListingWei"
               @click="actList"
             >
               {{ listing?.isForSale ? 'Update listing' : 'List for sale' }}
-            </button>
-            <button
+            </Button>
+            <Button
               v-if="listing?.isForSale"
               @click="actUnlist"
             >
               Cancel listing
-            </button>
+            </Button>
           </div>
-          <button
+          <Button
             v-if="canAcceptTopBid"
             class="primary"
             @click="actAcceptBid"
           >
             Accept bid · <EthAmount :wei="topBid!.bidWei" />
-          </button>
+          </Button>
           <p
             v-else-if="topBid && !punksMarketAddress"
             class="warn"
@@ -134,24 +134,24 @@
               type="text"
               placeholder="0x…"
             />
-            <button
+            <Button
               :disabled="!validTransferTarget"
               @click="actTransfer"
             >
               Transfer
-            </button>
+            </Button>
           </div>
         </template>
 
         <template v-else>
-          <button
+          <Button
             v-if="listing?.isForSale"
             class="primary"
             :disabled="!canBuy"
             @click="actBuy"
           >
             Buy · <EthAmount :wei="listing.priceWei" />
-          </button>
+          </Button>
           <p
             v-if="listing?.isForSale && !canBuy"
             class="warn"
@@ -170,19 +170,19 @@
               min="0"
               placeholder="ETH"
             />
-            <button
+            <Button
               class="primary"
               :disabled="!parsedBidWei"
               @click="actBid"
             >
               {{ ownActiveBid ? 'Update bid' : 'Place bid' }}
-            </button>
-            <button
+            </Button>
+            <Button
               v-if="ownActiveBid"
               @click="actWithdrawBid"
             >
               Withdraw bid
-            </button>
+            </Button>
           </div>
           <p
             v-else
@@ -192,13 +192,13 @@
           </p>
         </template>
 
-        <button
+        <Button
           v-if="pendingWithdrawal && pendingWithdrawal > 0n"
           class="primary withdraw"
           @click="actWithdrawProceeds"
         >
           Withdraw <EthAmount :wei="pendingWithdrawal" />
-        </button>
+        </Button>
       </div>
     </template>
 
