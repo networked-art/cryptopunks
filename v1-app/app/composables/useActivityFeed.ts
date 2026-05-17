@@ -26,6 +26,7 @@ export type ActivityEvent = {
   kind: ActivityKind
   source: ActivitySource
   punkId?: number
+  wrapped?: boolean
   from?: Address
   to?: Address
   amountWei?: bigint
@@ -84,6 +85,14 @@ const EVENTS_QUERY = `
   }
 `
 
+const WRAPPED_QUERY = `
+  query WrappedStatus($ids: [BigInt!]!) {
+    punks(where: { punk_id_in: $ids }, limit: 1000) {
+      items { punk_id is_wrapped }
+    }
+  }
+`
+
 export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
@@ -124,7 +133,26 @@ export function useActivityFeed(
         },
       )
 
-      events.value = data.events.items.map(mapEvent)
+      const mapped = data.events.items.map(mapEvent)
+
+      const distinctIds = [
+        ...new Set(
+          mapped.flatMap((e) => (e.punkId !== undefined ? [String(e.punkId)] : [])),
+        ),
+      ]
+      if (distinctIds.length) {
+        const wrap = await queryIndexer<{
+          punks: { items: { punk_id: string; is_wrapped: boolean }[] }
+        }>(WRAPPED_QUERY, { ids: distinctIds })
+        const wrappedById = new Map(
+          wrap.punks.items.map((p) => [Number(p.punk_id), p.is_wrapped]),
+        )
+        for (const e of mapped) {
+          if (e.punkId !== undefined) e.wrapped = wrappedById.get(e.punkId)
+        }
+      }
+
+      events.value = mapped
     } catch (e) {
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'

@@ -3,14 +3,11 @@
     <NuxtLink
       v-if="punkId !== undefined"
       :to="`/punk/${punkId}`"
-      class="thumb"
-    >
-      <PunkImage
-        :punk-id="punkId"
-        :size="44"
-        glitch="never"
-      />
-    </NuxtLink>
+      class="thumb thumb-sprite"
+      :style="spriteStyle"
+      :title="`Punk #${punkId}`"
+    />
+
     <span
       v-else
       class="thumb thumb-bid"
@@ -29,6 +26,12 @@
           :to="`/punk/${punkId}`"
           class="punk-id"
           >Punk #{{ punkId }}</NuxtLink
+        >
+        <span
+          v-if="event.wrapped"
+          class="wrap-tag"
+          title="Wrapped as ERC-721"
+          >wrapped</span
         >
       </div>
       <div class="row-line muted">
@@ -55,9 +58,15 @@
         v-if="event.amountWei !== undefined"
         :wei="event.amountWei"
       />
+      <span
+        v-if="timeAgo"
+        class="time-ago muted"
+        :title="absoluteTime"
+        >{{ timeAgo }}</span
+      >
       <a
         class="tx"
-        :href="`https://etherscan.io/tx/${event.txHash}`"
+        :href="txUrl(event.txHash)"
         target="_blank"
         rel="noopener"
         >↗</a
@@ -68,10 +77,28 @@
 
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
+import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{ event: ActivityEvent }>()
 
 const punkId = computed(() => props.event.punkId)
+
+const SPRITE_COLS = 100
+const SPRITE_SIZE = 44
+
+const spriteStyle = computed(() => {
+  const id = punkId.value
+  if (id === undefined) return undefined
+  const spriteRow = Math.floor(id / SPRITE_COLS)
+  const spriteCol = id % SPRITE_COLS
+  return {
+    width: `${SPRITE_SIZE}px`,
+    height: `${SPRITE_SIZE}px`,
+    backgroundImage: "url('/punks-glitched.png')",
+    backgroundSize: `${SPRITE_COLS * SPRITE_SIZE}px ${SPRITE_COLS * SPRITE_SIZE}px`,
+    backgroundPosition: `-${spriteCol * SPRITE_SIZE}px -${spriteRow * SPRITE_SIZE}px`,
+  }
+})
 
 const kindLabel = computed(() => {
   const base = KIND_LABEL[props.event.kind] ?? props.event.kind
@@ -82,6 +109,18 @@ const kindLabel = computed(() => {
 })
 
 const kindClass = computed(() => `kind-${props.event.kind}`)
+
+const isoTime = computed(() =>
+  props.event.timestamp
+    ? new Date(props.event.timestamp * 1000).toISOString()
+    : undefined,
+)
+const timeAgo = useTimeAgo(isoTime)
+const absoluteTime = computed(() =>
+  props.event.timestamp
+    ? new Date(props.event.timestamp * 1000).toLocaleString()
+    : '',
+)
 </script>
 
 <script lang="ts">
@@ -128,6 +167,12 @@ const PM_SUFFIX = new Set([
 .thumb {
   border: 0;
   display: flex;
+}
+
+.thumb-sprite {
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+  border-radius: 3px;
 }
 
 .thumb-bid {
@@ -185,5 +230,22 @@ const PM_SUFFIX = new Set([
 
 .tx:hover {
   color: var(--accent);
+}
+
+.time-ago {
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wrap-tag {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--bg-elevated);
 }
 </style>
