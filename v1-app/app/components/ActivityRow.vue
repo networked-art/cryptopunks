@@ -184,6 +184,12 @@ const PM_SUFFIX = new Set([
   font-size: 11px;
 }
 
+.row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2);
+}
+
 .row-line {
   display: flex;
   align-items: center;
