@@ -16,3 +16,29 @@ Copy `.env.local.example` to `.env.local` and set:
 
 If `PUNKS_MARKET_ADDRESS` is unset, the generated config keeps the contract
 shape available for type generation but points it at the zero address.
+
+## Local Postgres
+
+`docker-compose.yml` ships a Postgres 16 instance on port `5411` for local
+development. Start it with `docker compose up -d` and point `DATABASE_URL`
+at `postgresql://v1_punks:v1_punks@localhost:5411/v1_punks`.
+
+## Deployment (Kamal)
+
+Production deployment is driven by Kamal. The container image is built from
+the repo-root `Dockerfile.v1-punks-indexer`; deploy config lives in
+`config/deploy.yml`; secrets are templated from `.env.production` via
+`.kamal/secrets`.
+
+1. Copy `.env.production.example` to `.env.production` and fill in every
+   value (registry credentials, deploy host, RPC URLs, DB password,
+   `PunksMarket` address + start block).
+2. First-time host bootstrap: `pnpm kamal:setup`.
+3. Subsequent releases: `pnpm kamal:deploy`.
+4. Drop into a running container: `pnpm kamal:sh`.
+
+Each deploy gets a fresh schema named after the commit hash
+(`DATABASE_SCHEMA=$(git rev-parse HEAD)`); the stable public views are
+projected into the `v1_punks` schema by Ponder once the new schema is
+caught up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5437`
+on the deploy host.

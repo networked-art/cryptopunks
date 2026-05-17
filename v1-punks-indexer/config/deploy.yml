@@ -1,0 +1,64 @@
+service: v1-punks-indexer
+
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/v1-punks-indexer
+
+servers:
+  web:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+    options:
+      network: shared
+
+proxy:
+  ssl: true
+  hosts:
+    - <%= ENV["INDEXER_HOST"] %>
+  app_port: 42069
+  healthcheck:
+    path: /health
+    interval: 5
+    timeout: 300
+
+deploy_timeout: 300
+
+registry:
+  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: ../Dockerfile.v1-punks-indexer
+
+env:
+  clear:
+    PONDER_TELEMETRY_DISABLED: "true"
+  secret:
+    - PONDER_RPC_URLS_1
+    - PONDER_RPC_FALLBACK_URLS_1
+    - PONDER_WS_URL_1
+    - DATABASE_URL
+    - DATABASE_SCHEMA
+    - PONDER_VIEWS_SCHEMA
+    - PUNKS_MARKET_ADDRESS
+    - PUNKS_MARKET_START_BLOCK
+
+accessories:
+  db:
+    image: postgres:17-alpine
+    host: <%= ENV["DEPLOY_HOST"] %>
+    port: "127.0.0.1:5437:5432"
+    options:
+      network: shared
+    env:
+      clear:
+        POSTGRES_DB: ponder
+        POSTGRES_USER: ponder
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - /home/v1-punks-indexer-db/data:/var/lib/postgresql/data
+
+ssh:
+  user: root
