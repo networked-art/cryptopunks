@@ -5,8 +5,7 @@
         to="/"
         class="brand"
       >
-        <span class="brand-mark">▒▓</span>
-        <span class="brand-word">punksmarket</span>
+        <span class="brand-word">C̩ͤ̊̄ͦͅry̸̢̯̍ͨ́̍p̛̞̘̊ͪ̕t̝o̩͗̈́͜P̹̗u̗ͬnḳ͚̫̋sMarket</span>
       </NuxtLink>
 
       <nav class="nav">
