@@ -150,7 +150,7 @@ export const punksMarketAbi = [
       {
         indexed: false,
         internalType: 'address',
-        name: 'settler',
+        name: 'caller',
         type: 'address',
       },
       {
@@ -351,7 +351,7 @@ export const punksMarketAbi = [
       {
         indexed: false,
         internalType: 'address',
-        name: 'buyer',
+        name: 'caller',
         type: 'address',
       },
       {

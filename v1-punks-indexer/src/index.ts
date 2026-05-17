@@ -568,7 +568,7 @@ ponder.on('PunksMarket:BidCancelled', async ({ event, context }) => {
 ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
   const seller = normalize(event.args.seller)
   const bidder = normalize(event.args.bidder)
-  const settler = normalize(event.args.settler)
+  const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
 
   await insertActivity(context, {
@@ -577,11 +577,11 @@ ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
     source_event: 'BidAccepted',
     type: 'sale',
     punk_id: event.args.punkId,
-    actor: settler,
+    actor: caller,
     buyer: bidder,
     seller,
     bidder,
-    settler,
+    settler: caller,
     bid_id: event.args.bidId,
     listing_wei: event.args.listingWei,
     bid_wei: event.args.bidWei,
@@ -620,7 +620,7 @@ ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
 ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
   const seller = normalize(event.args.seller)
   const recipient = normalize(event.args.recipient)
-  const buyer = normalize(event.args.buyer)
+  const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
 
   await insertActivity(context, {
@@ -629,8 +629,8 @@ ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
     source_event: 'PunkPurchased',
     type: 'sale',
     punk_id: event.args.punkId,
-    actor: buyer,
-    buyer,
+    actor: caller,
+    buyer: caller,
     seller,
     to: recipient,
     listing_wei: event.args.listingWei,

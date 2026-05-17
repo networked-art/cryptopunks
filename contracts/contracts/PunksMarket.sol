@@ -82,7 +82,7 @@ contract PunksMarket is PushPullEscrow {
         uint256 indexed punkId,
         address indexed seller,
         address bidder,
-        address settler,
+        address caller,
         uint96 listingWei,
         uint96 bidWei,
         uint96 settlementWei
@@ -91,7 +91,7 @@ contract PunksMarket is PushPullEscrow {
         uint256 indexed punkId,
         address indexed seller,
         address indexed recipient,
-        address buyer,
+        address caller,
         uint96 listingWei
     );
 
@@ -150,7 +150,7 @@ contract PunksMarket is PushPullEscrow {
 
     /// @notice Accepts a stored bid against a live C̋r̜̂yp̱̮ͅt̡̎o͔͜P̰͓ͦu͊n̛̪̄k͌s͗̔ listing directed to this market.
     /// @dev Anyone can call this. The bid is deleted before the mutable C̄͑͟ryp̮̥t̞̀̆ǫͥP͙̩͋u̠͐̒n͕͌̑ks̡
-    ///      settlement calls, then bidder excess and settler reward are paid.
+    ///      settlement calls, then bidder excess and caller reward are paid.
     function acceptBid(uint256 bidId, uint16 punkId, uint96 expectedListingWei)
         external
         nonReentrant
