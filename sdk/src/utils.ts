@@ -43,43 +43,60 @@ export function assertIntegerInRange(
   }
 }
 
-export function validatePunkId(punkId: number): void {
-  assertIntegerInRange('punkId', punkId, 0, PUNK_COUNT - 1)
+export function validatePunkId(punkId: number | bigint): void {
+  assertIntegerInRange('punkId', toNumber(punkId), 0, PUNK_COUNT - 1)
 }
 
-export function validateTraitId(traitId: number): void {
-  assertIntegerInRange('traitId', traitId, 0, TRAIT_COUNT - 1)
+export function validateTraitId(traitId: number | bigint): void {
+  assertIntegerInRange('traitId', toNumber(traitId), 0, TRAIT_COUNT - 1)
 }
 
-export function validateColorId(colorId: number): void {
-  assertIntegerInRange('colorId', colorId, 0, PALETTE_SIZE - 1)
+export function validateColorId(colorId: number | bigint): void {
+  assertIntegerInRange('colorId', toNumber(colorId), 0, PALETTE_SIZE - 1)
 }
 
-export function validateBitmapWordIndex(wordIndex: number): void {
-  assertIntegerInRange('wordIndex', wordIndex, 0, BITMAP_WORD_COUNT - 1)
+export function validateBitmapWordIndex(wordIndex: number | bigint): void {
+  assertIntegerInRange(
+    'wordIndex',
+    toNumber(wordIndex),
+    0,
+    BITMAP_WORD_COUNT - 1,
+  )
 }
 
-export function validatePixelCount(pixelCount: number): void {
+export function validatePixelCount(pixelCount: number | bigint): void {
   assertIntegerInRange(
     'pixelCount',
-    pixelCount,
+    toNumber(pixelCount),
     PIXEL_COUNT_MIN,
     PIXEL_COUNT_MAX,
   )
 }
 
-export function validateColorCount(colorCount: number): void {
+export function validateColorCount(colorCount: number | bigint): void {
   assertIntegerInRange(
     'colorCount',
-    colorCount,
+    toNumber(colorCount),
     COLOR_COUNT_MIN,
     COLOR_COUNT_MAX,
   )
 }
 
-export function validateCoordinate(x: number, y: number): void {
-  assertIntegerInRange('x', x, 0, PUNK_WIDTH - 1)
-  assertIntegerInRange('y', y, 0, PUNK_HEIGHT - 1)
+export function validateCoordinate(
+  x: number | bigint,
+  y: number | bigint,
+): void {
+  assertIntegerInRange('x', toNumber(x), 0, PUNK_WIDTH - 1)
+  assertIntegerInRange('y', toNumber(y), 0, PUNK_HEIGHT - 1)
+}
+
+/// Coerces a `number | bigint` to a JavaScript number. viem decodes Solidity
+/// `uint8`/`uint16` as `number`, but larger widths and `read`-style helpers
+/// hand back `bigint`. The validators above accept either so callers don't
+/// have to remember which path is which. A bigint outside the safe-integer
+/// range still flows through and fails the range check below.
+function toNumber(value: number | bigint): number {
+  return typeof value === 'bigint' ? Number(value) : value
 }
 
 export function validateTraitMask(mask: bigint, label = 'trait mask'): void {

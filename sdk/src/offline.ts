@@ -14,11 +14,13 @@ import {
   TRAIT_COUNT,
   headVariantNames,
   punkTypeNames,
+  skinToneHeadVariants,
   traitKindNames,
   type HeadVariantName,
   type HeadVariantValue,
   type PunkTypeName,
   type PunkTypeValue,
+  type SkinToneValue,
   type TraitKindName,
   type TraitKindValue,
 } from './constants'
@@ -72,6 +74,12 @@ import {
   validateTraitId,
 } from './utils'
 import { bundledOfflinePunksData } from './offline-data'
+import {
+  parseSearchText,
+  type ParsedNumericConstraint,
+  type ParsedSearchTextGroup,
+  type SearchTextTerm,
+} from './text-parse'
 
 export { PunksDataSdkError, PunksDataValidationError } from './utils'
 export type {
@@ -1395,32 +1403,86 @@ export class OfflinePunksDataClient {
     if (typeof text !== 'string') {
       throw new PunksDataValidationError('text search must be a string')
     }
-    const groups = parseOfflinePunksSearchText(text)
-    if (groups.length === 0) return fullPunkBitmap()
-
-    return unionPunkBitmaps(
-      groups.map((terms) => this.bitmapForTextGroupSync(terms)),
-    )
+    const parsed = parseSearchText(text)
+    const groupBitmaps = parsed.orGroups
+      .map((group) => this.bitmapForTextGroupSync(group))
+      .filter((bitmap) => bitmap !== undefined) as PunkBitmap[]
+    if (groupBitmaps.length === 0) return fullPunkBitmap()
+    return unionPunkBitmaps(groupBitmaps)
   }
 
   private bitmapForTextGroupSync(
-    terms: readonly OfflinePunksTextSearchTerm[],
-  ): PunkBitmap {
+    group: ParsedSearchTextGroup,
+  ): PunkBitmap | undefined {
     let bitmap = fullPunkBitmap()
-    for (const term of terms) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextTermSync(term)])
+    let hasConstraint = false
+
+    if (group.skinTones !== undefined && group.skinTones.length > 0) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForSkinTones(group.skinTones),
+      ])
+      hasConstraint = true
     }
-    return bitmap
+    if (group.attributeCount !== undefined) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForNumericConstraint(
+          'attributeCount',
+          group.attributeCount,
+          ATTRIBUTE_COUNT_MIN,
+          ATTRIBUTE_COUNT_MAX,
+        ),
+      ])
+      hasConstraint = true
+    }
+    if (group.colorCount !== undefined) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForNumericConstraint(
+          'colorCount',
+          group.colorCount,
+          COLOR_COUNT_MIN,
+          COLOR_COUNT_MAX,
+        ),
+      ])
+      hasConstraint = true
+    }
+    if (group.pixelCount !== undefined) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForNumericConstraint(
+          'pixelCount',
+          group.pixelCount,
+          PIXEL_COUNT_MIN,
+          PIXEL_COUNT_MAX,
+        ),
+      ])
+      hasConstraint = true
+    }
+    if (group.includeIds !== undefined && group.includeIds.length > 0) {
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        punkBitmapFromIds(group.includeIds),
+      ])
+      hasConstraint = true
+    }
+    for (const term of group.freeTerms) {
+      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextTermSync(term)])
+      hasConstraint = true
+    }
+    if (group.excludeIds !== undefined && group.excludeIds.length > 0) {
+      bitmap = subtractPunkBitmaps(bitmap, punkBitmapFromIds(group.excludeIds))
+      hasConstraint = true
+    }
+    return hasConstraint ? bitmap : undefined
   }
 
-  private bitmapForTextTermSync(term: OfflinePunksTextSearchTerm): PunkBitmap {
+  private bitmapForTextTermSync(term: SearchTextTerm): PunkBitmap {
     const normalized = normalizeSearchText(term.text)
     if (!normalized) return fullPunkBitmap()
 
     const matches: PunkBitmap[] = []
-    const punkId = parsePunkIdText(normalized)
-    if (punkId !== undefined) matches.push(punkBitmapFromIds([punkId]))
-
     for (const entry of this.store.textIndex) {
       if (matchesTextIndexKey(entry.key, normalized, term.exact)) {
         matches.push(entry.bitmap)
@@ -1431,6 +1493,46 @@ export class OfflinePunksDataClient {
     if (colorId !== undefined) matches.push(this.store.colorBitmaps[colorId])
 
     return matches.length === 0 ? emptyPunkBitmap() : unionPunkBitmaps(matches)
+  }
+
+  private bitmapForSkinTones(
+    tones: readonly SkinToneValue[],
+  ): PunkBitmap {
+    const headVariantIds = new Set<HeadVariantValue>()
+    for (const tone of tones) {
+      const pair = skinToneHeadVariants[tone]
+      if (pair === undefined) continue
+      headVariantIds.add(pair[0])
+      headVariantIds.add(pair[1])
+    }
+    return this.bitmapForHeadVariants([...headVariantIds])
+  }
+
+  private bitmapForNumericConstraint(
+    axis: 'attributeCount' | 'colorCount' | 'pixelCount',
+    constraint: ParsedNumericConstraint,
+    min: number,
+    max: number,
+  ): PunkBitmap {
+    const values = expandConstraint(constraint, min, max)
+    if (values.length === 0) return emptyPunkBitmap()
+    if (axis === 'attributeCount') {
+      return unionPunkBitmaps(
+        values.map((count) => this.bitmapForAttributeCount(count)),
+      )
+    }
+    if (axis === 'colorCount') {
+      return unionPunkBitmaps(
+        values.map(
+          (count) => this.store.colorCountBitmaps[count - COLOR_COUNT_MIN],
+        ),
+      )
+    }
+    return unionPunkBitmaps(
+      values.map(
+        (count) => this.store.pixelCountBitmaps[count - PIXEL_COUNT_MIN],
+      ),
+    )
   }
 
   private tryResolveTextColorId(term: string): number | undefined {
@@ -2166,13 +2268,27 @@ function matchesTextIndexKey(
   return exact ? key === term : key.startsWith(term) || key.includes(` ${term}`)
 }
 
-function parsePunkIdText(term: string): number | undefined {
-  const clean = term.startsWith('#') ? term.slice(1) : term
-  if (!/^\d+$/.test(clean)) return undefined
-  const punkId = Number(clean)
-  return Number.isInteger(punkId) && punkId >= 0 && punkId < PUNK_COUNT
-    ? punkId
-    : undefined
+function expandConstraint(
+  constraint: ParsedNumericConstraint,
+  minAllowed: number,
+  maxAllowed: number,
+): number[] {
+  if ('eq' in constraint) {
+    if (
+      constraint.eq < minAllowed ||
+      constraint.eq > maxAllowed ||
+      !Number.isInteger(constraint.eq)
+    ) {
+      return []
+    }
+    return [constraint.eq]
+  }
+  const min = Math.max(constraint.min ?? minAllowed, minAllowed)
+  const max = Math.min(constraint.max ?? maxAllowed, maxAllowed)
+  if (min > max) return []
+  const out: number[] = []
+  for (let v = min; v <= max; v++) out.push(v)
+  return out
 }
 
 function paginateIds(

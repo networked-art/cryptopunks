@@ -4,6 +4,8 @@ import type {
   HeadVariantValue,
   PunkTypeName,
   PunkTypeValue,
+  SkinToneName,
+  SkinToneValue,
   TraitKindValue,
   TraitKindName,
 } from './constants'
@@ -160,6 +162,11 @@ export type PunkQuery = PunksSearchQuery & {
     | HeadVariantName
     | string
     | readonly (HeadVariantValue | HeadVariantName | string)[]
+  skinTone?:
+    | SkinToneValue
+    | SkinToneName
+    | string
+    | readonly (SkinToneValue | SkinToneName | string)[]
   attributeCount?: NumericRange
   sort?: PunkQuerySort
 }

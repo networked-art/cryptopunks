@@ -51,16 +51,21 @@ export {
   PUNK_WIDTH,
   PunkType,
   PunkStandard,
+  SkinTone,
   ZERO_ADDRESS,
   TRAIT_COUNT,
   TraitKind,
   headVariantNames,
   punkTypeNames,
+  skinToneHeadVariants,
+  skinToneNames,
   traitKindNames,
   type HeadVariantName,
   type HeadVariantValue,
   type PunkTypeName,
   type PunkTypeValue,
+  type SkinToneName,
+  type SkinToneValue,
   type TraitKindName,
   type TraitKindValue,
   type PunkStandardValue,
@@ -98,11 +103,20 @@ export type {
 export {
   compileOfferSlot,
   compilePunksFilter,
+  headVariantsFromSkinToneRefs,
   normalizeHeadVariantRefs,
   normalizePunkStandard,
   normalizePunkTypeRefs,
+  normalizeSkinToneRefs,
   toOfflineSearchQuery,
 } from './query'
+export { parseSearchText, tokenizeSearchText } from './text-parse'
+export type {
+  ParsedNumericConstraint,
+  ParsedSearchText,
+  ParsedSearchTextGroup,
+  SearchTextTerm,
+} from './text-parse'
 export {
   PunksDataClient,
   createPunksDataClient,

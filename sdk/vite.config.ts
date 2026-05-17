@@ -17,6 +17,11 @@ export default defineConfig({
     rollupOptions: {
       external: ['viem', 'node:fs/promises', 'node:path'],
     },
+    /// Library output stays unminified: consumers minify their own bundles,
+    /// and minified single-letter identifiers collide with downstream
+    /// auto-imports (Nuxt rewrote our `h` to Vue's `createVNode`, which then
+    /// failed `BigInt(h)` in `CANONICAL_COLOR_MASK`).
+    minify: false,
     sourcemap: true,
     target: 'es2022',
   },

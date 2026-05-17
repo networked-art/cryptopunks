@@ -119,6 +119,28 @@ export const traitKindNames = [
   'Accessory',
 ] as const
 
+/// Skin tones for human Punks. The four human head-variant slots (Female 1..4
+/// and Male 1..4) are ordered Dark → Brown → Fair → Albino, matching the
+/// rarity ladder in the source CSV. Aliens, Apes, and Zombies do not have a
+/// skin tone — filters that restrict by skin tone implicitly restrict to
+/// humans.
+export const SkinTone = {
+  Dark: 0,
+  Brown: 1,
+  Fair: 2,
+  Albino: 3,
+} as const
+
+export const skinToneNames = ['Dark', 'Brown', 'Fair', 'Albino'] as const
+
+/// Head variants for each skin tone, ordered [Female, Male].
+export const skinToneHeadVariants = [
+  [HeadVariant.Female1, HeadVariant.Male1],
+  [HeadVariant.Female2, HeadVariant.Male2],
+  [HeadVariant.Female3, HeadVariant.Male3],
+  [HeadVariant.Female4, HeadVariant.Male4],
+] as const
+
 export type PunkTypeValue = (typeof PunkType)[keyof typeof PunkType]
 export type PunkTypeName = (typeof punkTypeNames)[number]
 export type HeadVariantValue = (typeof HeadVariant)[keyof typeof HeadVariant]
@@ -126,3 +148,5 @@ export type HeadVariantName = (typeof headVariantNames)[number]
 export type TraitKindValue = (typeof TraitKind)[keyof typeof TraitKind]
 export type TraitKindName = (typeof traitKindNames)[number]
 export type PunkStandardValue = (typeof PunkStandard)[keyof typeof PunkStandard]
+export type SkinToneValue = (typeof SkinTone)[keyof typeof SkinTone]
+export type SkinToneName = (typeof skinToneNames)[number]

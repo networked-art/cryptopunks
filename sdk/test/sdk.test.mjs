@@ -70,10 +70,38 @@ describe('PunksSdk', () => {
     assert.equal(plan.request.value, 10n)
     assert.equal(plan.request.args[1][0].criteria.requiredTraitMask, 1n << 62n)
 
-    assert.throws(
-      () => punks.offers.slot({ query: { text: 'zombie hoodie' } }),
-      /text search cannot be represented/,
+    // Text terms compile into the same Filter shape as structured fields.
+    // `zombie hoodie` → Zombie type (trait 4) AND Hoodie accessory (trait 62).
+    const textSlot = punks.offers.slot({
+      query: { text: 'zombie hoodie' },
+    })
+    assert.equal(
+      textSlot.criteria.requiredTraitMask,
+      (1n << 4n) | (1n << 62n),
     )
+
+    // Skin tones expand to the four human head-variant slots
+    // (Female 1..4 / Male 1..4). `albino skin` → head variants 5 + 9
+    // → trait ids 5 + 5 (head offset) and 9 + 5 → bits 10 and 14.
+    const albinoSlot = punks.offers.slot({
+      query: { text: 'albino skin' },
+    })
+    assert.equal(
+      albinoSlot.criteria.anyOfTraitMask,
+      (1n << 10n) | (1n << 14n),
+    )
+
+    // `2 colors` → colorCount eq 2 → onchain filter min=max=2.
+    const twoColorSlot = punks.offers.slot({ query: { text: '2 colors' } })
+    assert.equal(twoColorSlot.criteria.minColorCount, 2)
+    assert.equal(twoColorSlot.criteria.maxColorCount, 2)
+
+    // `#1234 #5678 -9999` → includeIds [1234, 5678], excludeIds [9999].
+    const idsSlot = punks.offers.slot({
+      query: { text: '#1234 #5678 -9999' },
+    })
+    assert.deepEqual(idsSlot.includeIds, [1234, 5678])
+    assert.deepEqual(idsSlot.excludeIds, [9999])
   })
 
   it('prepares and executes original-market writes through wallet clients', async () => {

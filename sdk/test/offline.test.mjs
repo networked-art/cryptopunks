@@ -116,6 +116,50 @@ describe('OfflinePunksDataClient', () => {
     )
   })
 
+  it('recognizes count and skin-tone phrases in text search', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    // `<n> colors` / `<n> attributes` / `<n> pixels` constrain the
+    // matching numeric axis. Match parity with the structured form.
+    assert.equal(
+      sdk.countSync({ text: '2 colors' }),
+      sdk.countSync({ colorCount: 2 }),
+    )
+    assert.equal(
+      sdk.countSync({ text: '7 attributes' }),
+      sdk.countSync({ attributeCount: 7 }),
+    )
+    assert.equal(
+      sdk.countSync({ text: '>=4 colors' }),
+      sdk.countSync({ colorCount: { min: 4 } }),
+    )
+    assert.equal(
+      sdk.countSync({ text: '2-4 colors' }),
+      sdk.countSync({ colorCount: { min: 2, max: 4 } }),
+    )
+
+    // Skin tone covers both human genders for that slot.
+    const albinos = sdk.searchSync({ text: 'albino skin' })
+    assert.equal(albinos.length, 420 + 598)
+    assert.equal(
+      albinos.length,
+      sdk.countSync({ headVariant: ['Female 4', 'Male 4'] }),
+    )
+
+    // Bare `albino` is unambiguous and acts the same.
+    assert.equal(sdk.countSync({ text: 'albino' }), albinos.length)
+
+    // Include / exclude punk ids via `#id` and `-id`.
+    assert.deepEqual(sdk.searchSync({ text: '#1234' }), [1234])
+    assert.equal(sdk.countSync({ text: '-1234' }), 10000 - 1)
+    assert.deepEqual(
+      sdk.searchSync({ text: 'alien -2890' }),
+      sdk
+        .searchSync({ attributes: { required: ['Alien'] } })
+        .filter((id) => id !== 2890),
+    )
+  })
+
   it('hydrates summaries and decodes compressed indexed pixels', () => {
     const sdk = createOfflinePunksDataClient({
       dataset: bundledOfflinePunksDataWithPixels,
