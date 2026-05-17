@@ -78,8 +78,7 @@ watch(
 /// language: trait names, `<n> colors / attributes / pixels`, `<tone> skin`,
 /// `#<id>`, and `-<id>` all compile into the same filter.
 const placeholder = computed(
-  () =>
-    `Search ${counts.value.total.toLocaleString()} punks — try hoodie, 2 colors, albino skin, #1234, -1001`,
+  () => `Try hoodie, 2 colors, albino skin, #1234, 1001`,
 )
 
 /// `#rrggbb` (or `#rrggbbaa`) tokens in the search text translate into a
@@ -92,7 +91,10 @@ const parsedText = computed(() => {
   const raw = debouncedText.value.trim()
   if (!raw) return { text: undefined, colors: undefined }
   const colors = raw.match(HEX_COLOR_TOKEN)
-  const remaining = raw.replace(HEX_COLOR_TOKEN, ' ').replace(/\s+/g, ' ').trim()
+  const remaining = raw
+    .replace(HEX_COLOR_TOKEN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return {
     text: remaining || undefined,
     colors: colors?.length ? colors : undefined,
