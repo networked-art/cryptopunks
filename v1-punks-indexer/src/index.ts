@@ -1,12 +1,21 @@
 import { ponder } from 'ponder:registry'
 import type { Context } from 'ponder:registry'
 import {
+  backfillMarker,
+  bidColor,
+  bidExcludeId,
+  bidIncludeId,
+  bidTrait,
   event as activityEvent,
   listing,
   marketBid,
   punk,
   punkBid,
+  punkColor,
+  punkTrait,
+  punkVisual,
 } from 'ponder:schema'
+import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
 import { getAddress } from 'viem'
 
 import { CryptoPunksV1Abi } from '../abis/CryptoPunksV1Abi'
@@ -34,6 +43,65 @@ type PonderEvent = {
 const SOURCE_V1 = 'cryptopunks_v1'
 const SOURCE_WRAPPER = 'v1_wrapper'
 const SOURCE_MARKET = 'punks_market'
+
+// Sentinel name for the punks-dataset backfill. Bump suffix if the bundled
+// dataset hash ever changes (it should not — PunksData is sealed onchain).
+const DATASET_BACKFILL_NAME = 'punks_data_seed_v1'
+const PUNK_COUNT = 10000
+const DB_INSERT_CHUNK = 5000
+
+// Seed punk_traits / punk_colors / punk_visuals once at startup from the
+// SDK's bundled offline dataset (mirror of the sealed PunksData contract).
+// Side tables join against these to evaluate bid predicates in SQL.
+ponder.on('CryptoPunksV1:setup', async ({ context }) => {
+  const existing = await context.db.find(backfillMarker, {
+    name: DATASET_BACKFILL_NAME,
+  })
+  if (existing) return
+
+  const offline = new OfflinePunksDataClient()
+
+  const traitRows: Array<{ punk_id: bigint; trait_id: number }> = []
+  const colorRows: Array<{ punk_id: bigint; color_id: number }> = []
+  const visualRows: Array<{
+    punk_id: bigint
+    pixel_count: number
+    color_count: number
+  }> = []
+
+  for (let punkId = 0; punkId < PUNK_COUNT; punkId++) {
+    const punkBig = BigInt(punkId)
+    const traitMask = offline.getTraitMaskSync(punkId)
+    const colorMask = offline.getColorMaskSync(punkId)
+
+    for (const trait_id of bitsFromMask(traitMask, TRAIT_COUNT)) {
+      traitRows.push({ punk_id: punkBig, trait_id })
+    }
+    for (const color_id of bitsFromMask(colorMask, PALETTE_SIZE)) {
+      colorRows.push({ punk_id: punkBig, color_id })
+    }
+    visualRows.push({
+      punk_id: punkBig,
+      pixel_count: offline.getPixelCountSync(punkId),
+      color_count: offline.getColorCountSync(punkId),
+    })
+  }
+
+  for (const chunk of chunked(traitRows, DB_INSERT_CHUNK)) {
+    await context.db.insert(punkTrait).values(chunk).onConflictDoNothing()
+  }
+  for (const chunk of chunked(colorRows, DB_INSERT_CHUNK)) {
+    await context.db.insert(punkColor).values(chunk).onConflictDoNothing()
+  }
+  for (const chunk of chunked(visualRows, DB_INSERT_CHUNK)) {
+    await context.db.insert(punkVisual).values(chunk).onConflictDoNothing()
+  }
+
+  await context.db.insert(backfillMarker).values({
+    name: DATASET_BACKFILL_NAME,
+    completed_at: BigInt(Date.now()),
+  })
+})
 
 ponder.on('CryptoPunksV1:Assign', async ({ event, context }) => {
   const to = normalize(event.args.to)
@@ -349,9 +417,13 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
 ponder.on('PunksMarket:BidPlaced', async ({ event, context }) => {
   const bidder = normalize(event.args.bidder)
   const meta = eventMeta(event)
-  const criteriaJson = toJson(criteriaObject(event.args.criteria))
-  const includeIdsJson = toJson(idList(event.args.includeIds))
-  const excludeIdsJson = toJson(idList(event.args.excludeIds))
+  const criteria = normalizeCriteria(event.args.criteria)
+  const includeIds = idList(event.args.includeIds)
+  const excludeIds = idList(event.args.excludeIds)
+  const criteriaJson = toJson(criteria)
+  const includeIdsJson = toJson(includeIds)
+  const excludeIdsJson = toJson(excludeIds)
+  const criteriaColumns = criteriaColumnsFrom(criteria)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -376,6 +448,8 @@ ponder.on('PunksMarket:BidPlaced', async ({ event, context }) => {
       settlement_wei: event.args.settlementWei,
       active: true,
       accepted_punk_id: null,
+      ...criteriaColumns,
+      has_include_ids: includeIds.length > 0,
       criteria_json: criteriaJson,
       include_ids_json: includeIdsJson,
       exclude_ids_json: excludeIdsJson,
@@ -388,12 +462,22 @@ ponder.on('PunksMarket:BidPlaced', async ({ event, context }) => {
       settlement_wei: event.args.settlementWei,
       active: true,
       accepted_punk_id: null,
+      ...criteriaColumns,
+      has_include_ids: includeIds.length > 0,
       criteria_json: criteriaJson,
       include_ids_json: includeIdsJson,
       exclude_ids_json: excludeIdsJson,
       ...meta,
       updated_at: event.block.timestamp,
     })
+
+  await insertBidPredicates(
+    context,
+    event.args.bidId,
+    criteria,
+    includeIds,
+    excludeIds,
+  )
 })
 
 ponder.on('PunksMarket:BidAdjusted', async ({ event, context }) => {
@@ -424,6 +508,7 @@ ponder.on('PunksMarket:BidAdjusted', async ({ event, context }) => {
       settlement_wei: existing?.settlement_wei ?? 0n,
       active: true,
       accepted_punk_id: existing?.accepted_punk_id ?? null,
+      ...carriedCriteriaColumns(existing),
       criteria_json: existing?.criteria_json ?? '{}',
       include_ids_json: existing?.include_ids_json ?? '[]',
       exclude_ids_json: existing?.exclude_ids_json ?? '[]',
@@ -466,6 +551,7 @@ ponder.on('PunksMarket:BidCancelled', async ({ event, context }) => {
       settlement_wei: existing?.settlement_wei ?? 0n,
       active: false,
       accepted_punk_id: existing?.accepted_punk_id ?? null,
+      ...carriedCriteriaColumns(existing),
       criteria_json: existing?.criteria_json ?? '{}',
       include_ids_json: existing?.include_ids_json ?? '[]',
       exclude_ids_json: existing?.exclude_ids_json ?? '[]',
@@ -513,6 +599,7 @@ ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
       settlement_wei: event.args.settlementWei,
       active: false,
       accepted_punk_id: event.args.punkId,
+      ...carriedCriteriaColumns(null),
       criteria_json: '{}',
       include_ids_json: '[]',
       exclude_ids_json: '[]',
@@ -750,30 +837,216 @@ function idList(ids: readonly number[]): number[] {
   return ids.map((id) => Number(id))
 }
 
-function criteriaObject(criteria: unknown) {
-  const keys = [
-    'requiredTraitMask',
-    'forbiddenTraitMask',
-    'anyOfTraitMask',
-    'requiredColorMask',
-    'forbiddenColorMask',
-    'anyOfColorMask',
-    'minPixelCount',
-    'maxPixelCount',
-    'minColorCount',
-    'maxColorCount',
-  ] as const
+// Mirrors Punks.sol constants — keep in sync with contracts/contracts/lib/Punks.sol.
+const TRAIT_COUNT = 111
+const PALETTE_SIZE = 222
 
-  if (Array.isArray(criteria)) {
-    return Object.fromEntries(keys.map((key, index) => [key, criteria[index]]))
+type NormalizedCriteria = {
+  requiredTraitMask: bigint
+  forbiddenTraitMask: bigint
+  anyOfTraitMask: bigint
+  requiredColorMask: bigint
+  forbiddenColorMask: bigint
+  anyOfColorMask: bigint
+  minPixelCount: number
+  maxPixelCount: number
+  minColorCount: number
+  maxColorCount: number
+}
+
+const CRITERIA_KEYS = [
+  'requiredTraitMask',
+  'forbiddenTraitMask',
+  'anyOfTraitMask',
+  'requiredColorMask',
+  'forbiddenColorMask',
+  'anyOfColorMask',
+  'minPixelCount',
+  'maxPixelCount',
+  'minColorCount',
+  'maxColorCount',
+] as const
+
+function normalizeCriteria(value: unknown): NormalizedCriteria {
+  const raw: Record<string, unknown> = {}
+  if (Array.isArray(value)) {
+    CRITERIA_KEYS.forEach((key, i) => {
+      raw[key] = value[i]
+    })
+  } else if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    CRITERIA_KEYS.forEach((key) => {
+      raw[key] = record[key]
+    })
   }
-
-  if (criteria && typeof criteria === 'object') {
-    const record = criteria as Record<string, unknown>
-    return Object.fromEntries(keys.map((key) => [key, record[key]]))
+  return {
+    requiredTraitMask: toBigInt(raw.requiredTraitMask),
+    forbiddenTraitMask: toBigInt(raw.forbiddenTraitMask),
+    anyOfTraitMask: toBigInt(raw.anyOfTraitMask),
+    requiredColorMask: toBigInt(raw.requiredColorMask),
+    forbiddenColorMask: toBigInt(raw.forbiddenColorMask),
+    anyOfColorMask: toBigInt(raw.anyOfColorMask),
+    minPixelCount: toInt(raw.minPixelCount),
+    maxPixelCount: toInt(raw.maxPixelCount),
+    minColorCount: toInt(raw.minColorCount),
+    maxColorCount: toInt(raw.maxColorCount),
   }
+}
 
-  return Object.fromEntries(keys.map((key) => [key, null]))
+function toBigInt(value: unknown): bigint {
+  if (typeof value === 'bigint') return value
+  if (typeof value === 'number') return BigInt(value)
+  if (typeof value === 'string' && value.length > 0) return BigInt(value)
+  return 0n
+}
+
+function toInt(value: unknown): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'bigint') return Number(value)
+  if (typeof value === 'string' && value.length > 0) return Number(value)
+  return 0
+}
+
+function criteriaColumnsFrom(c: NormalizedCriteria) {
+  return {
+    required_trait_mask: c.requiredTraitMask,
+    forbidden_trait_mask: c.forbiddenTraitMask,
+    any_of_trait_mask: c.anyOfTraitMask,
+    required_color_mask: c.requiredColorMask,
+    forbidden_color_mask: c.forbiddenColorMask,
+    any_of_color_mask: c.anyOfColorMask,
+    min_pixel_count: c.minPixelCount,
+    max_pixel_count: c.maxPixelCount,
+    min_color_count: c.minColorCount,
+    max_color_count: c.maxColorCount,
+  }
+}
+
+// Used by handlers that may run before BidPlaced is indexed (defensive). When
+// no row exists yet, default to zeros — the active flag drives query visibility,
+// not these columns.
+function carriedCriteriaColumns(
+  existing:
+    | {
+        required_trait_mask?: bigint | null
+        forbidden_trait_mask?: bigint | null
+        any_of_trait_mask?: bigint | null
+        required_color_mask?: bigint | null
+        forbidden_color_mask?: bigint | null
+        any_of_color_mask?: bigint | null
+        min_pixel_count?: number | null
+        max_pixel_count?: number | null
+        min_color_count?: number | null
+        max_color_count?: number | null
+        has_include_ids?: boolean | null
+      }
+    | null
+    | undefined,
+) {
+  return {
+    required_trait_mask: existing?.required_trait_mask ?? 0n,
+    forbidden_trait_mask: existing?.forbidden_trait_mask ?? 0n,
+    any_of_trait_mask: existing?.any_of_trait_mask ?? 0n,
+    required_color_mask: existing?.required_color_mask ?? 0n,
+    forbidden_color_mask: existing?.forbidden_color_mask ?? 0n,
+    any_of_color_mask: existing?.any_of_color_mask ?? 0n,
+    min_pixel_count: existing?.min_pixel_count ?? 0,
+    max_pixel_count: existing?.max_pixel_count ?? 0,
+    min_color_count: existing?.min_color_count ?? 0,
+    max_color_count: existing?.max_color_count ?? 0,
+    has_include_ids: existing?.has_include_ids ?? false,
+  }
+}
+
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  if (items.length === 0) return []
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size) as T[])
+  }
+  return out
+}
+
+function bitsFromMask(mask: bigint, maxBits: number): number[] {
+  const out: number[] = []
+  for (let i = 0; i < maxBits; i++) {
+    if (((mask >> BigInt(i)) & 1n) === 1n) out.push(i)
+  }
+  return out
+}
+
+async function insertBidPredicates(
+  context: Context,
+  bidId: bigint,
+  criteria: NormalizedCriteria,
+  includeIds: number[],
+  excludeIds: number[],
+) {
+  const traitRows = [
+    ...bitsFromMask(criteria.requiredTraitMask, TRAIT_COUNT).map((trait_id) => ({
+      bid_id: bidId,
+      trait_id,
+      kind: 'required',
+    })),
+    ...bitsFromMask(criteria.forbiddenTraitMask, TRAIT_COUNT).map((trait_id) => ({
+      bid_id: bidId,
+      trait_id,
+      kind: 'forbidden',
+    })),
+    ...bitsFromMask(criteria.anyOfTraitMask, TRAIT_COUNT).map((trait_id) => ({
+      bid_id: bidId,
+      trait_id,
+      kind: 'anyOf',
+    })),
+  ]
+  const colorRows = [
+    ...bitsFromMask(criteria.requiredColorMask, PALETTE_SIZE).map((color_id) => ({
+      bid_id: bidId,
+      color_id,
+      kind: 'required',
+    })),
+    ...bitsFromMask(criteria.forbiddenColorMask, PALETTE_SIZE).map((color_id) => ({
+      bid_id: bidId,
+      color_id,
+      kind: 'forbidden',
+    })),
+    ...bitsFromMask(criteria.anyOfColorMask, PALETTE_SIZE).map((color_id) => ({
+      bid_id: bidId,
+      color_id,
+      kind: 'anyOf',
+    })),
+  ]
+  const includeRows = includeIds.map((id) => ({
+    bid_id: bidId,
+    punk_id: BigInt(id),
+  }))
+  const excludeRows = excludeIds.map((id) => ({
+    bid_id: bidId,
+    punk_id: BigInt(id),
+  }))
+
+  const ops: Promise<unknown>[] = []
+  if (traitRows.length > 0) {
+    ops.push(
+      context.db.insert(bidTrait).values(traitRows).onConflictDoNothing(),
+    )
+  }
+  if (colorRows.length > 0) {
+    ops.push(
+      context.db.insert(bidColor).values(colorRows).onConflictDoNothing(),
+    )
+  }
+  if (includeRows.length > 0) {
+    ops.push(
+      context.db.insert(bidIncludeId).values(includeRows).onConflictDoNothing(),
+    )
+  }
+  if (excludeRows.length > 0) {
+    ops.push(
+      context.db.insert(bidExcludeId).values(excludeRows).onConflictDoNothing(),
+    )
+  }
+  await Promise.all(ops)
 }
 
 function toJson(value: unknown): string {
