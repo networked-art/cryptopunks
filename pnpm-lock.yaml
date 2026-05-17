@@ -123,6 +123,9 @@ importers:
       '@networked-art/punks-sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@tanstack/vue-query':
+        specifier: 5.95.2
+        version: 5.95.2(vue@3.5.34(typescript@5.8.3))
       '@wagmi/core':
         specifier: 3.4.6
         version: 3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
@@ -11419,7 +11422,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 25.8.0
+      '@types/node': 22.19.18
       '@types/yargs': 17.0.35
       chalk: 4.1.2
 
@@ -14462,6 +14465,7 @@ snapshots:
   '@types/node@25.8.0':
     dependencies:
       undici-types: 7.24.6
+    optional: true
 
   '@types/qrcode@1.5.6':
     dependencies:
@@ -16018,7 +16022,7 @@ snapshots:
 
   chrome-launcher@0.15.2:
     dependencies:
-      '@types/node': 25.8.0
+      '@types/node': 22.19.18
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -16027,7 +16031,7 @@ snapshots:
 
   chromium-edge-launcher@0.3.0:
     dependencies:
-      '@types/node': 25.8.0
+      '@types/node': 22.19.18
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -17960,7 +17964,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 25.8.0
+      '@types/node': 22.19.18
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -17977,7 +17981,7 @@ snapshots:
 
   jest-worker@29.7.0:
     dependencies:
-      '@types/node': 25.8.0
+      '@types/node': 22.19.18
       jest-util: 29.7.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
@@ -20798,7 +20802,8 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici-types@7.24.6: {}
+  undici-types@7.24.6:
+    optional: true
 
   undici-types@7.25.0: {}
 
