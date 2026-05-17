@@ -139,6 +139,8 @@ contract PunksMarket is PushPullEscrow {
         payable
         nonReentrant
     {
+        _requirePunkId(punkId);
+
         if (recipient == address(0)) revert ZeroAddress();
         if (msg.value != expectedListingWei) revert IncorrectPayment();
 
