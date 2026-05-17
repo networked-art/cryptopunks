@@ -57,14 +57,23 @@ const cols = computed(() =>
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() => rows.value * cell.value)
 
+/// Scroll events are coalesced to one measure() per animation frame, so the
+/// overscan buffer must be wide enough to cover whatever distance a fast
+/// flick/wheel can travel in a single frame. Six rows (~350px) is not enough:
+/// extend by ~1 full viewport in each direction so cells are always already
+/// rendered by the time they enter view.
+const overscanRows = computed(() =>
+  Math.max(props.overscan, Math.ceil(visibleHeight.value / cell.value)),
+)
+
 const start = computed(() =>
-  Math.max(0, Math.floor(visibleTop.value / cell.value) - props.overscan),
+  Math.max(0, Math.floor(visibleTop.value / cell.value) - overscanRows.value),
 )
 const end = computed(() =>
   Math.min(
     rows.value,
     Math.ceil((visibleTop.value + visibleHeight.value) / cell.value) +
-      props.overscan,
+      overscanRows.value,
   ),
 )
 
