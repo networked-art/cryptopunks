@@ -46,7 +46,6 @@ contract PunksMarket is PushPullEscrow {
     enum BidMatchResult {
         Match,
         Inactive,
-        NotIncluded,
         Excluded,
         CriteriaMismatch
     }
@@ -114,7 +113,6 @@ contract PunksMarket is PushPullEscrow {
     error ListingPriceTooHigh();
 
     error InvalidPunkId();
-    error PunkNotIncluded();
     error PunkExcluded();
     error PunkCriteriaMismatch();
 
@@ -401,24 +399,17 @@ contract PunksMarket is PushPullEscrow {
     {
         if (bid.bidder == address(0)) return BidMatchResult.Inactive;
 
-        uint256 includeLen = bid.includeIds.length;
-        if (includeLen > 0) {
-            bool included;
-            for (uint256 i; i < includeLen;) {
-                if (bid.includeIds[i] == punkId) {
-                    included = true;
-                    break;
-                }
-                unchecked {
-                    ++i;
-                }
-            }
-            if (!included) return BidMatchResult.NotIncluded;
-        }
-
         uint256 excludeLen = bid.excludeIds.length;
         for (uint256 i; i < excludeLen;) {
             if (bid.excludeIds[i] == punkId) return BidMatchResult.Excluded;
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 includeLen = bid.includeIds.length;
+        for (uint256 i; i < includeLen;) {
+            if (bid.includeIds[i] == punkId) return BidMatchResult.Match;
             unchecked {
                 ++i;
             }
@@ -434,7 +425,6 @@ contract PunksMarket is PushPullEscrow {
     function _revertIfBidDoesNotMatch(BidMatchResult result) private pure {
         if (result == BidMatchResult.Match) return;
         if (result == BidMatchResult.Inactive) revert BidNotActive();
-        if (result == BidMatchResult.NotIncluded) revert PunkNotIncluded();
         if (result == BidMatchResult.Excluded) revert PunkExcluded();
         revert PunkCriteriaMismatch();
     }

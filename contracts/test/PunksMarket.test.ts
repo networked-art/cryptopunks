@@ -370,7 +370,7 @@ describe('PunksMarket', () => {
       )
     })
 
-    it('enforces include, exclude, and PunksData criteria', async () => {
+    it('lets includes extend criteria while excludes still override', async () => {
       const ctx = await deployPunksMarketStack()
       const { market, punksV1, punksData, seller, bidder } = ctx
 
@@ -388,7 +388,7 @@ describe('PunksMarket', () => {
           minColorCount: 4,
           maxColorCount: 8,
         },
-        includeIds: [800, 801, 802],
+        includeIds: [801, 802],
         excludeIds: [802],
       })
 
@@ -397,7 +397,7 @@ describe('PunksMarket', () => {
       await ctx.viem.assertions.revertWithCustomError(
         market.write.acceptBid([bidId, 799, parseEther('0.5')]),
         market,
-        'PunkNotIncluded',
+        'PunkCriteriaMismatch',
       )
 
       await assignPunk(ctx, seller, 802n)
@@ -410,18 +410,10 @@ describe('PunksMarket', () => {
 
       await assignPunk(ctx, seller, 801n)
       await offerPunkToMarket(ctx, seller, 801n, parseEther('0.5'))
-      await ctx.viem.assertions.revertWithCustomError(
-        market.write.acceptBid([bidId, 801, parseEther('0.5')]),
-        market,
-        'PunkCriteriaMismatch',
-      )
-
-      await assignPunk(ctx, seller, 800n)
-      await offerPunkToMarket(ctx, seller, 800n, parseEther('0.5'))
-      await market.write.acceptBid([bidId, 800, parseEther('0.5')])
+      await market.write.acceptBid([bidId, 801, parseEther('0.5')])
       assert.equal(
         (
-          (await punksV1.read.punkIndexToAddress([800n])) as string
+          (await punksV1.read.punkIndexToAddress([801n])) as string
         ).toLowerCase(),
         bidder.account.address.toLowerCase(),
       )
@@ -466,22 +458,29 @@ describe('PunksMarket', () => {
       assert.equal(await ctx.market.read.matchesPunk([bidId, 9999]), true)
     })
 
-    it('returns true when criteria + include + exclude all permit the punk', async () => {
+    it('matches criteria ids and explicit include ids unless excluded', async () => {
       const ctx = await deployPunksMarketStack()
       await ctx.punksData.write.setTraitMask([500n, traitBit(7)])
       const bidId = await placeBid(ctx, ctx.bidder, {
         criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
-        includeIds: [500, 501],
+        includeIds: [501],
         excludeIds: [600],
       })
       assert.equal(await ctx.market.read.matchesPunk([bidId, 500]), true)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 501]), true)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 600]), false)
     })
 
-    it('returns false when include list excludes the punk', async () => {
+    it('does not treat include list as a whitelist', async () => {
       const ctx = await deployPunksMarketStack()
-      const bidId = await placeBid(ctx, ctx.bidder, { includeIds: [1, 2, 3] })
-      assert.equal(await ctx.market.read.matchesPunk([bidId, 4]), false)
+      await ctx.punksData.write.setTraitMask([4n, traitBit(7)])
+      const bidId = await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
+        includeIds: [1, 2, 3],
+      })
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 4]), true)
       assert.equal(await ctx.market.read.matchesPunk([bidId, 2]), true)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 5]), false)
     })
 
     it('returns false when exclude list contains the punk', async () => {
@@ -594,15 +593,23 @@ describe('PunksMarket', () => {
       })
       // bid #3: excludes punk 50 — does not match
       await placeBid(ctx, ctx.bidder, { excludeIds: [50] })
-      // bid #4: include-only list without punk 50 — does not match
-      await placeBid(ctx, ctx.bidder, { includeIds: [49, 51] })
+      // bid #4: criteria miss and no explicit include — does not match
+      await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
+        includeIds: [49, 51],
+      })
+      // bid #5: criteria miss, but explicit include — matches punk 50
+      const idInclude = await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
+        includeIds: [50],
+      })
 
       const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
         50,
         0n,
         100n,
       ])) as [bigint[], bigint]
-      assert.deepEqual(ids, [idTrait, idAny])
+      assert.deepEqual(ids, [idInclude, idTrait, idAny])
       assert.equal(nextId, 0n)
     })
 
