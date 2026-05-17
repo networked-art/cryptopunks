@@ -131,6 +131,23 @@ function mergeHeadVariantsWithSkinTone(
   return intersection
 }
 
+/// The all-zero `PunksFilter` — matches no constraints. Useful when placing a
+/// PunksMarket bid that only restricts by `includeIds`.
+export function emptyPunksFilter(): PunksFilter {
+  return {
+    requiredTraitMask: 0n,
+    forbiddenTraitMask: 0n,
+    anyOfTraitMask: 0n,
+    requiredColorMask: 0n,
+    forbiddenColorMask: 0n,
+    anyOfColorMask: 0n,
+    minPixelCount: 0,
+    maxPixelCount: 0,
+    minColorCount: 0,
+    maxColorCount: 0,
+  }
+}
+
 export function compilePunksFilter(
   data: OfflinePunksDataClient,
   query: PunkQuery = {},

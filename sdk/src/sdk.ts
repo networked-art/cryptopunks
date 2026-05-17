@@ -12,6 +12,7 @@ import {
   type PunksMarketConfig,
   type TransactionHash,
 } from './actions'
+import { PunksV1MarketClient } from './v1-market'
 import { PunksStashFacade } from './stash'
 import { PunksStashBidsFacade } from './stash-bids'
 import { PunksWrappersFacade } from './wrappers'
@@ -24,6 +25,7 @@ export type PunksSdkAddresses = {
   legacyData?: Address
   renderer?: Address
   market?: Address
+  v1Market?: Address
   auction?: Address
   wrappedPunks?: Address
   c721Wrapper?: Address
@@ -51,6 +53,7 @@ export class PunksSdk {
   readonly data: PunksDataFacade
   readonly render: PunkImageRenderer
   readonly market: PunksMarketClient
+  readonly v1Market: PunksV1MarketClient
   readonly wrappers: PunksWrappersFacade
   readonly stash: PunksStashFacade
   readonly stashBids: PunksStashBidsFacade
@@ -72,6 +75,10 @@ export class PunksSdk {
       ...wallet,
       address: config.addresses?.market,
     } satisfies PunksMarketConfig)
+    this.v1Market = new PunksV1MarketClient({
+      ...wallet,
+      address: config.addresses?.v1Market,
+    })
     this.data = new PunksDataFacade({
       publicClient: config.publicClient,
       dataAddress: config.addresses?.data,

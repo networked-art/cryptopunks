@@ -292,17 +292,24 @@ function comparatorToConstraint(
 
 type CountAxis = 'colorCount' | 'attributeCount' | 'pixelCount'
 
+/// Aliases per count axis. The bigram rule (`<n> <word>`) accepts any
+/// non-empty prefix of any alias, so `2 c`, `2 co`, `2 colors` all parse
+/// the same way — and `2 cap` does not, because `cap` is not a prefix of
+/// `color(s)`. Axes start with distinct letters, so prefixes never collide
+/// across axes.
+const COUNT_AXIS_ALIASES: Record<CountAxis, readonly string[]> = {
+  colorCount: ['color', 'colors'],
+  attributeCount: ['attribute', 'attributes', 'attrs'],
+  pixelCount: ['pixel', 'pixels'],
+}
+
 function matchCountAxis(word: string): CountAxis | undefined {
-  if (word === 'color' || word === 'colors') return 'colorCount'
-  if (
-    word === 'attribute' ||
-    word === 'attributes' ||
-    word === 'attr' ||
-    word === 'attrs'
-  ) {
-    return 'attributeCount'
+  if (word.length === 0) return undefined
+  for (const axis of Object.keys(COUNT_AXIS_ALIASES) as CountAxis[]) {
+    if (COUNT_AXIS_ALIASES[axis].some((alias) => alias.startsWith(word))) {
+      return axis
+    }
   }
-  if (word === 'pixel' || word === 'pixels') return 'pixelCount'
   return undefined
 }
 

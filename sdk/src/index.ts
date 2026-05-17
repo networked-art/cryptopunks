@@ -104,6 +104,7 @@ export type {
 export {
   compileOfferSlot,
   compilePunksFilter,
+  emptyPunksFilter,
   headVariantsFromSkinToneRefs,
   normalizeHeadVariantRefs,
   normalizePunkStandard,
@@ -235,7 +236,6 @@ export type {
   LotItemInput,
   OfferSlotInput,
   PlaceOfferInput,
-  PunkBid,
   PunkListing,
   PunksAuctionConfig,
   PunksMarketConfig,

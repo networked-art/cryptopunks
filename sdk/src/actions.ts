@@ -55,13 +55,6 @@ export type PunkListing = {
   onlySellTo: Address
 }
 
-export type PunkBid = {
-  punkId: number
-  hasBid: boolean
-  bidder: Address
-  valueWei: bigint
-}
-
 export type PunksMarketConfig = WalletConfig & {
   address?: Address
 }
@@ -125,19 +118,6 @@ export class PunksMarketClient {
       seller,
       priceWei: minValue,
       onlySellTo,
-    }
-  }
-
-  async bidFor(punkId: number): Promise<PunkBid> {
-    validatePunkId(punkId)
-    const [hasBid, punkIndex, bidder, value] = await this.read<
-      readonly [boolean, bigint, Address, bigint]
-    >('punkBids', [BigInt(punkId)])
-    return {
-      punkId: Number(punkIndex),
-      hasBid,
-      bidder,
-      valueWei: value,
     }
   }
 
@@ -230,72 +210,6 @@ export class PunksMarketClient {
       throw new PunksDataValidationError('listing price exceeds maxPriceWei')
     }
     return this.write(this.prepareBuy({ punkId: params.punkId, priceWei }))
-  }
-
-  prepareEnterBid(params: {
-    punkId: number
-    amountWei: bigint
-  }): ContractWritePlan {
-    validatePunkId(params.punkId)
-    assertWei('amountWei', params.amountWei)
-    return {
-      description: `Enter bid for CryptoPunk ${params.punkId}`,
-      request: {
-        address: this.address,
-        abi: cryptoPunksMarketAbi,
-        functionName: 'enterBidForPunk',
-        args: [BigInt(params.punkId)],
-        value: params.amountWei,
-      },
-    }
-  }
-
-  enterBid(params: {
-    punkId: number
-    amountWei: bigint
-  }): Promise<TransactionHash> {
-    return this.write(this.prepareEnterBid(params))
-  }
-
-  prepareAcceptBid(params: {
-    punkId: number
-    minPriceWei: bigint
-  }): ContractWritePlan {
-    validatePunkId(params.punkId)
-    assertWei('minPriceWei', params.minPriceWei)
-    return {
-      description: `Accept bid for CryptoPunk ${params.punkId}`,
-      request: {
-        address: this.address,
-        abi: cryptoPunksMarketAbi,
-        functionName: 'acceptBidForPunk',
-        args: [BigInt(params.punkId), params.minPriceWei],
-      },
-    }
-  }
-
-  acceptBid(params: {
-    punkId: number
-    minPriceWei: bigint
-  }): Promise<TransactionHash> {
-    return this.write(this.prepareAcceptBid(params))
-  }
-
-  prepareWithdrawBid(punkId: number): ContractWritePlan {
-    validatePunkId(punkId)
-    return {
-      description: `Withdraw bid for CryptoPunk ${punkId}`,
-      request: {
-        address: this.address,
-        abi: cryptoPunksMarketAbi,
-        functionName: 'withdrawBidForPunk',
-        args: [BigInt(punkId)],
-      },
-    }
-  }
-
-  withdrawBid(punkId: number): Promise<TransactionHash> {
-    return this.write(this.prepareWithdrawBid(punkId))
   }
 
   prepareTransfer(params: { punkId: number; to: Address }): ContractWritePlan {
