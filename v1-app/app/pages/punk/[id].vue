@@ -282,6 +282,7 @@ function searchHref(text: string) {
   display: flex;
   flex-direction: column;
   gap: var(--size-5);
+  container-type: inline-size;
 }
 
 .hero-title {
@@ -306,6 +307,12 @@ function searchHref(text: string) {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--size-1) var(--size-9);
   font-size: 12px;
+}
+
+@container (max-width: 560px) {
+  .trait-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .trait-list li {
