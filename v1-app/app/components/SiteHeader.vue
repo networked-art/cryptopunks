@@ -33,6 +33,7 @@
           <EvmConnectDialog>
             <template #connected="{ address }">
               <NuxtLink
+                v-if="address"
                 :to="`/profile/${address}`"
                 class="profile-link"
               >
