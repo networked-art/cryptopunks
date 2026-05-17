@@ -1,0 +1,15 @@
+services:
+  postgres16_indexer:
+    image: postgres:16
+    container_name: postgres16_indexer
+    environment:
+      POSTGRES_USER: punks
+      POSTGRES_PASSWORD: punks
+      POSTGRES_DB: punks
+    ports:
+      - '5412:5432'
+    volumes:
+      - postgres16_indexer:/var/lib/postgresql/data
+
+volumes:
+  postgres16_indexer:

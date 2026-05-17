@@ -1,6 +1,7 @@
 packages:
   - contracts
   - docs
+  - indexer
   - sdk
   - v1-app
   - v1-punks-indexer

@@ -51,6 +51,52 @@ importers:
         specifier: ^3.5.13
         version: 3.5.34(typescript@5.8.3)
 
+  indexer:
+    dependencies:
+      '@1001-digital/ponder-ens':
+        specifier: ^0.1.0
+        version: 0.1.0(@electric-sql/pglite@0.2.13)(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0))(hono@4.12.19)(pg@8.20.0)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
+      '@ponder/utils':
+        specifier: ^0.2.18
+        version: 0.2.18(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
+      abitype:
+        specifier: ^0.10.2
+        version: 0.10.3(typescript@5.8.3)(zod@3.25.76)
+      drizzle-orm:
+        specifier: ^0.41.0
+        version: 0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0)
+      hono:
+        specifier: ^4.5.0
+        version: 4.12.19
+      ponder:
+        specifier: ^0.16.6
+        version: 0.16.6(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(gel@2.2.0)(hono@4.12.19)(terser@5.47.1)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))(zod@3.25.76)
+      viem:
+        specifier: 2.48.4
+        version: 2.48.4(typescript@5.8.3)(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.41
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      drizzle-kit:
+        specifier: ^0.30.6
+        version: 0.30.6
+      eslint:
+        specifier: ^8.54.0
+        version: 8.57.1
+      eslint-config-ponder:
+        specifier: ^0.16.6
+        version: 0.16.6(@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)(typescript@5.8.3))(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.2
+        version: 5.8.3
+
   sdk:
     devDependencies:
       '@types/node':
