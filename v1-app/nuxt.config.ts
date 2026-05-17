@@ -35,7 +35,10 @@ export default defineNuxtConfig({
       evm: {
         walletConnectProjectId: '',
         chains: {
-          mainnet: { rpcs: '' },
+          // Browser reads route through the same-origin proxy below. The
+          // server-side wagmi plugin override swaps this for `rpcUrl` so
+          // viem-on-Node hits the upstream directly.
+          mainnet: { rpcs: '/api/rpc' },
         },
       },
     },
