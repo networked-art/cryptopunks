@@ -15,9 +15,8 @@ import "./lib/PushPullEscrow.sol";
 ///         proceeds credited to itself, transferring the Punk to the final
 ///         recipient, and paying the real seller from market-held ETH.
 ///
-///         It also provides a standalone collection bid book matching the
-///         `PunksCollectionBids` lifecycle, but settlements must target an
-///         existing listing directed to this market.
+///         Inspired by MouseDev's `CryptoPunksBidsV2` but matches against the
+///         richer PunksData contract (traits + colors).
 ///
 /// @author 1001
 contract PunksMarket is PushPullEscrow {
