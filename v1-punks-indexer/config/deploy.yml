@@ -33,7 +33,7 @@ builder:
 
 env:
   clear:
-    PONDER_TELEMETRY_DISABLED: "true"
+    PONDER_TELEMETRY_DISABLED: 'true'
   secret:
     - PONDER_RPC_URLS_1
     - PONDER_RPC_FALLBACK_URLS_1
@@ -48,7 +48,7 @@ accessories:
   db:
     image: postgres:17-alpine
     host: <%= ENV["DEPLOY_HOST"] %>
-    port: "127.0.0.1:5437:5432"
+    port: '127.0.0.1:5466:5432'
     options:
       network: shared
     env:

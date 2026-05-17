@@ -40,5 +40,5 @@ the repo-root `Dockerfile.v1-punks-indexer`; deploy config lives in
 Each deploy gets a fresh schema named after the commit hash
 (`DATABASE_SCHEMA=$(git rev-parse HEAD)`); the stable public views are
 projected into the `v1_punks` schema by Ponder once the new schema is
-caught up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5437`
+caught up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5466`
 on the deploy host.
