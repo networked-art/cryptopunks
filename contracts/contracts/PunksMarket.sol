@@ -3,6 +3,7 @@ pragma solidity 0.8.34;
 
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./interfaces/IPunksData.sol";
+import "./interfaces/IReverseRegistrar.sol";
 import "./lib/Punks.sol";
 import "./lib/PushPullEscrow.sol";
 
@@ -114,6 +115,9 @@ contract PunksMarket is PushPullEscrow {
         PUNKS_V1 = ICryptoPunksMarket(punksV1);
         PUNKS_CRITERIA = IPunksDataCriteria(punksData);
         PUNKS_VISUAL = IPunksDataVisual(punksData);
+
+        IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
+            .setName("punksmarket.eth");
     }
 
     // ─────────────────────────────────── ETH ───────────────────────────────────
