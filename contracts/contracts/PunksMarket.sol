@@ -43,10 +43,10 @@ contract PunksMarket is PushPullEscrow {
 
     // ───────────────────────────────── Storage ─────────────────────────────────
 
-    /// @notice Returns the C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ V1 market.
+    /// @notice The bugged C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ market.
     ICryptoPunksMarket public immutable PUNKS_V1 =
         ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
-    /// @notice Returns the sealed PunksData contract used for bid matching.
+    /// @notice The sealed PunksData contract used for bid matching.
     IPunksData public immutable PUNKS_DATA =
         IPunksData(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
