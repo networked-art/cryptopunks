@@ -129,9 +129,9 @@ const forbiddenTraitsText = ref('')
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing. Discrete
 /// controls (chips, sort) stay immediate.
-const debouncedText = useDebounced(text, 200)
-const debouncedRequired = useDebounced(requiredTraitsText, 200)
-const debouncedForbidden = useDebounced(forbiddenTraitsText, 200)
+const debouncedText = useDebounced(text, 80)
+const debouncedRequired = useDebounced(requiredTraitsText, 80)
+const debouncedForbidden = useDebounced(forbiddenTraitsText, 80)
 
 /// Search-text capabilities are surfaced in the placeholder so users discover
 /// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
