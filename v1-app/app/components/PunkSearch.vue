@@ -73,6 +73,10 @@ function onEnter() {
   const id = Number(text.value.trim())
   if (Number.isInteger(id) && id >= 0 && id <= 9999) {
     router.push(`/punk/${id}`)
+    return
+  }
+  if (ids.value.length === 1) {
+    router.push(`/punk/${ids.value[0]}`)
   }
 }
 </script>
