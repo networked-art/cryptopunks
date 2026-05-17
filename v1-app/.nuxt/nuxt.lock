@@ -1,0 +1,9 @@
+{
+  "pid": 1874942,
+  "startedAt": 1778985519003,
+  "command": "dev",
+  "cwd": "/home/jalil/1001/networked_art/cryptopunks/v1-app",
+  "port": 4242,
+  "hostname": "::1",
+  "url": "http://[::1]:4242"
+}

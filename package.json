@@ -8,5 +8,10 @@
     "docs:dev": "pnpm --filter @cryptopunks/docs dev",
     "docs:build": "pnpm --filter @cryptopunks/docs build",
     "docs:preview": "pnpm --filter @cryptopunks/docs preview"
+  },
+  "pnpm": {
+    "overrides": {
+      "viem": "2.48.4"
+    }
   }
 }

@@ -1,0 +1,4 @@
+const bids_vue_vue_type_style_index_0_scoped_1d08f138_lang = ".bids-page[data-v-1d08f138]{display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-6) var(--space-4)}.page-head h1[data-v-1d08f138]{font-size:22px;font-weight:500;letter-spacing:-.02em;margin:0 0 var(--space-1)}.bid-grid[data-v-1d08f138]{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}.empty[data-v-1d08f138]{border:1px dashed var(--border);border-radius:var(--radius);padding:var(--space-8);text-align:center}.error[data-v-1d08f138]{color:var(--accent)}code[data-v-1d08f138]{background:var(--bg-elevated);border-radius:3px;font-family:var(--font-mono);font-size:11px;padding:1px 6px}";
+
+export { bids_vue_vue_type_style_index_0_scoped_1d08f138_lang as b };
+//# sourceMappingURL=bids-styles-2.mjs-B-cCfsC8.mjs.map
