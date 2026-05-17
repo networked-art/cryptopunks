@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { client, graphql } from 'ponder'
 import { db, publicClients } from 'ponder:api'
 import schema from 'ponder:schema'
+import salesRouter from './sales'
 import { getOffchainDb } from '../offchain'
 
 const app = new Hono()
@@ -16,6 +17,8 @@ app.route(
     db: await getOffchainDb(),
   }),
 )
+
+app.route('/sales', salesRouter)
 
 app.use('/', graphql({ db, schema }))
 

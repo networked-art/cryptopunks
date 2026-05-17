@@ -75,32 +75,31 @@ export const punkBid = onchainTable(
   }),
 )
 
-// Daily ETH/USD close. Post-2021-07 rows come from Chainlink's onchain
-// ETH/USD oracle (`AnswerUpdated` upserts on the row keyed by UTC day, so the
-// final value is the day's last round ≈ daily close). Pre-Chainlink rows are
-// seeded once from `data/eth_usd_pre_chainlink.csv` — see the README. The
-// `chainlink_*` columns are null on seeded rows. `eth_usd_cents` is
-// Stripe-style integer cents (USD × 100, e.g. $1234.56 → 123_456) giving us
-// integer-only USD math via `usd_cents = wei * eth_usd_cents / 1e18`.
+// Daily ETH/USD close, double-keyed cache. Pre-Chainlink rows (V1 launch
+// through ~2021-07) come from `data/eth_usd_prices.csv` seeded once at
+// startup; later rows are filled on demand by sale handlers reading
+// Chainlink's onchain aggregator. Lives onchain (not in the offchain
+// schema) because Ponder indexing handlers can only read/write onchain
+// tables — and we want sale events to be stamped with `usd_value_cents`
+// at indexing time using this cache. `eth_usd_cents` is Stripe-style
+// integer cents (USD × 100, e.g. $1234.56 → 123_456).
 export const ethUsdPrice = onchainTable(
   'eth_usd_prices',
   (t) => ({
     day_unix: t.bigint().primaryKey(),
     eth_usd_cents: t.bigint().notNull(),
     source: t.text().notNull(),
-    chainlink_round_id: t.bigint(),
-    chainlink_updated_at: t.bigint(),
     block_number: t.bigint(),
     updated_at: t.bigint().notNull(),
   }),
   (table) => ({
-    dayIdx: index('eth_usd_price_day_idx').on(table.day_unix),
     sourceIdx: index('eth_usd_price_source_idx').on(table.source),
   }),
 )
 
 // Sentinel rows so the pre-Chainlink CSV seed is idempotent across restarts.
-// Bump the suffix in `src/prices.ts` to force a re-seed when the CSV changes.
+// Bump the suffix in `src/prices.ts` to force a re-seed when the CSV content
+// materially changes.
 export const backfillMarker = onchainTable('backfill_markers', (t) => ({
   name: t.text().primaryKey(),
   completed_at: t.bigint().notNull(),
@@ -109,8 +108,10 @@ export const backfillMarker = onchainTable('backfill_markers', (t) => ({
 // Unified user-facing activity stream. `source` ∈ { cryptopunks_v1,
 // cryptopunks_v2, wrapped_punks, cryptopunks_721 }. `type` ∈ { assign,
 // transfer, listing, listing_cancelled, bid, bid_cancelled, sale, wrap,
-// unwrap }. `usd_value_cents` is populated whenever `wei_amount` is set —
-// it's `wei_amount` converted to USD cents at the day's ETH/USD close.
+// unwrap }. `day_unix` is the UTC day of `timestamp` — stable JOIN key
+// against `eth_usd_prices`. `usd_value_cents` is the Stripe-style USD-cent
+// equivalent of `wei_amount` at the day's ETH/USD price, cached on the row
+// at indexing time so sale lookups don't need a JOIN.
 export const event = onchainTable(
   'events',
   (t) => ({
@@ -133,9 +134,11 @@ export const event = onchainTable(
     block_number: t.bigint().notNull(),
     log_index: t.integer().notNull(),
     timestamp: t.bigint().notNull(),
+    day_unix: t.bigint().notNull(),
   }),
   (table) => ({
     timestampIdx: index('event_timestamp_idx').on(table.timestamp),
+    dayUnixIdx: index('event_day_unix_idx').on(table.day_unix),
     sourceTimestampIdx: index('event_source_timestamp_idx').on(
       table.source,
       table.timestamp,

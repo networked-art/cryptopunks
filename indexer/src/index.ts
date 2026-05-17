@@ -1,12 +1,6 @@
 import { ponder } from 'ponder:registry'
 import type { Context } from 'ponder:registry'
-import {
-  ethUsdPrice,
-  event as activityEvent,
-  listing,
-  punk,
-  punkBid,
-} from 'ponder:schema'
+import { event as activityEvent, listing, punk, punkBid } from 'ponder:schema'
 import { getAddress } from 'viem'
 
 import { CryptoPunksV2Abi } from '../abis/CryptoPunksV2Abi'
@@ -17,11 +11,9 @@ import {
   wrapperKindFor,
 } from '../utils/contracts'
 import {
-  PRICE_SOURCE_CHAINLINK,
-  chainlinkAnswerToCents,
   dayUnix,
-  seedPreChainlinkPrices,
-  usdCentsForWei,
+  seedPreChainlinkPricesFromCsv,
+  usdValueCentsForBlock,
 } from './prices'
 
 type Address = `0x${string}`
@@ -47,45 +39,13 @@ const SOURCE_C721 = 'cryptopunks_721'
 const NATIVE_V1 = 'v1'
 const NATIVE_V2 = 'v2'
 
-// One-time seed of daily ETH/USD prices for the pre-Chainlink window
-// (V1 launch → mid-2021) from the committed CSV under `data/`. Runs before
-// the first V1 event so the earliest sale already has USD context. The CSV
-// was generated offline by `scripts/fetch-pre-chainlink-prices.ts`; the
-// runtime loader never hits any external API.
+// One-time seed of daily ETH/USD prices for the pre-Chainlink window (V1
+// launch → ~2021-07) from the committed CSV. Runs before the first V1 event
+// so the cache is warm and sale handlers can stamp `usd_value_cents` from
+// the cache without an RPC call. Post-CSV days are lazy-filled by the sale
+// handlers themselves via Chainlink's onchain `latestRoundData`.
 ponder.on('CryptoPunksV1:setup', async ({ context }) => {
-  await seedPreChainlinkPrices(context)
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chainlink ETH/USD — daily close, deduped via day-keyed upsert. The aggregator
-// fires `AnswerUpdated` ~20-30 times a day; each update overwrites the day's
-// row, so the final indexed value of every row is the day's last round.
-// ─────────────────────────────────────────────────────────────────────────────
-
-ponder.on('ChainlinkEthUsd:AnswerUpdated', async ({ event, context }) => {
-  const cents = chainlinkAnswerToCents(event.args.current)
-  if (cents <= 0n) return
-  const day = dayUnix(event.block.timestamp)
-
-  await context.db
-    .insert(ethUsdPrice)
-    .values({
-      day_unix: day,
-      eth_usd_cents: cents,
-      source: PRICE_SOURCE_CHAINLINK,
-      chainlink_round_id: event.args.roundId,
-      chainlink_updated_at: event.args.updatedAt,
-      block_number: event.block.number,
-      updated_at: event.block.timestamp,
-    })
-    .onConflictDoUpdate({
-      eth_usd_cents: cents,
-      source: PRICE_SOURCE_CHAINLINK,
-      chainlink_round_id: event.args.roundId,
-      chainlink_updated_at: event.args.updatedAt,
-      block_number: event.block.number,
-      updated_at: event.block.timestamp,
-    })
+  await seedPreChainlinkPricesFromCsv(context)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -865,25 +825,32 @@ async function readNativeOwner(
 
 async function insertActivity(
   context: Context,
-  values: typeof activityEvent.$inferInsert,
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
 ) {
-  // Auto-stamp USD cents whenever the event carries a wei amount. Callers can
-  // pre-set `usd_value_cents` to override (e.g. derived from listing_wei).
-  let usdValueCents = values.usd_value_cents ?? null
-  if (
-    usdValueCents === null &&
-    values.wei_amount !== null &&
-    values.wei_amount !== undefined
-  ) {
-    usdValueCents = await usdCentsForWei(
+  // Compute USD cents whenever the event carries a wei amount. Cache lookup
+  // first (zero RPC for any day in `eth_usd_prices`); on miss the helper
+  // reads Chainlink's `latestRoundData` at this block and back-fills the
+  // cache so the next event on the same day is a cheap hit. Pre-aggregator
+  // days that aren't in the CSV stay null.
+  let usdValueCents: bigint | null = null
+  if (values.wei_amount !== null && values.wei_amount !== undefined) {
+    usdValueCents = await usdValueCentsForBlock(
       context,
+      { number: values.block_number, timestamp: values.timestamp },
       values.wei_amount,
-      values.timestamp,
     )
   }
+
   await context.db
     .insert(activityEvent)
-    .values({ ...values, usd_value_cents: usdValueCents })
+    .values({
+      ...values,
+      day_unix: dayUnix(values.timestamp),
+      usd_value_cents: usdValueCents,
+    })
     .onConflictDoNothing()
 }
 

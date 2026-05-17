@@ -21,14 +21,13 @@ export const CRYPTOPUNKS_721_ADDRESS =
   '0x000000000000003607fce1aC9E043a86675C5C2F' as const
 export const CRYPTOPUNKS_721_START_BLOCK = 20_900_000
 
-// Chainlink ETH/USD aggregator (OCR). The consumer-facing proxy at
-// 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 does not emit `AnswerUpdated`;
-// we listen on the underlying aggregator. Sales before this aggregator went
-// live (mid-2021) leave `usd_value_cents` null — pre-Chainlink coverage is
-// out of scope for this indexer.
+// Chainlink ETH/USD aggregator (OCR). Not indexed via Ponder — we read it
+// from API-context code with Viem and write the result into the offchain
+// `eth_usd_prices` table for persistence across redeploys. The consumer-
+// facing proxy at 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 does not expose
+// round-by-round reads; the aggregator below does.
 export const CHAINLINK_ETH_USD_AGGREGATOR =
   '0x37bC7498f4FF12C19678ee8fE19d713b87F6a9e6' as const
-export const CHAINLINK_ETH_USD_START_BLOCK = 12_864_088
 
 export const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as const

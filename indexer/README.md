@@ -39,41 +39,58 @@ state lives in `listings` and `punk_bids`.
 
 ## USD pricing
 
-Every event row with a non-null `wei_amount` is stamped with
-`usd_value_cents` — Stripe-style integer USD cents (e.g. `$1234.56 →
-123_456`) using the ETH/USD price for the event's UTC day. The daily
-prices live in `eth_usd_prices` (`day_unix` PK, `eth_usd_cents`, `source`,
-plus Chainlink provenance columns).
+Every event row carries `usd_value_cents` — the Stripe-style USD-cent
+equivalent of `wei_amount` at the day's ETH/USD price, **cached on the
+row at indexing time**. Consumers querying recent sales never need a JOIN
+or a follow-up RPC; the value is denormalized at write.
 
-Two price sources, both written into the same table:
+The cache itself lives in the onchain table `eth_usd_prices` (`day_unix`
+PK, `eth_usd_cents`, `source`, `block_number`, `updated_at`). The table
+lives in Ponder's onchain schema because indexing handlers can only
+read/write onchain tables (`Insert` in
+`ponder/dist/types/types/db.d.ts:14` has a literal `PonderTypeError` for
+offchain tables). The reseeding-on-each-deploy cost is trivial — 3252 CSV
+rows insert sub-second.
 
-1. **Chainlink (2021-07 onward, canonical)**. The indexer subscribes to the
-   ETH/USD aggregator's `AnswerUpdated` events. The aggregator fires ~20-30
-   updates per UTC day; each one upserts the row keyed on `day_unix`, so
-   the final indexed state of every row is the day's last Chainlink round
-   (≈ the daily close). `source = 'chainlink'` on these rows.
-2. **Bundled CSV (V1 launch → 2021-07-20)**. `data/eth_usd_pre_chainlink.csv`
-   is committed to the repo (1490 daily closes, one row per day). On
-   startup `CryptoPunksV1:setup` reads the CSV from disk and bulk-inserts
-   it under `source = 'csv:pre_chainlink_v1'`, guarded by a sentinel row in
-   `backfill_markers` so the seed is idempotent across restarts. **The
-   runtime never makes outbound HTTP for prices.**
+Two layered sources fill the cache:
 
-To regenerate the CSV (developer-side, off-runtime):
+1. **CSV historical baseline** (`source = 'csv:cryptocompare_v1'`).
+   `data/eth_usd_prices.csv` is committed to the repo (3252 daily closes
+   from V1 launch through today) and seeded once via the
+   `CryptoPunksV1:setup` hook, guarded by a row in `backfill_markers`.
+   Regenerate with `pnpm tsx scripts/fetch-prices.ts` then bump
+   `PRE_CHAINLINK_SEED_NAME` in `src/prices.ts` if the contents materially
+   change.
 
+2. **Chainlink ETH/USD live fill** (`source = 'chainlink'`). When a sale
+   handler finds no cache row for the event's UTC day, it calls
+   `context.client.readContract` on Chainlink's onchain aggregator
+   (`0x37bC7498f4FF12C19678ee8fE19d713b87F6a9e6`) with `blockNumber:
+event.block.number` to get the latest round at that historical block,
+   inserts it into `eth_usd_prices`, and stamps the event. Subsequent
+   events on the same day hit the cache. Chainlink wasn't deployed before
+   mid-2021, so for blocks earlier than that the call reverts and the
+   event's `usd_value_cents` stays null — the CSV seed should cover any
+   real pre-2021 event.
+
+Stamp pseudocode (`src/prices.ts`):
+
+```ts
+const day = dayUnix(event.block.timestamp)
+const cached = await context.db.find(ethUsdPrice, { day_unix: day })
+const cents = cached
+  ? cached.eth_usd_cents
+  : await fetchAndCacheChainlinkAt(context, day, event.block) // ← inserts under day_unix
+event.usd_value_cents =
+  cents !== null ? (event.wei_amount * cents) / 10n ** 18n : null
 ```
-pnpm tsx scripts/fetch-pre-chainlink-prices.ts
-```
 
-The script hits CryptoCompare's free histoday endpoint, trims to the
-pre-Chainlink window, and rewrites the CSV — then bump
-`PRE_CHAINLINK_SEED_NAME` in `src/prices.ts` so the seed re-runs and
-commit both changes together.
+API:
 
-When stamping a sale, the handler reads the row for the event's UTC day or
-walks back up to a week to find the nearest preceding day. Conversion is
-`usd_value_cents = wei_amount * eth_usd_cents / 1e18`, with Chainlink's
-8-decimal answer rescaled to cents as `answer / 1e6`.
+- `GET /sales` — recent sale events with `usd_value_cents` already on the
+  row (no JOIN). Pagination via `?limit=`, `?offset=`.
+- The `eth_usd_prices` table is exposed via the standard GraphQL endpoint
+  and `/sql/*` for raw SQL — no custom route needed.
 
 ## Setup
 
