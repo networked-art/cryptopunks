@@ -104,7 +104,7 @@ const personality = computed(() => {
 
 const rootStyle = computed(() => {
   const p = personality.value
-  return {
+  const style: Record<string, string> = {
     width: typeof props.size === 'number' ? `${props.size}px` : props.size,
     height: typeof props.size === 'number' ? `${props.size}px` : props.size,
     '--g-amp': p.amp.toFixed(3),
@@ -113,6 +113,8 @@ const rootStyle = computed(() => {
     '--g-g-freeze': `${p.freezeG.toFixed(3)}s`,
     '--g-b-freeze': `${p.freezeB.toFixed(3)}s`,
   }
+  if (props.background === 'transparent') style.background = 'transparent'
+  return style
 })
 
 const hovering = ref(false)
