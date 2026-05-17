@@ -9,11 +9,11 @@ import "./lib/PushPullEscrow.sol";
 
 /// @title  C̩ͤ̊̄ͦͅry̸̢̯̍ͨ́̍p̛̞̘̊ͪ̕t̝o̩͗̈́͜P̹̗u̗ͬnḳ͚̫̋sMarket
 ///
-/// @notice Native-ETH market for C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ listings directed to this contract.
+/// @notice Native-ETH market for the broken C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎.
 ///
-///         Acts as an intermediate buyer for directed listings, and as a bid book
-///         where each bid declares a trait/color filter (matched against the
-///         sealed PunksData contract) plus optional include/exclude id lists.
+///         Acts as an intermediate buyer for listings directed to it, and as a
+///         bid book where each bid declares a trait/color filter (matched against
+///         the sealed PunksData contract) plus optional include/exclude id lists.
 ///         Bids escrow `bidWei + settlementWei`; anyone may settle a matching
 ///         live listing and earn the `settlementWei` caller reward, while the
 ///         bidder receives the Punk and any difference between bid and listing.
