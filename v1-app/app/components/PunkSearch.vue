@@ -5,7 +5,7 @@
         v-model="text"
         type="search"
         class="search-input"
-        :placeholder="`Search ${counts.total.toLocaleString()} punks by id, type, or trait…`"
+        :placeholder="placeholder"
         @keydown.enter="onEnter"
       />
       <select
@@ -19,18 +19,26 @@
         <option value="pixelCount-desc">Most pixels</option>
         <option value="colorCount-desc">Most colors</option>
       </select>
+      <button
+        v-if="!hideFilters"
+        type="button"
+        class="advanced-toggle"
+        :class="{ active: showAdvanced }"
+        :aria-expanded="showAdvanced"
+        @click="showAdvanced = !showAdvanced"
+      >
+        Advanced{{ activeFilterCount ? ` · ${activeFilterCount}` : '' }}
+      </button>
       <span class="muted result-count"
         >{{ counts.filtered.toLocaleString() }} /
         {{ counts.total.toLocaleString() }}</span
       >
     </header>
 
-    <details
-      v-if="!hideFilters"
+    <div
+      v-if="!hideFilters && showAdvanced"
       class="filters"
-      :open="filtersOpen"
     >
-      <summary>Filters · {{ activeFilterCount }} active</summary>
       <div class="filter-grid">
         <div>
           <label class="filter-label">Type</label>
@@ -51,14 +59,14 @@
           <label class="filter-label">Head variant</label>
           <div class="chips">
             <button
-              v-for="h in headVariants"
-              :key="h"
+              v-for="variant in headVariants"
+              :key="variant"
               type="button"
               class="chip"
-              :class="{ active: selectedHeads.has(h) }"
-              @click="toggle(selectedHeads, h)"
+              :class="{ active: selectedHeads.has(variant) }"
+              @click="toggle(selectedHeads, variant)"
             >
-              {{ h }}
+              {{ variant }}
             </button>
           </div>
         </div>
@@ -79,7 +87,7 @@
           />
         </div>
       </div>
-    </details>
+    </div>
 
     <PunkGrid
       :ids="ids"
@@ -96,10 +104,9 @@ const props = withDefaults(
   defineProps<{
     size?: number
     hideFilters?: boolean
-    filtersOpen?: boolean
     baseQuery?: PunkQuery
   }>(),
-  { size: 56, hideFilters: false, filtersOpen: false },
+  { size: 56, hideFilters: false },
 )
 
 const offline = usePunksOffline()
@@ -107,6 +114,7 @@ const router = useRouter()
 
 const text = ref('')
 const sort = ref<PunkQuerySort>('id')
+const showAdvanced = ref(false)
 const punkTypes = Object.keys(PunkType).filter((k) =>
   isNaN(Number(k)),
 ) as string[]
@@ -117,6 +125,15 @@ const selectedTypes = reactive(new Set<string>())
 const selectedHeads = reactive(new Set<string>())
 const requiredTraitsText = ref('')
 const forbiddenTraitsText = ref('')
+
+/// Search-text capabilities are surfaced in the placeholder so users discover
+/// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
+/// language: trait names, `<n> colors / attributes / pixels`, `<tone> skin`,
+/// `#<id>`, and `-<id>` all compile into the same filter.
+const placeholder = computed(
+  () =>
+    `Search ${counts.value.total.toLocaleString()} punks — try hoodie, 2 colors, albino skin, #1234, -1001`,
+)
 
 function toggle(set: Set<string>, value: string) {
   if (set.has(value)) set.delete(value)
@@ -186,12 +203,16 @@ function onEnter() {
 
 .search-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
+  width: 100%;
 }
 
 .search-input {
-  flex: 1;
+  flex: 1 1 240px;
+  min-width: 0;
+  width: 100%;
 }
 
 .sort {
@@ -206,6 +227,25 @@ function onEnter() {
   white-space: nowrap;
 }
 
+.advanced-toggle {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.advanced-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
 .filters {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -213,19 +253,10 @@ function onEnter() {
   background: var(--bg-elevated);
 }
 
-.filters summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-3);
-  margin-top: var(--space-3);
 }
 
 .filter-grid .full {

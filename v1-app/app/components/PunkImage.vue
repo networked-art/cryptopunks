@@ -1,11 +1,12 @@
 <template>
   <div
     class="punk-image"
-    :class="{ 'is-glitching': glitching }"
+    :class="{ 'is-glitching': glitching, 'is-static': isStatic }"
     :style="rootStyle"
     :title="`Punk #${punkId}`"
     @mouseenter="onEnter"
     @mouseleave="onLeave"
+    @click="onClick"
   >
     <img
       class="punk-base"
@@ -14,19 +15,19 @@
       draggable="false"
     />
     <img
-      v-if="glitching"
+      v-if="showLayers"
       class="punk-glitch punk-glitch-r"
       :src="dataUri"
       aria-hidden="true"
     />
     <img
-      v-if="glitching"
+      v-if="showLayers"
       class="punk-glitch punk-glitch-g"
       :src="dataUri"
       aria-hidden="true"
     />
     <img
-      v-if="glitching"
+      v-if="showLayers"
       class="punk-glitch punk-glitch-b"
       :src="dataUri"
       aria-hidden="true"
@@ -45,8 +46,9 @@ const props = withDefaults(
     punkId: number
     size?: number | string
     background?: 'classic' | 'transparent' | string
-    glitch?: 'never' | 'hover' | 'always' | 'random'
+    glitch?: 'never' | 'hover' | 'always' | 'random' | 'static'
     showId?: boolean
+    seed?: number
   }>(),
   {
     size: 96,
@@ -64,10 +66,51 @@ const dataUri = computed(() =>
   }),
 )
 
-const rootStyle = computed(() => ({
-  width: typeof props.size === 'number' ? `${props.size}px` : props.size,
-  height: typeof props.size === 'number' ? `${props.size}px` : props.size,
-}))
+function hash32(n: number) {
+  let h = n | 0
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b)
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+  return ((h ^ (h >>> 16)) >>> 0) / 0x100000000
+}
+
+const runtimeSeed = ref<number>(props.seed ?? props.punkId)
+watch(
+  () => [props.seed, props.punkId] as const,
+  () => {
+    runtimeSeed.value = props.seed ?? props.punkId
+  },
+)
+
+const personality = computed(() => {
+  const s = runtimeSeed.value
+  const r1 = hash32(s * 7 + 1)
+  const r2 = hash32(s * 13 + 2)
+  const r4 = hash32(s * 31 + 4)
+  const r5 = hash32(s * 41 + 5)
+  const r6 = hash32(s * 53 + 6)
+  const r7 = hash32(s * 67 + 7)
+  return {
+    amp: 0.7 + r1 * 0.7,
+    period: 0.75 + r2 * 0.6,
+    burstMul: 0.7 + r4 * 0.7,
+    freezeR: r5 * 2,
+    freezeG: r6 * 2,
+    freezeB: r7 * 2,
+  }
+})
+
+const rootStyle = computed(() => {
+  const p = personality.value
+  return {
+    width: typeof props.size === 'number' ? `${props.size}px` : props.size,
+    height: typeof props.size === 'number' ? `${props.size}px` : props.size,
+    '--g-amp': p.amp.toFixed(3),
+    '--g-period': p.period.toFixed(3),
+    '--g-r-freeze': `${p.freezeR.toFixed(3)}s`,
+    '--g-g-freeze': `${p.freezeG.toFixed(3)}s`,
+    '--g-b-freeze': `${p.freezeB.toFixed(3)}s`,
+  }
+})
 
 const hovering = ref(false)
 const burst = ref(false)
@@ -76,6 +119,7 @@ let burstTimer: ReturnType<typeof setTimeout> | undefined
 const glitching = computed(() => {
   switch (props.glitch) {
     case 'never':
+    case 'static':
       return false
     case 'always':
       return true
@@ -87,27 +131,42 @@ const glitching = computed(() => {
   }
 })
 
+const isStatic = computed(() => props.glitch === 'static')
+const showLayers = computed(() => glitching.value || isStatic.value)
+
 onMounted(() => {
   if (props.glitch === 'random') scheduleBurst()
 })
 
+function reshuffle() {
+  runtimeSeed.value = Math.floor(Math.random() * 1_000_000_000)
+}
+
 function onEnter() {
   if (props.glitch === 'hover') hovering.value = true
+  else if (props.glitch === 'static') reshuffle()
 }
 function onLeave() {
   if (props.glitch === 'hover') hovering.value = false
+}
+function onClick() {
+  if (props.glitch === 'static') reshuffle()
 }
 
 onBeforeUnmount(() => clearTimeout(burstTimer))
 
 function scheduleBurst() {
-  const wait = 4000 + Math.random() * 9000
+  const mul = personality.value.burstMul
+  const wait = (800 + Math.random() * 2200) * mul
   burstTimer = setTimeout(() => {
     burst.value = true
-    setTimeout(() => {
-      burst.value = false
-      scheduleBurst()
-    }, 600)
+    setTimeout(
+      () => {
+        burst.value = false
+        scheduleBurst()
+      },
+      (400 + Math.random() * 500) * mul,
+    )
   }, wait)
 }
 </script>
@@ -140,91 +199,165 @@ function scheduleBurst() {
   inset: 0;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.7;
+  opacity: 0.95;
 }
 
 .punk-glitch-r {
   z-index: 2;
-  filter: hue-rotate(0deg) drop-shadow(2px 0 0 #ff003c);
-  animation: punk-glitch-r 0.35s steps(2) infinite;
+  filter:
+    drop-shadow(5px 0 0 #ff003c)
+    drop-shadow(-2px 0 0 #ff0066);
+  animation: punk-glitch-r calc(var(--g-period, 1) * 0.7s) steps(2) infinite;
 }
 
 .punk-glitch-g {
   z-index: 3;
-  filter: drop-shadow(-2px 0 0 #00ff8c);
-  animation: punk-glitch-g 0.45s steps(2) infinite;
+  filter:
+    drop-shadow(-5px 0 0 #00ff8c)
+    drop-shadow(2px 1px 0 #00ffa6);
+  animation: punk-glitch-g calc(var(--g-period, 1) * 0.9s) steps(2) infinite;
 }
 
 .punk-glitch-b {
   z-index: 4;
-  filter: drop-shadow(0 2px 0 #00b8ff);
-  animation: punk-glitch-b 0.55s steps(2) infinite;
+  filter:
+    drop-shadow(0 4px 0 #00b8ff)
+    drop-shadow(3px -2px 0 #3366ff);
+  animation: punk-glitch-b calc(var(--g-period, 1) * 1.1s) steps(2) infinite;
 }
 
 @keyframes punk-glitch-r {
   0% {
-    transform: translate(0, 0) skewX(0deg);
-    clip-path: inset(0 0 70% 0);
+    transform: translate(calc(var(--g-amp, 1) * -3px), calc(var(--g-amp, 1) * 1px)) skewX(-4deg);
+    clip-path: inset(0 0 78% 0);
+  }
+  25% {
+    transform: translate(calc(var(--g-amp, 1) * 5px), calc(var(--g-amp, 1) * -3px)) skewX(6deg);
+    clip-path: inset(12% 0 55% 0);
   }
   50% {
-    transform: translate(2px, -1px) skewX(-2deg);
-    clip-path: inset(30% 0 30% 0);
+    transform: translate(calc(var(--g-amp, 1) * -4px), calc(var(--g-amp, 1) * 2px)) skewX(-3deg);
+    clip-path: inset(40% 0 22% 0);
+  }
+  75% {
+    transform: translate(calc(var(--g-amp, 1) * 6px), calc(var(--g-amp, 1) * -1px)) skewX(5deg);
+    clip-path: inset(60% 0 8% 0);
   }
   100% {
-    transform: translate(-1px, 1px) skewX(2deg);
-    clip-path: inset(70% 0 0 0);
+    transform: translate(calc(var(--g-amp, 1) * -2px), calc(var(--g-amp, 1) * 3px)) skewX(-6deg);
+    clip-path: inset(82% 0 0 0);
   }
 }
 
 @keyframes punk-glitch-g {
   0% {
-    transform: translate(-2px, 0);
-    clip-path: inset(60% 0 10% 0);
+    transform: translate(calc(var(--g-amp, 1) * -5px), 0) skewX(3deg);
+    clip-path: inset(68% 0 4% 0);
+  }
+  25% {
+    transform: translate(calc(var(--g-amp, 1) * 3px), calc(var(--g-amp, 1) * 2px)) skewX(-5deg);
+    clip-path: inset(2% 0 70% 0);
   }
   50% {
-    transform: translate(1px, 1px);
-    clip-path: inset(10% 0 60% 0);
+    transform: translate(calc(var(--g-amp, 1) * -2px), calc(var(--g-amp, 1) * -3px)) skewX(4deg);
+    clip-path: inset(35% 0 35% 0);
+  }
+  75% {
+    transform: translate(calc(var(--g-amp, 1) * 4px), calc(var(--g-amp, 1) * 3px)) skewX(-2deg);
+    clip-path: inset(20% 0 55% 0);
   }
   100% {
-    transform: translate(0, -1px);
-    clip-path: inset(35% 0 35% 0);
+    transform: translate(calc(var(--g-amp, 1) * -4px), calc(var(--g-amp, 1) * -2px)) skewX(6deg);
+    clip-path: inset(55% 0 20% 0);
   }
 }
 
 @keyframes punk-glitch-b {
   0% {
-    transform: translate(1px, 1px);
-    clip-path: inset(0 0 40% 0);
+    transform: translate(calc(var(--g-amp, 1) * 4px), calc(var(--g-amp, 1) * 3px)) skewY(-2deg);
+    clip-path: inset(0 0 48% 0);
+  }
+  25% {
+    transform: translate(calc(var(--g-amp, 1) * -3px), calc(var(--g-amp, 1) * -4px)) skewY(3deg);
+    clip-path: inset(45% 0 12% 0);
   }
   50% {
-    transform: translate(-1px, -2px);
-    clip-path: inset(20% 0 50% 0);
+    transform: translate(calc(var(--g-amp, 1) * -5px), calc(var(--g-amp, 1) * -5px)) skewY(-3deg);
+    clip-path: inset(25% 0 60% 0);
+  }
+  75% {
+    transform: translate(calc(var(--g-amp, 1) * 3px), calc(var(--g-amp, 1) * 5px)) skewY(2deg);
+    clip-path: inset(58% 0 5% 0);
   }
   100% {
-    transform: translate(2px, 0);
-    clip-path: inset(40% 0 20% 0);
+    transform: translate(calc(var(--g-amp, 1) * 6px), calc(var(--g-amp, 1) * -1px)) skewY(-4deg);
+    clip-path: inset(48% 0 25% 0);
   }
 }
 
 .is-glitching .punk-base {
-  animation: punk-base-shake 0.2s steps(2) infinite;
+  animation: punk-base-shake calc(var(--g-period, 1) * 0.4s) steps(2) infinite;
 }
 
 @keyframes punk-base-shake {
   0% {
     transform: translate(0, 0);
+    filter: none;
   }
-  25% {
-    transform: translate(1px, -1px);
+  20% {
+    transform: translate(calc(var(--g-amp, 1) * 3px), calc(var(--g-amp, 1) * -2px));
+    filter: contrast(1.15);
   }
-  50% {
-    transform: translate(-1px, 1px);
+  40% {
+    transform: translate(calc(var(--g-amp, 1) * -3px), calc(var(--g-amp, 1) * 2px));
+    filter: none;
   }
-  75% {
-    transform: translate(1px, 1px);
+  60% {
+    transform: translate(calc(var(--g-amp, 1) * 2px), calc(var(--g-amp, 1) * 3px));
+    filter: brightness(1.08);
+  }
+  80% {
+    transform: translate(calc(var(--g-amp, 1) * -2px), calc(var(--g-amp, 1) * -3px));
+    filter: none;
   }
   100% {
     transform: translate(0, 0);
+    filter: none;
+  }
+}
+
+.is-glitching {
+  animation: punk-glitch-slice calc(var(--g-period, 1) * 1.4s) steps(1) infinite;
+}
+
+.is-static .punk-glitch-r {
+  animation-play-state: paused;
+  animation-delay: calc(-1 * var(--g-r-freeze, 0s));
+}
+.is-static .punk-glitch-g {
+  animation-play-state: paused;
+  animation-delay: calc(-1 * var(--g-g-freeze, 0s));
+}
+.is-static .punk-glitch-b {
+  animation-play-state: paused;
+  animation-delay: calc(-1 * var(--g-b-freeze, 0s));
+}
+
+@keyframes punk-glitch-slice {
+  0%, 100% {
+    clip-path: none;
+  }
+  10% {
+    clip-path: polygon(0 12%, 100% 12%, 100% 18%, 0 18%, 0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  30% {
+    clip-path: polygon(0 45%, 100% 45%, 100% 52%, 0 52%, 0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  55% {
+    clip-path: polygon(0 70%, 100% 70%, 100% 76%, 0 76%, 0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  80% {
+    clip-path: polygon(0 28%, 100% 28%, 100% 34%, 0 34%, 0 0, 100% 0, 100% 100%, 0 100%);
   }
 }
 
