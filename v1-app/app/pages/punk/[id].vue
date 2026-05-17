@@ -299,6 +299,10 @@ function searchHref(text: string) {
   flex-wrap: wrap;
 }
 
+.hero-meta :deep(.tag) {
+  background: var(--gray-z-0);
+}
+
 .trait-list {
   list-style: none;
   margin: 0;

@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   color-scheme: light;
 
   --font-mono:
-    'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo,
+    Consolas, monospace;
 
   --bg: #f0f0f3;
   --bg-elevated: #f7f7f8;

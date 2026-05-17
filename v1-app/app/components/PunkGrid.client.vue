@@ -202,15 +202,15 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 3px;
   background-repeat: no-repeat;
-  transition:
-    transform 0.08s ease,
-    box-shadow 0.08s ease;
+  transition: transform 0.08s ease;
 }
 
-.cell:hover {
+.cell:hover,
+.cell:focus-visible {
   transform: scale(1.18);
   z-index: 5;
-  box-shadow: 0 0 12px rgba(233, 69, 96, 0.5);
+  outline: 2px solid #000;
+  background-color: var(--background);
 }
 
 .cell-id {
@@ -227,7 +227,8 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-.cell:hover .cell-id {
+.cell:hover .cell-id,
+.cell:focus-visible .cell-id {
   opacity: 1;
 }
 
