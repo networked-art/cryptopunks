@@ -12,7 +12,7 @@ servers:
 proxy:
   ssl: true
   hosts:
-    - <%= ENV["API_HOST"] %>
+    - <%= ENV["APP_HOST"] %>
   app_port: 3000
   healthcheck:
     path: /
