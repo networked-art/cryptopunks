@@ -29,7 +29,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      indexerUrl: '',
+      indexerUrl: 'https://indexer-v1.punksmarket.app',
       punksMarketAddress: '',
       evm: {
         walletConnectProjectId: '',
