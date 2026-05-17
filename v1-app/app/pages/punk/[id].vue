@@ -46,6 +46,7 @@
         <ClientOnly>
           <PunkV1Panel
             :punk-id="id"
+            :matching-bids="matchingBids"
             @changed="refreshAll"
           />
         </ClientOnly>
@@ -119,17 +120,10 @@ const { events: history, refresh: refreshHistory } = useActivityFeed({
 })
 
 const {
-  bids: allBids,
+  bids: matchingBids,
   pending: matchingPending,
   refresh: refreshBids,
-} = usePunksMarketBids()
-const matchingBids = computed(() =>
-  allBids.value.filter((b) => {
-    if (b.includeIds.length && !b.includeIds.includes(id.value)) return false
-    if (b.excludeIds.length && b.excludeIds.includes(id.value)) return false
-    return true
-  }),
-)
+} = useBidsMatchingPunk(() => id.value)
 
 function refreshAll() {
   refreshHistory()
