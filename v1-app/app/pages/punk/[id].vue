@@ -276,6 +276,10 @@ function searchHref(text: string) {
   .hero {
     grid-template-columns: 1fr;
   }
+
+  .hero-image {
+    justify-self: center;
+  }
 }
 
 .hero-info {
