@@ -50,6 +50,7 @@ const props = withDefaults(
     showId?: boolean
     seed?: number
     speed?: number
+    strength?: number
   }>(),
   {
     size: 96,
@@ -57,6 +58,7 @@ const props = withDefaults(
     glitch: 'hover',
     showId: false,
     speed: 1,
+    strength: 1,
   },
 )
 
@@ -92,8 +94,9 @@ const personality = computed(() => {
   const r6 = hash32(s * 53 + 6)
   const r7 = hash32(s * 67 + 7)
   const speed = props.speed > 0 ? props.speed : 1
+  const strength = props.strength > 0 ? props.strength : 1
   return {
-    amp: 0.7 + r1 * 0.7,
+    amp: (0.7 + r1 * 0.7) * strength,
     period: (0.75 + r2 * 0.6) / speed,
     burstMul: 0.7 + r4 * 0.7,
     freezeR: r5 * 2,

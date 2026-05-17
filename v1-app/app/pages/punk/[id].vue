@@ -14,6 +14,7 @@
           background="transparent"
           glitch="always"
           :speed="0.1"
+          :strength="0.4"
         />
       </div>
 
