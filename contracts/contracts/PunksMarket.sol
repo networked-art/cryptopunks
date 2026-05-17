@@ -46,12 +46,9 @@ contract PunksMarket is PushPullEscrow {
     /// @notice Returns the C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ V1 market.
     ICryptoPunksMarket public immutable PUNKS_V1 =
         ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
-    /// @notice Returns the trait predicate dataset used for bid matching.
-    IPunksDataCriteria public immutable PUNKS_CRITERIA =
-        IPunksDataCriteria(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
-    /// @notice Returns the visual predicate dataset used for bid matching.
-    IPunksDataVisual public immutable PUNKS_VISUAL =
-        IPunksDataVisual(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
+    /// @notice Returns the sealed PunksData contract used for bid matching.
+    IPunksData public immutable PUNKS_DATA =
+        IPunksData(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
     /// @notice Returns the last bid id that was created.
     uint256 public lastBidId;
@@ -287,6 +284,16 @@ contract PunksMarket is PushPullEscrow {
         return _bids[bidId].excludeIds;
     }
 
+    /// @notice Returns the trait predicate dataset used for bid matching.
+    function PUNKS_CRITERIA() external view returns (IPunksDataCriteria) {
+        return IPunksDataCriteria(address(PUNKS_DATA));
+    }
+
+    /// @notice Returns the visual predicate dataset used for bid matching.
+    function PUNKS_VISUAL() external view returns (IPunksDataVisual) {
+        return IPunksDataVisual(address(PUNKS_DATA));
+    }
+
     // ──────────────────────────────── Internals ────────────────────────────────
 
     /// @dev Copies calldata ids into storage.
@@ -332,7 +339,7 @@ contract PunksMarket is PushPullEscrow {
             }
         }
 
-        if (!bid.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
+        if (!bid.criteria.matches(PUNKS_DATA, punkId)) {
             revert PunkCriteriaMismatch();
         }
     }

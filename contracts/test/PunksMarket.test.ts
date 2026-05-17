@@ -86,6 +86,10 @@ describe('PunksMarket', () => {
       punksV1.address.toLowerCase(),
     )
     assert.equal(
+      ((await market.read.PUNKS_DATA()) as string).toLowerCase(),
+      punksData.address.toLowerCase(),
+    )
+    assert.equal(
       ((await market.read.PUNKS_CRITERIA()) as string).toLowerCase(),
       punksData.address.toLowerCase(),
     )
