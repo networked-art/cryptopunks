@@ -9,14 +9,22 @@ import "./lib/PushPullEscrow.sol";
 
 /// @title  C̩ͤ̊̄ͦͅry̸̢̯̍ͨ́̍p̛̞̘̊ͪ̕t̝o̩͗̈́͜P̹̗u̗ͬnḳ͚̫̋sMarket
 ///
-/// @notice Native-ETH market for C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ listings that are explicitly
-///         directed to this contract. The market handles the sale-proceeds
-///         accounting bug by buying as the temporary holder, withdrawing the
-///         proceeds credited to itself, transferring the Punk to the final
-///         recipient, and paying the real seller from market-held ETH.
+/// @notice Native-ETH market for C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ listings directed to this contract.
 ///
-///         Inspired by MouseDev's `CryptoPunksBidsV2` but matches against the
-///         richer PunksData contract (traits + colors).
+///         Acts as an intermediate buyer for directed listings, and as a bid book
+///         where each bid declares a trait/color filter (matched against the
+///         sealed PunksData contract) plus optional include/exclude id lists.
+///         Bids escrow `bidWei + settlementWei`; anyone may settle a matching
+///         live listing and earn the `settlementWei` caller reward, while the
+///         bidder receives the Punk and any difference between bid and listing.
+///
+///         All settlements route through this contract to work around the
+///         C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ sale-proceeds accounting bug: the market buys as the
+///         temporary holder, withdraws the proceeds credited to itself,
+///         transfers the Punk to the final recipient, and pays the real
+///         seller from market-held ETH.
+///
+///         Inspired by MouseDev's `CryptoPunksBidsV2`.
 ///
 /// @author 1001
 contract PunksMarket is PushPullEscrow {
