@@ -29,8 +29,9 @@ interface IPunksAuction {
     }
 
     /// @notice One position in a purchase offer's matching bundle.
-    /// @dev    `criteria` is evaluated against `PunksData`; include/exclude
-    ///         lists pin or block specific Punk ids after the filter check.
+    /// @dev    `criteria` is evaluated against `PunksData`; include ids match
+    ///         in addition to criteria, while exclude ids always block.
+    ///         If criteria is empty and includes are present, only included ids match.
     struct OfferSlot {
         Punks.Filter criteria;
         TokenStandard standard;
@@ -201,9 +202,8 @@ interface IPunksAuction {
     error ListingNotValid();
     error ListingPriceMismatch(uint96 expectedListingWei, uint256 actualListingWei);
     error ListingPriceTooHigh();
-    error PunkNotIncluded();
     error PunkExcluded();
-    error PunkCriteriaMismatch();
+    error PunkNotMatched();
 
     error InvalidItemCount();
     error DuplicateLotItem();

@@ -1706,7 +1706,7 @@ describe('PunksAuction', () => {
       )
     })
 
-    it('enforces inclusionary, exclusionary, mask, and color predicates', async () => {
+    it('lets includes extend criteria while excludes still override', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, punksData, seller, bidder1 } = ctx
 
@@ -1727,7 +1727,7 @@ describe('PunksAuction', () => {
               maxColorCount: 8,
             },
             standard: Standard.CRYPTOPUNKS,
-            includeIds: [800, 801, 802],
+            includeIds: [801, 802],
             excludeIds: [802],
           },
         ],
@@ -1738,7 +1738,7 @@ describe('PunksAuction', () => {
       await ctx.viem.assertions.revertWithCustomError(
         auctions.write.acceptOffer([offerId, 799, parseEther('0.9')]),
         auctions,
-        'PunkNotIncluded',
+        'PunkNotMatched',
       )
 
       await assignPunk(ctx, seller, 802n)
@@ -1751,15 +1751,33 @@ describe('PunksAuction', () => {
 
       await assignPunk(ctx, seller, 801n)
       await offerPunkToAuctions(ctx, seller, 801n, parseEther('0.9'))
+      await auctions.write.acceptOffer([offerId, 801, parseEther('0.9')])
+    })
+
+    it('keeps include-only offer slots exact when criteria is empty', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, punks, seller, bidder1 } = ctx
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(900)],
+      })
+
+      await assignPunk(ctx, seller, 901n)
+      await offerPunkToAuctions(ctx, seller, 901n, parseEther('0.9'))
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOffer([offerId, 801, parseEther('0.9')]),
+        auctions.write.acceptOffer([offerId, 901, parseEther('0.9')]),
         auctions,
-        'PunkCriteriaMismatch',
+        'PunkNotMatched',
       )
 
-      await assignPunk(ctx, seller, 800n)
-      await offerPunkToAuctions(ctx, seller, 800n, parseEther('0.9'))
-      await auctions.write.acceptOffer([offerId, 800, parseEther('0.9')])
+      await assignPunk(ctx, seller, 900n)
+      await offerPunkToAuctions(ctx, seller, 900n, parseEther('0.9'))
+      await auctions.write.acceptOffer([offerId, 900, parseEther('0.9')])
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([900n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
     })
 
     it('rejects offers when the matched Punk is outside the color count range', async () => {
@@ -1778,7 +1796,7 @@ describe('PunksAuction', () => {
               maxColorCount: 10,
             },
             standard: Standard.CRYPTOPUNKS,
-            includeIds: [900],
+            includeIds: [],
             excludeIds: [],
           },
         ],
@@ -1789,7 +1807,7 @@ describe('PunksAuction', () => {
       await ctx.viem.assertions.revertWithCustomError(
         auctions.write.acceptOffer([offerId, 900, parseEther('0.9')]),
         auctions,
-        'PunkCriteriaMismatch',
+        'PunkNotMatched',
       )
     })
 

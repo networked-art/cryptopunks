@@ -93,9 +93,8 @@ contract PunksCollectionBids is PushPullEscrow {
     error ListingPriceMismatch(uint96 expectedListingWei, uint256 actualListingWei);
     error ListingPriceTooHigh();
 
-    error PunkNotIncluded();
     error PunkExcluded();
-    error PunkCriteriaMismatch();
+    error PunkNotMatched();
 
     // ─────────────────────────────── Construction ──────────────────────────────
 
@@ -115,8 +114,8 @@ contract PunksCollectionBids is PushPullEscrow {
     /// @param bidWei         Maximum wei the bidder will pay for a matching Punk.
     /// @param settlementWei  Bounty paid to whoever fulfils the bid; may be zero.
     /// @param criteria       Trait/visual filter the matched Punk must satisfy.
-    /// @param includeIds     Optional whitelist; if non-empty the matched Punk must appear here.
-    /// @param excludeIds     Optional blacklist; the matched Punk must not appear here.
+    /// @param includeIds     Optional Punk ids that match in addition to criteria.
+    /// @param excludeIds     Optional Punk ids that never match.
     /// @return bidId         Identifier of the newly created bid.
     function placeBid(
         uint96 bidWei,
@@ -287,21 +286,6 @@ contract PunksCollectionBids is PushPullEscrow {
 
     /// @dev Reverts unless the bid's filter and id lists allow `punkId`.
     function _requireBidMatchesPunk(Bid memory bid, uint16 punkId) internal view {
-        uint256 includeLen = bid.includeIds.length;
-        if (includeLen > 0) {
-            bool included;
-            for (uint256 i; i < includeLen;) {
-                if (bid.includeIds[i] == punkId) {
-                    included = true;
-                    break;
-                }
-                unchecked {
-                    ++i;
-                }
-            }
-            if (!included) revert PunkNotIncluded();
-        }
-
         uint256 excludeLen = bid.excludeIds.length;
         for (uint256 i; i < excludeLen;) {
             if (bid.excludeIds[i] == punkId) revert PunkExcluded();
@@ -310,8 +294,17 @@ contract PunksCollectionBids is PushPullEscrow {
             }
         }
 
+        uint256 includeLen = bid.includeIds.length;
+        for (uint256 i; i < includeLen;) {
+            if (bid.includeIds[i] == punkId) return;
+            unchecked {
+                ++i;
+            }
+        }
+        if (includeLen > 0 && bid.criteria.isEmpty()) revert PunkNotMatched();
+
         if (!bid.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
-            revert PunkCriteriaMismatch();
+            revert PunkNotMatched();
         }
     }
 

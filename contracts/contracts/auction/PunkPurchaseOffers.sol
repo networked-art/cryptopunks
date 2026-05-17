@@ -231,27 +231,21 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     ) internal view {
         if (slot.standard != standard) revert OfferStandardMismatch();
 
-        uint256 includeLen = slot.includeIds.length;
-        if (includeLen > 0) {
-            bool included;
-            for (uint256 i; i < includeLen;) {
-                if (slot.includeIds[i] == punkId) {
-                    included = true;
-                    break;
-                }
-                unchecked { ++i; }
-            }
-            if (!included) revert PunkNotIncluded();
-        }
-
         uint256 excludeLen = slot.excludeIds.length;
         for (uint256 i; i < excludeLen;) {
             if (slot.excludeIds[i] == punkId) revert PunkExcluded();
             unchecked { ++i; }
         }
 
+        uint256 includeLen = slot.includeIds.length;
+        for (uint256 i; i < includeLen;) {
+            if (slot.includeIds[i] == punkId) return;
+            unchecked { ++i; }
+        }
+        if (includeLen > 0 && slot.criteria.isEmpty()) revert PunkNotMatched();
+
         if (!slot.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
-            revert PunkCriteriaMismatch();
+            revert PunkNotMatched();
         }
     }
 

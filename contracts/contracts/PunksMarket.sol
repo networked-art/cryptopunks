@@ -47,7 +47,7 @@ contract PunksMarket is PushPullEscrow {
         Match,
         Inactive,
         Excluded,
-        CriteriaMismatch
+        NotMatched
     }
 
     // ───────────────────────────────── Storage ─────────────────────────────────
@@ -114,7 +114,7 @@ contract PunksMarket is PushPullEscrow {
 
     error InvalidPunkId();
     error PunkExcluded();
-    error PunkCriteriaMismatch();
+    error PunkNotMatched();
 
     // ────────────────────────────── Construction ───────────────────────────────
 
@@ -414,9 +414,12 @@ contract PunksMarket is PushPullEscrow {
                 ++i;
             }
         }
+        if (includeLen > 0 && bid.criteria.isEmpty()) {
+            return BidMatchResult.NotMatched;
+        }
 
         if (!bid.criteria.matches(PUNKS_DATA, punkId)) {
-            return BidMatchResult.CriteriaMismatch;
+            return BidMatchResult.NotMatched;
         }
         return BidMatchResult.Match;
     }
@@ -426,7 +429,7 @@ contract PunksMarket is PushPullEscrow {
         if (result == BidMatchResult.Match) return;
         if (result == BidMatchResult.Inactive) revert BidNotActive();
         if (result == BidMatchResult.Excluded) revert PunkExcluded();
-        revert PunkCriteriaMismatch();
+        revert PunkNotMatched();
     }
 
     /// @dev Executes a bug-aware Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ purchase for a listing directed to this market.

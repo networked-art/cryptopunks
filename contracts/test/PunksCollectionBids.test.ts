@@ -601,7 +601,7 @@ describe('PunksCollectionBids', () => {
       )
     })
 
-    it('enforces include, exclude and trait/color predicates against PunksData', async () => {
+    it('lets includes extend criteria while excludes still override', async () => {
       const ctx = await deployCollectionBidsStack()
       const { bids, punks, punksData, seller, bidder } = ctx
 
@@ -620,17 +620,17 @@ describe('PunksCollectionBids', () => {
           minColorCount: 4,
           maxColorCount: 8,
         },
-        includeIds: [800, 801, 802],
+        includeIds: [801, 802],
         excludeIds: [802],
       })
 
-      // 799 -- not in include list.
+      // 799 -- criteria mismatch and no explicit include.
       await assignPunk(ctx, seller, 799n)
       await offerPunkTo(ctx, seller, 799n, parseEther('0.5'))
       await ctx.viem.assertions.revertWithCustomError(
         bids.write.acceptBid([bidId, 799, parseEther('0.5')]),
         bids,
-        'PunkNotIncluded',
+        'PunkNotMatched',
       )
 
       // 802 -- excluded.
@@ -642,21 +642,37 @@ describe('PunksCollectionBids', () => {
         'PunkExcluded',
       )
 
-      // 801 -- in include list, but criteria mismatch.
+      // 801 -- included, even though criteria mismatch.
       await assignPunk(ctx, seller, 801n)
       await offerPunkTo(ctx, seller, 801n, parseEther('0.5'))
+      await bids.write.acceptBid([bidId, 801, parseEther('0.5')])
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([801n])) as string).toLowerCase(),
+        bidder.account.address.toLowerCase(),
+      )
+    })
+
+    it('keeps include-only bids exact when criteria is empty', async () => {
+      const ctx = await deployCollectionBidsStack()
+      const { bids, punks, seller, bidder } = ctx
+      const bidId = await placeBid(ctx, bidder, {
+        bidWei: parseEther('1'),
+        includeIds: [900],
+      })
+
+      await assignPunk(ctx, seller, 901n)
+      await offerPunkTo(ctx, seller, 901n, parseEther('0.5'))
       await ctx.viem.assertions.revertWithCustomError(
-        bids.write.acceptBid([bidId, 801, parseEther('0.5')]),
+        bids.write.acceptBid([bidId, 901, parseEther('0.5')]),
         bids,
-        'PunkCriteriaMismatch',
+        'PunkNotMatched',
       )
 
-      // 800 -- happy path.
-      await assignPunk(ctx, seller, 800n)
-      await offerPunkTo(ctx, seller, 800n, parseEther('0.5'))
-      await bids.write.acceptBid([bidId, 800, parseEther('0.5')])
+      await assignPunk(ctx, seller, 900n)
+      await offerPunkTo(ctx, seller, 900n, parseEther('0.5'))
+      await bids.write.acceptBid([bidId, 900, parseEther('0.5')])
       assert.equal(
-        ((await punks.read.punkIndexToAddress([800n])) as string).toLowerCase(),
+        ((await punks.read.punkIndexToAddress([900n])) as string).toLowerCase(),
         bidder.account.address.toLowerCase(),
       )
     })
@@ -674,7 +690,6 @@ describe('PunksCollectionBids', () => {
           minColorCount: 5,
           maxColorCount: 10,
         },
-        includeIds: [900],
       })
 
       await assignPunk(ctx, seller, 900n)
@@ -683,7 +698,7 @@ describe('PunksCollectionBids', () => {
       await ctx.viem.assertions.revertWithCustomError(
         bids.write.acceptBid([bidId, 900, parseEther('0.5')]),
         bids,
-        'PunkCriteriaMismatch',
+        'PunkNotMatched',
       )
     })
 

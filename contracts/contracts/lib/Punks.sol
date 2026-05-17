@@ -176,6 +176,15 @@ library Punks {
         validateColorCountRange(f.minColorCount, f.maxColorCount);
     }
 
+    /// @notice Returns true when the filter matches every valid Punk.
+    function isEmpty(Filter memory f) internal pure returns (bool) {
+        return f.requiredTraitMask == 0 && f.forbiddenTraitMask == 0
+            && f.anyOfTraitMask == 0 && f.requiredColorMask == 0
+            && f.forbiddenColorMask == 0 && f.anyOfColorMask == 0
+            && f.minPixelCount == 0 && f.maxPixelCount == 0
+            && f.minColorCount == 0 && f.maxColorCount == 0;
+    }
+
     // ------------------ Per-punk predicates ------------------
 
     /// @notice Checks whether a Punk's trait mask satisfies the trio.
