@@ -18,6 +18,13 @@ export const CRYPTOPUNKS_721_ADDRESS =
   '0x000000000000003607fce1ac9e043a86675c5c2f' as Address
 export const STASH_FACTORY_ADDRESS =
   '0x000000000000a6fa31f5fc51c1640aac76866750' as Address
+// The V1-aware PunksMarket contract. ENS-resolvable; the literal address is
+// the zero address as a placeholder until the contract is deployed and the
+// constant can be filled in. Consumers should pass `address` explicitly to the
+// client constructor until then.
+export const PUNKS_V1_MARKET_ENS = 'punksmarket.eth'
+export const PUNKS_V1_MARKET_ADDRESS =
+  '0x0000000000000000000000000000000000000000' as Address
 export const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as Address
 
