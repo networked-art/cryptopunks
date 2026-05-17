@@ -208,8 +208,11 @@ function parseSearchTextGroup(
       }
 
       // `albino` alone is unambiguous — no other trait or color uses the
-      // word, so it always means SkinTone.Albino.
-      if (word0 === 'albino') {
+      // word, so it always means SkinTone.Albino. Accept any prefix of
+      // length 3+ (`alb`, `albi`, `albin`) since no trait name starts
+      // with those letters either; shorter prefixes (`al`) collide with
+      // `alien`.
+      if (word0.length >= 3 && 'albino'.startsWith(word0)) {
         addSkinTone(group, SkinTone.Albino)
         i += 1
         continue
