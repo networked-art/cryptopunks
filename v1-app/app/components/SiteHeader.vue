@@ -59,14 +59,14 @@
 .header-inner {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--size-6);
   height: 56px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--size-2);
   font-weight: 600;
   border: 0;
   color: var(--text);
@@ -87,7 +87,7 @@
 
 .nav {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--size-4);
   margin-right: auto;
   font-size: 13px;
 }
@@ -110,7 +110,7 @@
 .connect {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .profile-link {

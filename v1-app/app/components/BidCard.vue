@@ -68,8 +68,8 @@ const matchesLink = computed(() => `/?bid=${props.bid.id}`)
 .bid-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  gap: var(--size-2);
+  padding: var(--size-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);

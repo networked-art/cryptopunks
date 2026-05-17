@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
 }
 
 .empty {
-  padding: var(--space-8);
+  padding: var(--size-8);
   text-align: center;
   color: var(--text-dim);
 }

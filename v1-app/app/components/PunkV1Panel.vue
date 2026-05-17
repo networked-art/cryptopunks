@@ -449,8 +449,8 @@ function actWithdrawProceeds() {
 .v1-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3);
+  gap: var(--size-3);
+  padding: var(--size-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
@@ -459,14 +459,14 @@ function actWithdrawProceeds() {
 .connect-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--size-3);
   font-size: 12px;
 }
 
 .state-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 @media (max-width: 540px) {
@@ -480,13 +480,13 @@ function actWithdrawProceeds() {
   font-size: 10px;
   letter-spacing: 0.06em;
   color: var(--text-dim);
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--size-1);
 }
 
 .owner-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--size-2);
   flex-wrap: wrap;
 }
 
@@ -505,14 +505,14 @@ function actWithdrawProceeds() {
 .actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--size-2);
   border-top: 1px solid var(--border);
-  padding-top: var(--space-3);
+  padding-top: var(--size-3);
 }
 
 .action-group {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--size-2);
   flex-wrap: wrap;
 }
 

@@ -82,9 +82,29 @@ const placeholder = computed(
     `Search ${counts.value.total.toLocaleString()} punks — try hoodie, 2 colors, albino skin, #1234, -1001`,
 )
 
+/// `#rrggbb` (or `#rrggbbaa`) tokens in the search text translate into a
+/// `colors.required` filter. The SDK's text grammar doesn't recognize hex
+/// colors yet, so we strip them here before handing the remaining free
+/// text to the search. Anything that doesn't lex as a valid hex falls
+/// through unchanged and gets treated as a normal text term.
+const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
+const parsedText = computed(() => {
+  const raw = debouncedText.value.trim()
+  if (!raw) return { text: undefined, colors: undefined }
+  const colors = raw.match(HEX_COLOR_TOKEN)
+  const remaining = raw.replace(HEX_COLOR_TOKEN, ' ').replace(/\s+/g, ' ').trim()
+  return {
+    text: remaining || undefined,
+    colors: colors?.length ? colors : undefined,
+  }
+})
+
 const query = computed<PunkQuery>(() => ({
   ...props.baseQuery,
-  text: debouncedText.value.trim() || undefined,
+  text: parsedText.value.text,
+  colors: parsedText.value.colors
+    ? { required: parsedText.value.colors }
+    : undefined,
   sort: 'id',
 }))
 
@@ -117,7 +137,7 @@ function onEnter() {
 .punk-search {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 /* Keep the search bar visible below the (also-sticky) site header while
@@ -128,10 +148,10 @@ function onEnter() {
   z-index: 20;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--size-2);
   align-items: center;
   width: 100%;
-  padding: var(--space-3) 0;
+  padding: var(--size-3) 0;
   background: var(--bg);
 }
 

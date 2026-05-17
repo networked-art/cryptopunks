@@ -20,7 +20,8 @@
 
       <div class="hero-info">
         <h1 class="hero-title">
-          Punk <span class="dim">#</span>{{ id }}<span
+          Punk <span class="dim">#</span>{{ id
+          }}<span
             v-if="isWrapped"
             class="dim"
           >
@@ -33,6 +34,12 @@
             class="tag"
             :to="searchHref(summary.punkTypeName)"
             >{{ summary.punkTypeName }}</NuxtLink
+          >
+          <NuxtLink
+            v-if="skinTag"
+            class="tag"
+            :to="searchHref(skinTag.query)"
+            >{{ skinTag.label }}</NuxtLink
           >
           <NuxtLink
             class="tag"
@@ -55,7 +62,7 @@
 
         <ul class="trait-list">
           <li
-            v-for="t in traitsBeforeColors"
+            v-for="t in visibleTraits"
             :key="t.id"
           >
             <span class="trait-kind">{{ t.kind }}</span>
@@ -70,19 +77,6 @@
           <li class="colors-row">
             <span class="trait-kind">Colors</span>
             <PunkColors :punk-id="id" />
-          </li>
-
-          <li
-            v-for="t in traitsAfterColors"
-            :key="t.id"
-          >
-            <span class="trait-kind">{{ t.kind }}</span>
-            <NuxtLink
-              class="trait-name"
-              :to="searchHref(t.query)"
-              >{{ t.name }}</NuxtLink
-            >
-            <span class="muted trait-supply">{{ t.supply }}</span>
           </li>
         </ul>
 
@@ -212,26 +206,22 @@ const displayTraits = computed<DisplayTrait[]>(() =>
   }),
 )
 
-/// Stable ordering: Skin → Type → Accessories → … → Attributes last. The
-/// Colors row is rendered between the last non-Attributes entry and the
-/// Attributes row, so split the list at that boundary.
-const KIND_ORDER: Record<string, number> = {
-  Skin: 0,
-  Type: 1,
-  Accessory: 2,
-  Attributes: 99,
-}
-const orderedTraits = computed(() =>
-  [...displayTraits.value].sort(
-    (a, b) => (KIND_ORDER[a.kind] ?? 50) - (KIND_ORDER[b.kind] ?? 50),
-  ),
+/// `Skin`, `Type`, and `Attributes` are surfaced in the hero-meta tags
+/// already, so we hide their rows in the trait list to avoid the dupe.
+/// What's left: accessories (one row each) and the inline `Colors` row.
+const HIDDEN_KINDS = new Set(['Skin', 'Type', 'Attributes'])
+const visibleTraits = computed(() =>
+  displayTraits.value.filter((t) => !HIDDEN_KINDS.has(t.kind)),
 )
-const traitsBeforeColors = computed(() =>
-  orderedTraits.value.filter((t) => t.kind !== 'Attributes'),
-)
-const traitsAfterColors = computed(() =>
-  orderedTraits.value.filter((t) => t.kind === 'Attributes'),
-)
+
+/// Skin tag for the hero — `Dark Skin` / `Brown Skin` / `Fair Skin` /
+/// `Albino Skin`, links to `<tone> skin` search. Non-humans (Alien, Ape,
+/// Zombie) drop out because the underlying head-variant has no skin tone.
+const skinTag = computed(() => {
+  const tone = skinToneByHeadVariant[summary.value.headVariantName]
+  if (!tone) return null
+  return { label: `${tone} Skin`, query: `${tone.toLowerCase()} skin` }
+})
 
 function quoteIfMultiword(text: string) {
   // Quote multi-word trait names so the text parser treats them as one
@@ -263,10 +253,10 @@ function searchHref(text: string) {
 
 <style scoped>
 .punk-page {
-  padding: var(--space-6) var(--space-4) var(--space-8);
+  padding: var(--size-6) var(--size-4) var(--size-8);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--size-6);
 }
 
 .back {
@@ -278,7 +268,7 @@ function searchHref(text: string) {
 .hero {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: var(--space-6);
+  gap: var(--size-6);
   align-items: start;
 }
 
@@ -291,7 +281,7 @@ function searchHref(text: string) {
 .hero-info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--size-5);
 }
 
 .hero-title {
@@ -314,14 +304,14 @@ function searchHref(text: string) {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-1) var(--space-3);
+  gap: var(--size-1) var(--size-9);
   font-size: 12px;
 }
 
 .trait-list li {
   display: flex;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: var(--size-2);
   padding: 4px 0;
   border-bottom: 1px dashed var(--border);
 }
@@ -359,7 +349,7 @@ function searchHref(text: string) {
 .punk-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .section-title {
@@ -374,7 +364,7 @@ function searchHref(text: string) {
 .bid-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .event-list {

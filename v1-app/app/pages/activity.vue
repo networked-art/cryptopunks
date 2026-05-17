@@ -49,14 +49,14 @@ const { events, pending, error } = useActivityFeed()
 
 <style scoped>
 .activity-page {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--size-6) var(--size-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--size-4);
 }
 
 .page-head h1 {
-  margin: 0 0 var(--space-1);
+  margin: 0 0 var(--size-1);
   font-weight: 500;
   font-size: 22px;
   letter-spacing: -0.02em;
@@ -72,7 +72,7 @@ const { events, pending, error } = useActivityFeed()
 }
 
 .empty {
-  padding: var(--space-8);
+  padding: var(--size-8);
   text-align: center;
 }
 

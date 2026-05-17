@@ -4,7 +4,7 @@
       v-for="c in colors"
       :key="c.id"
       class="swatch"
-      :to="{ path: '/', query: { color: c.bare } }"
+      :to="{ path: '/', query: { q: `#${c.bare}` } }"
       :style="{ background: c.css }"
       :title="c.label"
     />
@@ -54,9 +54,14 @@ function stripHexPrefix(hex: string) {
 }
 
 .swatch {
+  display: inline-block;
   width: 14px;
   height: 14px;
   border: 1px solid var(--border);
   border-radius: 2px;
+}
+
+.swatch:hover {
+  border-color: var(--accent);
 }
 </style>

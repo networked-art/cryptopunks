@@ -187,8 +187,8 @@ async function actPlace() {
 .bid-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--size-3);
+  padding: var(--size-4);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
@@ -205,7 +205,7 @@ async function actPlace() {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .form-grid .full {
@@ -215,7 +215,7 @@ async function actPlace() {
 label {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--size-1);
 }
 
 .label {

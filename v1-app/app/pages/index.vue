@@ -10,6 +10,6 @@ useHead({ title: 'Search · punksmarket.xyz' })
 
 <style scoped>
 .search-page {
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--size-4);
 }
 </style>

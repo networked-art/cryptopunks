@@ -65,7 +65,7 @@
           class="time-ago"
           >{{ timeAgo }}</span
         >
-        ↗
+        <Icon name="lucide:arrow-up-right" />
       </a>
     </div>
   </li>
@@ -149,9 +149,9 @@ const PM_SUFFIX = new Set([
 .activity-row {
   display: grid;
   grid-template-columns: 48px 1fr auto;
-  gap: var(--space-3);
+  gap: var(--size-3);
   align-items: center;
-  padding: var(--space-3) var(--space-3);
+  padding: var(--size-3) var(--size-3);
   border-bottom: 1px solid var(--border);
   list-style: none;
 }
@@ -187,7 +187,7 @@ const PM_SUFFIX = new Set([
 .row-line {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--size-2);
   flex-wrap: wrap;
 }
 
@@ -216,7 +216,7 @@ const PM_SUFFIX = new Set([
 .row-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .tx {
@@ -224,7 +224,7 @@ const PM_SUFFIX = new Set([
   color: var(--text-dim);
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--size-2);
 }
 
 .tx:hover {

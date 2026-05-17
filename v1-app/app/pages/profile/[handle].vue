@@ -175,16 +175,16 @@ const {
 
 <style scoped>
 .profile-page {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--size-6) var(--size-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--size-6);
 }
 
 .profile-head {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--size-1);
 }
 
 .profile-name {
@@ -202,13 +202,13 @@ const {
 .profile-cols {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--size-6);
 }
 
 .profile-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--size-3);
   min-height: 200px;
 }
 
@@ -224,7 +224,7 @@ const {
 .bid-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
+  gap: var(--size-3);
 }
 
 .event-list {
