@@ -87,14 +87,6 @@ describe('PunksMarket', () => {
       ((await market.read.PUNKS_DATA()) as string).toLowerCase(),
       punksData.address.toLowerCase(),
     )
-    assert.equal(
-      ((await market.read.PUNKS_CRITERIA()) as string).toLowerCase(),
-      punksData.address.toLowerCase(),
-    )
-    assert.equal(
-      ((await market.read.PUNKS_VISUAL()) as string).toLowerCase(),
-      punksData.address.toLowerCase(),
-    )
   })
 
   it('stores, adjusts, and cancels V1 collection bids', async () => {

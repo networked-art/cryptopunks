@@ -2,6 +2,7 @@
 pragma solidity 0.8.34;
 
 import "../interfaces/IPunksData.sol";
+import "../interfaces/IPunksDataMatcher.sol";
 
 /// @title  Punks
 ///
@@ -265,6 +266,15 @@ library Punks {
     }
 
     /// @notice Convenience overload for consumers that hold one combined reference.
+    function matches(Filter memory f, IPunksDataMatcher data, uint16 punkId)
+        internal
+        view
+        returns (bool)
+    {
+        return matches(f, data, data, punkId);
+    }
+
+    /// @notice Convenience overload for consumers that hold the full PunksData ABI.
     function matches(Filter memory f, IPunksData data, uint16 punkId)
         internal
         view

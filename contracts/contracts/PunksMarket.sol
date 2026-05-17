@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import "./interfaces/ICryptoPunksMarket.sol";
-import "./interfaces/IPunksData.sol";
+import "./interfaces/IPunksDataMatcher.sol";
 import "./interfaces/IReverseRegistrar.sol";
 import "./lib/Punks.sol";
 import "./lib/PushPullEscrow.sol";
@@ -56,8 +56,8 @@ contract PunksMarket is PushPullEscrow {
     ICryptoPunksMarket public immutable PUNKS_V1 =
         ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
     /// @notice The sealed PunksData contract used for bid matching.
-    IPunksData public immutable PUNKS_DATA =
-        IPunksData(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
+    IPunksDataMatcher public immutable PUNKS_DATA =
+        IPunksDataMatcher(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
     /// @notice Returns the last bid id that was created.
     uint256 public lastBidId;
@@ -290,16 +290,6 @@ contract PunksMarket is PushPullEscrow {
     /// @notice Returns the exclude id list stored on a bid.
     function getBidExcludeIds(uint256 bidId) external view returns (uint16[] memory) {
         return _bids[bidId].excludeIds;
-    }
-
-    /// @notice Returns the trait predicate dataset used for bid matching.
-    function PUNKS_CRITERIA() external view returns (IPunksDataCriteria) {
-        return IPunksDataCriteria(address(PUNKS_DATA));
-    }
-
-    /// @notice Returns the visual predicate dataset used for bid matching.
-    function PUNKS_VISUAL() external view returns (IPunksDataVisual) {
-        return IPunksDataVisual(address(PUNKS_DATA));
     }
 
     /// @notice Returns true if `bidId` is active and its filter and id lists
