@@ -7,7 +7,8 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "bake:glitch": "node scripts/bake-glitch.mjs"
   },
   "dependencies": {
     "@1001-digital/components.evm": "^3.5.3",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@types/luxon": "^3.4.2",
     "nuxt": "^4.4.2",
+    "pngjs": "^7.0.0",
     "vue-tsc": "^3.2.6"
   }
 }

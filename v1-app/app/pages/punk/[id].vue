@@ -13,7 +13,7 @@
           :size="320"
           :background="background"
           glitch="always"
-          :speed="0.01"
+          :speed="0.1"
         />
       </div>
 
