@@ -294,6 +294,58 @@ contract PunksMarket is PushPullEscrow {
         return IPunksDataVisual(address(PUNKS_DATA));
     }
 
+    /// @notice Returns true if `bidId` is active and its filter and id lists
+    ///         allow `punkId`.
+    /// @dev    Mirrors the predicate enforced by `acceptBid`. Cancelled,
+    ///         accepted, or never-created bids return `false`; an invalid
+    ///         `punkId` reverts inside `PUNKS_DATA`.
+    function matchesPunk(uint256 bidId, uint16 punkId) external view returns (bool) {
+        return _isBidMatchingPunk(bidId, punkId);
+    }
+
+    /// @notice Returns the active bid ids matching `punkId` over the cursor
+    ///         window `[fromId, fromId + count)`, paired with the cursor to
+    ///         resume from.
+    /// @dev    Pass `fromId == 0` to start at the first bid (`bidId == 1`).
+    ///         `nextId` is the id to resume from on the next call, or `0`
+    ///         when the cursor has reached `lastBidId`. The function is
+    ///         intentionally cursor-only — `lastBidId` is monotonically
+    ///         increasing, so callers must page rather than ask for the
+    ///         whole book in one shot.
+    function bidsMatchingPunk(uint16 punkId, uint256 fromId, uint256 count)
+        external
+        view
+        returns (uint256[] memory bidIds, uint256 nextId)
+    {
+        uint256 last = lastBidId;
+        if (fromId == 0) fromId = 1;
+        if (count == 0 || fromId > last) {
+            return (new uint256[](0), 0);
+        }
+
+        uint256 end = fromId + count;
+        if (end > last + 1) end = last + 1;
+
+        bidIds = new uint256[](end - fromId);
+        uint256 found;
+        for (uint256 id = fromId; id < end;) {
+            if (_isBidMatchingPunk(id, punkId)) {
+                bidIds[found] = id;
+                unchecked {
+                    ++found;
+                }
+            }
+            unchecked {
+                ++id;
+            }
+        }
+        assembly {
+            mstore(bidIds, found)
+        }
+
+        nextId = end > last ? 0 : end;
+    }
+
     // ──────────────────────────────── Internals ────────────────────────────────
 
     /// @dev Copies calldata ids into storage.
@@ -312,6 +364,39 @@ contract PunksMarket is PushPullEscrow {
         bid = _bids[bidId];
         if (bid.bidder == address(0)) revert BidNotActive();
         if (bid.bidder != msg.sender) revert NotBidder();
+    }
+
+    /// @dev Returns true if `bidId` is active and its filter and id lists allow `punkId`.
+    ///      The non-reverting twin of `_requireBidMatchesPunk` used by the public
+    ///      view surface; mirrors its logic exactly so the two cannot drift.
+    function _isBidMatchingPunk(uint256 bidId, uint16 punkId) internal view returns (bool) {
+        Bid storage bid = _bids[bidId];
+        if (bid.bidder == address(0)) return false;
+
+        uint256 includeLen = bid.includeIds.length;
+        if (includeLen > 0) {
+            bool included;
+            for (uint256 i; i < includeLen;) {
+                if (bid.includeIds[i] == punkId) {
+                    included = true;
+                    break;
+                }
+                unchecked {
+                    ++i;
+                }
+            }
+            if (!included) return false;
+        }
+
+        uint256 excludeLen = bid.excludeIds.length;
+        for (uint256 i; i < excludeLen;) {
+            if (bid.excludeIds[i] == punkId) return false;
+            unchecked {
+                ++i;
+            }
+        }
+
+        return bid.criteria.matches(PUNKS_DATA, punkId);
     }
 
     /// @dev Reverts unless the bid's filter and id lists allow `punkId`.

@@ -404,4 +404,197 @@ describe('PunksMarket', () => {
       other.sendTransaction({ to: market.address, value: 1n }),
     )
   })
+
+  describe('matchesPunk', () => {
+    it('returns false for a never-created bid id', async () => {
+      const ctx = await deployPunksMarketStack()
+      assert.equal(await ctx.market.read.matchesPunk([1n, 0]), false)
+      assert.equal(await ctx.market.read.matchesPunk([42n, 100]), false)
+    })
+
+    it('returns true for an active wildcard bid against any punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      const bidId = await placeBid(ctx, ctx.bidder)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 0]), true)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 9999]), true)
+    })
+
+    it('returns true when criteria + include + exclude all permit the punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      await ctx.punksData.write.setTraitMask([500n, traitBit(7)])
+      const bidId = await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
+        includeIds: [500, 501],
+        excludeIds: [600],
+      })
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 500]), true)
+    })
+
+    it('returns false when include list excludes the punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      const bidId = await placeBid(ctx, ctx.bidder, { includeIds: [1, 2, 3] })
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 4]), false)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 2]), true)
+    })
+
+    it('returns false when exclude list contains the punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      const bidId = await placeBid(ctx, ctx.bidder, { excludeIds: [42, 43] })
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 42]), false)
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 41]), true)
+    })
+
+    it('returns false when criteria predicate rejects the punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      await ctx.punksData.write.setTraitMask([10n, traitBit(3)])
+      const bidId = await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(7) },
+      })
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 10]), false)
+    })
+
+    it('returns false after the bid is cancelled', async () => {
+      const ctx = await deployPunksMarketStack()
+      const bidId = await placeBid(ctx, ctx.bidder)
+      const marketForBidder = await marketAs(ctx, ctx.bidder)
+      await marketForBidder.write.cancelBid([bidId])
+      assert.equal(await ctx.market.read.matchesPunk([bidId, 0]), false)
+    })
+
+    it('returns false after the bid is accepted', async () => {
+      const ctx = await deployPunksMarketStack()
+      const { market, seller, bidder, settler } = ctx
+      const listingWei = parseEther('0.3')
+
+      const bidId = await placeBid(ctx, bidder, { bidWei: parseEther('1') })
+      await assignPunk(ctx, seller, 901n)
+      await offerPunkToMarket(ctx, seller, 901n, listingWei)
+      const marketForSettler = await marketAs(ctx, settler)
+      await marketForSettler.write.acceptBid([bidId, 901, listingWei])
+
+      assert.equal(await market.read.matchesPunk([bidId, 901]), false)
+    })
+  })
+
+  describe('bidsMatchingPunk', () => {
+    it('returns empty for an empty book', async () => {
+      const ctx = await deployPunksMarketStack()
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        0n,
+        100n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [])
+      assert.equal(nextId, 0n)
+    })
+
+    it('returns empty when count is zero', async () => {
+      const ctx = await deployPunksMarketStack()
+      await placeBid(ctx, ctx.bidder)
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        0n,
+        0n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [])
+      assert.equal(nextId, 0n)
+    })
+
+    it('returns empty when fromId is past lastBidId', async () => {
+      const ctx = await deployPunksMarketStack()
+      await placeBid(ctx, ctx.bidder)
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        5n,
+        10n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [])
+      assert.equal(nextId, 0n)
+    })
+
+    it('normalizes fromId == 0 to start at bid 1 and signals end with nextId == 0', async () => {
+      const ctx = await deployPunksMarketStack()
+      const a = await placeBid(ctx, ctx.bidder)
+      const b = await placeBid(ctx, ctx.bidder)
+      const c = await placeBid(ctx, ctx.bidder)
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        0n,
+        100n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [a, b, c])
+      assert.equal(nextId, 0n)
+    })
+
+    it('filters bids that do not match the punk', async () => {
+      const ctx = await deployPunksMarketStack()
+      await ctx.punksData.write.setTraitMask([50n, traitBit(2)])
+
+      // bid #1: wildcard — matches any
+      const idAny = await placeBid(ctx, ctx.bidder)
+      // bid #2: requires trait 2 — matches punk 50
+      const idTrait = await placeBid(ctx, ctx.bidder, {
+        criteria: { ...emptyCriteria(), requiredTraitMask: traitBit(2) },
+      })
+      // bid #3: excludes punk 50 — does not match
+      await placeBid(ctx, ctx.bidder, { excludeIds: [50] })
+      // bid #4: include-only list without punk 50 — does not match
+      await placeBid(ctx, ctx.bidder, { includeIds: [49, 51] })
+
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        50,
+        0n,
+        100n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [idAny, idTrait])
+      assert.equal(nextId, 0n)
+    })
+
+    it('paginates with a continuation cursor', async () => {
+      const ctx = await deployPunksMarketStack()
+      const ids: bigint[] = []
+      for (let i = 0; i < 5; i++) ids.push(await placeBid(ctx, ctx.bidder))
+
+      const [page1, next1] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        0n,
+        2n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(page1, ids.slice(0, 2))
+      assert.equal(next1, 3n)
+
+      const [page2, next2] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        next1,
+        2n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(page2, ids.slice(2, 4))
+      assert.equal(next2, 5n)
+
+      const [page3, next3] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        next2,
+        2n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(page3, ids.slice(4, 5))
+      assert.equal(next3, 0n)
+    })
+
+    it('skips cancelled bids without breaking pagination', async () => {
+      const ctx = await deployPunksMarketStack()
+      const a = await placeBid(ctx, ctx.bidder)
+      const b = await placeBid(ctx, ctx.bidder)
+      const c = await placeBid(ctx, ctx.bidder)
+      const marketForBidder = await marketAs(ctx, ctx.bidder)
+      await marketForBidder.write.cancelBid([b])
+
+      const [ids, nextId] = (await ctx.market.read.bidsMatchingPunk([
+        0,
+        0n,
+        100n,
+      ])) as [bigint[], bigint]
+      assert.deepEqual(ids, [a, c])
+      assert.equal(nextId, 0n)
+    })
+  })
 })
