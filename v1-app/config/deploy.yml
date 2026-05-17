@@ -12,7 +12,7 @@ servers:
 proxy:
   ssl: true
   hosts:
-    - <%= ENV["V1_APP_HOST"] %>
+    - <%= ENV["API_HOST"] %>
   app_port: 3000
   healthcheck:
     path: /
@@ -32,7 +32,9 @@ builder:
 env:
   clear:
     NUXT_PUBLIC_INDEXER_URL: <%= ENV["NUXT_PUBLIC_INDEXER_URL"] %>
-    NUXT_PUBLIC_PUNKS_MARKET_ADDRESS: <%= ENV["NUXT_PUBLIC_PUNKS_MARKET_ADDRESS"] %>
+    <% if (addr = ENV["NUXT_PUBLIC_PUNKS_MARKET_ADDRESS"]) && !addr.empty? %>
+    NUXT_PUBLIC_PUNKS_MARKET_ADDRESS: <%= addr %>
+    <% end %>
     # Cap Nitro's node-cluster preset at 4 workers (default = one per CPU).
     NITRO_CLUSTER_WORKERS: "4"
   secret:
