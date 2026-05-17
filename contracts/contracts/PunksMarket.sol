@@ -145,7 +145,7 @@ contract PunksMarket is PushPullEscrow {
         if (msg.value != expectedListingWei) revert IncorrectPayment();
 
         (address seller, uint96 listingWei) =
-            _buyDirectedListing(punkId, expectedListingWei, recipient, expectedListingWei);
+            _buyDirectedListing(punkId, expectedListingWei, recipient, type(uint96).max);
 
         emit PunkPurchased(punkId, seller, recipient, msg.sender, listingWei);
     }
