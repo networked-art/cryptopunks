@@ -29,6 +29,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/app.css'],
 
   runtimeConfig: {
+    // Server-only RPC URL. Override with NUXT_RPC_URL.
+    rpcUrl: '',
     public: {
       indexerUrl: 'https://indexer-v1.punksmarket.app',
       punksMarketAddress: '',
@@ -41,6 +43,16 @@ export default defineNuxtConfig({
           mainnet: { rpcs: '/api/rpc' },
         },
       },
+    },
+  },
+
+  hooks: {
+    // The layer ships its own wagmi plugin; we replace it with
+    // `app/plugins/wagmi.ts` to swap the read RPC per environment.
+    'app:resolve'(app) {
+      app.plugins = app.plugins.filter(
+        (p) => !/layers\.evm[/\\]app[/\\]plugins[/\\]wagmi\./.test(p.src),
+      )
     },
   },
 
