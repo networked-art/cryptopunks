@@ -1,4 +1,8 @@
-import { createPunksSdk, type PunksSdk } from '@networked-art/punks-sdk'
+import {
+  createPunksSdk,
+  CRYPTOPUNKS_V1_ADDRESS,
+  type PunksSdk,
+} from '@networked-art/punks-sdk'
 import { getPublicClient, getWalletClient } from '@wagmi/core'
 import { useAccount, useConfig } from '@wagmi/vue'
 import type { PublicClient, WalletClient } from 'viem'
@@ -44,6 +48,7 @@ export function usePunksSdk() {
       publicClient: publicClient.value,
       walletClient: wallet,
       account,
+      addresses: { market: CRYPTOPUNKS_V1_ADDRESS },
     })
   })
 
