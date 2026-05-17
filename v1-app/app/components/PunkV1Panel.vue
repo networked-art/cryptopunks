@@ -19,12 +19,20 @@
       <div class="state-grid">
         <div>
           <div class="label">Owner</div>
-          <NuxtLink
+          <div
             v-if="owner"
-            :to="`/profile/${owner}`"
+            class="owner-row"
           >
-            <AccountBadge :address="owner" />
-          </NuxtLink>
+            <NuxtLink :to="`/profile/${owner}`">
+              <AccountBadge :address="owner" />
+            </NuxtLink>
+            <span
+              v-if="isWrapped"
+              class="tag wrap-tag"
+              title="Wrapped — the V1 contract reports the wrapper as owner; this is the ERC-721 holder."
+              >wrapped</span
+            >
+          </div>
           <span
             v-else
             class="muted"
@@ -71,7 +79,14 @@
         class="actions"
         v-if="address"
       >
-        <template v-if="isOwner">
+        <template v-if="isOwner && isWrapped">
+          <p class="warn">
+            This punk is wrapped — unwrap it to list, transfer, or accept
+            bids via the Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ market.
+          </p>
+        </template>
+
+        <template v-else-if="isOwner">
           <div class="action-group">
             <input
               v-model="listingPriceInput"
@@ -225,14 +240,20 @@ const { execute } = useWritePlan()
 const { address } = useAccount()
 const punksMarketAddress = usePunksMarketAddress()
 
-const owner = ref<Address | null>(null)
+const {
+  owner,
+  isWrapped,
+  pending: ownerPending,
+  refresh: refreshOwner,
+} = usePunkOwner(() => props.punkId)
 const listing = ref<{
   isForSale: boolean
   priceWei: bigint
   onlySellTo: Address
 } | null>(null)
 const pendingWithdrawal = ref<bigint | null>(null)
-const pending = ref(true)
+const otherPending = ref(true)
+const pending = computed(() => ownerPending.value || otherPending.value)
 
 const isOwner = computed(
   () =>
@@ -269,22 +290,20 @@ const canAcceptTopBid = computed(
 const canBuy = computed(() => isDirectedToPunksMarket.value)
 
 async function refresh() {
-  pending.value = true
+  otherPending.value = true
   try {
-    const [o, l, w] = await Promise.all([
-      sdk.value.market.ownerOf(props.punkId).catch(() => null),
+    const [l, w] = await Promise.all([
       sdk.value.market.listing(props.punkId).catch(() => null),
       address.value
         ? sdk.value.market.pendingWithdrawal(address.value).catch(() => 0n)
         : Promise.resolve(0n),
     ])
-    owner.value = o as Address | null
     listing.value = l
       ? { isForSale: l.isForSale, priceWei: l.priceWei, onlySellTo: l.onlySellTo }
       : null
     pendingWithdrawal.value = w as bigint
   } finally {
-    pending.value = false
+    otherPending.value = false
   }
 }
 
@@ -311,6 +330,7 @@ function run(plan: ContractWritePlan) {
 
 function onComplete(receipt: TransactionReceipt) {
   refresh()
+  refreshOwner()
   emit('changed', receipt.transactionHash as Hash)
 }
 
@@ -461,6 +481,19 @@ function actWithdrawProceeds() {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   margin-bottom: var(--space-1);
+}
+
+.owner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.wrap-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .warn {
