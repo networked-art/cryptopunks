@@ -31,11 +31,7 @@ export function usePunkListing(punkId: MaybeRefOrGetter<number>) {
     }
   }
 
-  async function loadBid() {
-    return sdk.value.market.bidFor(toValue(punkId))
-  }
-
   watch(() => toValue(punkId), load, { immediate: true })
 
-  return { data, pending, error, refresh: load, loadBid }
+  return { data, pending, error, refresh: load }
 }

@@ -6,6 +6,7 @@ import {
 import { getPublicClient, getWalletClient } from '@wagmi/core'
 import { useAccount, useConfig } from '@wagmi/vue'
 import type { PublicClient, WalletClient } from 'viem'
+import { usePunksMarketAddress } from '~/utils/addresses'
 
 /** Offline SDK — search, dataset, rendering. Available everywhere. */
 export function usePunksOffline(): PunksSdk {
@@ -26,6 +27,7 @@ export function usePunksSdk() {
     : never
   const config = useConfig()
   const { address } = useAccount()
+  const punksMarket = usePunksMarketAddress()
 
   const publicClient = computed(
     () => getPublicClient(config) as PublicClient | undefined,
@@ -48,7 +50,10 @@ export function usePunksSdk() {
       publicClient: publicClient.value,
       walletClient: wallet,
       account,
-      addresses: { market: CRYPTOPUNKS_V1_ADDRESS },
+      addresses: {
+        market: CRYPTOPUNKS_V1_ADDRESS,
+        v1Market: punksMarket.value ?? undefined,
+      },
     })
   })
 

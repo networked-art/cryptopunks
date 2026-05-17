@@ -52,11 +52,11 @@
 
         <div>
           <div class="label">Top bid</div>
-          <div v-if="bid?.hasBid">
-            <EthAmount :wei="bid.valueWei" />
+          <div v-if="topBid">
+            <EthAmount :wei="topBid.bidWei" />
             <span class="dim"> by </span>
-            <NuxtLink :to="`/profile/${bid.bidder}`">
-              <AccountBadge :address="bid.bidder" />
+            <NuxtLink :to="`/profile/${topBid.bidder}`">
+              <AccountBadge :address="topBid.bidder" />
             </NuxtLink>
           </div>
           <span
@@ -95,12 +95,24 @@
             </button>
           </div>
           <button
-            v-if="bid?.hasBid"
+            v-if="canAcceptTopBid"
             class="primary"
             @click="actAcceptBid"
           >
-            Accept bid · <EthAmount :wei="bid.valueWei" />
+            Accept bid · <EthAmount :wei="topBid!.bidWei" />
           </button>
+          <p
+            v-else-if="topBid && !punksMarketAddress"
+            class="warn"
+          >
+            PunksMarket not configured — cannot accept bid.
+          </p>
+          <p
+            v-else-if="topBid && !isDirectedToPunksMarket"
+            class="warn"
+          >
+            Direct your listing to PunksMarket to accept this bid.
+          </p>
           <div class="action-group">
             <input
               v-model="transferTo"
@@ -120,12 +132,22 @@
           <button
             v-if="listing?.isForSale"
             class="primary"
+            :disabled="!canBuy"
             @click="actBuy"
           >
             Buy · <EthAmount :wei="listing.priceWei" />
           </button>
+          <p
+            v-if="listing?.isForSale && !canBuy"
+            class="warn"
+          >
+            Listing not directed to PunksMarket — refusing to buy via raw V1.
+          </p>
 
-          <div class="action-group">
+          <div
+            class="action-group"
+            v-if="punksMarketAddress"
+          >
             <input
               v-model="bidInput"
               type="number"
@@ -138,15 +160,21 @@
               :disabled="!parsedBidWei"
               @click="actBid"
             >
-              {{ isOwnTopBid ? 'Update bid' : 'Place bid' }}
+              {{ ownActiveBid ? 'Update bid' : 'Place bid' }}
             </button>
             <button
-              v-if="isOwnTopBid"
+              v-if="ownActiveBid"
               @click="actWithdrawBid"
             >
               Withdraw bid
             </button>
           </div>
+          <p
+            v-else
+            class="muted"
+          >
+            Bidding requires the PunksMarket contract — not configured yet.
+          </p>
         </template>
 
         <button
@@ -178,11 +206,18 @@ import {
   type Hash,
   type TransactionReceipt,
 } from 'viem'
-import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import {
+  emptyPunksFilter,
+  type ContractWritePlan,
+} from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
 import { usePunksMarketAddress } from '~/utils/addresses'
+import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
-const props = defineProps<{ punkId: number }>()
+const props = defineProps<{
+  punkId: number
+  matchingBids: CollectionBid[]
+}>()
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
@@ -196,9 +231,6 @@ const listing = ref<{
   priceWei: bigint
   onlySellTo: Address
 } | null>(null)
-const bid = ref<{ hasBid: boolean; bidder: Address; valueWei: bigint } | null>(
-  null,
-)
 const pendingWithdrawal = ref<bigint | null>(null)
 const pending = ref(true)
 
@@ -207,12 +239,6 @@ const isOwner = computed(
     !!address.value &&
     !!owner.value &&
     owner.value.toLowerCase() === address.value.toLowerCase(),
-)
-const isOwnTopBid = computed(
-  () =>
-    !!address.value &&
-    !!bid.value?.hasBid &&
-    bid.value.bidder.toLowerCase() === address.value.toLowerCase(),
 )
 const isDirectedToPunksMarket = computed(() => {
   if (!listing.value?.isForSale) return false
@@ -224,24 +250,38 @@ const isDirectedToPunksMarket = computed(() => {
 })
 const validTransferTarget = computed(() => isAddress(transferTo.value.trim()))
 
+/// Top of the matching-bids book — the page already queries the indexer
+/// `bids/matching/punk/:id` endpoint with `ORDER BY bid_wei DESC`.
+const topBid = computed<CollectionBid | null>(
+  () => props.matchingBids[0] ?? null,
+)
+/// User's own highest active matching bid (for Update / Withdraw).
+const ownActiveBid = computed<CollectionBid | null>(() => {
+  const me = address.value?.toLowerCase()
+  if (!me) return null
+  return (
+    props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
+  )
+})
+const canAcceptTopBid = computed(
+  () => !!topBid.value && !!punksMarketAddress.value && isDirectedToPunksMarket.value,
+)
+const canBuy = computed(() => isDirectedToPunksMarket.value)
+
 async function refresh() {
   pending.value = true
   try {
-    const [o, l, b, w] = await Promise.all([
+    const [o, l, w] = await Promise.all([
       sdk.value.market.ownerOf(props.punkId).catch(() => null),
-      sdk.value.market.listing(props.punkId),
-      sdk.value.market.bidFor(props.punkId),
+      sdk.value.market.listing(props.punkId).catch(() => null),
       address.value
         ? sdk.value.market.pendingWithdrawal(address.value).catch(() => 0n)
         : Promise.resolve(0n),
     ])
     owner.value = o as Address | null
-    listing.value = {
-      isForSale: l.isForSale,
-      priceWei: l.priceWei,
-      onlySellTo: l.onlySellTo,
-    }
-    bid.value = { hasBid: b.hasBid, bidder: b.bidder, valueWei: b.valueWei }
+    listing.value = l
+      ? { isForSale: l.isForSale, priceWei: l.priceWei, onlySellTo: l.onlySellTo }
+      : null
     pendingWithdrawal.value = w as bigint
   } finally {
     pending.value = false
@@ -315,31 +355,57 @@ function actUnlist() {
 }
 
 function actBuy() {
-  if (!listing.value?.isForSale) return
+  if (!listing.value?.isForSale || !canBuy.value) return
   run(
-    sdk.value.market.prepareBuy({
+    sdk.value.v1Market.prepareBuyPunk({
       punkId: props.punkId,
-      priceWei: listing.value.priceWei,
+      expectedListingWei: listing.value.priceWei,
+      recipient: address.value as Address,
     }),
   )
 }
 
 function actBid() {
-  const amountWei = parsedBidWei.value
-  if (!amountWei) return
-  run(sdk.value.market.prepareEnterBid({ punkId: props.punkId, amountWei }))
+  const newWei = parsedBidWei.value
+  if (!newWei) return
+  const existing = ownActiveBid.value
+  if (!existing) {
+    run(
+      sdk.value.v1Market.preparePlaceBid({
+        bidWei: newWei,
+        criteria: emptyPunksFilter(),
+        includeIds: [props.punkId],
+      }),
+    )
+    return
+  }
+  if (newWei === existing.bidWei) return
+  const increase = newWei > existing.bidWei
+  const weiToAdjust = increase
+    ? newWei - existing.bidWei
+    : existing.bidWei - newWei
+  run(
+    sdk.value.v1Market.prepareAdjustBidPrice({
+      bidId: existing.id,
+      weiToAdjust,
+      increase,
+    }),
+  )
 }
 
 function actWithdrawBid() {
-  run(sdk.value.market.prepareWithdrawBid(props.punkId))
+  const existing = ownActiveBid.value
+  if (!existing) return
+  run(sdk.value.v1Market.prepareCancelBid(existing.id))
 }
 
 function actAcceptBid() {
-  if (!bid.value?.hasBid) return
+  if (!canAcceptTopBid.value || !topBid.value || !listing.value) return
   run(
-    sdk.value.market.prepareAcceptBid({
+    sdk.value.v1Market.prepareAcceptBid({
+      bidId: topBid.value.id,
       punkId: props.punkId,
-      minPriceWei: bid.value.valueWei,
+      expectedListingWei: listing.value.priceWei,
     }),
   )
 }
