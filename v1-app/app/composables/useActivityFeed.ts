@@ -59,8 +59,8 @@ type RawEvent = {
 }
 
 const EVENTS_QUERY = `
-  query Events($where: eventFilter, $limit: Int!) {
-    events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit) {
+  query Events($where: eventFilter, $limit: Int!, $after: String) {
+    events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit, after: $after) {
       items {
         id
         type
@@ -81,6 +81,10 @@ const EVENTS_QUERY = `
         log_index
         timestamp
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `
@@ -100,59 +104,78 @@ export function useActivityFeed(
     limit?: number
   } = {},
 ) {
+  const pageSize = opts.limit ?? 50
   const events = ref<ActivityEvent[]>([])
   const pending = ref(false)
+  const loadingMore = ref(false)
   const error = ref<string | null>(null)
+  const hasMore = ref(false)
+  let cursor: string | null = null
+
+  function buildWhere() {
+    const where: Record<string, unknown> = {}
+
+    const punkId = toValue(opts.punkId)
+    if (punkId !== undefined) where.punk_id = String(punkId)
+
+    const address = toValue(opts.address)?.toLowerCase()
+    if (address) {
+      where.OR = [
+        { actor: address },
+        { from: address },
+        { to: address },
+        { buyer: address },
+        { seller: address },
+        { bidder: address },
+      ]
+    }
+
+    return Object.keys(where).length ? where : undefined
+  }
+
+  async function fetchPage(after: string | null) {
+    const data = await queryIndexer<{
+      events: {
+        items: RawEvent[]
+        pageInfo: { hasNextPage: boolean; endCursor: string | null }
+      }
+    }>(EVENTS_QUERY, {
+      where: buildWhere(),
+      limit: pageSize,
+      after,
+    })
+
+    const mapped = data.events.items.map(mapEvent)
+
+    const distinctIds = [
+      ...new Set(
+        mapped.flatMap((e) => (e.punkId !== undefined ? [String(e.punkId)] : [])),
+      ),
+    ]
+    if (distinctIds.length) {
+      const wrap = await queryIndexer<{
+        punks: { items: { punk_id: string; is_wrapped: boolean }[] }
+      }>(WRAPPED_QUERY, { ids: distinctIds })
+      const wrappedById = new Map(
+        wrap.punks.items.map((p) => [Number(p.punk_id), p.is_wrapped]),
+      )
+      for (const e of mapped) {
+        if (e.punkId !== undefined) e.wrapped = wrappedById.get(e.punkId)
+      }
+    }
+
+    return { mapped, pageInfo: data.events.pageInfo }
+  }
 
   async function load() {
     pending.value = true
     error.value = null
+    cursor = null
     try {
-      const where: Record<string, unknown> = {}
-
-      const punkId = toValue(opts.punkId)
-      if (punkId !== undefined) where.punk_id = String(punkId)
-
-      const address = toValue(opts.address)?.toLowerCase()
-      if (address) {
-        where.OR = [
-          { actor: address },
-          { from: address },
-          { to: address },
-          { buyer: address },
-          { seller: address },
-          { bidder: address },
-        ]
-      }
-
-      const data = await queryIndexer<{ events: { items: RawEvent[] } }>(
-        EVENTS_QUERY,
-        {
-          where: Object.keys(where).length ? where : undefined,
-          limit: opts.limit ?? 200,
-        },
-      )
-
-      const mapped = data.events.items.map(mapEvent)
-
-      const distinctIds = [
-        ...new Set(
-          mapped.flatMap((e) => (e.punkId !== undefined ? [String(e.punkId)] : [])),
-        ),
-      ]
-      if (distinctIds.length) {
-        const wrap = await queryIndexer<{
-          punks: { items: { punk_id: string; is_wrapped: boolean }[] }
-        }>(WRAPPED_QUERY, { ids: distinctIds })
-        const wrappedById = new Map(
-          wrap.punks.items.map((p) => [Number(p.punk_id), p.is_wrapped]),
-        )
-        for (const e of mapped) {
-          if (e.punkId !== undefined) e.wrapped = wrappedById.get(e.punkId)
-        }
-      }
-
+      const { mapped, pageInfo } = await fetchPage(null)
       events.value = mapped
+      cursor = pageInfo.endCursor
+      hasMore.value = pageInfo.hasNextPage
     } catch (e) {
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'
@@ -160,8 +183,29 @@ export function useActivityFeed(
         error.value = (e as Error).message
       }
       events.value = []
+      hasMore.value = false
     } finally {
       pending.value = false
+    }
+  }
+
+  async function loadMore() {
+    if (loadingMore.value || !hasMore.value || !cursor) return
+    loadingMore.value = true
+    error.value = null
+    try {
+      const { mapped, pageInfo } = await fetchPage(cursor)
+      events.value = [...events.value, ...mapped]
+      cursor = pageInfo.endCursor
+      hasMore.value = pageInfo.hasNextPage
+    } catch (e) {
+      if (e instanceof IndexerNotConfigured) {
+        error.value = 'No indexer configured.'
+      } else {
+        error.value = (e as Error).message
+      }
+    } finally {
+      loadingMore.value = false
     }
   }
 
@@ -171,7 +215,7 @@ export function useActivityFeed(
     load()
   })
 
-  return { events, pending, error, refresh: load }
+  return { events, pending, loadingMore, error, hasMore, refresh: load, loadMore }
 }
 
 function mapEvent(row: RawEvent): ActivityEvent {

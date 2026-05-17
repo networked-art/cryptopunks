@@ -21,16 +21,26 @@
       >
         Failed to load: {{ error }}
       </div>
-      <ul
-        v-else-if="events.length"
-        class="event-list"
-      >
-        <ActivityRow
-          v-for="(e, i) in events"
-          :key="`${e.txHash}-${i}`"
-          :event="e"
-        />
-      </ul>
+      <template v-else-if="events.length">
+        <ul class="event-list">
+          <ActivityRow
+            v-for="(e, i) in events"
+            :key="`${e.txHash}-${i}`"
+            :event="e"
+          />
+        </ul>
+        <div
+          v-if="hasMore"
+          class="load-more"
+        >
+          <Button
+            :disabled="loadingMore"
+            @click="loadMore"
+          >
+            {{ loadingMore ? 'Loading…' : 'Load more' }}
+          </Button>
+        </div>
+      </template>
       <div
         v-else
         class="empty muted"
@@ -44,7 +54,7 @@
 <script setup lang="ts">
 useHead({ title: 'Activity · punksmarket.xyz' })
 
-const { events, pending, error } = useActivityFeed()
+const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFeed()
 </script>
 
 <style scoped>
@@ -74,6 +84,11 @@ const { events, pending, error } = useActivityFeed()
 .empty {
   padding: var(--size-8);
   text-align: center;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
 }
 
 .error {
