@@ -40,7 +40,6 @@ const props = withDefaults(
 )
 
 const SPRITE_COLS = 100
-const cell = computed(() => props.size + props.gap)
 
 const containerRef = ref<HTMLElement | null>(null)
 /// Where the visible window starts/ends inside the grid, in content
@@ -51,11 +50,24 @@ const visibleTop = ref(0)
 const visibleHeight = ref(0)
 const containerWidth = ref(0)
 
+/// Fit as many cells per row as possible given `gap` as the minimum spacing,
+/// then redistribute leftover width as extra horizontal gap so the row spans
+/// the full container (space-between). Vertical spacing stays at `gap`.
 const cols = computed(() =>
-  Math.max(1, Math.floor(containerWidth.value / cell.value)),
+  Math.max(
+    1,
+    Math.floor(
+      (containerWidth.value + props.gap) / (props.size + props.gap),
+    ),
+  ),
 )
+const colStep = computed(() => {
+  if (cols.value <= 1) return props.size
+  return (containerWidth.value - props.size) / (cols.value - 1)
+})
+const rowStep = computed(() => props.size + props.gap)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
-const totalHeight = computed(() => rows.value * cell.value)
+const totalHeight = computed(() => rows.value * rowStep.value)
 
 /// Scroll events are coalesced to one measure() per animation frame, so the
 /// overscan buffer must be wide enough to cover whatever distance a fast
@@ -63,16 +75,19 @@ const totalHeight = computed(() => rows.value * cell.value)
 /// extend by ~1 full viewport in each direction so cells are always already
 /// rendered by the time they enter view.
 const overscanRows = computed(() =>
-  Math.max(props.overscan, Math.ceil(visibleHeight.value / cell.value)),
+  Math.max(props.overscan, Math.ceil(visibleHeight.value / rowStep.value)),
 )
 
 const start = computed(() =>
-  Math.max(0, Math.floor(visibleTop.value / cell.value) - overscanRows.value),
+  Math.max(
+    0,
+    Math.floor(visibleTop.value / rowStep.value) - overscanRows.value,
+  ),
 )
 const end = computed(() =>
   Math.min(
     rows.value,
-    Math.ceil((visibleTop.value + visibleHeight.value) / cell.value) +
+    Math.ceil((visibleTop.value + visibleHeight.value) / rowStep.value) +
       overscanRows.value,
   ),
 )
@@ -95,8 +110,8 @@ function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteCol = c.id % SPRITE_COLS
   const px = props.size
   return {
-    top: `${c.row * cell.value}px`,
-    left: `${c.col * cell.value}px`,
+    top: `${c.row * rowStep.value}px`,
+    left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
     backgroundImage: "url('/punks-glitched.png')",
