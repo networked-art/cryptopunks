@@ -175,13 +175,13 @@ contract PunksMarket is PushPullEscrow {
             bidId = ++lastBidId;
         }
 
-        Bid storage stored = _bids[bidId];
-        stored.bidWei = bidWei;
-        stored.settlementWei = settlementWei;
-        stored.bidder = msg.sender;
-        stored.criteria = criteria;
-        _copyIds(includeIds, stored.includeIds);
-        _copyIds(excludeIds, stored.excludeIds);
+        Bid storage bid = _bids[bidId];
+        bid.bidWei = bidWei;
+        bid.settlementWei = settlementWei;
+        bid.bidder = msg.sender;
+        bid.criteria = criteria;
+        _copyIds(includeIds, bid.includeIds);
+        _copyIds(excludeIds, bid.excludeIds);
 
         emit BidPlaced(
             bidId,
@@ -241,27 +241,30 @@ contract PunksMarket is PushPullEscrow {
         external
         nonReentrant
     {
-        Bid storage stored = _bids[bidId];
-        _revertIfBidDoesNotMatch(_bidMatchResult(stored, punkId));
-        Bid memory bid = stored;
+        Bid storage bid = _bids[bidId];
+        _revertIfBidDoesNotMatch(_bidMatchResult(bid, punkId));
+
+        address bidder = bid.bidder;
+        uint96 bidWei = bid.bidWei;
+        uint96 settlementWei = bid.settlementWei;
 
         delete _bids[bidId];
 
         (address seller, uint96 listingWei) =
-            _buyDirectedListing(punkId, expectedListingWei, bid.bidder, bid.bidWei);
+            _buyDirectedListing(punkId, expectedListingWei, bidder, bidWei);
 
-        _pushOrCredit(msg.sender, bid.settlementWei);
-        _pushOrCredit(bid.bidder, bid.bidWei - listingWei);
+        _pushOrCredit(msg.sender, settlementWei);
+        _pushOrCredit(bidder, bidWei - listingWei);
 
         emit BidAccepted(
             bidId,
             punkId,
             seller,
-            bid.bidder,
+            bidder,
             msg.sender,
             listingWei,
-            bid.bidWei,
-            bid.settlementWei
+            bidWei,
+            settlementWei
         );
     }
 
