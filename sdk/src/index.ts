@@ -144,6 +144,26 @@ export {
   stashPunkBidTypedDataTypes,
 } from './stash'
 export {
+  PunksStashBidsFacade,
+  StashBidsApiClient,
+} from './stash-bids'
+export type {
+  AcceptStashBidInput,
+  PlaceStashBidInput,
+  PrepareStashBidInput,
+  PreparedStashBid,
+  PunksStashBidsConfig,
+  StashBid,
+  StashBidStatus,
+  StashBidWire,
+  StashBidsApiClientConfig,
+  StashBidsForPunkQuery,
+  StashBidsListQuery,
+  StashBidsRefreshResult,
+  StashBidsTopQuery,
+  SubmitStashBidInput,
+} from './stash-bids'
+export {
   bitmapToPunkIds,
   clonePunkBitmap,
   countPunkBitmap,

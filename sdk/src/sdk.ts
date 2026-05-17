@@ -13,6 +13,7 @@ import {
   type TransactionHash,
 } from './actions'
 import { PunksStashFacade } from './stash'
+import { PunksStashBidsFacade } from './stash-bids'
 import { PunksWrappersFacade } from './wrappers'
 import { PunksDataset, type PunksDatasetConfig } from './dataset'
 import { PunkImageRenderer } from './render'
@@ -35,6 +36,9 @@ export type PunksSdkConfig = PunksDatasetConfig & {
   walletClient?: WalletClient
   account?: Address
   addresses?: PunksSdkAddresses
+  /// Override the Node Foundation bids orderbook base URL. Defaults to
+  /// `https://bids.cryptopunks.app/api/v1`.
+  bidsBaseUrl?: string
 }
 
 export type PunksContractClients = {
@@ -49,6 +53,7 @@ export class PunksSdk {
   readonly market: PunksMarketClient
   readonly wrappers: PunksWrappersFacade
   readonly stash: PunksStashFacade
+  readonly stashBids: PunksStashBidsFacade
   readonly auctions: PunksAuctionClient
   readonly offers: PunksOffersFacade
   readonly contracts: PunksContractClients
@@ -90,6 +95,12 @@ export class PunksSdk {
       dataset: this.dataset,
     } satisfies PunksAuctionConfig)
     this.offers = new PunksOffersFacade(this.auctions)
+    this.stashBids = new PunksStashBidsFacade({
+      ...wallet,
+      baseUrl: config.bidsBaseUrl,
+      factory: this.stash.factory,
+      dataset: this.dataset,
+    })
     this.contracts = config.publicClient
       ? {
           data: this.data.onchain,
