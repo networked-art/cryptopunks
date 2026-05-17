@@ -2,7 +2,6 @@
   <div
     ref="containerRef"
     class="punk-grid"
-    @scroll.passive="onScroll"
   >
     <div
       v-if="ids.length === 0"
@@ -44,47 +43,43 @@ const SPRITE_COLS = 100
 const cell = computed(() => props.size + props.gap)
 
 const containerRef = ref<HTMLElement | null>(null)
-const scrollTop = ref(0)
-const width = ref(800)
-const height = ref(600)
+/// Where the visible window starts/ends inside the grid, in content
+/// coordinates. We compute these from the container's bounding rect against
+/// the viewport, so the math is identical whether the window or some ancestor
+/// owns the scrollbar.
+const visibleTop = ref(0)
+const visibleHeight = ref(0)
+const containerWidth = ref(0)
 
-const cols = computed(() => Math.max(1, Math.floor(width.value / cell.value)))
+const cols = computed(() =>
+  Math.max(1, Math.floor(containerWidth.value / cell.value)),
+)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() => rows.value * cell.value)
 
 const start = computed(() =>
-  Math.max(0, Math.floor(scrollTop.value / cell.value) - props.overscan),
+  Math.max(0, Math.floor(visibleTop.value / cell.value) - props.overscan),
 )
 const end = computed(() =>
   Math.min(
     rows.value,
-    Math.ceil((scrollTop.value + height.value) / cell.value) + props.overscan,
+    Math.ceil((visibleTop.value + visibleHeight.value) / cell.value) +
+      props.overscan,
   ),
 )
 
 const visible = computed(() => {
   const out: { id: number; row: number; col: number }[] = []
+  const colCount = cols.value
   for (let r = start.value; r < end.value; r++) {
-    for (let c = 0; c < cols.value; c++) {
-      const i = r * cols.value + c
+    for (let c = 0; c < colCount; c++) {
+      const i = r * colCount + c
       if (i >= props.ids.length) break
       out.push({ id: props.ids[i]!, row: r, col: c })
     }
   }
   return out
 })
-
-watch(
-  () => props.ids,
-  () => {
-    scrollTop.value = 0
-    if (containerRef.value) containerRef.value.scrollTop = 0
-  },
-)
-
-function onScroll(e: Event) {
-  scrollTop.value = (e.target as HTMLElement).scrollTop
-}
 
 function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteRow = Math.floor(c.id / SPRITE_COLS)
@@ -101,37 +96,76 @@ function cellStyle(c: { id: number; row: number; col: number }) {
   }
 }
 
-let observer: ResizeObserver | null = null
-/// Watch the ref instead of relying on onMounted: this component is wrapped in
-/// Nuxt's ClientOnly, so the real template (with `ref="containerRef"`) renders
+let rafId = 0
+
+function measure() {
+  rafId = 0
+  const el = containerRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  containerWidth.value = rect.width
+  /// Intersection of the container with the viewport, expressed in the
+  /// container's own (scroll-content) coordinate space.
+  const vh = window.innerHeight || document.documentElement.clientHeight
+  const top = Math.max(0, -rect.top)
+  const bottom = Math.max(0, Math.min(rect.height, vh - rect.top))
+  visibleTop.value = top
+  visibleHeight.value = Math.max(0, bottom - top)
+}
+
+function schedule() {
+  if (rafId) return
+  rafId = requestAnimationFrame(measure)
+}
+
+let resizeObserver: ResizeObserver | null = null
+
+/// The component is wrapped in Nuxt's ClientOnly, so the real template renders
 /// a tick after the wrapper's onMounted fires against the placeholder div.
+/// Watch the ref so the observers attach to the real element once it exists.
 watch(
   containerRef,
   (el) => {
     if (!el) return
-    width.value = el.clientWidth
-    height.value = el.clientHeight
-    observer?.disconnect()
-    observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        width.value = entry.contentRect.width
-        height.value = entry.contentRect.height
-      }
-    })
-    observer.observe(el)
+    measure()
+    resizeObserver?.disconnect()
+    resizeObserver = new ResizeObserver(() => schedule())
+    resizeObserver.observe(el)
   },
   { immediate: true, flush: 'post' },
 )
 
-onBeforeUnmount(() => observer?.disconnect())
+watch(
+  () => props.ids,
+  () => {
+    /// New result set: jump the page back to the top of the grid so the user
+    /// sees the first matches, then re-measure.
+    const el = containerRef.value
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      if (rect.top < 0) window.scrollBy({ top: rect.top, behavior: 'auto' })
+    }
+    schedule()
+  },
+)
+
+onMounted(() => {
+  window.addEventListener('scroll', schedule, { passive: true })
+  window.addEventListener('resize', schedule)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('scroll', schedule)
+  window.removeEventListener('resize', schedule)
+  if (rafId) cancelAnimationFrame(rafId)
+})
 </script>
 
 <style scoped>
 .punk-grid {
-  flex: 1;
-  overflow-y: auto;
   position: relative;
-  min-height: 400px;
+  width: 100%;
 }
 
 .grid-scroll {

@@ -202,17 +202,22 @@ function onEnter() {
 .punk-search {
   display: flex;
   flex-direction: column;
-  flex: 1;
   gap: var(--space-3);
-  min-height: 0;
 }
 
+/* Keep the search bar visible below the (also-sticky) site header while
+   the window scrolls through the virtualized grid below. */
 .search-bar {
+  position: sticky;
+  top: 56px;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
   width: 100%;
+  padding: var(--space-3) 0;
+  background: var(--bg);
 }
 
 .search-input {
