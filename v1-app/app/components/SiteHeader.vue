@@ -1,22 +1,41 @@
 <template>
   <header class="site-header">
     <div class="container header-inner">
-      <NuxtLink to="/" class="brand">
+      <NuxtLink
+        to="/"
+        class="brand"
+      >
         <span class="brand-mark">▒▓</span>
         <span class="brand-word">punksmarket</span>
       </NuxtLink>
 
       <nav class="nav">
-        <NuxtLink to="/" active-class="nav-active" exact-active-class="nav-active">Search</NuxtLink>
-        <NuxtLink to="/bids" active-class="nav-active">Bids</NuxtLink>
-        <NuxtLink to="/activity" active-class="nav-active">Activity</NuxtLink>
+        <NuxtLink
+          to="/"
+          active-class="nav-active"
+          exact-active-class="nav-active"
+          >Search</NuxtLink
+        >
+        <NuxtLink
+          to="/bids"
+          active-class="nav-active"
+          >Bids</NuxtLink
+        >
+        <NuxtLink
+          to="/activity"
+          active-class="nav-active"
+          >Activity</NuxtLink
+        >
       </nav>
 
       <ClientOnly>
         <div class="connect">
           <EvmConnectDialog>
             <template #connected="{ address }">
-              <NuxtLink :to="`/profile/${address}`" class="profile-link">
+              <NuxtLink
+                :to="`/profile/${address}`"
+                class="profile-link"
+              >
                 <AccountBadge :address="address" />
               </NuxtLink>
             </template>

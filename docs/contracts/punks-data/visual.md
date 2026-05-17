@@ -220,4 +220,3 @@ range, fetch and OR the rows for each count in the range.
 
 Reverts with `InvalidColorCount` when the count is outside `2..14` and
 `InvalidWordIndex` when `wordIndex >= 40`.
-

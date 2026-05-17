@@ -1,6 +1,9 @@
 <template>
   <div class="container search-page">
-    <PunkSearch :size="56" filters-open />
+    <PunkSearch
+      :size="56"
+      filters-open
+    />
   </div>
 </template>
 

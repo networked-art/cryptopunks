@@ -9,8 +9,7 @@ export const REVERSE_REGISTRAR =
 export const PUNKS_V1_MARKET =
   '0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D' as const
 
-export const PUNKS_DATA =
-  '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as const
+export const PUNKS_DATA = '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as const
 
 export async function etchReverseRegistrar(connection: any): Promise<void> {
   const { viem } = connection
@@ -94,7 +93,10 @@ export const lotItem = (
   standard: number = Standard.CRYPTOPUNKS,
 ): LotItemInput => ({ standard, punkId, weightBps })
 
-export async function futureTs(connection: any, seconds: number): Promise<bigint> {
+export async function futureTs(
+  connection: any,
+  seconds: number,
+): Promise<bigint> {
   const publicClient = await connection.viem.getPublicClient()
   const block = await publicClient.getBlock()
   return block.timestamp + BigInt(seconds)

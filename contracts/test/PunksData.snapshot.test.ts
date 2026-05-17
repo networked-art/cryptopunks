@@ -68,12 +68,19 @@ describe('PunksData snapshot', () => {
 
     for (let i = 0; i < snapshot.snapshotIds.length; i++) {
       const id = snapshot.snapshotIds[i]
-      const expectedIndexed = rgbaToIndexed(snapshot.images[i], ctx.colorIdByRgba)
+      const expectedIndexed = rgbaToIndexed(
+        snapshot.images[i],
+        ctx.colorIdByRgba,
+      )
 
       const onchainHex = await ctx.data.read.indexedPixelsOf([id])
       const onchain = hexToBytes(onchainHex)
 
-      assert.equal(onchain.length, PIXELS_PER_PUNK, `Punk ${id}: indexed length`)
+      assert.equal(
+        onchain.length,
+        PIXELS_PER_PUNK,
+        `Punk ${id}: indexed length`,
+      )
       assert.deepEqual(onchain, expectedIndexed, `Punk ${id}: indexed pixels`)
 
       const expandedRgba = expandPalette(onchain, ctx.palette)
@@ -102,15 +109,31 @@ describe('PunksData snapshot', () => {
         parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
       )
 
-      assert.equal(await ctx.data.read.pixelCountOf([id]), expectedPixels, `Punk ${id}: pixelCount`)
-      assert.equal(await ctx.data.read.colorCountOf([id]), expectedColors, `Punk ${id}: colorCount`)
+      assert.equal(
+        await ctx.data.read.pixelCountOf([id]),
+        expectedPixels,
+        `Punk ${id}: pixelCount`,
+      )
+      assert.equal(
+        await ctx.data.read.colorCountOf([id]),
+        expectedColors,
+        `Punk ${id}: colorCount`,
+      )
       assert.equal(
         await ctx.data.read.attributeCountOf([id]),
         parsed.accessories.length,
         `Punk ${id}: attributeCount`,
       )
-      assert.equal(await ctx.data.read.headVariantOf([id]), expectedHead, `Punk ${id}: headVariant`)
-      assert.equal(await ctx.data.read.punkTypeOf([id]), expectedType, `Punk ${id}: punkType`)
+      assert.equal(
+        await ctx.data.read.headVariantOf([id]),
+        expectedHead,
+        `Punk ${id}: headVariant`,
+      )
+      assert.equal(
+        await ctx.data.read.punkTypeOf([id]),
+        expectedType,
+        `Punk ${id}: punkType`,
+      )
     }
   })
 
@@ -125,9 +148,17 @@ describe('PunksData snapshot', () => {
       let expectedMask = 0n
       for (const colorId of visibleColors) expectedMask |= 1n << BigInt(colorId)
 
-      assert.equal(await ctx.data.read.colorMaskOf([id]), expectedMask, `Punk ${id}: colorMask`)
+      assert.equal(
+        await ctx.data.read.colorMaskOf([id]),
+        expectedMask,
+        `Punk ${id}: colorMask`,
+      )
 
-      assert.equal(await ctx.data.read.hasColor([id, 0]), false, `Punk ${id}: transparent excluded`)
+      assert.equal(
+        await ctx.data.read.hasColor([id, 0]),
+        false,
+        `Punk ${id}: transparent excluded`,
+      )
       for (const colorId of visibleColors) {
         assert.equal(
           await ctx.data.read.hasColor([id, colorId]),
@@ -149,7 +180,9 @@ async function loadSnapshot(): Promise<Snapshot> {
   const bin = new Uint8Array(await readFile(SNAPSHOT_BIN))
   const images: Uint8Array[] = []
   for (let i = 0; i < json.snapshotIds.length; i++) {
-    images.push(bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage))
+    images.push(
+      bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage),
+    )
   }
   return { ...json, images }
 }
@@ -198,7 +231,9 @@ async function deployWithSnapshot(snapshot: Snapshot): Promise<SnapshotCtx> {
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
 
   await loadBlob(data, BlobId.Palette, paletteBytes)
   await loadBlob(data, BlobId.PixelOffsets, pixelOffsets)
@@ -243,7 +278,8 @@ function buildColorMaskGroups(
   return snapshot.snapshotIds.map((id, i) => {
     const indexed = rgbaToIndexed(snapshot.images[i], colorIdByRgba)
     let mask = 0n
-    for (const colorId of sortedVisibleColors(indexed)) mask |= 1n << BigInt(colorId)
+    for (const colorId of sortedVisibleColors(indexed))
+      mask |= 1n << BigInt(colorId)
     return { start: id, values: [mask] }
   })
 }
@@ -261,8 +297,12 @@ function buildPackedScalarGroups(
     const visiblePixelCount = countVisiblePixels(indexed)
     const visibleColorCount = sortedVisibleColors(indexed).length
     const parsed = parseAttributes(snapshot.attributes[i])
-    const headIndex = HEAD_VARIANTS.indexOf(parsed.headVariant as (typeof HEAD_VARIANTS)[number])
-    const typeIndex = NORMALIZED_TYPES.indexOf(parsed.normalizedType as (typeof NORMALIZED_TYPES)[number])
+    const headIndex = HEAD_VARIANTS.indexOf(
+      parsed.headVariant as (typeof HEAD_VARIANTS)[number],
+    )
+    const typeIndex = NORMALIZED_TYPES.indexOf(
+      parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
+    )
     if (headIndex < 0 || typeIndex < 0) {
       throw new Error(`Punk ${id}: unknown head/type ${parsed.headVariant}`)
     }
@@ -277,8 +317,7 @@ function buildPackedScalarGroups(
   }
 
   const placeholder =
-    BigInt(PLACEHOLDER_PIXEL_COUNT) |
-    (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
+    BigInt(PLACEHOLDER_PIXEL_COUNT) | (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
 
   const out: Array<{ start: number; values: bigint[] }> = []
   for (const [wordIndex, slots] of wordSlots) {
@@ -306,7 +345,10 @@ async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const CHUNK_SIZE = 24_575
   const count = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let i = 0; i < count; i++) {
-    const slice = bytes.slice(i * CHUNK_SIZE, Math.min(bytes.length, (i + 1) * CHUNK_SIZE))
+    const slice = bytes.slice(
+      i * CHUNK_SIZE,
+      Math.min(bytes.length, (i + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, i, bytesToHex(slice)])
   }
 }

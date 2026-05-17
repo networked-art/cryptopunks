@@ -8,7 +8,12 @@ import type {
   TraitKindName,
 } from './constants'
 
-export type PunksDataBlockTag = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'
+export type PunksDataBlockTag =
+  | 'latest'
+  | 'earliest'
+  | 'pending'
+  | 'safe'
+  | 'finalized'
 
 export type PunksDataReadOptions = {
   blockNumber?: bigint
@@ -102,11 +107,13 @@ export type ResolvedColorCriteria = {
   anyOfMask: bigint
 }
 
-export type NumericRange = number | {
-  eq?: number
-  min?: number
-  max?: number
-}
+export type NumericRange =
+  | number
+  | {
+      eq?: number
+      min?: number
+      max?: number
+    }
 
 export type PunkQuerySort =
   | 'id'
@@ -133,10 +140,26 @@ export type PunksSearchQuery = {
 
 export type PunkQuery = PunksSearchQuery & {
   text?: string
-  type?: PunkTypeValue | PunkTypeName | string | readonly (PunkTypeValue | PunkTypeName | string)[]
-  punkType?: PunkTypeValue | PunkTypeName | string | readonly (PunkTypeValue | PunkTypeName | string)[]
-  head?: HeadVariantValue | HeadVariantName | string | readonly (HeadVariantValue | HeadVariantName | string)[]
-  headVariant?: HeadVariantValue | HeadVariantName | string | readonly (HeadVariantValue | HeadVariantName | string)[]
+  type?:
+    | PunkTypeValue
+    | PunkTypeName
+    | string
+    | readonly (PunkTypeValue | PunkTypeName | string)[]
+  punkType?:
+    | PunkTypeValue
+    | PunkTypeName
+    | string
+    | readonly (PunkTypeValue | PunkTypeName | string)[]
+  head?:
+    | HeadVariantValue
+    | HeadVariantName
+    | string
+    | readonly (HeadVariantValue | HeadVariantName | string)[]
+  headVariant?:
+    | HeadVariantValue
+    | HeadVariantName
+    | string
+    | readonly (HeadVariantValue | HeadVariantName | string)[]
   attributeCount?: NumericRange
   sort?: PunkQuerySort
 }

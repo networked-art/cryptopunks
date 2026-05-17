@@ -37,7 +37,9 @@ export function assertIntegerInRange(
   max: number,
 ): void {
   if (!Number.isInteger(value) || value < min || value > max) {
-    throw new PunksDataValidationError(`${label} must be an integer from ${min} to ${max}`)
+    throw new PunksDataValidationError(
+      `${label} must be an integer from ${min} to ${max}`,
+    )
   }
 }
 
@@ -58,11 +60,21 @@ export function validateBitmapWordIndex(wordIndex: number): void {
 }
 
 export function validatePixelCount(pixelCount: number): void {
-  assertIntegerInRange('pixelCount', pixelCount, PIXEL_COUNT_MIN, PIXEL_COUNT_MAX)
+  assertIntegerInRange(
+    'pixelCount',
+    pixelCount,
+    PIXEL_COUNT_MIN,
+    PIXEL_COUNT_MAX,
+  )
 }
 
 export function validateColorCount(colorCount: number): void {
-  assertIntegerInRange('colorCount', colorCount, COLOR_COUNT_MIN, COLOR_COUNT_MAX)
+  assertIntegerInRange(
+    'colorCount',
+    colorCount,
+    COLOR_COUNT_MIN,
+    COLOR_COUNT_MAX,
+  )
 }
 
 export function validateCoordinate(x: number, y: number): void {
@@ -73,14 +85,18 @@ export function validateCoordinate(x: number, y: number): void {
 export function validateTraitMask(mask: bigint, label = 'trait mask'): void {
   assertBigintMask(mask, label)
   if (mask < 0n || (mask & ~CANONICAL_TRAIT_MASK) !== 0n) {
-    throw new PunksDataValidationError(`${label} contains bits outside the trait catalog`)
+    throw new PunksDataValidationError(
+      `${label} contains bits outside the trait catalog`,
+    )
   }
 }
 
 export function validateColorMask(mask: bigint, label = 'color mask'): void {
   assertBigintMask(mask, label)
   if (mask < 0n || (mask & ~CANONICAL_COLOR_MASK) !== 0n) {
-    throw new PunksDataValidationError(`${label} contains bits outside the palette`)
+    throw new PunksDataValidationError(
+      `${label} contains bits outside the palette`,
+    )
   }
 }
 
@@ -126,7 +142,10 @@ export function idsFromMask(mask: bigint, maxExclusive: number): number[] {
   return ids
 }
 
-export function maskFromIds(ids: Iterable<number>, validate: (id: number) => void): bigint {
+export function maskFromIds(
+  ids: Iterable<number>,
+  validate: (id: number) => void,
+): bigint {
   let mask = 0n
   for (const id of ids) {
     validate(id)
@@ -141,10 +160,14 @@ export function hexToBytes(hex: Hex): Uint8Array {
   }
   const clean = stripHexPrefix(hex)
   if (clean.length % 2 !== 0) {
-    throw new PunksDataValidationError('hex byte string must have an even length')
+    throw new PunksDataValidationError(
+      'hex byte string must have an even length',
+    )
   }
   if (!/^[0-9a-fA-F]*$/.test(clean)) {
-    throw new PunksDataValidationError('hex byte string contains non-hex characters')
+    throw new PunksDataValidationError(
+      'hex byte string contains non-hex characters',
+    )
   }
   const out = new Uint8Array(clean.length / 2)
   for (let i = 0; i < out.length; i++) {
@@ -216,11 +239,18 @@ export function normalizeNumericRange(
   }
 
   if (typeof range !== 'object' || range === null || Array.isArray(range)) {
-    throw new PunksDataValidationError(`${label} must be a number or range object`)
+    throw new PunksDataValidationError(
+      `${label} must be a number or range object`,
+    )
   }
 
-  if (range.eq !== undefined && (range.min !== undefined || range.max !== undefined)) {
-    throw new PunksDataValidationError(`${label} cannot combine eq with min or max`)
+  if (
+    range.eq !== undefined &&
+    (range.min !== undefined || range.max !== undefined)
+  ) {
+    throw new PunksDataValidationError(
+      `${label} cannot combine eq with min or max`,
+    )
   }
 
   if (range.eq !== undefined) {
@@ -232,19 +262,26 @@ export function normalizeNumericRange(
   const max = range.max ?? maxAllowed
   assertIntegerInRange(`${label}.min`, min, minAllowed, maxAllowed)
   assertIntegerInRange(`${label}.max`, max, minAllowed, maxAllowed)
-  if (min > max) throw new PunksDataValidationError(`${label}.min cannot exceed ${label}.max`)
+  if (min > max)
+    throw new PunksDataValidationError(
+      `${label}.min cannot exceed ${label}.max`,
+    )
 
   return Array.from({ length: max - min + 1 }, (_, offset) => min + offset)
 }
 
 export function assertIndexedPixels(pixels: Uint8Array): void {
   if (pixels.length !== PIXELS_PER_PUNK) {
-    throw new PunksDataValidationError(`indexed pixel buffer must contain ${PIXELS_PER_PUNK} bytes`)
+    throw new PunksDataValidationError(
+      `indexed pixel buffer must contain ${PIXELS_PER_PUNK} bytes`,
+    )
   }
 }
 
 function stripHexPrefix(value: string): string {
-  return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
+  return value.startsWith('0x') || value.startsWith('0X')
+    ? value.slice(2)
+    : value
 }
 
 function assertBigintMask(mask: bigint, label: string): void {

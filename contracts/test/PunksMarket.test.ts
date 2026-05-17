@@ -20,11 +20,9 @@ async function punksAs(ctx: Ctx, wallet: any) {
 }
 
 async function marketAs(ctx: Ctx, wallet: any) {
-  return ctx.viem.getContractAt(
-    'PunksMarket',
-    ctx.market.address,
-    { client: { wallet } },
-  )
+  return ctx.viem.getContractAt('PunksMarket', ctx.market.address, {
+    client: { wallet },
+  })
 }
 
 async function assignPunk(ctx: Ctx, to: any, punkId: bigint) {
@@ -117,7 +115,10 @@ describe('PunksMarket', () => {
     ])) as [bigint, bigint, string]
     assert.equal(bidWei, parseEther('1'))
     assert.equal(settlementWei, parseEther('0.05'))
-    assert.equal(storedBidder.toLowerCase(), bidder.account.address.toLowerCase())
+    assert.equal(
+      storedBidder.toLowerCase(),
+      bidder.account.address.toLowerCase(),
+    )
     assert.deepEqual(await market.read.getBidIncludeIds([bidId]), [1, 2])
     assert.deepEqual(await market.read.getBidExcludeIds([bidId]), [3])
 
@@ -162,22 +163,30 @@ describe('PunksMarket', () => {
         address: seller.account.address,
       })
       const marketForBuyer = await marketAs(ctx, buyer)
-      await marketForBuyer.write.buyPunk(
-        [101, price, other.account.address],
-        { value: price },
-      )
+      await marketForBuyer.write.buyPunk([101, price, other.account.address], {
+        value: price,
+      })
 
       assert.equal(
-        ((await punksV1.read.punkIndexToAddress([101n])) as string).toLowerCase(),
+        (
+          (await punksV1.read.punkIndexToAddress([101n])) as string
+        ).toLowerCase(),
         other.account.address.toLowerCase(),
       )
       assert.equal(
-        await publicClient.getBalance({ address: seller.account.address }) - sellerBefore,
+        (await publicClient.getBalance({ address: seller.account.address })) -
+          sellerBefore,
         price,
       )
-      assert.equal(await punksV1.read.pendingWithdrawals([seller.account.address]), 0n)
+      assert.equal(
+        await punksV1.read.pendingWithdrawals([seller.account.address]),
+        0n,
+      )
       assert.equal(await punksV1.read.pendingWithdrawals([market.address]), 0n)
-      assert.equal(await publicClient.getBalance({ address: market.address }), 0n)
+      assert.equal(
+        await publicClient.getBalance({ address: market.address }),
+        0n,
+      )
     })
 
     it('rejects public listings, listings directed elsewhere, and stale seller ownership', async () => {
@@ -189,10 +198,9 @@ describe('PunksMarket', () => {
       await assignPunk(ctx, seller, 201n)
       await offerPunkPublic(ctx, seller, 201n, price)
       await ctx.viem.assertions.revertWithCustomError(
-        marketForBuyer.write.buyPunk(
-          [201, price, buyer.account.address],
-          { value: price },
-        ),
+        marketForBuyer.write.buyPunk([201, price, buyer.account.address], {
+          value: price,
+        }),
         market,
         'ListingNotValid',
       )
@@ -200,10 +208,9 @@ describe('PunksMarket', () => {
       await assignPunk(ctx, seller, 202n)
       await offerPunkToMarket(ctx, seller, 202n, price, other.account.address)
       await ctx.viem.assertions.revertWithCustomError(
-        marketForBuyer.write.buyPunk(
-          [202, price, buyer.account.address],
-          { value: price },
-        ),
+        marketForBuyer.write.buyPunk([202, price, buyer.account.address], {
+          value: price,
+        }),
         market,
         'ListingNotValid',
       )
@@ -213,10 +220,9 @@ describe('PunksMarket', () => {
       const punksForSeller = await punksAs(ctx, seller)
       await punksForSeller.write.transferPunk([other.account.address, 203n])
       await ctx.viem.assertions.revertWithCustomError(
-        marketForBuyer.write.buyPunk(
-          [203, price, buyer.account.address],
-          { value: price },
-        ),
+        marketForBuyer.write.buyPunk([203, price, buyer.account.address], {
+          value: price,
+        }),
         market,
         'ListingNotValid',
       )
@@ -239,10 +245,9 @@ describe('PunksMarket', () => {
         'ListingPriceMismatch',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        marketForBuyer.write.buyPunk(
-          [301, price, buyer.account.address],
-          { value: parseEther('0.6') },
-        ),
+        marketForBuyer.write.buyPunk([301, price, buyer.account.address], {
+          value: parseEther('0.6'),
+        }),
         market,
         'IncorrectPayment',
       )
@@ -284,24 +289,36 @@ describe('PunksMarket', () => {
       const gas = receipt.gasUsed * receipt.effectiveGasPrice
 
       assert.equal(
-        ((await punksV1.read.punkIndexToAddress([401n])) as string).toLowerCase(),
+        (
+          (await punksV1.read.punkIndexToAddress([401n])) as string
+        ).toLowerCase(),
         bidder.account.address.toLowerCase(),
       )
       assert.equal(
-        await publicClient.getBalance({ address: seller.account.address }) - sellerBefore,
+        (await publicClient.getBalance({ address: seller.account.address })) -
+          sellerBefore,
         listingWei,
       )
       assert.equal(
-        await publicClient.getBalance({ address: bidder.account.address }) - bidderBefore,
+        (await publicClient.getBalance({ address: bidder.account.address })) -
+          bidderBefore,
         parseEther('0.3'),
       )
       assert.equal(
-        await publicClient.getBalance({ address: settler.account.address }) - settlerBefore + gas,
+        (await publicClient.getBalance({ address: settler.account.address })) -
+          settlerBefore +
+          gas,
         parseEther('0.05'),
       )
-      assert.equal(await punksV1.read.pendingWithdrawals([seller.account.address]), 0n)
+      assert.equal(
+        await punksV1.read.pendingWithdrawals([seller.account.address]),
+        0n,
+      )
       assert.equal(await punksV1.read.pendingWithdrawals([market.address]), 0n)
-      assert.equal(await publicClient.getBalance({ address: market.address }), 0n)
+      assert.equal(
+        await publicClient.getBalance({ address: market.address }),
+        0n,
+      )
 
       const [, , storedBidder] = (await market.read.bids([bidId])) as [
         bigint,
@@ -391,7 +408,9 @@ describe('PunksMarket', () => {
       await offerPunkToMarket(ctx, seller, 800n, parseEther('0.5'))
       await market.write.acceptBid([bidId, 800, parseEther('0.5')])
       assert.equal(
-        ((await punksV1.read.punkIndexToAddress([800n])) as string).toLowerCase(),
+        (
+          (await punksV1.read.punkIndexToAddress([800n])) as string
+        ).toLowerCase(),
         bidder.account.address.toLowerCase(),
       )
     })

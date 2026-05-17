@@ -21,8 +21,7 @@ import {
   type SourceRow,
 } from './lib/punks-builder.js'
 
-const SOURCE_DATA =
-  '0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2' as const
+const SOURCE_DATA = '0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2' as const
 const SOURCE_CHAIN_ID = 1
 const SOURCE_BLOCK_NUMBER = 25_044_552n
 const SOURCE_BLOCK_HASH =
@@ -32,11 +31,18 @@ const SOURCE_EXTCODEHASH =
 
 const OUTPUT_DIR = process.env.PUNKS_DATA_OUTPUT ?? 'scripts/output/punks-data'
 const RAW_CACHE_ENABLED = process.env.PUNKS_DATA_RAW_CACHE !== '0'
-const RAW_CACHE_DIR = process.env.PUNKS_DATA_RAW_CACHE_DIR ?? join(OUTPUT_DIR, 'raw')
+const RAW_CACHE_DIR =
+  process.env.PUNKS_DATA_RAW_CACHE_DIR ?? join(OUTPUT_DIR, 'raw')
 const CONCURRENCY = readPositiveIntEnv('PUNKS_DATA_CONCURRENCY', 4)
 const RPC_RETRIES = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRIES', 8)
-const RPC_RETRY_BASE_MS = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRY_BASE_MS', 750)
-const RPC_RETRY_MAX_MS = readNonNegativeIntEnv('PUNKS_DATA_RPC_RETRY_MAX_MS', 30_000)
+const RPC_RETRY_BASE_MS = readNonNegativeIntEnv(
+  'PUNKS_DATA_RPC_RETRY_BASE_MS',
+  750,
+)
+const RPC_RETRY_MAX_MS = readNonNegativeIntEnv(
+  'PUNKS_DATA_RPC_RETRY_MAX_MS',
+  30_000,
+)
 const REQUEST_DELAY_MS = readNonNegativeIntEnv('PUNKS_DATA_REQUEST_DELAY_MS', 0)
 const RPC_URL =
   process.env.PUNKS_DATA_RPC_URL ??
@@ -71,7 +77,9 @@ async function main() {
     throw new Error(`Expected chain ${SOURCE_CHAIN_ID}, got ${chainId}`)
   }
 
-  const block = await publicClient.getBlock({ blockNumber: SOURCE_BLOCK_NUMBER })
+  const block = await publicClient.getBlock({
+    blockNumber: SOURCE_BLOCK_NUMBER,
+  })
   if (block.hash.toLowerCase() !== SOURCE_BLOCK_HASH.toLowerCase()) {
     throw new Error(`Pinned block hash mismatch: ${block.hash}`)
   }
@@ -104,16 +112,19 @@ async function main() {
         return cached
       }
 
-      const attributes = await withRpcRetry(`punkAttributes(${id})`, async () => {
-        await sleep(REQUEST_DELAY_MS)
-        return publicClient.readContract({
-          address: SOURCE_DATA,
-          abi: dataAbi,
-          functionName: 'punkAttributes',
-          args: [id],
-          blockNumber: SOURCE_BLOCK_NUMBER,
-        })
-      })
+      const attributes = await withRpcRetry(
+        `punkAttributes(${id})`,
+        async () => {
+          await sleep(REQUEST_DELAY_MS)
+          return publicClient.readContract({
+            address: SOURCE_DATA,
+            abi: dataAbi,
+            functionName: 'punkAttributes',
+            args: [id],
+            blockNumber: SOURCE_BLOCK_NUMBER,
+          })
+        },
+      )
       const imageHex = await withRpcRetry(`punkImage(${id})`, async () => {
         await sleep(REQUEST_DELAY_MS)
         return publicClient.readContract({
@@ -147,7 +158,10 @@ async function main() {
 
   const visualMetricsHash = createHash('sha256')
   for (let id = 0; id < PUNK_COUNT; id++) {
-    const slice = dataset.indexedPixels.subarray(id * PIXELS_PER_PUNK, (id + 1) * PIXELS_PER_PUNK)
+    const slice = dataset.indexedPixels.subarray(
+      id * PIXELS_PER_PUNK,
+      (id + 1) * PIXELS_PER_PUNK,
+    )
     const visibleColors = sortedVisibleColors(slice)
     const visiblePixelCount = countVisiblePixels(slice)
     visualMetricsHash.update(
@@ -225,7 +239,9 @@ async function readRawPunkCache(id: number): Promise<SourceRow | undefined> {
   if (!RAW_CACHE_ENABLED) return undefined
 
   try {
-    const parsed = JSON.parse(await readFile(rawPunkCachePath(id), 'utf8')) as unknown
+    const parsed = JSON.parse(
+      await readFile(rawPunkCachePath(id), 'utf8'),
+    ) as unknown
     if (!isRawPunkCache(parsed, id)) return undefined
 
     const image = hexToBytes(parsed.image)
@@ -241,7 +257,9 @@ async function readRawPunkCache(id: number): Promise<SourceRow | undefined> {
     }
   } catch (error) {
     if (isMissingFileError(error)) return undefined
-    console.warn(`  ignoring invalid raw cache for Punk ${id}: ${shortError(error)}`)
+    console.warn(
+      `  ignoring invalid raw cache for Punk ${id}: ${shortError(error)}`,
+    )
     return undefined
   }
 }
@@ -271,21 +289,28 @@ async function writeRawPunkCache(row: SourceRow): Promise<void> {
 function isRawPunkCache(value: unknown, id: number): value is RawPunkCache {
   if (!isRecord(value)) return false
   if (value.version !== 1 || value.id !== id) return false
-  if (typeof value.attributes !== 'string' || value.attributes.length === 0) return false
-  if (typeof value.image !== 'string' || !/^0x[0-9a-fA-F]*$/.test(value.image)) {
+  if (typeof value.attributes !== 'string' || value.attributes.length === 0)
+    return false
+  if (
+    typeof value.image !== 'string' ||
+    !/^0x[0-9a-fA-F]*$/.test(value.image)
+  ) {
     return false
   }
   if (typeof value.imageSha256 !== 'string') return false
   if (!isRecord(value.source)) return false
   if (
-    typeof value.source.address !== 'string'
-      || typeof value.source.chainId !== 'number'
-      || typeof value.source.blockNumber !== 'number'
-  ) return false
+    typeof value.source.address !== 'string' ||
+    typeof value.source.chainId !== 'number' ||
+    typeof value.source.blockNumber !== 'number'
+  )
+    return false
 
-  return value.source.address.toLowerCase() === SOURCE_DATA.toLowerCase()
-    && value.source.chainId === SOURCE_CHAIN_ID
-    && value.source.blockNumber === Number(SOURCE_BLOCK_NUMBER)
+  return (
+    value.source.address.toLowerCase() === SOURCE_DATA.toLowerCase() &&
+    value.source.chainId === SOURCE_CHAIN_ID &&
+    value.source.blockNumber === Number(SOURCE_BLOCK_NUMBER)
+  )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -304,7 +329,10 @@ function isMissingFileError(error: unknown): boolean {
   return isRecord(error) && error.code === 'ENOENT'
 }
 
-async function withRpcRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+async function withRpcRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+): Promise<T> {
   let lastError: unknown
   for (let attempt = 0; attempt <= RPC_RETRIES; attempt++) {
     try {
@@ -338,7 +366,10 @@ function shortError(error: unknown): string {
 }
 
 function isRateLimitError(error: unknown): boolean {
-  return statusCode(error) === 429 || /429|too many requests|rate limit/i.test(errorText(error))
+  return (
+    statusCode(error) === 429 ||
+    /429|too many requests|rate limit/i.test(errorText(error))
+  )
 }
 
 function statusCode(error: unknown): number | undefined {
@@ -348,9 +379,10 @@ function statusCode(error: unknown): number | undefined {
       const status = Number((current as { status?: unknown }).status)
       if (Number.isInteger(status)) return status
     }
-    current = typeof current === 'object' && 'cause' in current
-      ? (current as { cause?: unknown }).cause
-      : undefined
+    current =
+      typeof current === 'object' && 'cause' in current
+        ? (current as { cause?: unknown }).cause
+        : undefined
   }
   return undefined
 }
@@ -359,7 +391,8 @@ function errorText(error: unknown): string {
   const parts: string[] = []
   let current: unknown = error
   while (current !== undefined && current !== null) {
-    if (current instanceof Error) parts.push(`${current.name}: ${current.message}`)
+    if (current instanceof Error)
+      parts.push(`${current.name}: ${current.message}`)
     else parts.push(String(current))
 
     if (typeof current === 'object' && 'details' in current) {
@@ -367,9 +400,10 @@ function errorText(error: unknown): string {
       if (typeof details === 'string') parts.push(details)
     }
 
-    current = typeof current === 'object' && 'cause' in current
-      ? (current as { cause?: unknown }).cause
-      : undefined
+    current =
+      typeof current === 'object' && 'cause' in current
+        ? (current as { cause?: unknown }).cause
+        : undefined
   }
   return parts.join('\n')
 }
@@ -439,9 +473,12 @@ async function mapLimit<T, R>(
       }
     }
   }
-  const settled = await Promise.allSettled(Array.from({ length: limit }, worker))
+  const settled = await Promise.allSettled(
+    Array.from({ length: limit }, worker),
+  )
   const failure = settled.find((result) => result.status === 'rejected')
-  if (failure !== undefined && failure.status === 'rejected') throw failure.reason
+  if (failure !== undefined && failure.status === 'rejected')
+    throw failure.reason
   return results
 }
 

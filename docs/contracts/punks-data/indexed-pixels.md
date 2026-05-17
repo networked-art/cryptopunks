@@ -128,4 +128,3 @@ Live read: [`paletteRgbaBytes()`](https://evm.now/address/punksdata.eth/read#pal
 
 Use it for RGBA expansion, SVG color generation, or metadata color lists.
 Color id `i` starts at byte offset `i * 4`.
-

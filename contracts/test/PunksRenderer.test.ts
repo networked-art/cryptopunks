@@ -44,7 +44,9 @@ const SCALARS_PER_WORD = 5
 const PLACEHOLDER_PIXEL_COUNT = 148
 const PLACEHOLDER_COLOR_COUNT = 2
 const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
-const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [8, 333, 3560, 4501, 1420, 166, 11, 1] as const
+const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [
+  8, 333, 3560, 4501, 1420, 166, 11, 1,
+] as const
 const SNAPSHOT_DIR = 'test/fixtures'
 const SNAPSHOT_JSON = join(SNAPSHOT_DIR, 'source-snapshot.json')
 const SNAPSHOT_BIN = join(SNAPSHOT_DIR, 'source-snapshot.bin')
@@ -146,7 +148,9 @@ describe('PunksRenderer', () => {
   )
 
   it('exposes the underlying PunksData address', async () => {
-    const onchain = ((await ctx.renderer.read.dataContract()) as string).toLowerCase()
+    const onchain = (
+      (await ctx.renderer.read.dataContract()) as string
+    ).toLowerCase()
     assert.equal(onchain, ctx.data.address.toLowerCase())
   })
 
@@ -166,7 +170,11 @@ describe('PunksRenderer', () => {
       // Cross-check against the offchain reference using the loaded palette.
       const indexed = rgbaToIndexed(ctx.snapshot.images[i], ctx.colorIdByRgba)
       const expected = expandIndexedToRgba(indexed, ctx.paletteRgba)
-      assert.deepEqual(onchain, expected, `Punk ${id}: punkImage matches reference`)
+      assert.deepEqual(
+        onchain,
+        expected,
+        `Punk ${id}: punkImage matches reference`,
+      )
     }
   })
 
@@ -196,14 +204,20 @@ describe('PunksRenderer', () => {
     const id = 0
     const snapshotIndex = ctx.snapshot.snapshotIds.indexOf(id)
     const parsed = parseAttributes(ctx.snapshot.attributes[snapshotIndex])
-    const attributeCountSupply = ctx.traits[
-      mustGet(
-        ctx.traitIdByKindAndName,
-        `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
-      )
-    ].supply
-    const indexed = rgbaToIndexed(ctx.snapshot.images[snapshotIndex], ctx.colorIdByRgba)
-    const metadata = JSON.parse((await ctx.renderer.read.metadataJson([id])) as string)
+    const attributeCountSupply =
+      ctx.traits[
+        mustGet(
+          ctx.traitIdByKindAndName,
+          `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+        )
+      ].supply
+    const indexed = rgbaToIndexed(
+      ctx.snapshot.images[snapshotIndex],
+      ctx.colorIdByRgba,
+    )
+    const metadata = JSON.parse(
+      (await ctx.renderer.read.metadataJson([id])) as string,
+    )
     const expectedImagePrefix = 'data:image/svg+xml;base64,'
 
     assert.equal(metadata.name, 'CryptoPunk 0')
@@ -213,7 +227,10 @@ describe('PunksRenderer', () => {
     )
     assert.equal(metadata.image.startsWith(expectedImagePrefix), true)
     assert.equal(
-      Buffer.from(metadata.image.slice(expectedImagePrefix.length), 'base64').toString('utf8'),
+      Buffer.from(
+        metadata.image.slice(expectedImagePrefix.length),
+        'base64',
+      ).toString('utf8'),
       await ctx.renderer.read.punkSvg([id]),
     )
     assert.deepEqual(
@@ -235,7 +252,11 @@ describe('PunksRenderer', () => {
     const uri = (await ctx.renderer.read.tokenURI([id])) as string
     assert.equal(uri.startsWith(tokenUriPrefix), true)
     assert.deepEqual(
-      JSON.parse(Buffer.from(uri.slice(tokenUriPrefix.length), 'base64').toString('utf8')),
+      JSON.parse(
+        Buffer.from(uri.slice(tokenUriPrefix.length), 'base64').toString(
+          'utf8',
+        ),
+      ),
       metadata,
     )
   })
@@ -246,7 +267,11 @@ describe('PunksRenderer', () => {
       const onchain = hexToBytes((await ctx.renderer.read.punkPng([id])) as Hex)
       const indexed = rgbaToIndexed(ctx.snapshot.images[i], ctx.colorIdByRgba)
       const expected = buildPngTransparent(indexed, ctx.paletteRgba)
-      assert.deepEqual(onchain, expected, `Punk ${id}: PNG transparent byte-equal`)
+      assert.deepEqual(
+        onchain,
+        expected,
+        `Punk ${id}: PNG transparent byte-equal`,
+      )
     }
   })
 
@@ -260,7 +285,11 @@ describe('PunksRenderer', () => {
       )
       const indexed = rgbaToIndexed(ctx.snapshot.images[i], ctx.colorIdByRgba)
       const expected = buildPngFlattened(indexed, ctx.paletteRgba, bg)
-      assert.deepEqual(onchain, expected, `Punk ${id}: PNG flattened byte-equal`)
+      assert.deepEqual(
+        onchain,
+        expected,
+        `Punk ${id}: PNG flattened byte-equal`,
+      )
     }
   })
 
@@ -277,7 +306,11 @@ describe('PunksRenderer', () => {
 
       const indexed = rgbaToIndexed(ctx.snapshot.images[i], ctx.colorIdByRgba)
       for (let row = 0; row < 24; row++) {
-        assert.equal(inflated[row * 25], 0, `Punk ${id} row ${row}: filter byte`)
+        assert.equal(
+          inflated[row * 25],
+          0,
+          `Punk ${id} row ${row}: filter byte`,
+        )
         for (let col = 0; col < 24; col++) {
           assert.equal(
             inflated[row * 25 + 1 + col],
@@ -385,14 +418,19 @@ async function deployRendererFixture() {
   const traits = buildTestTraitCatalog(snapshot)
   const traitMeta = encodeTraitMeta(traits)
   const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
-  const traitMaskPairGroups = buildTraitMaskPairGroups(snapshot, traitIdByKindAndName)
+  const traitMaskPairGroups = buildTraitMaskPairGroups(
+    snapshot,
+    traitIdByKindAndName,
+  )
   const colorMaskGroups = buildColorMaskGroups(snapshot, colorIdByRgba)
   const packedScalarGroups = buildPackedScalarGroups(snapshot, colorIdByRgba)
 
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
 
   await loadBlob(data, BlobId.TraitMeta, traitMeta)
   await loadBlob(data, BlobId.Palette, paletteBytes)
@@ -449,7 +487,9 @@ async function loadSnapshot(): Promise<Snapshot> {
   const bin = new Uint8Array(await readFile(SNAPSHOT_BIN))
   const images: Uint8Array[] = []
   for (let i = 0; i < json.snapshotIds.length; i++) {
-    images.push(bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage))
+    images.push(
+      bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage),
+    )
   }
   return { ...json, images }
 }
@@ -496,7 +536,8 @@ function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
     }
   }
   for (let i = 0; i < CANONICAL_ATTRIBUTE_COUNT_SUPPLIES.length; i++) {
-    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply = CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
+    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply =
+      CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
   }
   return traits
 }
@@ -517,15 +558,22 @@ function buildTraitMaskPairGroups(
   for (let i = 0; i < snapshot.snapshotIds.length; i++) {
     const id = snapshot.snapshotIds[i]
     const pairIndex = Math.floor(id / 2)
-    const mask = buildExpectedTraitMask(snapshot.attributes[i], traitIdByKindAndName)
+    const mask = buildExpectedTraitMask(
+      snapshot.attributes[i],
+      traitIdByKindAndName,
+    )
     const current = packedByPair.get(pairIndex) ?? 0n
-    const packed = id % 2 === 0
-      ? (current & ~lowMask) | mask
-      : (current & lowMask) | (mask << 128n)
+    const packed =
+      id % 2 === 0
+        ? (current & ~lowMask) | mask
+        : (current & lowMask) | (mask << 128n)
     packedByPair.set(pairIndex, packed)
   }
 
-  return [...packedByPair.entries()].map(([start, value]) => ({ start, values: [value] }))
+  return [...packedByPair.entries()].map(([start, value]) => ({
+    start,
+    values: [value],
+  }))
 }
 
 function buildColorMaskGroups(
@@ -535,7 +583,8 @@ function buildColorMaskGroups(
   return snapshot.snapshotIds.map((id, i) => {
     const indexed = rgbaToIndexed(snapshot.images[i], colorIdByRgba)
     let mask = 0n
-    for (const colorId of sortedVisibleColors(indexed)) mask |= 1n << BigInt(colorId)
+    for (const colorId of sortedVisibleColors(indexed))
+      mask |= 1n << BigInt(colorId)
     return { start: id, values: [mask] }
   })
 }
@@ -553,8 +602,12 @@ function buildPackedScalarGroups(
     const visiblePixelCount = countVisiblePixels(indexed)
     const visibleColorCount = sortedVisibleColors(indexed).length
     const parsed = parseAttributes(snapshot.attributes[i])
-    const headIndex = HEAD_VARIANTS.indexOf(parsed.headVariant as (typeof HEAD_VARIANTS)[number])
-    const typeIndex = NORMALIZED_TYPES.indexOf(parsed.normalizedType as (typeof NORMALIZED_TYPES)[number])
+    const headIndex = HEAD_VARIANTS.indexOf(
+      parsed.headVariant as (typeof HEAD_VARIANTS)[number],
+    )
+    const typeIndex = NORMALIZED_TYPES.indexOf(
+      parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
+    )
     if (headIndex < 0 || typeIndex < 0) {
       throw new Error(`Punk ${id}: unknown head/type ${parsed.headVariant}`)
     }
@@ -569,8 +622,7 @@ function buildPackedScalarGroups(
   }
 
   const placeholder =
-    BigInt(PLACEHOLDER_PIXEL_COUNT) |
-    (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
+    BigInt(PLACEHOLDER_PIXEL_COUNT) | (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
 
   const out: Array<{ start: number; values: bigint[] }> = []
   for (const [wordIndex, slots] of wordSlots) {
@@ -598,7 +650,10 @@ async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const CHUNK_SIZE = 24_575
   const count = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let i = 0; i < count; i++) {
-    const slice = bytes.slice(i * CHUNK_SIZE, Math.min(bytes.length, (i + 1) * CHUNK_SIZE))
+    const slice = bytes.slice(
+      i * CHUNK_SIZE,
+      Math.min(bytes.length, (i + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, i, bytesToHex(slice)])
   }
 }
@@ -649,8 +704,10 @@ function expectedPunkAttributesCsv(
   traits: TraitRecord[],
 ): string {
   const parsed = parseAttributes(attributes)
-  const accessoryNames = accessoryTraitIds(parsed.accessories, traitIdByKindAndName)
-    .map((id) => traits[id].name)
+  const accessoryNames = accessoryTraitIds(
+    parsed.accessories,
+    traitIdByKindAndName,
+  ).map((id) => traits[id].name)
   return [parsed.headVariant, ...accessoryNames].join(', ')
 }
 
@@ -665,13 +722,19 @@ function expectedMetadataAttributes(
   return [
     { trait_type: 'Type', value: parsed.normalizedType },
     { trait_type: 'Head Variant', value: parsed.headVariant },
-    { display_type: 'number', trait_type: 'Attribute Count', value: parsed.accessories.length },
+    {
+      display_type: 'number',
+      trait_type: 'Attribute Count',
+      value: parsed.accessories.length,
+    },
     { display_type: 'number', trait_type: 'Color Count', value: colorCount },
     { display_type: 'number', trait_type: 'Pixel Count', value: pixelCount },
-    ...accessoryTraitIds(parsed.accessories, traitIdByKindAndName).map((id) => ({
-      trait_type: 'Accessory',
-      value: traits[id].name,
-    })),
+    ...accessoryTraitIds(parsed.accessories, traitIdByKindAndName).map(
+      (id) => ({
+        trait_type: 'Accessory',
+        value: traits[id].name,
+      }),
+    ),
   ]
 }
 
@@ -681,19 +744,34 @@ function buildExpectedTraitMask(
 ): bigint {
   const parsed = parseAttributes(attributes)
   let mask = 0n
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${parsed.headVariant}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(
-      traitIdByKindAndName,
-      `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
-    ),
-  )
-  for (const id of accessoryTraitIds(parsed.accessories, traitIdByKindAndName)) {
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`,
+      ),
+    )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_HEAD_VARIANT}:${parsed.headVariant}`,
+      ),
+    )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+      ),
+    )
+  for (const id of accessoryTraitIds(
+    parsed.accessories,
+    traitIdByKindAndName,
+  )) {
     mask |= 1n << BigInt(id)
   }
   return mask

@@ -24,7 +24,9 @@ const LOOKBACK_BLOCKS = 200_000n
  * For production scale this should hit the indexer (`runtimeConfig.indexerUrl`)
  * instead — kept here as a zero-dependency fallback.
  */
-export function usePunksMarketBids(opts: { bidder?: MaybeRefOrGetter<Address | undefined> } = {}) {
+export function usePunksMarketBids(
+  opts: { bidder?: MaybeRefOrGetter<Address | undefined> } = {},
+) {
   const config = useConfig()
   const punksMarket = usePunksMarketAddress()
 
@@ -49,7 +51,12 @@ export function usePunksMarketBids(opts: { bidder?: MaybeRefOrGetter<Address | u
       const events = (punksMarketAbi as readonly { type: string }[]).filter(
         (x) => x.type === 'event',
       ) as never
-      const logs = await client.getLogs({ address, fromBlock: from, toBlock: head, events })
+      const logs = await client.getLogs({
+        address,
+        fromBlock: from,
+        toBlock: head,
+        events,
+      })
 
       const state = new Map<string, CollectionBid>()
 
@@ -67,15 +74,24 @@ export function usePunksMarketBids(opts: { bidder?: MaybeRefOrGetter<Address | u
             bidder: args.bidder as Address,
             bidWei: args.bidWei as bigint,
             settlementWei: args.settlementWei as bigint,
-            includeIds: (args.includeIds as number[] | undefined)?.map((n) => Number(n)) ?? [],
-            excludeIds: (args.excludeIds as number[] | undefined)?.map((n) => Number(n)) ?? [],
+            includeIds:
+              (args.includeIds as number[] | undefined)?.map((n) =>
+                Number(n),
+              ) ?? [],
+            excludeIds:
+              (args.excludeIds as number[] | undefined)?.map((n) =>
+                Number(n),
+              ) ?? [],
             active: true,
             placedAtBlock: log.blockNumber,
           })
         } else if (log.eventName === 'BidAdjusted') {
           const existing = state.get(String(args.bidId))
           if (existing) existing.bidWei = args.newBidWei as bigint
-        } else if (log.eventName === 'BidCancelled' || log.eventName === 'BidAccepted') {
+        } else if (
+          log.eventName === 'BidCancelled' ||
+          log.eventName === 'BidAccepted'
+        ) {
           const existing = state.get(String(args.bidId))
           if (existing) existing.active = false
         }

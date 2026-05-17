@@ -8,7 +8,10 @@
         :placeholder="`Search ${counts.total.toLocaleString()} punks by id, type, or trait…`"
         @keydown.enter="onEnter"
       />
-      <select v-model="sort" class="sort">
+      <select
+        v-model="sort"
+        class="sort"
+      >
         <option value="id">Id ↑</option>
         <option value="id-desc">Id ↓</option>
         <option value="rarity">Rarest</option>
@@ -16,10 +19,17 @@
         <option value="pixelCount-desc">Most pixels</option>
         <option value="colorCount-desc">Most colors</option>
       </select>
-      <span class="muted result-count">{{ counts.filtered.toLocaleString() }} / {{ counts.total.toLocaleString() }}</span>
+      <span class="muted result-count"
+        >{{ counts.filtered.toLocaleString() }} /
+        {{ counts.total.toLocaleString() }}</span
+      >
     </header>
 
-    <details v-if="!hideFilters" class="filters" :open="filtersOpen">
+    <details
+      v-if="!hideFilters"
+      class="filters"
+      :open="filtersOpen"
+    >
       <summary>Filters · {{ activeFilterCount }} active</summary>
       <div class="filter-grid">
         <div>
@@ -32,7 +42,9 @@
               class="chip"
               :class="{ active: selectedTypes.has(t) }"
               @click="toggle(selectedTypes, t)"
-            >{{ t }}</button>
+            >
+              {{ t }}
+            </button>
           </div>
         </div>
         <div>
@@ -45,21 +57,34 @@
               class="chip"
               :class="{ active: selectedHeads.has(h) }"
               @click="toggle(selectedHeads, h)"
-            >{{ h }}</button>
+            >
+              {{ h }}
+            </button>
           </div>
         </div>
         <div class="full">
           <label class="filter-label">Required traits</label>
-          <input v-model="requiredTraitsText" type="text" placeholder="hoodie, 3d glasses, …" />
+          <input
+            v-model="requiredTraitsText"
+            type="text"
+            placeholder="hoodie, 3d glasses, …"
+          />
         </div>
         <div class="full">
           <label class="filter-label">Forbidden traits</label>
-          <input v-model="forbiddenTraitsText" type="text" placeholder="cigarette, …" />
+          <input
+            v-model="forbiddenTraitsText"
+            type="text"
+            placeholder="cigarette, …"
+          />
         </div>
       </div>
     </details>
 
-    <PunkGrid :ids="ids" :size="size" />
+    <PunkGrid
+      :ids="ids"
+      :size="size"
+    />
   </section>
 </template>
 
@@ -82,8 +107,12 @@ const router = useRouter()
 
 const text = ref('')
 const sort = ref<PunkQuerySort>('id')
-const punkTypes = Object.keys(PunkType).filter((k) => isNaN(Number(k))) as string[]
-const headVariants = Object.keys(HeadVariant).filter((k) => isNaN(Number(k))) as string[]
+const punkTypes = Object.keys(PunkType).filter((k) =>
+  isNaN(Number(k)),
+) as string[]
+const headVariants = Object.keys(HeadVariant).filter((k) =>
+  isNaN(Number(k)),
+) as string[]
 const selectedTypes = reactive(new Set<string>())
 const selectedHeads = reactive(new Set<string>())
 const requiredTraitsText = ref('')
@@ -102,7 +131,8 @@ const query = computed<PunkQuery>(() => {
     text: text.value.trim() || undefined,
     type: selectedTypes.size ? [...selectedTypes] : undefined,
     head: selectedHeads.size ? [...selectedHeads] : undefined,
-    attributes: required.length || forbidden.length ? { required, forbidden } : undefined,
+    attributes:
+      required.length || forbidden.length ? { required, forbidden } : undefined,
     sort: sort.value,
     limit: 5000,
   }

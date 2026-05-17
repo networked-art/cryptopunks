@@ -10,9 +10,11 @@ export const PUNKS_V1_ADDRESS: Address = CRYPTOPUNKS_MARKET_ADDRESS
  */
 export function usePunksMarketAddress() {
   const config = useRuntimeConfig()
-  const fromConfig = ((config.public as Record<string, unknown>).punksMarketAddress ?? '') as string
+  const fromConfig = ((config.public as Record<string, unknown>)
+    .punksMarketAddress ?? '') as string
   return computed<Address | null>(() => {
-    if (!fromConfig || fromConfig === '0x' || fromConfig.length < 42) return null
+    if (!fromConfig || fromConfig === '0x' || fromConfig.length < 42)
+      return null
     return fromConfig as Address
   })
 }

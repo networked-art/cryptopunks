@@ -1,14 +1,35 @@
 <template>
   <li class="activity-row">
-    <NuxtLink v-if="punkId !== undefined" :to="`/punk/${punkId}`" class="thumb">
-      <PunkImage :punk-id="punkId" :size="44" glitch="never" />
+    <NuxtLink
+      v-if="punkId !== undefined"
+      :to="`/punk/${punkId}`"
+      class="thumb"
+    >
+      <PunkImage
+        :punk-id="punkId"
+        :size="44"
+        glitch="never"
+      />
     </NuxtLink>
-    <span v-else class="thumb thumb-bid">#{{ event.bidId }}</span>
+    <span
+      v-else
+      class="thumb thumb-bid"
+      >#{{ event.bidId }}</span
+    >
 
     <div class="row-body">
       <div class="row-line">
-        <span class="kind" :class="kindClass">{{ kindLabel }}</span>
-        <NuxtLink v-if="punkId !== undefined" :to="`/punk/${punkId}`" class="punk-id">Punk #{{ punkId }}</NuxtLink>
+        <span
+          class="kind"
+          :class="kindClass"
+          >{{ kindLabel }}</span
+        >
+        <NuxtLink
+          v-if="punkId !== undefined"
+          :to="`/punk/${punkId}`"
+          class="punk-id"
+          >Punk #{{ punkId }}</NuxtLink
+        >
       </div>
       <div class="row-line muted">
         <span v-if="event.from">
@@ -16,7 +37,11 @@
             <AccountBadge :address="event.from" />
           </NuxtLink>
         </span>
-        <span v-if="event.to" class="arrow">→</span>
+        <span
+          v-if="event.to"
+          class="arrow"
+          >→</span
+        >
         <span v-if="event.to">
           <NuxtLink :to="`/profile/${event.to}`">
             <AccountBadge :address="event.to" />
@@ -26,8 +51,17 @@
     </div>
 
     <div class="row-meta">
-      <EthAmount v-if="event.amountWei !== undefined" :wei="event.amountWei" />
-      <a class="tx" :href="`https://etherscan.io/tx/${event.txHash}`" target="_blank" rel="noopener">↗</a>
+      <EthAmount
+        v-if="event.amountWei !== undefined"
+        :wei="event.amountWei"
+      />
+      <a
+        class="tx"
+        :href="`https://etherscan.io/tx/${event.txHash}`"
+        target="_blank"
+        rel="noopener"
+        >↗</a
+      >
     </div>
   </li>
 </template>
@@ -40,7 +74,10 @@ const props = defineProps<{ event: ActivityEvent }>()
 const punkId = computed(() => props.event.punkId)
 
 const kindLabel = computed(() => KIND_LABEL[props.event.kind])
-const kindClass = computed(() => `kind-${props.event.kind.split('-')[0]}-${props.event.kind.split('-').slice(1).join('-')}`)
+const kindClass = computed(
+  () =>
+    `kind-${props.event.kind.split('-')[0]}-${props.event.kind.split('-').slice(1).join('-')}`,
+)
 </script>
 
 <script lang="ts">

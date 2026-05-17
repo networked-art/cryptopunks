@@ -12,7 +12,8 @@ import {
   punkBitmapFromIds,
 } from '../dist/index.js'
 
-const DATASET_HASH = '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
+const DATASET_HASH =
+  '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
 
 describe('PunksDataClient', () => {
   it('resolves trait records, searches attributes through bitmap indexes, and paginates results', async () => {
@@ -40,9 +41,11 @@ describe('PunksDataClient', () => {
     })
     assert.deepEqual(visualWithoutHoodie, [300])
 
-    const paged = await sdk.search(
-      { colors: { required: [2] }, offset: 1, limit: 1 },
-    )
+    const paged = await sdk.search({
+      colors: { required: [2] },
+      offset: 1,
+      limit: 1,
+    })
     assert.deepEqual(paged, [300])
 
     assert.equal(await sdk.count({ colors: { required: [2] } }), 3)
@@ -59,7 +62,10 @@ describe('PunksDataClient', () => {
 
     assert.equal(punk.id, 10)
     assert.deepEqual(punk.traitIds, [0, 25])
-    assert.deepEqual(punk.traits.map((trait) => trait.name), ['Alien', 'Hoodie'])
+    assert.deepEqual(
+      punk.traits.map((trait) => trait.name),
+      ['Alien', 'Hoodie'],
+    )
     assert.deepEqual(punk.colorIds, [2])
     assert.equal(punk.colors[0].rgba, '0x111111ff')
     assert.equal(punk.pixelCount, 200)
@@ -163,13 +169,25 @@ function makeFakePublicClient() {
       case 'traitSupply':
         return catalog[args[0]].supply
       case 'traitBitmapWord':
-        return punkBitmapWord(bitmaps.traits.get(args[0]) ?? emptyPunkBitmap(), args[1])
+        return punkBitmapWord(
+          bitmaps.traits.get(args[0]) ?? emptyPunkBitmap(),
+          args[1],
+        )
       case 'colorBitmapWord':
-        return punkBitmapWord(bitmaps.colors.get(args[0]) ?? emptyPunkBitmap(), args[1])
+        return punkBitmapWord(
+          bitmaps.colors.get(args[0]) ?? emptyPunkBitmap(),
+          args[1],
+        )
       case 'pixelCountBitmapWord':
-        return punkBitmapWord(bitmaps.pixelCounts.get(args[0]) ?? emptyPunkBitmap(), args[1])
+        return punkBitmapWord(
+          bitmaps.pixelCounts.get(args[0]) ?? emptyPunkBitmap(),
+          args[1],
+        )
       case 'colorCountBitmapWord':
-        return punkBitmapWord(bitmaps.colorCounts.get(args[0]) ?? emptyPunkBitmap(), args[1])
+        return punkBitmapWord(
+          bitmaps.colorCounts.get(args[0]) ?? emptyPunkBitmap(),
+          args[1],
+        )
       case 'traitMaskOf':
         return traitMasks.get(args[0]) ?? 0n
       case 'colorMaskOf':
@@ -199,12 +217,21 @@ function makeFakePublicClient() {
       case 'colorSupply':
         return args[0] === 2 ? 3 : 0
       case 'hasTrait':
-        return ((traitMasks.get(args[0]) ?? 0n) & (1n << BigInt(args[1]))) !== 0n
+        return (
+          ((traitMasks.get(args[0]) ?? 0n) & (1n << BigInt(args[1]))) !== 0n
+        )
       case 'hasColor':
-        return args[1] !== 0 && ((colorMasks.get(args[0]) ?? 0n) & (1n << BigInt(args[1]))) !== 0n
+        return (
+          args[1] !== 0 &&
+          ((colorMasks.get(args[0]) ?? 0n) & (1n << BigInt(args[1]))) !== 0n
+        )
       case 'hasTraits': {
         const mask = traitMasks.get(args[0]) ?? 0n
-        return (mask & args[1]) === args[1] && (mask & args[2]) === 0n && (args[3] === 0n || (mask & args[3]) !== 0n)
+        return (
+          (mask & args[1]) === args[1] &&
+          (mask & args[2]) === 0n &&
+          (args[3] === 0n || (mask & args[3]) !== 0n)
+        )
       }
       case 'colorAt':
         return args[1] === 0 && args[2] === 0 ? 2 : 0
@@ -233,8 +260,18 @@ function makeCatalog() {
     kind: TraitKind.Accessory,
     supply: 0,
   }))
-  catalog[0] = { id: 0, name: 'Alien', kind: TraitKind.NormalizedType, supply: 2 }
-  catalog[5] = { id: 5, name: 'Alien Head', kind: TraitKind.HeadVariant, supply: 1 }
+  catalog[0] = {
+    id: 0,
+    name: 'Alien',
+    kind: TraitKind.NormalizedType,
+    supply: 2,
+  }
+  catalog[5] = {
+    id: 5,
+    name: 'Alien Head',
+    kind: TraitKind.HeadVariant,
+    supply: 1,
+  }
   catalog[24] = { id: 24, name: 'Beanie', kind: TraitKind.Accessory, supply: 2 }
   catalog[25] = { id: 25, name: 'Hoodie', kind: TraitKind.Accessory, supply: 2 }
   return catalog

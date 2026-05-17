@@ -45,7 +45,7 @@ function parseOffset(value: string | undefined): number {
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
-function parseSort(value: string): typeof SORT_MAP[SortKey] | null {
+function parseSort(value: string): (typeof SORT_MAP)[SortKey] | null {
   return value in SORT_MAP ? SORT_MAP[value as SortKey] : null
 }
 
@@ -131,10 +131,7 @@ app.get('/', async (c) => {
   const sortParam = c.req.query('sort') ?? 'bid_wei-desc'
   const orderBy = parseSort(sortParam)
   if (orderBy === null) {
-    return c.json(
-      { error: 'invalid_sort', valid: Object.keys(SORT_MAP) },
-      400,
-    )
+    return c.json({ error: 'invalid_sort', valid: Object.keys(SORT_MAP) }, 400)
   }
 
   const conds = []
@@ -157,10 +154,7 @@ app.get('/', async (c) => {
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset),
-    db
-      .select({ value: count() })
-      .from(marketBid)
-      .where(where),
+    db.select({ value: count() }).from(marketBid).where(where),
   ])
   const total = Number(totalRows[0]?.value ?? 0)
 

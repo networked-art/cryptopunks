@@ -83,7 +83,9 @@ type Snapshot = {
 type Ctx = Awaited<ReturnType<typeof loadAndSeal>>
 
 const EXPORT_PRESENT =
-  existsSync(MANIFEST_PATH) && existsSync(SNAPSHOT_JSON) && existsSync(SNAPSHOT_BIN)
+  existsSync(MANIFEST_PATH) &&
+  existsSync(SNAPSHOT_JSON) &&
+  existsSync(SNAPSHOT_BIN)
 
 describe('PunksData export e2e', () => {
   if (!EXPORT_PRESENT) {
@@ -180,8 +182,10 @@ describe('PunksData export e2e', () => {
     const popcounts = await Promise.all(
       manifest.traits.map(async (trait) => {
         const words = await Promise.all(
-          Array.from({ length: BITMAP_WORDS_PER_ROW }, (_, w) =>
-            data.read.traitBitmapWord([trait.id, w]) as Promise<bigint>,
+          Array.from(
+            { length: BITMAP_WORDS_PER_ROW },
+            (_, w) =>
+              data.read.traitBitmapWord([trait.id, w]) as Promise<bigint>,
           ),
         )
         return words.reduce((sum, word) => sum + popcount(word), 0)
@@ -200,15 +204,20 @@ describe('PunksData export e2e', () => {
     const { data } = ctx
 
     const pixelRowSums = await Promise.all(
-      Array.from({ length: PIXEL_COUNT_MAX - PIXEL_COUNT_MIN + 1 }, async (_, offset) => {
-        const pc = PIXEL_COUNT_MIN + offset
-        const words = await Promise.all(
-          Array.from({ length: BITMAP_WORDS_PER_ROW }, (_, w) =>
-            data.read.pixelCountBitmapWord([pc, w]) as Promise<bigint>,
-          ),
-        )
-        return words.reduce((sum, word) => sum + popcount(word), 0)
-      }),
+      Array.from(
+        { length: PIXEL_COUNT_MAX - PIXEL_COUNT_MIN + 1 },
+        async (_, offset) => {
+          const pc = PIXEL_COUNT_MIN + offset
+          const words = await Promise.all(
+            Array.from(
+              { length: BITMAP_WORDS_PER_ROW },
+              (_, w) =>
+                data.read.pixelCountBitmapWord([pc, w]) as Promise<bigint>,
+            ),
+          )
+          return words.reduce((sum, word) => sum + popcount(word), 0)
+        },
+      ),
     )
     assert.equal(
       pixelRowSums.reduce((a, b) => a + b, 0),
@@ -217,15 +226,20 @@ describe('PunksData export e2e', () => {
     )
 
     const colorRowSums = await Promise.all(
-      Array.from({ length: COLOR_COUNT_MAX - COLOR_COUNT_MIN + 1 }, async (_, offset) => {
-        const cc = COLOR_COUNT_MIN + offset
-        const words = await Promise.all(
-          Array.from({ length: BITMAP_WORDS_PER_ROW }, (_, w) =>
-            data.read.colorCountBitmapWord([cc, w]) as Promise<bigint>,
-          ),
-        )
-        return words.reduce((sum, word) => sum + popcount(word), 0)
-      }),
+      Array.from(
+        { length: COLOR_COUNT_MAX - COLOR_COUNT_MIN + 1 },
+        async (_, offset) => {
+          const cc = COLOR_COUNT_MIN + offset
+          const words = await Promise.all(
+            Array.from(
+              { length: BITMAP_WORDS_PER_ROW },
+              (_, w) =>
+                data.read.colorCountBitmapWord([cc, w]) as Promise<bigint>,
+            ),
+          )
+          return words.reduce((sum, word) => sum + popcount(word), 0)
+        },
+      ),
     )
     assert.equal(
       colorRowSums.reduce((a, b) => a + b, 0),
@@ -239,9 +253,17 @@ describe('PunksData export e2e', () => {
     for (let i = 0; i < snapshot.snapshotIds.length; i++) {
       const id = snapshot.snapshotIds[i]
       const onchain = hexToBytes((await data.read.indexedPixelsOf([id])) as Hex)
-      assert.equal(onchain.length, PIXELS_PER_PUNK, `Punk ${id}: indexed length`)
+      assert.equal(
+        onchain.length,
+        PIXELS_PER_PUNK,
+        `Punk ${id}: indexed length`,
+      )
       const expandedRgba = expandPalette(onchain, manifest.palette)
-      assert.deepEqual(expandedRgba, snapshot.images[i], `Punk ${id}: RGBA round-trip`)
+      assert.deepEqual(
+        expandedRgba,
+        snapshot.images[i],
+        `Punk ${id}: RGBA round-trip`,
+      )
     }
   })
 
@@ -260,15 +282,31 @@ describe('PunksData export e2e', () => {
         parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
       )
 
-      assert.equal(await data.read.pixelCountOf([id]), expectedPixels, `Punk ${id}: pixelCount`)
-      assert.equal(await data.read.colorCountOf([id]), expectedColors, `Punk ${id}: colorCount`)
+      assert.equal(
+        await data.read.pixelCountOf([id]),
+        expectedPixels,
+        `Punk ${id}: pixelCount`,
+      )
+      assert.equal(
+        await data.read.colorCountOf([id]),
+        expectedColors,
+        `Punk ${id}: colorCount`,
+      )
       assert.equal(
         await data.read.attributeCountOf([id]),
         parsed.accessories.length,
         `Punk ${id}: attributeCount`,
       )
-      assert.equal(await data.read.headVariantOf([id]), expectedHead, `Punk ${id}: headVariant`)
-      assert.equal(await data.read.punkTypeOf([id]), expectedType, `Punk ${id}: punkType`)
+      assert.equal(
+        await data.read.headVariantOf([id]),
+        expectedHead,
+        `Punk ${id}: headVariant`,
+      )
+      assert.equal(
+        await data.read.punkTypeOf([id]),
+        expectedType,
+        `Punk ${id}: punkType`,
+      )
     }
   })
 
@@ -281,8 +319,16 @@ describe('PunksData export e2e', () => {
       let expectedMask = 0n
       for (const c of visible) expectedMask |= 1n << BigInt(c)
 
-      assert.equal(await data.read.colorMaskOf([id]), expectedMask, `Punk ${id}: colorMask`)
-      assert.equal(await data.read.hasColor([id, 0]), false, `Punk ${id}: hasColor(0)`)
+      assert.equal(
+        await data.read.colorMaskOf([id]),
+        expectedMask,
+        `Punk ${id}: colorMask`,
+      )
+      assert.equal(
+        await data.read.hasColor([id, 0]),
+        false,
+        `Punk ${id}: hasColor(0)`,
+      )
       const flags = await Promise.all(
         visible.map((c) => data.read.hasColor([id, c]) as Promise<boolean>),
       )
@@ -296,7 +342,10 @@ describe('PunksData export e2e', () => {
     const { data, snapshot, traitIdByKindAndName } = ctx
     for (let i = 0; i < snapshot.snapshotIds.length; i++) {
       const id = snapshot.snapshotIds[i]
-      const expectedMask = buildExpectedTraitMask(snapshot.attributes[i], traitIdByKindAndName)
+      const expectedMask = buildExpectedTraitMask(
+        snapshot.attributes[i],
+        traitIdByKindAndName,
+      )
       const onchainMask = (await data.read.traitMaskOf([id])) as bigint
       assert.equal(onchainMask, expectedMask, `Punk ${id}: traitMask`)
 
@@ -305,13 +354,16 @@ describe('PunksData export e2e', () => {
 
       const [hasFlags, bitmapWords] = await Promise.all([
         Promise.all(
-          Array.from({ length: TRAIT_COUNT }, (_, t) =>
-            data.read.hasTrait([id, t]) as Promise<boolean>,
+          Array.from(
+            { length: TRAIT_COUNT },
+            (_, t) => data.read.hasTrait([id, t]) as Promise<boolean>,
           ),
         ),
         Promise.all(
-          Array.from({ length: TRAIT_COUNT }, (_, t) =>
-            data.read.traitBitmapWord([t, wordIndex]) as Promise<bigint>,
+          Array.from(
+            { length: TRAIT_COUNT },
+            (_, t) =>
+              data.read.traitBitmapWord([t, wordIndex]) as Promise<bigint>,
           ),
         ),
       ])
@@ -320,7 +372,11 @@ describe('PunksData export e2e', () => {
         const inMask = ((onchainMask >> BigInt(t)) & 1n) === 1n
         assert.equal(hasFlags[t], inMask, `Punk ${id}: hasTrait(${t}) vs mask`)
         const inBitmap = ((bitmapWords[t] >> BigInt(bitIndex)) & 1n) === 1n
-        assert.equal(inBitmap, inMask, `Punk ${id}: traitBitmapWord(${t}) vs mask`)
+        assert.equal(
+          inBitmap,
+          inMask,
+          `Punk ${id}: traitBitmapWord(${t}) vs mask`,
+        )
       }
     }
   })
@@ -340,15 +396,23 @@ async function loadAndSeal() {
     pixelCountBitmaps: await readBin(manifest.files.pixelCountBitmaps),
     colorCountBitmaps: await readBin(manifest.files.colorCountBitmaps),
   }
-  const traitMaskPairs = readUint256Words(await readBin(manifest.files.traitMaskPairs))
+  const traitMaskPairs = readUint256Words(
+    await readBin(manifest.files.traitMaskPairs),
+  )
   const colorMasks = readUint256Words(await readBin(manifest.files.colorMasks))
-  const packedScalars = readUint256Words(await readBin(manifest.files.packedScalars))
-  const colorSupplies = readUint32Array(await readBin(manifest.files.colorSupplies))
+  const packedScalars = readUint256Words(
+    await readBin(manifest.files.packedScalars),
+  )
+  const colorSupplies = readUint32Array(
+    await readBin(manifest.files.colorSupplies),
+  )
 
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
 
   await loadBlob(data, BlobId.TraitBitmaps, blobBytes.traitBitmaps)
   await loadBlob(data, BlobId.TraitMeta, blobBytes.traitMeta)
@@ -408,7 +472,9 @@ async function loadSnapshot(): Promise<Snapshot> {
   const bin = new Uint8Array(await readFile(SNAPSHOT_BIN))
   const images: Uint8Array[] = []
   for (let i = 0; i < json.snapshotIds.length; i++) {
-    images.push(bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage))
+    images.push(
+      bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage),
+    )
   }
   return { ...json, images }
 }
@@ -416,7 +482,10 @@ async function loadSnapshot(): Promise<Snapshot> {
 async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const chunks = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let i = 0; i < chunks; i++) {
-    const chunk = bytes.slice(i * CHUNK_SIZE, Math.min(bytes.length, (i + 1) * CHUNK_SIZE))
+    const chunk = bytes.slice(
+      i * CHUNK_SIZE,
+      Math.min(bytes.length, (i + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, i, bytesToHex(chunk)])
   }
 }
@@ -444,7 +513,8 @@ function readUint256Words(bytes: Uint8Array): bigint[] {
   const out: bigint[] = []
   for (let offset = 0; offset < bytes.length; offset += 32) {
     let value = 0n
-    for (let i = 0; i < 32; i++) value = (value << 8n) | BigInt(bytes[offset + i])
+    for (let i = 0; i < 32; i++)
+      value = (value << 8n) | BigInt(bytes[offset + i])
     out.push(value)
   }
   return out
@@ -490,28 +560,43 @@ function buildExpectedTraitMask(
 ): bigint {
   const parsed = parseAttributes(attributes)
   let mask = 0n
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${TraitKind.NormalizedType}:${parsed.normalizedType}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${TraitKind.HeadVariant}:${parsed.headVariant}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(
-      traitIdByKindAndName,
-      `${TraitKind.AttributeCount}:${parsed.accessories.length} Attributes`,
-    ),
-  )
-  for (const accessory of parsed.accessories) {
-    mask |= 1n << BigInt(
-      mustGet(traitIdByKindAndName, `${TraitKind.Accessory}:${accessory}`),
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${TraitKind.NormalizedType}:${parsed.normalizedType}`,
+      ),
     )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${TraitKind.HeadVariant}:${parsed.headVariant}`,
+      ),
+    )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${TraitKind.AttributeCount}:${parsed.accessories.length} Attributes`,
+      ),
+    )
+  for (const accessory of parsed.accessories) {
+    mask |=
+      1n <<
+      BigInt(
+        mustGet(traitIdByKindAndName, `${TraitKind.Accessory}:${accessory}`),
+      )
   }
   return mask
 }
 
 function mustGet<K, V>(map: Map<K, V>, key: K): V {
   const value = map.get(key)
-  if (value === undefined) throw new Error(`Missing trait id for ${String(key)}`)
+  if (value === undefined)
+    throw new Error(`Missing trait id for ${String(key)}`)
   return value
 }

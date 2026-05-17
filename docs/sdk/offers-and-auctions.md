@@ -128,9 +128,7 @@ Create, update, cancel, and clear lots:
 
 ```ts
 await punks.auctions.createLot({
-  items: [
-    { punkId: 4156, weightBps: 10_000 },
-  ],
+  items: [{ punkId: 4156, weightBps: 10_000 }],
   reserveWei: 250n * 10n ** 18n,
 })
 

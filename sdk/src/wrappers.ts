@@ -125,7 +125,8 @@ export class CryptoPunks721Client {
   constructor(config: WrapperClientConfig = {}) {
     this.address = config.address ?? CRYPTOPUNKS_721_ADDRESS
     this.marketAddress = config.marketAddress ?? CRYPTOPUNKS_MARKET_ADDRESS
-    this.stashFactoryAddress = config.stashFactoryAddress ?? STASH_FACTORY_ADDRESS
+    this.stashFactoryAddress =
+      config.stashFactoryAddress ?? STASH_FACTORY_ADDRESS
     this.publicClient = config.publicClient
     this.walletClient = config.walletClient
     this.account = config.account
@@ -211,7 +212,9 @@ export class CryptoPunks721Client {
     return this.read<boolean>('supportsInterface', [interfaceId])
   }
 
-  async approvalStatus(input: WrapperApprovalInput): Promise<WrapperApprovalStatus> {
+  async approvalStatus(
+    input: WrapperApprovalInput,
+  ): Promise<WrapperApprovalStatus> {
     validatePunkId(input.punkId)
     const [approved, isApprovedForAll] = await Promise.all([
       this.getApproved(input.punkId),
@@ -223,13 +226,16 @@ export class CryptoPunks721Client {
       punkId: input.punkId,
       approved,
       isApprovedForAll,
-      canTransfer: isSameAddress(input.owner, input.operator) ||
+      canTransfer:
+        isSameAddress(input.owner, input.operator) ||
         isSameAddress(approved, input.operator) ||
         isApprovedForAll,
     }
   }
 
-  async wrapPreflight(input: C721WrapPreflightInput): Promise<C721WrapPreflight> {
+  async wrapPreflight(
+    input: C721WrapPreflightInput,
+  ): Promise<C721WrapPreflight> {
     validatePunkId(input.punkId)
     const [currentOwner, stashStatus, approval] = await Promise.all([
       this.marketOwnerOf(input.punkId),
@@ -285,7 +291,9 @@ export class CryptoPunks721Client {
     return this.write(this.prepareDeployStash(owner))
   }
 
-  async prepareDepositToStash(input: C721WrapFlowInput): Promise<ContractWritePlan> {
+  async prepareDepositToStash(
+    input: C721WrapFlowInput,
+  ): Promise<ContractWritePlan> {
     validatePunkId(input.punkId)
     const stash = await this.resolveStash(input)
     return {
@@ -303,7 +311,9 @@ export class CryptoPunks721Client {
     return this.write(await this.prepareDepositToStash(input))
   }
 
-  async prepareWrapFlow(input: C721WrapFlowInput): Promise<ContractWritePlan[]> {
+  async prepareWrapFlow(
+    input: C721WrapFlowInput,
+  ): Promise<ContractWritePlan[]> {
     return [
       await this.prepareDepositToStash(input),
       this.prepareWrapPunk(input.punkId),
@@ -314,7 +324,9 @@ export class CryptoPunks721Client {
     return this.writeFlow(await this.prepareWrapFlow(input))
   }
 
-  async prepareBatchWrapFlow(input: C721BatchWrapFlowInput): Promise<ContractWritePlan[]> {
+  async prepareBatchWrapFlow(
+    input: C721BatchWrapFlowInput,
+  ): Promise<ContractWritePlan[]> {
     const punkIds = normalizePunkIds(input.punkIds)
     const stash = await this.resolveStash(input)
     return [
@@ -331,13 +343,17 @@ export class CryptoPunks721Client {
     ]
   }
 
-  async batchWrapFlow(input: C721BatchWrapFlowInput): Promise<TransactionHash[]> {
+  async batchWrapFlow(
+    input: C721BatchWrapFlowInput,
+  ): Promise<TransactionHash[]> {
     return this.writeFlow(await this.prepareBatchWrapFlow(input))
   }
 
   prepareWrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Wrap CryptoPunk ${punkId} as ERC-721`, 'wrapPunk', [BigInt(punkId)])
+    return this.plan(`Wrap CryptoPunk ${punkId} as ERC-721`, 'wrapPunk', [
+      BigInt(punkId),
+    ])
   }
 
   prepareWrap(punkId: number): ContractWritePlan {
@@ -364,7 +380,9 @@ export class CryptoPunks721Client {
 
   prepareUnwrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Unwrap CryptoPunk ${punkId}`, 'unwrapPunk', [BigInt(punkId)])
+    return this.plan(`Unwrap CryptoPunk ${punkId}`, 'unwrapPunk', [
+      BigInt(punkId),
+    ])
   }
 
   prepareUnwrap(punkId: number): ContractWritePlan {
@@ -389,26 +407,37 @@ export class CryptoPunks721Client {
     return this.write(this.prepareUnwrapPunkBatch(punkIds))
   }
 
-  prepareMigrateLegacyWrappedPunks(punkIds: readonly number[]): ContractWritePlan {
-    return this.plan('Migrate legacy wrapped CryptoPunks', 'migrateLegacyWrappedPunks', [
-      normalizePunkIds(punkIds).map(BigInt),
-    ])
+  prepareMigrateLegacyWrappedPunks(
+    punkIds: readonly number[],
+  ): ContractWritePlan {
+    return this.plan(
+      'Migrate legacy wrapped CryptoPunks',
+      'migrateLegacyWrappedPunks',
+      [normalizePunkIds(punkIds).map(BigInt)],
+    )
   }
 
-  migrateLegacyWrappedPunks(punkIds: readonly number[]): Promise<TransactionHash> {
+  migrateLegacyWrappedPunks(
+    punkIds: readonly number[],
+  ): Promise<TransactionHash> {
     return this.write(this.prepareMigrateLegacyWrappedPunks(punkIds))
   }
 
   prepareRescuePunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Rescue unwrapped CryptoPunk ${punkId}`, 'rescuePunk', [BigInt(punkId)])
+    return this.plan(`Rescue unwrapped CryptoPunk ${punkId}`, 'rescuePunk', [
+      BigInt(punkId),
+    ])
   }
 
   rescuePunk(punkId: number): Promise<TransactionHash> {
     return this.write(this.prepareRescuePunk(punkId))
   }
 
-  prepareApprove(params: { operator: Address; punkId: number }): ContractWritePlan {
+  prepareApprove(params: {
+    operator: Address
+    punkId: number
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(`Approve ERC-721 CryptoPunk ${params.punkId}`, 'approve', [
       params.operator,
@@ -416,31 +445,48 @@ export class CryptoPunks721Client {
     ])
   }
 
-  approve(params: { operator: Address; punkId: number }): Promise<TransactionHash> {
+  approve(params: {
+    operator: Address
+    punkId: number
+  }): Promise<TransactionHash> {
     return this.write(this.prepareApprove(params))
   }
 
-  prepareSetApprovalForAll(params: { operator: Address; approved: boolean }): ContractWritePlan {
+  prepareSetApprovalForAll(params: {
+    operator: Address
+    approved: boolean
+  }): ContractWritePlan {
     return this.plan('Set ERC-721 CryptoPunks approval', 'setApprovalForAll', [
       params.operator,
       params.approved,
     ])
   }
 
-  setApprovalForAll(params: { operator: Address; approved: boolean }): Promise<TransactionHash> {
+  setApprovalForAll(params: {
+    operator: Address
+    approved: boolean
+  }): Promise<TransactionHash> {
     return this.write(this.prepareSetApprovalForAll(params))
   }
 
-  prepareTransferFrom(params: { from: Address; to: Address; punkId: number }): ContractWritePlan {
+  prepareTransferFrom(params: {
+    from: Address
+    to: Address
+    punkId: number
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
-    return this.plan(`Transfer ERC-721 CryptoPunk ${params.punkId}`, 'transferFrom', [
-      params.from,
-      params.to,
-      BigInt(params.punkId),
-    ])
+    return this.plan(
+      `Transfer ERC-721 CryptoPunk ${params.punkId}`,
+      'transferFrom',
+      [params.from, params.to, BigInt(params.punkId)],
+    )
   }
 
-  transferFrom(params: { from: Address; to: Address; punkId: number }): Promise<TransactionHash> {
+  transferFrom(params: {
+    from: Address
+    to: Address
+    punkId: number
+  }): Promise<TransactionHash> {
     return this.write(this.prepareTransferFrom(params))
   }
 
@@ -451,10 +497,15 @@ export class CryptoPunks721Client {
     data?: Hex
   }): ContractWritePlan {
     validatePunkId(params.punkId)
-    const args = params.data === undefined
-      ? [params.from, params.to, BigInt(params.punkId)]
-      : [params.from, params.to, BigInt(params.punkId), params.data]
-    return this.plan(`Safe transfer ERC-721 CryptoPunk ${params.punkId}`, 'safeTransferFrom', args)
+    const args =
+      params.data === undefined
+        ? [params.from, params.to, BigInt(params.punkId)]
+        : [params.from, params.to, BigInt(params.punkId), params.data]
+    return this.plan(
+      `Safe transfer ERC-721 CryptoPunk ${params.punkId}`,
+      'safeTransferFrom',
+      args,
+    )
   }
 
   safeTransferFrom(params: {
@@ -466,19 +517,40 @@ export class CryptoPunks721Client {
     return this.write(this.prepareSafeTransferFrom(params))
   }
 
-  private plan(description: string, functionName: string, args: readonly unknown[]): ContractWritePlan {
-    return writePlan(this.address, cryptoPunks721Abi, description, functionName, args)
+  private plan(
+    description: string,
+    functionName: string,
+    args: readonly unknown[],
+  ): ContractWritePlan {
+    return writePlan(
+      this.address,
+      cryptoPunks721Abi,
+      description,
+      functionName,
+      args,
+    )
   }
 
-  private read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
-    return readContract<T>(this.publicClient, this.address, cryptoPunks721Abi, functionName, args)
+  private read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
+    return readContract<T>(
+      this.publicClient,
+      this.address,
+      cryptoPunks721Abi,
+      functionName,
+      args,
+    )
   }
 
   private write(plan: ContractWritePlan): Promise<TransactionHash> {
     return writeContract(plan, this.walletClient, this.account)
   }
 
-  private async writeFlow(plans: readonly ContractWritePlan[]): Promise<TransactionHash[]> {
+  private async writeFlow(
+    plans: readonly ContractWritePlan[],
+  ): Promise<TransactionHash[]> {
     const hashes: TransactionHash[] = []
     for (const plan of plans) hashes.push(await this.write(plan))
     return hashes
@@ -489,16 +561,22 @@ export class CryptoPunks721Client {
     stash?: Address
   }): Promise<Address> {
     if (input.stash !== undefined && isZeroAddress(input.stash)) {
-      throw new PunksDataValidationError('Stash address must not be the zero address')
+      throw new PunksDataValidationError(
+        'Stash address must not be the zero address',
+      )
     }
     if (input.stash !== undefined) return input.stash
 
     const status = await this.stashStatusFor(input.owner)
     if (isZeroAddress(status.address)) {
-      throw new PunksDataValidationError('Stash address resolved to the zero address')
+      throw new PunksDataValidationError(
+        'Stash address resolved to the zero address',
+      )
     }
     if (!status.deployed) {
-      throw new PunksDataValidationError('Stash is not deployed for owner; deploy a Stash before depositing')
+      throw new PunksDataValidationError(
+        'Stash is not deployed for owner; deploy a Stash before depositing',
+      )
     }
     return status.address
   }
@@ -620,7 +698,9 @@ export class LegacyWrappedPunksClient {
     return this.read<boolean>('paused')
   }
 
-  async approvalStatus(input: WrapperApprovalInput): Promise<WrapperApprovalStatus> {
+  async approvalStatus(
+    input: WrapperApprovalInput,
+  ): Promise<WrapperApprovalStatus> {
     validatePunkId(input.punkId)
     const [approved, isApprovedForAll] = await Promise.all([
       this.getApproved(input.punkId),
@@ -632,17 +712,22 @@ export class LegacyWrappedPunksClient {
       punkId: input.punkId,
       approved,
       isApprovedForAll,
-      canTransfer: isSameAddress(input.owner, input.operator) ||
+      canTransfer:
+        isSameAddress(input.owner, input.operator) ||
         isSameAddress(approved, input.operator) ||
         isApprovedForAll,
     }
   }
 
-  async wrapPreflight(input: LegacyWrapPreflightInput): Promise<LegacyWrapPreflight> {
+  async wrapPreflight(
+    input: LegacyWrapPreflightInput,
+  ): Promise<LegacyWrapPreflight> {
     validatePunkId(input.punkId)
     const [currentOwner, proxy, approval] = await Promise.all([
       this.marketOwnerOf(input.punkId),
-      input.proxy === undefined ? this.proxyFor(input.owner) : Promise.resolve(input.proxy),
+      input.proxy === undefined
+        ? this.proxyFor(input.owner)
+        : Promise.resolve(input.proxy),
       input.operator === undefined
         ? Promise.resolve(undefined)
         : this.approvalStatus({
@@ -680,17 +765,26 @@ export class LegacyWrappedPunksClient {
   }
 
   prepareRegisterProxy(): ContractWritePlan {
-    return this.plan('Register legacy wrapped Punk user proxy', 'registerProxy', [])
+    return this.plan(
+      'Register legacy wrapped Punk user proxy',
+      'registerProxy',
+      [],
+    )
   }
 
   registerProxy(): Promise<TransactionHash> {
     return this.write(this.prepareRegisterProxy())
   }
 
-  prepareDepositToProxy(params: { punkId: number; proxy: Address }): ContractWritePlan {
+  prepareDepositToProxy(params: {
+    punkId: number
+    proxy: Address
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
     if (isZeroAddress(params.proxy)) {
-      throw new PunksDataValidationError('legacy wrapper proxy must not be the zero address')
+      throw new PunksDataValidationError(
+        'legacy wrapper proxy must not be the zero address',
+      )
     }
     return {
       description: `Transfer CryptoPunk ${params.punkId} to legacy wrapper proxy`,
@@ -703,11 +797,16 @@ export class LegacyWrappedPunksClient {
     }
   }
 
-  depositToProxy(params: { punkId: number; proxy: Address }): Promise<TransactionHash> {
+  depositToProxy(params: {
+    punkId: number
+    proxy: Address
+  }): Promise<TransactionHash> {
     return this.write(this.prepareDepositToProxy(params))
   }
 
-  async prepareWrapFlow(input: LegacyWrapFlowInput): Promise<ContractWritePlan[]> {
+  async prepareWrapFlow(
+    input: LegacyWrapFlowInput,
+  ): Promise<ContractWritePlan[]> {
     validatePunkId(input.punkId)
     const proxy = await this.resolveProxy(input)
     return [
@@ -722,7 +821,9 @@ export class LegacyWrappedPunksClient {
 
   prepareMint(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Mint legacy wrapped CryptoPunk ${punkId}`, 'mint', [BigInt(punkId)])
+    return this.plan(`Mint legacy wrapped CryptoPunk ${punkId}`, 'mint', [
+      BigInt(punkId),
+    ])
   }
 
   mint(punkId: number): Promise<TransactionHash> {
@@ -731,46 +832,69 @@ export class LegacyWrappedPunksClient {
 
   prepareBurn(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Burn legacy wrapped CryptoPunk ${punkId}`, 'burn', [BigInt(punkId)])
+    return this.plan(`Burn legacy wrapped CryptoPunk ${punkId}`, 'burn', [
+      BigInt(punkId),
+    ])
   }
 
   burn(punkId: number): Promise<TransactionHash> {
     return this.write(this.prepareBurn(punkId))
   }
 
-  prepareApprove(params: { operator: Address; punkId: number }): ContractWritePlan {
+  prepareApprove(params: {
+    operator: Address
+    punkId: number
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
-    return this.plan(`Approve legacy wrapped CryptoPunk ${params.punkId}`, 'approve', [
-      params.operator,
-      BigInt(params.punkId),
-    ])
+    return this.plan(
+      `Approve legacy wrapped CryptoPunk ${params.punkId}`,
+      'approve',
+      [params.operator, BigInt(params.punkId)],
+    )
   }
 
-  approve(params: { operator: Address; punkId: number }): Promise<TransactionHash> {
+  approve(params: {
+    operator: Address
+    punkId: number
+  }): Promise<TransactionHash> {
     return this.write(this.prepareApprove(params))
   }
 
-  prepareSetApprovalForAll(params: { operator: Address; approved: boolean }): ContractWritePlan {
+  prepareSetApprovalForAll(params: {
+    operator: Address
+    approved: boolean
+  }): ContractWritePlan {
     return this.plan('Set legacy wrapped Punk approval', 'setApprovalForAll', [
       params.operator,
       params.approved,
     ])
   }
 
-  setApprovalForAll(params: { operator: Address; approved: boolean }): Promise<TransactionHash> {
+  setApprovalForAll(params: {
+    operator: Address
+    approved: boolean
+  }): Promise<TransactionHash> {
     return this.write(this.prepareSetApprovalForAll(params))
   }
 
-  prepareTransferFrom(params: { from: Address; to: Address; punkId: number }): ContractWritePlan {
+  prepareTransferFrom(params: {
+    from: Address
+    to: Address
+    punkId: number
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
-    return this.plan(`Transfer legacy wrapped CryptoPunk ${params.punkId}`, 'transferFrom', [
-      params.from,
-      params.to,
-      BigInt(params.punkId),
-    ])
+    return this.plan(
+      `Transfer legacy wrapped CryptoPunk ${params.punkId}`,
+      'transferFrom',
+      [params.from, params.to, BigInt(params.punkId)],
+    )
   }
 
-  transferFrom(params: { from: Address; to: Address; punkId: number }): Promise<TransactionHash> {
+  transferFrom(params: {
+    from: Address
+    to: Address
+    punkId: number
+  }): Promise<TransactionHash> {
     return this.write(this.prepareTransferFrom(params))
   }
 
@@ -781,10 +905,15 @@ export class LegacyWrappedPunksClient {
     data?: Hex
   }): ContractWritePlan {
     validatePunkId(params.punkId)
-    const args = params.data === undefined
-      ? [params.from, params.to, BigInt(params.punkId)]
-      : [params.from, params.to, BigInt(params.punkId), params.data]
-    return this.plan(`Safe transfer legacy wrapped CryptoPunk ${params.punkId}`, 'safeTransferFrom', args)
+    const args =
+      params.data === undefined
+        ? [params.from, params.to, BigInt(params.punkId)]
+        : [params.from, params.to, BigInt(params.punkId), params.data]
+    return this.plan(
+      `Safe transfer legacy wrapped CryptoPunk ${params.punkId}`,
+      'safeTransferFrom',
+      args,
+    )
   }
 
   safeTransferFrom(params: {
@@ -796,31 +925,56 @@ export class LegacyWrappedPunksClient {
     return this.write(this.prepareSafeTransferFrom(params))
   }
 
-  private plan(description: string, functionName: string, args: readonly unknown[]): ContractWritePlan {
-    return writePlan(this.address, wrappedPunksAbi, description, functionName, args)
+  private plan(
+    description: string,
+    functionName: string,
+    args: readonly unknown[],
+  ): ContractWritePlan {
+    return writePlan(
+      this.address,
+      wrappedPunksAbi,
+      description,
+      functionName,
+      args,
+    )
   }
 
-  private read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
-    return readContract<T>(this.publicClient, this.address, wrappedPunksAbi, functionName, args)
+  private read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
+    return readContract<T>(
+      this.publicClient,
+      this.address,
+      wrappedPunksAbi,
+      functionName,
+      args,
+    )
   }
 
   private write(plan: ContractWritePlan): Promise<TransactionHash> {
     return writeContract(plan, this.walletClient, this.account)
   }
 
-  private async writeFlow(plans: readonly ContractWritePlan[]): Promise<TransactionHash[]> {
+  private async writeFlow(
+    plans: readonly ContractWritePlan[],
+  ): Promise<TransactionHash[]> {
     const hashes: TransactionHash[] = []
     for (const plan of plans) hashes.push(await this.write(plan))
     return hashes
   }
 
   private async resolveProxy(input: LegacyWrapFlowInput): Promise<Address> {
-    const proxy = input.proxy ?? await this.proxyFor(input.owner)
+    const proxy = input.proxy ?? (await this.proxyFor(input.owner))
     if (input.proxy !== undefined && isZeroAddress(proxy)) {
-      throw new PunksDataValidationError('legacy wrapper proxy must not be the zero address')
+      throw new PunksDataValidationError(
+        'legacy wrapper proxy must not be the zero address',
+      )
     }
     if (isZeroAddress(proxy)) {
-      throw new PunksDataValidationError('legacy wrapper proxy is not registered; call registerProxy first')
+      throw new PunksDataValidationError(
+        'legacy wrapper proxy is not registered; call registerProxy first',
+      )
     }
     return proxy
   }
@@ -850,17 +1004,27 @@ export class PunksWrappersFacade {
       marketAddress: config.marketAddress,
       stashFactoryAddress: config.stashFactoryAddress,
     }
-    this.c721 = new CryptoPunks721Client({ ...shared, address: config.c721Address })
+    this.c721 = new CryptoPunks721Client({
+      ...shared,
+      address: config.c721Address,
+    })
     this.modern = this.c721
-    this.legacy = new LegacyWrappedPunksClient({ ...shared, address: config.legacyAddress })
+    this.legacy = new LegacyWrappedPunksClient({
+      ...shared,
+      address: config.legacyAddress,
+    })
   }
 }
 
-export function createCryptoPunks721Client(config: WrapperClientConfig = {}): CryptoPunks721Client {
+export function createCryptoPunks721Client(
+  config: WrapperClientConfig = {},
+): CryptoPunks721Client {
   return new CryptoPunks721Client(config)
 }
 
-export function createLegacyWrappedPunksClient(config: WrapperClientConfig = {}): LegacyWrappedPunksClient {
+export function createLegacyWrappedPunksClient(
+  config: WrapperClientConfig = {},
+): LegacyWrappedPunksClient {
   return new LegacyWrappedPunksClient(config)
 }
 
@@ -889,9 +1053,14 @@ async function readContract<T>(
   functionName: string,
   args: readonly unknown[] = [],
 ): Promise<T> {
-  if (!publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+  if (!publicClient)
+    throw new PunksDataValidationError('publicClient is required for reads')
   const request = { address, abi, functionName, args }
-  return (publicClient.readContract as unknown as (value: typeof request) => Promise<T>)(request)
+  return (
+    publicClient.readContract as unknown as (
+      value: typeof request,
+    ) => Promise<T>
+  )(request)
 }
 
 async function writeContract(
@@ -899,18 +1068,23 @@ async function writeContract(
   walletClient: WalletClient | undefined,
   account: Address | undefined,
 ): Promise<TransactionHash> {
-  if (!walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+  if (!walletClient)
+    throw new PunksDataValidationError('walletClient is required for writes')
   const resolvedAccount = account ?? walletClient.account?.address
-  const request = resolvedAccount === undefined
-    ? plan.request
-    : { ...plan.request, account: resolvedAccount }
-  return (walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
-    request,
-  )
+  const request =
+    resolvedAccount === undefined
+      ? plan.request
+      : { ...plan.request, account: resolvedAccount }
+  return (
+    walletClient.writeContract as unknown as (
+      value: typeof request,
+    ) => Promise<TransactionHash>
+  )(request)
 }
 
 function normalizePunkIds(punkIds: readonly number[]): number[] {
-  if (punkIds.length === 0) throw new PunksDataValidationError('punkIds must not be empty')
+  if (punkIds.length === 0)
+    throw new PunksDataValidationError('punkIds must not be empty')
   return punkIds.map((punkId) => {
     validatePunkId(punkId)
     return punkId

@@ -113,16 +113,16 @@ metadata outputs without storing duplicated art bytes.
 
 The ABI uses custom errors instead of revert strings:
 
-| Error | Typical cause |
-| --- | --- |
-| `InvalidPunkId` | Punk id is greater than `9999` |
-| `InvalidTraitId` | Trait id is greater than `110` |
-| `InvalidColorId` | Palette id is greater than `221` |
-| `InvalidWordIndex` | Bitmap word index is greater than `39` |
-| `InvalidCoordinate` | Pixel coordinate is outside `0..23` |
-| `InvalidPixelCount` | Pixel-count bitmap query is outside `148..332` |
-| `InvalidColorCount` | Color-count bitmap query is outside `2..14` |
-| `InvalidMask` | Trait or color mask contains invalid or conflicting bits |
+| Error                | Typical cause                                             |
+| -------------------- | --------------------------------------------------------- |
+| `InvalidPunkId`      | Punk id is greater than `9999`                            |
+| `InvalidTraitId`     | Trait id is greater than `110`                            |
+| `InvalidColorId`     | Palette id is greater than `221`                          |
+| `InvalidWordIndex`   | Bitmap word index is greater than `39`                    |
+| `InvalidCoordinate`  | Pixel coordinate is outside `0..23`                       |
+| `InvalidPixelCount`  | Pixel-count bitmap query is outside `148..332`            |
+| `InvalidColorCount`  | Color-count bitmap query is outside `2..14`               |
+| `InvalidMask`        | Trait or color mask contains invalid or conflicting bits  |
 | `MalformedPixelBlob` | Sealed compressed pixel bytes are internally inconsistent |
 
 ## Integration Notes

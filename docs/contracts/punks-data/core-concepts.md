@@ -18,15 +18,15 @@ Blob-backed byte arrays hold data that is too large or too variable-length for
 plain mappings, such as trait names, palette bytes, bitmap tables, and
 compressed pixels.
 
-| Question | Storage shape | Main functions |
-| --- | --- | --- |
-| What traits does Punk `x` have? | Per-Punk trait mask | `traitMaskOf`, `hasTrait`, `hasTraits` |
-| Which Punks have trait `t`? | Trait bitmap rows | `traitBitmapWord` |
-| What colors does Punk `x` use? | Per-Punk color mask | `colorMaskOf`, `hasColor` |
-| Which Punks use color `c`? | Color bitmap rows | `colorBitmapWord` |
-| What are Punk `x`'s small visual facts? | Packed scalar words | `pixelCountOf`, `colorCountOf`, `punkTypeOf`, `headVariantOf`, `attributeCountOf` |
-| What does Punk `x` look like? | Offset table plus compressed pixel blob | `indexedPixelsOf`, `colorAt` |
-| What are trait names and palette colors? | Metadata and palette blobs | `traitName`, `traitKind`, `traitSupply`, `colorOf`, palette byte functions |
+| Question                                 | Storage shape                           | Main functions                                                                    |
+| ---------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| What traits does Punk `x` have?          | Per-Punk trait mask                     | `traitMaskOf`, `hasTrait`, `hasTraits`                                            |
+| Which Punks have trait `t`?              | Trait bitmap rows                       | `traitBitmapWord`                                                                 |
+| What colors does Punk `x` use?           | Per-Punk color mask                     | `colorMaskOf`, `hasColor`                                                         |
+| Which Punks use color `c`?               | Color bitmap rows                       | `colorBitmapWord`                                                                 |
+| What are Punk `x`'s small visual facts?  | Packed scalar words                     | `pixelCountOf`, `colorCountOf`, `punkTypeOf`, `headVariantOf`, `attributeCountOf` |
+| What does Punk `x` look like?            | Offset table plus compressed pixel blob | `indexedPixelsOf`, `colorAt`                                                      |
+| What are trait names and palette colors? | Metadata and palette blobs              | `traitName`, `traitKind`, `traitSupply`, `colorOf`, palette byte functions        |
 
 ## Punks, Traits, And Colors
 
@@ -40,14 +40,14 @@ range-checked. `isValidTraitId` is the only probing helper that returns
 
 Important bounds:
 
-| Value | Bound |
-| --- | --- |
-| Punk ids | `0..9999` |
-| Trait ids | `0..110` |
-| Palette/color ids | `0..221` |
-| Bitmap word indexes | `0..39` |
+| Value               | Bound      |
+| ------------------- | ---------- |
+| Punk ids            | `0..9999`  |
+| Trait ids           | `0..110`   |
+| Palette/color ids   | `0..221`   |
+| Bitmap word indexes | `0..39`    |
 | Visible pixel count | `148..332` |
-| Visible color count | `2..14` |
+| Visible color count | `2..14`    |
 
 ## Trait Masks
 
@@ -63,12 +63,12 @@ trait order comes from the catalog, not from the integer itself.
 
 The canonical trait-bit layout is:
 
-| Bits | Kind | Meaning |
-| --- | --- | --- |
-| `0..4` | `NormalizedType` | `Alien`, `Ape`, `Female`, `Male`, `Zombie` |
-| `5..15` | `HeadVariant` | Exact head variant from the source CSV |
-| `16..23` | `AttributeCount` | `0 Attributes` through `7 Attributes` |
-| `24..110` | `Accessory` | 87 accessories, sorted alphabetically |
+| Bits      | Kind             | Meaning                                    |
+| --------- | ---------------- | ------------------------------------------ |
+| `0..4`    | `NormalizedType` | `Alien`, `Ape`, `Female`, `Male`, `Zombie` |
+| `5..15`   | `HeadVariant`    | Exact head variant from the source CSV     |
+| `16..23`  | `AttributeCount` | `0 Attributes` through `7 Attributes`      |
+| `24..110` | `Accessory`      | 87 accessories, sorted alphabetically      |
 
 Every Punk has exactly one normalized type bit, one head-variant bit, one
 attribute-count bit, and zero to seven accessory bits. Historical source
@@ -111,21 +111,21 @@ palette entry and `colorSupply(0)` counts transparent pixels globally.
 
 The direct visual storage uses three shapes:
 
-| Storage | Shape | Reader functions |
-| --- | --- | --- |
-| `_colorMasks` | One `uint256` per Punk, bits `1..221` only | `colorMaskOf`, `hasColor` |
-| `_packedScalarWords` | Five 48-bit Punk records per `uint256` | `pixelCountOf`, `colorCountOf`, `attributeCountOf`, `punkTypeOf`, `headVariantOf` |
-| `_colorSupplies` | One `uint32` total pixel count per palette id | `colorSupply` |
+| Storage              | Shape                                         | Reader functions                                                                  |
+| -------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `_colorMasks`        | One `uint256` per Punk, bits `1..221` only    | `colorMaskOf`, `hasColor`                                                         |
+| `_packedScalarWords` | Five 48-bit Punk records per `uint256`        | `pixelCountOf`, `colorCountOf`, `attributeCountOf`, `punkTypeOf`, `headVariantOf` |
+| `_colorSupplies`     | One `uint32` total pixel count per palette id | `colorSupply`                                                                     |
 
 Each 48-bit scalar is packed as:
 
-| Bits | Field |
-| --- | --- |
-| `0..15` | Visible pixel count |
-| `16..23` | Visible color count |
+| Bits     | Field                     |
+| -------- | ------------------------- |
+| `0..15`  | Visible pixel count       |
+| `16..23` | Visible color count       |
 | `24..31` | Accessory attribute count |
 | `32..39` | Normalized Punk type enum |
-| `40..47` | Exact head variant enum |
+| `40..47` | Exact head variant enum   |
 
 ## Bitmap Rows
 
@@ -169,12 +169,12 @@ Bitmap blobs are stored row-major. The byte offset for any row and word is:
 
 The meaning of `row` depends on the bitmap table:
 
-| Blob | Row key | Reader |
-| --- | --- | --- |
-| `TraitBitmaps` | `traitId` | `traitBitmapWord` |
-| `ColorBitmaps` | `colorId` | `colorBitmapWord` |
+| Blob                | Row key            | Reader                 |
+| ------------------- | ------------------ | ---------------------- |
+| `TraitBitmaps`      | `traitId`          | `traitBitmapWord`      |
+| `ColorBitmaps`      | `colorId`          | `colorBitmapWord`      |
 | `PixelCountBitmaps` | `pixelCount - 148` | `pixelCountBitmapWord` |
-| `ColorCountBitmaps` | `colorCount - 2` | `colorCountBitmapWord` |
+| `ColorCountBitmaps` | `colorCount - 2`   | `colorCountBitmapWord` |
 
 The last word contains unused high bits because `40 * 256 = 10240`. Ignore
 bits for ids `10000..10239`.
@@ -195,16 +195,16 @@ putting every byte in ordinary contract storage.
 
 The blob-backed storage types are:
 
-| BlobId | Layout | Used by |
-| --- | --- | --- |
-| `TraitBitmaps` | `111 * 40` big-endian `uint256` bitmap words | `traitBitmapWord` |
-| `TraitMeta` | 111 fixed 6-byte records, followed by a pooled trait-name byte string | `traitName`, `traitKind`, `traitSupply` |
-| `Palette` | 222 RGBA quads, 4 bytes per color | `colorOf`, palette byte functions |
-| `PixelOffsets` | 10,001 big-endian `uint24` offsets | `indexedPixelsOf`, `colorAt` |
-| `CompressedPixels` | Variable-length compressed image entries | `indexedPixelsOf`, `colorAt` |
-| `ColorBitmaps` | `222 * 40` big-endian `uint256` bitmap words | `colorBitmapWord` |
-| `PixelCountBitmaps` | `185 * 40` big-endian `uint256` bitmap words | `pixelCountBitmapWord` |
-| `ColorCountBitmaps` | `13 * 40` big-endian `uint256` bitmap words | `colorCountBitmapWord` |
+| BlobId              | Layout                                                                | Used by                                 |
+| ------------------- | --------------------------------------------------------------------- | --------------------------------------- |
+| `TraitBitmaps`      | `111 * 40` big-endian `uint256` bitmap words                          | `traitBitmapWord`                       |
+| `TraitMeta`         | 111 fixed 6-byte records, followed by a pooled trait-name byte string | `traitName`, `traitKind`, `traitSupply` |
+| `Palette`           | 222 RGBA quads, 4 bytes per color                                     | `colorOf`, palette byte functions       |
+| `PixelOffsets`      | 10,001 big-endian `uint24` offsets                                    | `indexedPixelsOf`, `colorAt`            |
+| `CompressedPixels`  | Variable-length compressed image entries                              | `indexedPixelsOf`, `colorAt`            |
+| `ColorBitmaps`      | `222 * 40` big-endian `uint256` bitmap words                          | `colorBitmapWord`                       |
+| `PixelCountBitmaps` | `185 * 40` big-endian `uint256` bitmap words                          | `pixelCountBitmapWord`                  |
+| `ColorCountBitmaps` | `13 * 40` big-endian `uint256` bitmap words                           | `colorCountBitmapWord`                  |
 
 The live deployment stores finalized blob chunks and exposes them only through
 the read functions listed above.

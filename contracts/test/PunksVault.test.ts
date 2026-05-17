@@ -210,7 +210,10 @@ async function depositCanonicalPunk(ctx: Ctx, punkId: bigint) {
     'MockCryptoPunksMarket',
     CRYPTOPUNKS,
   )
-  await canonicalPunks.write.setInitialOwner([ctx.owner.account.address, punkId])
+  await canonicalPunks.write.setInitialOwner([
+    ctx.owner.account.address,
+    punkId,
+  ])
   const canonicalPunksAsOwner = await ctx.viem.getContractAt(
     'MockCryptoPunksMarket',
     CRYPTOPUNKS,
@@ -287,14 +290,30 @@ describe('PunksVault', () => {
       assert.ok(code && code !== '0x')
 
       const vault = await viem.getContractAt('PunksVault', predicted)
-      assert.equal(lc(await vault.read.owner() as string), lc(owner.account.address))
-      assert.equal(lc(await vault.read.FACTORY() as string), lc(vaultFactory.address))
-      assert.equal(lc(await vault.read.CRYPTOPUNKS() as string), lc(CRYPTOPUNKS))
-      assert.equal(lc(await vault.read.CRYPTOPUNKS_V1() as string), lc(CRYPTOPUNKS_V1))
+      assert.equal(
+        lc((await vault.read.owner()) as string),
+        lc(owner.account.address),
+      )
+      assert.equal(
+        lc((await vault.read.FACTORY()) as string),
+        lc(vaultFactory.address),
+      )
+      assert.equal(
+        lc((await vault.read.CRYPTOPUNKS()) as string),
+        lc(CRYPTOPUNKS),
+      )
+      assert.equal(
+        lc((await vault.read.CRYPTOPUNKS_V1()) as string),
+        lc(CRYPTOPUNKS_V1),
+      )
 
       await factoryAsOther.write.ensureVault([owner.account.address])
       assert.equal(
-        lc(await vaultFactory.read.predictVault([owner.account.address]) as string),
+        lc(
+          (await vaultFactory.read.predictVault([
+            owner.account.address,
+          ])) as string,
+        ),
         lc(predicted),
       )
     })
@@ -307,9 +326,10 @@ describe('PunksVault', () => {
         'ZeroAddress',
       )
 
-      const implAddress = (await ctx.vaultFactory.read.IMPLEMENTATION()) as Address
+      const implAddress =
+        (await ctx.vaultFactory.read.IMPLEMENTATION()) as Address
       const impl = await ctx.viem.getContractAt('PunksVault', implAddress)
-      assert.equal(lc(await impl.read.owner() as string), lc(zeroAddress))
+      assert.equal(lc((await impl.read.owner()) as string), lc(zeroAddress))
     })
   })
 
@@ -334,20 +354,37 @@ describe('PunksVault', () => {
       ])) as Address
       const vault = await viem.getContractAt('PunksVault', vaultAddress)
 
-      assert.equal(await vault.read.isOperator([operator.account.address]), true)
+      assert.equal(
+        await vault.read.isOperator([operator.account.address]),
+        true,
+      )
       assert.equal(await vault.read.isOperator([other.account.address]), true)
-      assert.equal(await vault.read.isOperator([attacker.account.address]), false)
+      assert.equal(
+        await vault.read.isOperator([attacker.account.address]),
+        false,
+      )
 
       await factoryAsOwner.write.ensureMyVault([[attacker.account.address]])
-      assert.equal(await vault.read.isOperator([attacker.account.address]), true)
+      assert.equal(
+        await vault.read.isOperator([attacker.account.address]),
+        true,
+      )
     })
 
     it('allows ensureMyVault to add operators after empty initialization', async () => {
       const ctx = await deployVaultFixture()
-      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
+      assert.equal(
+        await ctx.vault.read.isOperator([ctx.operator.account.address]),
+        false,
+      )
 
-      await ctx.factoryAsOwner.write.ensureMyVault([[ctx.operator.account.address]])
-      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
+      await ctx.factoryAsOwner.write.ensureMyVault([
+        [ctx.operator.account.address],
+      ])
+      assert.equal(
+        await ctx.vault.read.isOperator([ctx.operator.account.address]),
+        true,
+      )
     })
 
     it('lets the owner approve operators after third-party deployment', async () => {
@@ -372,10 +409,16 @@ describe('PunksVault', () => {
         owner.account.address,
       ])) as Address
       const vault = await viem.getContractAt('PunksVault', vaultAddress)
-      assert.equal(await vault.read.isOperator([operator.account.address]), false)
+      assert.equal(
+        await vault.read.isOperator([operator.account.address]),
+        false,
+      )
 
       await factoryAsOwner.write.ensureMyVault([[operator.account.address]])
-      assert.equal(await vault.read.isOperator([operator.account.address]), true)
+      assert.equal(
+        await vault.read.isOperator([operator.account.address]),
+        true,
+      )
     })
 
     it('rejects zero factory operators and direct non-factory setup', async () => {
@@ -390,14 +433,21 @@ describe('PunksVault', () => {
         { client: { wallet: owner } },
       )
 
-      await assert.rejects(factoryAsOwner.write.ensureMyVault([[zeroAddress]]), /ZeroAddress/)
+      await assert.rejects(
+        factoryAsOwner.write.ensureMyVault([[zeroAddress]]),
+        /ZeroAddress/,
+      )
       await factoryAsOwner.write.ensureMyVault([[]])
       const vaultAddress = (await vaultFactory.read.predictVault([
         owner.account.address,
       ])) as Address
-      const vaultAsOwner = await viem.getContractAt('PunksVault', vaultAddress, {
-        client: { wallet: owner },
-      })
+      const vaultAsOwner = await viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        {
+          client: { wallet: owner },
+        },
+      )
       await viem.assertions.revertWithCustomError(
         vaultAsOwner.write.factoryInitialize([
           owner.account.address,
@@ -439,10 +489,22 @@ describe('PunksVault', () => {
         'ZeroAddress',
       )
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
-      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), true)
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, false])
-      assert.equal(await ctx.vault.read.isOperator([ctx.operator.account.address]), false)
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
+      assert.equal(
+        await ctx.vault.read.isOperator([ctx.operator.account.address]),
+        true,
+      )
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        false,
+      ])
+      assert.equal(
+        await ctx.vault.read.isOperator([ctx.operator.account.address]),
+        false,
+      )
     })
   })
 
@@ -458,18 +520,21 @@ describe('PunksVault', () => {
         ctx.owner.account.address,
       ])
       assert.equal(
-        lc(await ctx.punks.read.punkIndexToAddress([21n]) as string),
+        lc((await ctx.punks.read.punkIndexToAddress([21n])) as string),
         lc(ctx.owner.account.address),
       )
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.vaultAsOperator.write.transferPunk([
         ctx.punks.address,
         23n,
         ctx.other.account.address,
       ])
       assert.equal(
-        lc(await ctx.punks.read.punkIndexToAddress([23n]) as string),
+        lc((await ctx.punks.read.punkIndexToAddress([23n])) as string),
         lc(ctx.other.account.address),
       )
     })
@@ -477,15 +542,25 @@ describe('PunksVault', () => {
     it('routes offerPunkForSale and punkNoLongerForSale through operator auth', async () => {
       const ctx = await deployVaultFixture()
       await depositPunk(ctx, 31n)
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
 
-      await ctx.vaultAsOperator.write.offerPunkForSale([ctx.punks.address, 31n, 123n])
-      let offer = await ctx.punks.read.punksOfferedForSale([31n]) as any
+      await ctx.vaultAsOperator.write.offerPunkForSale([
+        ctx.punks.address,
+        31n,
+        123n,
+      ])
+      let offer = (await ctx.punks.read.punksOfferedForSale([31n])) as any
       assert.equal(offer[0], true)
       assert.equal(offer[3], 123n)
 
-      await ctx.vaultAsOperator.write.punkNoLongerForSale([ctx.punks.address, 31n])
-      offer = await ctx.punks.read.punksOfferedForSale([31n]) as any
+      await ctx.vaultAsOperator.write.punkNoLongerForSale([
+        ctx.punks.address,
+        31n,
+      ])
+      offer = (await ctx.punks.read.punksOfferedForSale([31n])) as any
       assert.equal(offer[0], false)
     })
 
@@ -495,14 +570,17 @@ describe('PunksVault', () => {
       await depositV1Punk(ctx, 42n)
       const bid = parseEther('1')
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.vaultAsOperator.write.offerPunkForSaleToAddress([
         ctx.punks.address,
         41n,
         bid,
         ctx.buyer.account.address,
       ])
-      const offer = await ctx.punks.read.punksOfferedForSale([41n]) as any
+      const offer = (await ctx.punks.read.punksOfferedForSale([41n])) as any
       assert.equal(offer[0], true)
       assert.equal(lc(offer[4]), lc(ctx.buyer.account.address))
 
@@ -512,13 +590,20 @@ describe('PunksVault', () => {
         { client: { wallet: ctx.buyer } },
       )
       await punksAsBuyer.write.enterBidForPunk([42n], { value: bid })
-      await ctx.vaultAsOperator.write.acceptBidForPunk([ctx.punksV1.address, 42n, bid])
+      await ctx.vaultAsOperator.write.acceptBidForPunk([
+        ctx.punksV1.address,
+        42n,
+        bid,
+      ])
 
       assert.equal(
-        lc(await ctx.punksV1.read.punkIndexToAddress([42n]) as string),
+        lc((await ctx.punksV1.read.punkIndexToAddress([42n])) as string),
         lc(ctx.buyer.account.address),
       )
-      assert.equal(await ctx.punksV1.read.pendingWithdrawals([ctx.vaultAddress]), bid)
+      assert.equal(
+        await ctx.punksV1.read.pendingWithdrawals([ctx.vaultAddress]),
+        bid,
+      )
     })
 
     it('rejects public V1 listings but allows directed V1 listings', async () => {
@@ -526,9 +611,16 @@ describe('PunksVault', () => {
       const punksV1 = await depositMainnetV1Punk(ctx, 43n)
       const price = parseEther('1')
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsOperator.write.offerPunkForSale([CRYPTOPUNKS_V1, 43n, price]),
+        ctx.vaultAsOperator.write.offerPunkForSale([
+          CRYPTOPUNKS_V1,
+          43n,
+          price,
+        ]),
         ctx.vaultAsOperator,
         'BrokenPunksV1MarketUnsupported',
       )
@@ -539,12 +631,12 @@ describe('PunksVault', () => {
         ctx.buyer.account.address,
       ])
 
-      const offer = await punksV1.read.punksOfferedForSale([43n]) as any
+      const offer = (await punksV1.read.punksOfferedForSale([43n])) as any
       assert.equal(offer[0], true)
       assert.equal(offer[3], price)
       assert.equal(lc(offer[4]), lc(ctx.buyer.account.address))
       assert.equal(
-        lc(await punksV1.read.punkIndexToAddress([43n]) as string),
+        lc((await punksV1.read.punkIndexToAddress([43n])) as string),
         lc(ctx.vaultAddress),
       )
     })
@@ -563,7 +655,11 @@ describe('PunksVault', () => {
         'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsAttacker.write.offerPunkForSale([ctx.punks.address, 51n, 1n]),
+        ctx.vaultAsAttacker.write.offerPunkForSale([
+          ctx.punks.address,
+          51n,
+          1n,
+        ]),
         ctx.vaultAsAttacker,
         'NotAuthorized',
       )
@@ -585,18 +681,27 @@ describe('PunksVault', () => {
       await punksAsSeller.write.offerPunkForSale([61n, price])
       await sendEth(ctx, ctx.vaultAddress, parseEther('0.4'))
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.vaultAsOperator.write.buyPunk([ctx.punks.address, 61n, price], {
         value: parseEther('0.7'),
       })
 
       const publicClient = await ctx.viem.getPublicClient()
       assert.equal(
-        lc(await ctx.punks.read.punkIndexToAddress([61n]) as string),
+        lc((await ctx.punks.read.punkIndexToAddress([61n])) as string),
         lc(ctx.vaultAddress),
       )
-      assert.equal(await ctx.punks.read.pendingWithdrawals([ctx.seller.account.address]), price)
-      assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), retained)
+      assert.equal(
+        await ctx.punks.read.pendingWithdrawals([ctx.seller.account.address]),
+        price,
+      )
+      assert.equal(
+        await publicClient.getBalance({ address: ctx.vaultAddress }),
+        retained,
+      )
     })
 
     it('rejects buying through the original V1 market', async () => {
@@ -612,7 +717,10 @@ describe('PunksVault', () => {
       )
       await punksV1AsSeller.write.offerPunkForSale([62n, price])
 
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.viem.assertions.revertWithCustomError(
         ctx.vaultAsOperator.write.buyPunk([CRYPTOPUNKS_V1, 62n, price], {
           value: price,
@@ -622,10 +730,13 @@ describe('PunksVault', () => {
       )
 
       assert.equal(
-        lc(await punksV1.read.punkIndexToAddress([62n]) as string),
+        lc((await punksV1.read.punkIndexToAddress([62n])) as string),
         lc(ctx.seller.account.address),
       )
-      assert.equal(await punksV1.read.pendingWithdrawals([ctx.vaultAddress]), 0n)
+      assert.equal(
+        await punksV1.read.pendingWithdrawals([ctx.vaultAddress]),
+        0n,
+      )
     })
 
     it('allows only owner or operator to enter and withdraw bids', async () => {
@@ -633,21 +744,33 @@ describe('PunksVault', () => {
       const bid = parseEther('0.5')
       await ctx.punks.write.setInitialOwner([ctx.seller.account.address, 71n])
       await sendEth(ctx, ctx.vaultAddress, parseEther('0.2'))
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
 
-      await ctx.vaultAsOperator.write.enterBidForPunk([ctx.punks.address, 71n, bid], {
-        value: parseEther('0.3'),
-      })
-      const storedBid = await ctx.punks.read.punkBids([71n]) as any
+      await ctx.vaultAsOperator.write.enterBidForPunk(
+        [ctx.punks.address, 71n, bid],
+        {
+          value: parseEther('0.3'),
+        },
+      )
+      const storedBid = (await ctx.punks.read.punkBids([71n])) as any
       assert.equal(storedBid[0], true)
       assert.equal(lc(storedBid[2]), lc(ctx.vaultAddress))
       assert.equal(storedBid[3], bid)
 
-      await ctx.vaultAsOperator.write.withdrawBidForPunk([ctx.punks.address, 71n])
-      const clearedBid = await ctx.punks.read.punkBids([71n]) as any
+      await ctx.vaultAsOperator.write.withdrawBidForPunk([
+        ctx.punks.address,
+        71n,
+      ])
+      const clearedBid = (await ctx.punks.read.punkBids([71n])) as any
       assert.equal(clearedBid[0], false)
       const publicClient = await ctx.viem.getPublicClient()
-      assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), bid)
+      assert.equal(
+        await publicClient.getBalance({ address: ctx.vaultAddress }),
+        bid,
+      )
     })
 
     it('rejects buy/bid/withdrawBid from non-owner non-operator callers', async () => {
@@ -660,9 +783,12 @@ describe('PunksVault', () => {
         'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsAttacker.write.enterBidForPunk([ctx.punks.address, 81n, 1n], {
-          value: 1n,
-        }),
+        ctx.vaultAsAttacker.write.enterBidForPunk(
+          [ctx.punks.address, 81n, 1n],
+          {
+            value: 1n,
+          },
+        ),
         ctx.vaultAsAttacker,
         'NotAuthorized',
       )
@@ -676,18 +802,19 @@ describe('PunksVault', () => {
     it('credits a previous vault bid to pendingWithdrawals when outbid', async () => {
       const ctx = await deployVaultFixture()
       await ctx.punks.write.setInitialOwner([ctx.seller.account.address, 91n])
-      await ctx.vaultAsOwner.write.enterBidForPunk([
-        ctx.punks.address,
-        91n,
-        parseEther('1'),
-      ], { value: parseEther('1') })
+      await ctx.vaultAsOwner.write.enterBidForPunk(
+        [ctx.punks.address, 91n, parseEther('1')],
+        { value: parseEther('1') },
+      )
 
       const punksAsBuyer = await ctx.viem.getContractAt(
         'MockCryptoPunksMarket',
         ctx.punks.address,
         { client: { wallet: ctx.buyer } },
       )
-      await punksAsBuyer.write.enterBidForPunk([91n], { value: parseEther('2') })
+      await punksAsBuyer.write.enterBidForPunk([91n], {
+        value: parseEther('2'),
+      })
       assert.equal(
         await ctx.punks.read.pendingWithdrawals([ctx.vaultAddress]),
         parseEther('1'),
@@ -730,7 +857,10 @@ describe('PunksVault', () => {
         'NotAuthorized',
       )
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsOwner.write.withdrawFromMarketTo([ctx.punks.address, zeroAddress]),
+        ctx.vaultAsOwner.write.withdrawFromMarketTo([
+          ctx.punks.address,
+          zeroAddress,
+        ]),
         ctx.vaultAsOwner,
         'ZeroAddress',
       )
@@ -739,15 +869,22 @@ describe('PunksVault', () => {
       const recipientBefore = await publicClient.getBalance({
         address: ctx.other.account.address,
       })
-      await ctx.vaultAsOwner.write.setOperator([ctx.operator.account.address, true])
+      await ctx.vaultAsOwner.write.setOperator([
+        ctx.operator.account.address,
+        true,
+      ])
       await ctx.vaultAsOperator.write.withdrawFromMarketTo([
         ctx.punks.address,
         ctx.other.account.address,
       ])
-      assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), retained)
       assert.equal(
-        await publicClient.getBalance({ address: ctx.other.account.address })
-          - recipientBefore,
+        await publicClient.getBalance({ address: ctx.vaultAddress }),
+        retained,
+      )
+      assert.equal(
+        (await publicClient.getBalance({
+          address: ctx.other.account.address,
+        })) - recipientBefore,
         price,
       )
     })
@@ -772,8 +909,9 @@ describe('PunksVault', () => {
       ])
 
       assert.equal(
-        await publicClient.getBalance({ address: ctx.other.account.address })
-          - recipientBefore,
+        (await publicClient.getBalance({
+          address: ctx.other.account.address,
+        })) - recipientBefore,
         pending,
       )
       assert.equal(
@@ -802,11 +940,17 @@ describe('PunksVault', () => {
       await punksAsBuyer.write.buyPunk([111n], { value: price })
 
       await ctx.viem.assertions.revertWithCustomError(
-        ctx.vaultAsOwner.write.withdrawFromMarketTo([ctx.punks.address, reject.address]),
+        ctx.vaultAsOwner.write.withdrawFromMarketTo([
+          ctx.punks.address,
+          reject.address,
+        ]),
         ctx.vaultAsOwner,
         'ExecutionFailed',
       )
-      assert.equal(await ctx.punks.read.pendingWithdrawals([ctx.vaultAddress]), price)
+      assert.equal(
+        await ctx.punks.read.pendingWithdrawals([ctx.vaultAddress]),
+        price,
+      )
     })
   })
 
@@ -835,10 +979,16 @@ describe('PunksVault', () => {
       await ctx.vaultAsOwner.write.execute([target.address, value, data], {
         value: value + parseEther('0.1'),
       })
-      assert.equal(lc(await target.read.lastSender() as string), lc(ctx.vaultAddress))
+      assert.equal(
+        lc((await target.read.lastSender()) as string),
+        lc(ctx.vaultAddress),
+      )
       assert.equal(await target.read.lastValue(), value)
       assert.equal(await target.read.lastData(), '0x1234')
-      assert.equal(await publicClient.getBalance({ address: ctx.vaultAddress }), parseEther('0.1'))
+      assert.equal(
+        await publicClient.getBalance({ address: ctx.vaultAddress }),
+        parseEther('0.1'),
+      )
     })
 
     it('executes batches atomically and rejects non-owner execution', async () => {
@@ -896,7 +1046,12 @@ describe('PunksVault', () => {
           address: ctx.vault.address,
           abi: vaultAbi,
           functionName: 'onERC721Received',
-          args: [ctx.owner.account.address, ctx.owner.account.address, 1n, '0x'],
+          args: [
+            ctx.owner.account.address,
+            ctx.owner.account.address,
+            1n,
+            '0x',
+          ],
         }),
         '0x150b7a02',
       )
@@ -930,7 +1085,6 @@ describe('PunksVault', () => {
         }),
         '0xbc197c81',
       )
-
     })
 
     it('advertises ERC-7739 and exposes the vault EIP-712 domain', async () => {
@@ -1175,9 +1329,14 @@ describe('PunksVault', () => {
 
       const mockStashFactory = await ctx.viem.deployContract('MockStashFactory')
       const publicClient = await ctx.viem.getPublicClient()
-      const code = await publicClient.getCode({ address: mockStashFactory.address })
+      const code = await publicClient.getCode({
+        address: mockStashFactory.address,
+      })
       await ctx.connection.networkHelpers.setCode(STASH_FACTORY, code)
-      const stashFactory = await ctx.viem.getContractAt('MockStashFactory', STASH_FACTORY)
+      const stashFactory = await ctx.viem.getContractAt(
+        'MockStashFactory',
+        STASH_FACTORY,
+      )
       const stashAddress = (await stashFactory.read.stashAddressFor([
         ctx.owner.account.address,
       ])) as Address
@@ -1185,7 +1344,7 @@ describe('PunksVault', () => {
       await ctx.vaultAsOwner.write.stash([121n])
 
       assert.equal(
-        lc(await canonicalPunks.read.punkIndexToAddress([121n]) as string),
+        lc((await canonicalPunks.read.punkIndexToAddress([121n])) as string),
         lc(stashAddress),
       )
       const stashCode = await publicClient.getCode({ address: stashAddress })
@@ -1194,7 +1353,9 @@ describe('PunksVault', () => {
   })
 })
 
-const describeIfMainnetRpc = process.env.MAINNET_RPC_URL ? describe : describe.skip
+const describeIfMainnetRpc = process.env.MAINNET_RPC_URL
+  ? describe
+  : describe.skip
 
 describeIfMainnetRpc('PunksVault mainnet fork', () => {
   it('stashes a real Punk into the holder Stash on a fork', async () => {
@@ -1209,30 +1370,43 @@ describeIfMainnetRpc('PunksVault mainnet fork', () => {
     const vaultFactory = await viem.deployContract('PunksVaultFactory')
     const punks = await viem.getContractAt('MockCryptoPunksMarket', CRYPTOPUNKS)
     const punkId = 0n
-    const holder = getAddress(await punks.read.punkIndexToAddress([punkId]) as string)
+    const holder = getAddress(
+      (await punks.read.punkIndexToAddress([punkId])) as string,
+    )
     assert.notEqual(lc(holder), lc(zeroAddress))
 
     await connection.networkHelpers.impersonateAccount(holder)
     await connection.networkHelpers.setBalance(holder, parseEther('10'))
     const holderClient = await viem.getWalletClient(holder)
-    const vaultAddress = (await vaultFactory.read.predictVault([holder])) as Address
+    const vaultAddress = (await vaultFactory.read.predictVault([
+      holder,
+    ])) as Address
     await vaultFactory.write.ensureVault([holder])
 
-    const punksAsHolder = await viem.getContractAt('MockCryptoPunksMarket', CRYPTOPUNKS, {
-      client: { wallet: holderClient },
-    })
+    const punksAsHolder = await viem.getContractAt(
+      'MockCryptoPunksMarket',
+      CRYPTOPUNKS,
+      {
+        client: { wallet: holderClient },
+      },
+    )
     await punksAsHolder.write.transferPunk([vaultAddress, punkId])
 
     const vaultAsHolder = await viem.getContractAt('PunksVault', vaultAddress, {
       client: { wallet: holderClient },
     })
-    const stashFactory = await viem.getContractAt('MockStashFactory', STASH_FACTORY)
-    const stashAddress = (await stashFactory.read.stashAddressFor([holder])) as Address
+    const stashFactory = await viem.getContractAt(
+      'MockStashFactory',
+      STASH_FACTORY,
+    )
+    const stashAddress = (await stashFactory.read.stashAddressFor([
+      holder,
+    ])) as Address
 
     await vaultAsHolder.write.stash([punkId])
 
     assert.equal(
-      lc(await punks.read.punkIndexToAddress([punkId]) as string),
+      lc((await punks.read.punkIndexToAddress([punkId])) as string),
       lc(stashAddress),
     )
     const stashCode = await publicClient.getCode({ address: stashAddress })

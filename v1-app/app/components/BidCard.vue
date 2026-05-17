@@ -6,9 +6,19 @@
     </header>
 
     <div class="bid-amount">
-      <EthAmount :wei="bid.bidWei" :precision="6" />
-      <span v-if="bid.settlementWei > 0n" class="muted bid-settlement">
-        +<EthAmount :wei="bid.settlementWei" :precision="6" /> settlement
+      <EthAmount
+        :wei="bid.bidWei"
+        :precision="6"
+      />
+      <span
+        v-if="bid.settlementWei > 0n"
+        class="muted bid-settlement"
+      >
+        +<EthAmount
+          :wei="bid.settlementWei"
+          :precision="6"
+        />
+        settlement
       </span>
     </div>
 
@@ -18,8 +28,15 @@
       </NuxtLink>
     </div>
 
-    <div v-if="matchCount !== null" class="bid-matches">
-      <NuxtLink class="muted matches-link" :to="matchesLink">{{ matchCount.toLocaleString() }} matching punks</NuxtLink>
+    <div
+      v-if="matchCount !== null"
+      class="bid-matches"
+    >
+      <NuxtLink
+        class="muted matches-link"
+        :to="matchesLink"
+        >{{ matchCount.toLocaleString() }} matching punks</NuxtLink
+      >
     </div>
   </article>
 </template>
@@ -35,7 +52,9 @@ const matchCount = computed(() => {
   try {
     return offline.count({
       ids: props.bid.includeIds.length ? props.bid.includeIds : undefined,
-      excludeIds: props.bid.excludeIds.length ? props.bid.excludeIds : undefined,
+      excludeIds: props.bid.excludeIds.length
+        ? props.bid.excludeIds
+        : undefined,
     })
   } catch {
     return null

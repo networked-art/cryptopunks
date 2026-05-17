@@ -103,12 +103,12 @@ record.
 
 Live read: [`traitKind(3)`](https://evm.now/address/punksdata.eth/read#traitKind:3).
 
-| Enum | Meaning |
-| --- | --- |
-| `TraitKind.HeadVariant` | Exact source head variant |
-| `TraitKind.NormalizedType` | Normalized market type |
-| `TraitKind.AttributeCount` | Number of accessories |
-| `TraitKind.Accessory` | Accessory trait |
+| Enum                       | Meaning                   |
+| -------------------------- | ------------------------- |
+| `TraitKind.HeadVariant`    | Exact source head variant |
+| `TraitKind.NormalizedType` | Normalized market type    |
+| `TraitKind.AttributeCount` | Number of accessories     |
+| `TraitKind.Accessory`      | Accessory trait           |
 
 Use it when presenting filters or reconstructing a kind-aware trait catalog.
 Reverts with `InvalidTraitId` when the trait id is out of range.

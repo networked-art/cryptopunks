@@ -156,4 +156,3 @@ Update:
 - Do not add `usearch`, FAISS, HNSW, or other ANN dependencies in the first pass.
 - Do not precompute or ship neighbor graphs until scoring behavior feels right.
 - Later clustering can be built from exact pair scores or a precomputed top-k graph without changing the first public API.
-

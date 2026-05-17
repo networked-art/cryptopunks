@@ -7,11 +7,35 @@
     @mouseenter="onEnter"
     @mouseleave="onLeave"
   >
-    <img class="punk-base" :src="dataUri" :alt="`CryptoPunk ${punkId}`" draggable="false" />
-    <img v-if="glitching" class="punk-glitch punk-glitch-r" :src="dataUri" aria-hidden="true" />
-    <img v-if="glitching" class="punk-glitch punk-glitch-g" :src="dataUri" aria-hidden="true" />
-    <img v-if="glitching" class="punk-glitch punk-glitch-b" :src="dataUri" aria-hidden="true" />
-    <span v-if="showId" class="punk-image-id">{{ punkId }}</span>
+    <img
+      class="punk-base"
+      :src="dataUri"
+      :alt="`CryptoPunk ${punkId}`"
+      draggable="false"
+    />
+    <img
+      v-if="glitching"
+      class="punk-glitch punk-glitch-r"
+      :src="dataUri"
+      aria-hidden="true"
+    />
+    <img
+      v-if="glitching"
+      class="punk-glitch punk-glitch-g"
+      :src="dataUri"
+      aria-hidden="true"
+    />
+    <img
+      v-if="glitching"
+      class="punk-glitch punk-glitch-b"
+      :src="dataUri"
+      aria-hidden="true"
+    />
+    <span
+      v-if="showId"
+      class="punk-image-id"
+      >{{ punkId }}</span
+    >
   </div>
 </template>
 
@@ -138,21 +162,48 @@ function scheduleBurst() {
 }
 
 @keyframes punk-glitch-r {
-  0%   { transform: translate(0, 0)      skewX(0deg);   clip-path: inset(0 0 70% 0); }
-  50%  { transform: translate(2px, -1px) skewX(-2deg);  clip-path: inset(30% 0 30% 0); }
-  100% { transform: translate(-1px, 1px) skewX(2deg);   clip-path: inset(70% 0 0 0); }
+  0% {
+    transform: translate(0, 0) skewX(0deg);
+    clip-path: inset(0 0 70% 0);
+  }
+  50% {
+    transform: translate(2px, -1px) skewX(-2deg);
+    clip-path: inset(30% 0 30% 0);
+  }
+  100% {
+    transform: translate(-1px, 1px) skewX(2deg);
+    clip-path: inset(70% 0 0 0);
+  }
 }
 
 @keyframes punk-glitch-g {
-  0%   { transform: translate(-2px, 0); clip-path: inset(60% 0 10% 0); }
-  50%  { transform: translate(1px, 1px); clip-path: inset(10% 0 60% 0); }
-  100% { transform: translate(0, -1px);  clip-path: inset(35% 0 35% 0); }
+  0% {
+    transform: translate(-2px, 0);
+    clip-path: inset(60% 0 10% 0);
+  }
+  50% {
+    transform: translate(1px, 1px);
+    clip-path: inset(10% 0 60% 0);
+  }
+  100% {
+    transform: translate(0, -1px);
+    clip-path: inset(35% 0 35% 0);
+  }
 }
 
 @keyframes punk-glitch-b {
-  0%   { transform: translate(1px, 1px); clip-path: inset(0 0 40% 0); }
-  50%  { transform: translate(-1px, -2px); clip-path: inset(20% 0 50% 0); }
-  100% { transform: translate(2px, 0);   clip-path: inset(40% 0 20% 0); }
+  0% {
+    transform: translate(1px, 1px);
+    clip-path: inset(0 0 40% 0);
+  }
+  50% {
+    transform: translate(-1px, -2px);
+    clip-path: inset(20% 0 50% 0);
+  }
+  100% {
+    transform: translate(2px, 0);
+    clip-path: inset(40% 0 20% 0);
+  }
 }
 
 .is-glitching .punk-base {
@@ -160,11 +211,21 @@ function scheduleBurst() {
 }
 
 @keyframes punk-base-shake {
-  0%   { transform: translate(0, 0); }
-  25%  { transform: translate(1px, -1px); }
-  50%  { transform: translate(-1px, 1px); }
-  75%  { transform: translate(1px, 1px); }
-  100% { transform: translate(0, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(1px, -1px);
+  }
+  50% {
+    transform: translate(-1px, 1px);
+  }
+  75% {
+    transform: translate(1px, 1px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 .punk-image-id {

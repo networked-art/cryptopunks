@@ -5,9 +5,14 @@
   "scripts": {
     "test": "pnpm --filter @networked-art/punks-contracts test && pnpm --filter @networked-art/punks-sdk test",
     "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "docs:dev": "pnpm --filter @cryptopunks/docs dev",
     "docs:build": "pnpm --filter @cryptopunks/docs build",
     "docs:preview": "pnpm --filter @cryptopunks/docs preview"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1"
   },
   "pnpm": {
     "overrides": {

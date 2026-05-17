@@ -72,16 +72,22 @@ export type CompileOfferSlotInput = {
   excludeIds?: Iterable<number>
 }
 
-export function toOfflineSearchQuery(query: PunkQuery = {}): OfflinePunksSearchQuery {
+export function toOfflineSearchQuery(
+  query: PunkQuery = {},
+): OfflinePunksSearchQuery {
   assertQueryObject(query)
   const { type, punkType, head, headVariant, ...rest } = query
   const normalized: OfflinePunksSearchQuery = { ...(rest as PunksSearchQuery) }
 
   if (type !== undefined && punkType !== undefined) {
-    throw new PunksDataValidationError('use query.type or query.punkType, not both')
+    throw new PunksDataValidationError(
+      'use query.type or query.punkType, not both',
+    )
   }
   if (head !== undefined && headVariant !== undefined) {
-    throw new PunksDataValidationError('use query.head or query.headVariant, not both')
+    throw new PunksDataValidationError(
+      'use query.head or query.headVariant, not both',
+    )
   }
 
   const normalizedType = type ?? punkType
@@ -108,7 +114,10 @@ export function compilePunksFilter(
     validateTraitId(traitId)
     requiredTraitMask |= 1n << BigInt(traitId)
   }
-  const addAnyOfTraitGroup = (traitIds: readonly number[], label: string): void => {
+  const addAnyOfTraitGroup = (
+    traitIds: readonly number[],
+    label: string,
+  ): void => {
     if (traitIds.length === 0) return
     const groupMask = maskFromIds(traitIds, validateTraitId)
     if (anyOfTraitMask !== 0n && anyOfTraitMask !== groupMask) {
@@ -123,8 +132,9 @@ export function compilePunksFilter(
   if (typeIds.length === 1) addRequiredTrait(typeIds[0])
   else addAnyOfTraitGroup(typeIds, 'type')
 
-  const headVariantIds = normalizeHeadVariantRefs(query.head ?? query.headVariant)
-    .map((id) => HEAD_VARIANT_TRAIT_OFFSET + id)
+  const headVariantIds = normalizeHeadVariantRefs(
+    query.head ?? query.headVariant,
+  ).map((id) => HEAD_VARIANT_TRAIT_OFFSET + id)
   if (headVariantIds.length === 1) addRequiredTrait(headVariantIds[0])
   else addAnyOfTraitGroup(headVariantIds, 'head')
 
@@ -143,7 +153,11 @@ export function compilePunksFilter(
     )
   }
 
-  validateTraitCriteriaMasks(requiredTraitMask, forbiddenTraitMask, anyOfTraitMask)
+  validateTraitCriteriaMasks(
+    requiredTraitMask,
+    forbiddenTraitMask,
+    anyOfTraitMask,
+  )
   validateColorCriteriaMasks(
     colorCriteria.requiredMask,
     colorCriteria.forbiddenMask,
@@ -182,28 +196,47 @@ export function compileOfferSlot(
   input: CompileOfferSlotInput = {},
 ): CompiledOfferSlot {
   const query = input.query ?? {}
-  const includeIds = uniqueIds([...(query.ids ?? []), ...(input.includeIds ?? [])], 'includeIds')
+  const includeIds = uniqueIds(
+    [...(query.ids ?? []), ...(input.includeIds ?? [])],
+    'includeIds',
+  )
   const excludeIds = uniqueIds(
     [...(query.excludeIds ?? []), ...(input.excludeIds ?? [])],
     'excludeIds',
   )
   return {
-    criteria: compilePunksFilter(data, { ...query, ids: undefined, excludeIds: undefined }),
+    criteria: compilePunksFilter(data, {
+      ...query,
+      ids: undefined,
+      excludeIds: undefined,
+    }),
     standard: normalizePunkStandard(input.standard ?? 'cryptopunks'),
     includeIds,
     excludeIds,
   }
 }
 
-export function normalizePunkStandard(standard: PunkStandardRef): PunkStandardValue {
-  if (standard === PunkStandard.CryptoPunks || standard === PunkStandard.CryptoPunksV1) {
+export function normalizePunkStandard(
+  standard: PunkStandardRef,
+): PunkStandardValue {
+  if (
+    standard === PunkStandard.CryptoPunks ||
+    standard === PunkStandard.CryptoPunksV1
+  ) {
     return standard
   }
   if (typeof standard !== 'string') {
-    throw new PunksDataValidationError('standard must be cryptopunks or cryptopunks-v1')
+    throw new PunksDataValidationError(
+      'standard must be cryptopunks or cryptopunks-v1',
+    )
   }
   const key = normalizeName(standard)
-  if (key === 'cryptopunks' || key === 'punks' || key === 'v2' || key === 'cryptopunksv2') {
+  if (
+    key === 'cryptopunks' ||
+    key === 'punks' ||
+    key === 'v2' ||
+    key === 'cryptopunksv2'
+  ) {
     return PunkStandard.CryptoPunks
   }
   if (key === 'cryptopunksv1' || key === 'v1') return PunkStandard.CryptoPunksV1
@@ -239,7 +272,11 @@ function rejectUnchainableQueryFields(query: PunkQuery): void {
       )
     }
   }
-  if (query.offset !== undefined || query.limit !== undefined || query.sort !== undefined) {
+  if (
+    query.offset !== undefined ||
+    query.limit !== undefined ||
+    query.sort !== undefined
+  ) {
     throw new PunksDataValidationError(
       'pagination and sorting cannot be represented as an onchain filter',
     )
@@ -303,7 +340,9 @@ function normalizeHeadVariantRef(ref: unknown): HeadVariantValue {
   for (const [name, value] of Object.entries(HeadVariant)) {
     if (normalizeName(name) === key) return value
   }
-  const index = headVariantNames.findIndex((name) => normalizeName(name) === key)
+  const index = headVariantNames.findIndex(
+    (name) => normalizeName(name) === key,
+  )
   if (index >= 0) return index as HeadVariantValue
   throw new PunksDataValidationError(`unknown head variant ${ref}`)
 }

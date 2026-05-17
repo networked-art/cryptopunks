@@ -6,7 +6,10 @@ export default defineConfig({
   appearance: false,
   head: [
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    [
+      'link',
+      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    ],
     [
       'link',
       {
@@ -24,9 +27,7 @@ export default defineConfig({
     sidebar: [
       {
         text: 'Introduction',
-        items: [
-          { text: 'Overview', link: '/' },
-        ],
+        items: [{ text: 'Overview', link: '/' }],
       },
       {
         text: 'Contracts',
@@ -36,11 +37,20 @@ export default defineConfig({
             link: '/contracts/punks-data',
             collapsed: false,
             items: [
-              { text: 'Core Concepts', link: '/contracts/punks-data/core-concepts' },
+              {
+                text: 'Core Concepts',
+                link: '/contracts/punks-data/core-concepts',
+              },
               { text: 'Criteria API', link: '/contracts/punks-data/criteria' },
               { text: 'Visual API', link: '/contracts/punks-data/visual' },
-              { text: 'Indexed Pixels API', link: '/contracts/punks-data/indexed-pixels' },
-              { text: 'Usage And Integration', link: '/contracts/punks-data/usage' },
+              {
+                text: 'Indexed Pixels API',
+                link: '/contracts/punks-data/indexed-pixels',
+              },
+              {
+                text: 'Usage And Integration',
+                link: '/contracts/punks-data/usage',
+              },
             ],
           },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
@@ -56,7 +66,10 @@ export default defineConfig({
             items: [
               { text: 'Data And Search', link: '/sdk/data-search' },
               { text: 'Rendering And Metadata', link: '/sdk/rendering' },
-              { text: 'Original Marketplace', link: '/sdk/original-marketplace' },
+              {
+                text: 'Original Marketplace',
+                link: '/sdk/original-marketplace',
+              },
               { text: 'Punk Data Contracts', link: '/sdk/punk-data-contracts' },
               { text: 'Wrappers', link: '/sdk/wrappers' },
               { text: 'Stash', link: '/sdk/stash' },

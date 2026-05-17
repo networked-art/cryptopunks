@@ -47,11 +47,11 @@ returns the dataset hash below.
 The current generated dataset is derived from the immutable Larva Labs
 CryptoPunksData contract on Ethereum mainnet:
 
-| Field | Value |
-| --- | --- |
-| Source contract | [`0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2`](https://evm.now/address/0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2) |
-| Source network | Ethereum mainnet |
-| Sealed dataset hash | `0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68` |
+| Field               | Value                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Source contract     | [`0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2`](https://evm.now/address/0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2) |
+| Source network      | Ethereum mainnet                                                                                                   |
+| Sealed dataset hash | `0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68`                                               |
 
 The mainnet `PunksData` address recorded in the repo is
 [`0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C`](https://evm.now/address/punksdata.eth).
@@ -60,13 +60,13 @@ The mainnet `PunksData` address recorded in the repo is
 
 The detailed reference is split by topic:
 
-| Section | Use it for |
-| --- | --- |
-| [Core Concepts](/contracts/punks-data/core-concepts) | Trait masks, color masks, bitmap rows, blob storage, compressed pixels, and palette ids |
-| [Criteria API](/contracts/punks-data/criteria) | Trait catalog reads, trait masks, broad Punk type filters, and batch trait bitmaps |
-| [Visual API](/contracts/punks-data/visual) | Palette colors, color masks, visual metrics, and visual bitmap rows |
-| [Indexed Pixels API](/contracts/punks-data/indexed-pixels) | Decoded 24x24 indexed pixels, `colorAt`, and palette byte arrays |
-| [Usage And Integration](/contracts/punks-data/usage) | Common patterns, expected reverts, split interfaces, and renderer integration notes |
+| Section                                                    | Use it for                                                                              |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Core Concepts](/contracts/punks-data/core-concepts)       | Trait masks, color masks, bitmap rows, blob storage, compressed pixels, and palette ids |
+| [Criteria API](/contracts/punks-data/criteria)             | Trait catalog reads, trait masks, broad Punk type filters, and batch trait bitmaps      |
+| [Visual API](/contracts/punks-data/visual)                 | Palette colors, color masks, visual metrics, and visual bitmap rows                     |
+| [Indexed Pixels API](/contracts/punks-data/indexed-pixels) | Decoded 24x24 indexed pixels, `colorAt`, and palette byte arrays                        |
+| [Usage And Integration](/contracts/punks-data/usage)       | Common patterns, expected reverts, split interfaces, and renderer integration notes     |
 
 The TypeScript SDK has its own [top-level section](/sdk) because it covers both
 `PunksData` reads and `PunksRenderer` outputs. For data-specific examples, see

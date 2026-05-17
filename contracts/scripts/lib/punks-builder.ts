@@ -1,9 +1,4 @@
-import {
-  bytesToHex,
-  encodeAbiParameters,
-  keccak256,
-  type Hex,
-} from 'viem'
+import { bytesToHex, encodeAbiParameters, keccak256, type Hex } from 'viem'
 
 export const PUNK_COUNT = 10_000
 export const TRAIT_COUNT = 111
@@ -23,7 +18,13 @@ export const KIND_NORMALIZED_TYPE = 1
 export const KIND_ATTRIBUTE_COUNT = 2
 export const KIND_ACCESSORY = 3
 
-export const NORMALIZED_TYPES = ['Alien', 'Ape', 'Female', 'Male', 'Zombie'] as const
+export const NORMALIZED_TYPES = [
+  'Alien',
+  'Ape',
+  'Female',
+  'Male',
+  'Zombie',
+] as const
 export const HEAD_VARIANTS = [
   'Alien',
   'Ape',
@@ -38,7 +39,10 @@ export const HEAD_VARIANTS = [
   'Zombie',
 ] as const
 
-export const HEAD_VARIANT_TO_TYPE: Record<(typeof HEAD_VARIANTS)[number], (typeof NORMALIZED_TYPES)[number]> = {
+export const HEAD_VARIANT_TO_TYPE: Record<
+  (typeof HEAD_VARIANTS)[number],
+  (typeof NORMALIZED_TYPES)[number]
+> = {
   Alien: 'Alien',
   Ape: 'Ape',
   'Female 1': 'Female',
@@ -109,26 +113,42 @@ export type BuiltDataset = {
   datasetHash: Hex
 }
 
-export function writeUint16(out: Uint8Array, offset: number, value: number): void {
+export function writeUint16(
+  out: Uint8Array,
+  offset: number,
+  value: number,
+): void {
   out[offset] = (value >> 8) & 0xff
   out[offset + 1] = value & 0xff
 }
 
-export function writeUint24(out: Uint8Array, offset: number, value: number): void {
+export function writeUint24(
+  out: Uint8Array,
+  offset: number,
+  value: number,
+): void {
   if (value > 0xffffff) throw new Error(`uint24 overflow ${value}`)
   out[offset] = (value >> 16) & 0xff
   out[offset + 1] = (value >> 8) & 0xff
   out[offset + 2] = value & 0xff
 }
 
-export function writeUint32(out: Uint8Array, offset: number, value: number): void {
+export function writeUint32(
+  out: Uint8Array,
+  offset: number,
+  value: number,
+): void {
   out[offset] = (value >>> 24) & 0xff
   out[offset + 1] = (value >>> 16) & 0xff
   out[offset + 2] = (value >>> 8) & 0xff
   out[offset + 3] = value & 0xff
 }
 
-export function writeUint256(out: Uint8Array, offset: number, value: bigint): void {
+export function writeUint256(
+  out: Uint8Array,
+  offset: number,
+  value: bigint,
+): void {
   for (let i = 31; i >= 0; i--) {
     out[offset + i] = Number(value & 0xffn)
     value >>= 8n
@@ -264,7 +284,8 @@ export function buildPalette(rows: SourceRow[]): string[] {
       colors.add(rgbaKey(row.image, offset))
     }
   }
-  if (!colors.has(TRANSPARENT_RGBA)) throw new Error('Transparent color missing')
+  if (!colors.has(TRANSPARENT_RGBA))
+    throw new Error('Transparent color missing')
   return [
     TRANSPARENT_RGBA,
     ...[...colors].filter((c) => c !== TRANSPARENT_RGBA).sort(asciiSort),
@@ -278,13 +299,17 @@ export function rgbaToIndexed(
   const indexed = new Uint8Array(PIXELS_PER_PUNK)
   for (let pixel = 0; pixel < PIXELS_PER_PUNK; pixel++) {
     const colorId = colorIdByRgba.get(rgbaKey(image, pixel * 4))
-    if (colorId === undefined) throw new Error(`Unknown color at pixel ${pixel}`)
+    if (colorId === undefined)
+      throw new Error(`Unknown color at pixel ${pixel}`)
     indexed[pixel] = colorId
   }
   return indexed
 }
 
-export function indexedToRgba(indexed: Uint8Array, palette: string[]): Uint8Array {
+export function indexedToRgba(
+  indexed: Uint8Array,
+  palette: string[],
+): Uint8Array {
   const out = new Uint8Array(indexed.length * 4)
   for (let i = 0; i < indexed.length; i++) {
     const rgba = palette[indexed[i]]
@@ -322,13 +347,18 @@ export function bitsForPalette(visibleColorCount: number): number {
   return bits
 }
 
-export function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]): Uint8Array {
+export function encodeSparseIndexed(
+  indexed: Uint8Array,
+  visibleColors: number[],
+): Uint8Array {
   const colorToLocal = new Map<number, number>()
   visibleColors.forEach((colorId, index) => colorToLocal.set(colorId, index))
   const visibleBitmap = new Uint8Array(72)
   const bitsPerIndex = bitsForPalette(visibleColors.length)
   const visiblePixelCount = countVisiblePixels(indexed)
-  const indexBytes = new Uint8Array(Math.ceil((visiblePixelCount * bitsPerIndex) / 8))
+  const indexBytes = new Uint8Array(
+    Math.ceil((visiblePixelCount * bitsPerIndex) / 8),
+  )
 
   let bitOffset = 0
   for (let pixel = 0; pixel < indexed.length; pixel++) {
@@ -336,7 +366,8 @@ export function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]
     if (colorId === 0) continue
     visibleBitmap[pixel >> 3] |= 1 << (7 - (pixel & 7))
     const localIndex = colorToLocal.get(colorId)
-    if (localIndex === undefined) throw new Error(`Missing local color ${colorId}`)
+    if (localIndex === undefined)
+      throw new Error(`Missing local color ${colorId}`)
     writeBits(indexBytes, bitOffset, bitsPerIndex, localIndex)
     bitOffset += bitsPerIndex
   }
@@ -349,7 +380,10 @@ export function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]
   ])
 }
 
-export function decodeSparseIndexed(entry: Uint8Array, paletteCount: number): Uint8Array {
+export function decodeSparseIndexed(
+  entry: Uint8Array,
+  paletteCount: number,
+): Uint8Array {
   if (entry.length < 73) throw new Error('entry too short')
   const visibleColorCount = entry[0]
   if (visibleColorCount === 0 || entry.length < 73 + visibleColorCount) {
@@ -384,7 +418,8 @@ export function decodeSparseIndexed(entry: Uint8Array, paletteCount: number): Ui
         localIndex = readBits(entry, indexesOffset, bitOffset, bitsPerIndex)
         bitOffset += bitsPerIndex
       }
-      if (localIndex >= visibleColorCount) throw new Error('localIndex out of range')
+      if (localIndex >= visibleColorCount)
+        throw new Error('localIndex out of range')
       pixels[byteIdx * 8 + b] = localPalette[localIndex]
       visibleIndex++
     }
@@ -454,7 +489,9 @@ export function encodeUint32Array(values: number[]): Uint8Array {
 }
 
 export function makeBitmapTable(rows: number): bigint[][] {
-  return Array.from({ length: rows }, () => new Array<bigint>(WORDS_PER_BITMAP).fill(0n))
+  return Array.from({ length: rows }, () =>
+    new Array<bigint>(WORDS_PER_BITMAP).fill(0n),
+  )
 }
 
 export function setBitmapBit(words: bigint[], punkId: number): void {
@@ -478,7 +515,11 @@ export function packScalarWord(scalars: Scalar[]): bigint {
   return word
 }
 
-export function packScalarInto(packedScalars: bigint[], punkId: number, scalar: Scalar): void {
+export function packScalarInto(
+  packedScalars: bigint[],
+  punkId: number,
+  scalar: Scalar,
+): void {
   const value =
     BigInt(scalar.pixelCount) |
     (BigInt(scalar.colorCount) << 16n) |
@@ -490,7 +531,11 @@ export function packScalarInto(packedScalars: bigint[], punkId: number, scalar: 
   packedScalars[wordIndex] |= value << shift
 }
 
-export function packMaskIntoPair(pairs: bigint[], punkId: number, mask: bigint): void {
+export function packMaskIntoPair(
+  pairs: bigint[],
+  punkId: number,
+  mask: bigint,
+): void {
   const pairIndex = Math.floor(punkId / 2)
   if (punkId % 2 === 0) {
     pairs[pairIndex] |= mask
@@ -506,7 +551,8 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
 
   const sortedRows = [...rows].sort((a, b) => a.id - b.id)
   for (let i = 0; i < sortedRows.length; i++) {
-    if (sortedRows[i].id !== i) throw new Error(`Missing or out-of-order row ${i}`)
+    if (sortedRows[i].id !== i)
+      throw new Error(`Missing or out-of-order row ${i}`)
   }
   for (const row of sortedRows) {
     if (row.image.length !== RGBA_BYTES_PER_PUNK) {
@@ -516,7 +562,9 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
 
   const accessoryNames = collectAccessories(sortedRows)
   if (accessoryNames.length !== ACCESSORY_COUNT) {
-    throw new Error(`Expected ${ACCESSORY_COUNT} accessories, got ${accessoryNames.length}`)
+    throw new Error(
+      `Expected ${ACCESSORY_COUNT} accessories, got ${accessoryNames.length}`,
+    )
   }
 
   const traits = buildTraitCatalog(accessoryNames)
@@ -527,7 +575,9 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
 
   const palette = buildPalette(sortedRows)
   if (palette.length !== PALETTE_COUNT) {
-    throw new Error(`Expected ${PALETTE_COUNT} palette colors, got ${palette.length}`)
+    throw new Error(
+      `Expected ${PALETTE_COUNT} palette colors, got ${palette.length}`,
+    )
   }
   const colorIdByRgba = new Map<string, number>()
   palette.forEach((rgba, index) => colorIdByRgba.set(rgba, index))
@@ -541,8 +591,12 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
   const colorSupplies = new Array<number>(palette.length).fill(0)
   const colorMasks = new Array<bigint>(PUNK_COUNT).fill(0n)
   const colorBitmaps = makeBitmapTable(palette.length)
-  const pixelCountBitmaps = makeBitmapTable(PIXEL_COUNT_MAX - PIXEL_COUNT_MIN + 1)
-  const colorCountBitmaps = makeBitmapTable(COLOR_COUNT_MAX - COLOR_COUNT_MIN + 1)
+  const pixelCountBitmaps = makeBitmapTable(
+    PIXEL_COUNT_MAX - PIXEL_COUNT_MIN + 1,
+  )
+  const colorCountBitmaps = makeBitmapTable(
+    COLOR_COUNT_MAX - COLOR_COUNT_MIN + 1,
+  )
 
   const indexedPixels = new Uint8Array(PUNK_COUNT * PIXELS_PER_PUNK)
   const pixelOffsets = new Uint8Array((PUNK_COUNT + 1) * 3)
@@ -552,20 +606,34 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
   for (const row of sortedRows) {
     const parsed = parseAttributes(row.attributes)
     let mask = 0n
-    mask |= 1n << BigInt(
-      mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`),
-    )
-    mask |= 1n << BigInt(
-      mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${parsed.headVariant}`),
-    )
-    mask |= 1n << BigInt(
-      mustGet(
-        traitIdByKindAndName,
-        `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
-      ),
-    )
+    mask |=
+      1n <<
+      BigInt(
+        mustGet(
+          traitIdByKindAndName,
+          `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`,
+        ),
+      )
+    mask |=
+      1n <<
+      BigInt(
+        mustGet(
+          traitIdByKindAndName,
+          `${KIND_HEAD_VARIANT}:${parsed.headVariant}`,
+        ),
+      )
+    mask |=
+      1n <<
+      BigInt(
+        mustGet(
+          traitIdByKindAndName,
+          `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+        ),
+      )
     for (const accessory of parsed.accessories) {
-      mask |= 1n << BigInt(mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
+      mask |=
+        1n <<
+        BigInt(mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
     }
     traitMasks[row.id] = mask
     packMaskIntoPair(traitMaskPairs, row.id, mask)
@@ -584,10 +652,16 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
     const visibleColors = sortedVisibleColors(indexed)
     const visiblePixelCount = countVisiblePixels(indexed)
     const visibleColorCount = visibleColors.length
-    if (visiblePixelCount < PIXEL_COUNT_MIN || visiblePixelCount > PIXEL_COUNT_MAX) {
+    if (
+      visiblePixelCount < PIXEL_COUNT_MIN ||
+      visiblePixelCount > PIXEL_COUNT_MAX
+    ) {
       throw new Error(`Punk ${row.id} visible pixel count ${visiblePixelCount}`)
     }
-    if (visibleColorCount < COLOR_COUNT_MIN || visibleColorCount > COLOR_COUNT_MAX) {
+    if (
+      visibleColorCount < COLOR_COUNT_MIN ||
+      visibleColorCount > COLOR_COUNT_MAX
+    ) {
       throw new Error(`Punk ${row.id} visible color count ${visibleColorCount}`)
     }
 
@@ -644,7 +718,9 @@ export function buildDataset(rows: SourceRow[]): BuiltDataset {
   const punkMaskHash = keccakBytes(encodeWordArray(traitMasks))
   const paletteHash = keccakBytes(paletteBytes)
   const indexedPixelsHash = keccakBytes(indexedPixels)
-  const compressedPixelsHash = keccakBytes(concatBytes([pixelOffsets, compressedPixels]))
+  const compressedPixelsHash = keccakBytes(
+    concatBytes([pixelOffsets, compressedPixels]),
+  )
   const datasetHash = keccak256(
     encodeAbiParameters(
       [

@@ -105,7 +105,9 @@ export class PunksV1MarketIndexerClient {
     this.fetcher = config.fetch ?? globalThis.fetch
     this.headers = config.headers ?? {}
     if (typeof this.fetcher !== 'function') {
-      throw new PunksDataValidationError('fetch is not available; pass config.fetch')
+      throw new PunksDataValidationError(
+        'fetch is not available; pass config.fetch',
+      )
     }
   }
 
@@ -167,7 +169,8 @@ export class PunksV1MarketIndexerClient {
   ): Promise<PaginatedBidsResponse> {
     const params = new URLSearchParams()
     if (options.limit !== undefined) params.set('limit', String(options.limit))
-    if (options.offset !== undefined) params.set('offset', String(options.offset))
+    if (options.offset !== undefined)
+      params.set('offset', String(options.offset))
     const json = await this.get<{
       items: IndexerMarketBidWire[]
       limit: number
@@ -232,9 +235,9 @@ export class PunksV1MarketFacade {
       pageSize: options.pageSize,
     })
     const bids = await Promise.all(ids.map((id) => this.contract.bid(id)))
-    return bids.filter((b): b is NonNullable<typeof b> => b !== null).map(
-      contractBidToFacadeBid,
-    )
+    return bids
+      .filter((b): b is NonNullable<typeof b> => b !== null)
+      .map(contractBidToFacadeBid)
   }
 
   /// Per-trait matching is indexer-only — the chain has no view for it.
@@ -287,7 +290,8 @@ function parseBid(wire: IndexerMarketBidWire): MarketBid {
     bidWei: BigInt(wire.bidWei),
     settlementWei: BigInt(wire.settlementWei),
     active: wire.active,
-    acceptedPunkId: wire.acceptedPunkId == null ? null : BigInt(wire.acceptedPunkId),
+    acceptedPunkId:
+      wire.acceptedPunkId == null ? null : BigInt(wire.acceptedPunkId),
     criteria: {
       requiredTraitMask: BigInt(wire.criteria.requiredTraitMask),
       forbiddenTraitMask: BigInt(wire.criteria.forbiddenTraitMask),

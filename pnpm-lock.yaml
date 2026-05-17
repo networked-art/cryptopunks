@@ -9,7 +9,11 @@ overrides:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.3
 
   contracts:
     devDependencies:
@@ -98,6 +102,9 @@ importers:
       '@1001-digital/ponder-ens':
         specifier: ^0.1.0
         version: 0.1.0(@electric-sql/pglite@0.2.13)(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0))(hono@4.12.19)(pg@8.20.0)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
+      '@networked-art/punks-sdk':
+        specifier: workspace:*
+        version: link:../sdk
       '@ponder/utils':
         specifier: ^0.2.18
         version: 0.2.18(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
@@ -132,9 +139,6 @@ importers:
       eslint-config-ponder:
         specifier: ^0.16.6
         version: 0.16.6(@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)(typescript@5.8.3))(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)
-      prettier:
-        specifier: ^3.5.3
-        version: 3.8.3
       tsx:
         specifier: ^4.19.3
         version: 4.21.0

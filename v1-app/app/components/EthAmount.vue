@@ -1,5 +1,8 @@
 <template>
-  <span class="eth-amount" :title="`${value} ETH`">
+  <span
+    class="eth-amount"
+    :title="`${value} ETH`"
+  >
     <span class="value">{{ display }}</span>
     <span class="unit">{{ symbol }}</span>
   </span>
@@ -9,7 +12,11 @@
 import { formatEther } from 'viem'
 
 const props = withDefaults(
-  defineProps<{ wei: bigint | number | string; precision?: number; symbol?: string }>(),
+  defineProps<{
+    wei: bigint | number | string
+    precision?: number
+    symbol?: string
+  }>(),
   { precision: 4, symbol: 'Ξ' },
 )
 
@@ -19,7 +26,8 @@ const display = computed(() => {
   const n = Number(value.value)
   if (!Number.isFinite(n)) return value.value
   if (n === 0) return '0'
-  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
+  if (n >= 1000)
+    return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
   if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
   return n.toLocaleString(undefined, { maximumFractionDigits: props.precision })
 })

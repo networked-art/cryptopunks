@@ -2,16 +2,41 @@
   <div class="container activity-page">
     <header class="page-head">
       <h1>Activity</h1>
-      <p class="muted">Recent V1 listings, sales, and bids across the original market and PunksMarket.</p>
+      <p class="muted">
+        Recent V1 listings, sales, and bids across the original market and
+        PunksMarket.
+      </p>
     </header>
 
     <ClientOnly>
-      <div v-if="pending" class="muted">Loading activity…</div>
-      <div v-else-if="error" class="error">Failed to load: {{ error }}</div>
-      <ul v-else-if="events.length" class="event-list">
-        <ActivityRow v-for="(e, i) in events" :key="`${e.txHash}-${i}`" :event="e" />
+      <div
+        v-if="pending"
+        class="muted"
+      >
+        Loading activity…
+      </div>
+      <div
+        v-else-if="error"
+        class="error"
+      >
+        Failed to load: {{ error }}
+      </div>
+      <ul
+        v-else-if="events.length"
+        class="event-list"
+      >
+        <ActivityRow
+          v-for="(e, i) in events"
+          :key="`${e.txHash}-${i}`"
+          :event="e"
+        />
       </ul>
-      <div v-else class="empty muted">No recent activity.</div>
+      <div
+        v-else
+        class="empty muted"
+      >
+        No recent activity.
+      </div>
     </ClientOnly>
   </div>
 </template>

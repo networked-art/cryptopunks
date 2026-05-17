@@ -66,19 +66,28 @@ describe('SDK contract actions', () => {
       auction: AUCTION,
     })
 
-    assert.ok(reads.some((read) =>
-      read.address === CRYPTOPUNKS_MARKET_ADDRESS &&
-      read.functionName === 'pendingWithdrawals' &&
-      read.args[0] === OWNER
-    ))
-    assert.ok(reads.some((read) =>
-      read.address === STASH_FACTORY_ADDRESS &&
-      read.functionName === 'stashAddressFor'
-    ))
-    assert.ok(reads.some((read) =>
-      read.address === STASH &&
-      read.functionName === 'availableLiquidityWETHAndETH'
-    ))
+    assert.ok(
+      reads.some(
+        (read) =>
+          read.address === CRYPTOPUNKS_MARKET_ADDRESS &&
+          read.functionName === 'pendingWithdrawals' &&
+          read.args[0] === OWNER,
+      ),
+    )
+    assert.ok(
+      reads.some(
+        (read) =>
+          read.address === STASH_FACTORY_ADDRESS &&
+          read.functionName === 'stashAddressFor',
+      ),
+    )
+    assert.ok(
+      reads.some(
+        (read) =>
+          read.address === STASH &&
+          read.functionName === 'availableLiquidityWETHAndETH',
+      ),
+    )
   })
 
   it('preflights and executes modern Stash and legacy proxy wrapping flows', async () => {
@@ -157,26 +166,29 @@ describe('SDK contract actions', () => {
     const punks = createPunksSdk()
 
     await assert.rejects(
-      () => punks.wrappers.modern.prepareWrapFlow({
-        owner: OWNER,
-        punkId: 123,
-        stash: ZERO_ADDRESS,
-      }),
+      () =>
+        punks.wrappers.modern.prepareWrapFlow({
+          owner: OWNER,
+          punkId: 123,
+          stash: ZERO_ADDRESS,
+        }),
       /Stash address must not be the zero address/,
     )
     assert.throws(
-      () => punks.wrappers.legacy.prepareDepositToProxy({
-        punkId: 123,
-        proxy: ZERO_ADDRESS,
-      }),
+      () =>
+        punks.wrappers.legacy.prepareDepositToProxy({
+          punkId: 123,
+          proxy: ZERO_ADDRESS,
+        }),
       /legacy wrapper proxy must not be the zero address/,
     )
     await assert.rejects(
-      () => punks.wrappers.legacy.prepareWrapFlow({
-        owner: OWNER,
-        punkId: 123,
-        proxy: ZERO_ADDRESS,
-      }),
+      () =>
+        punks.wrappers.legacy.prepareWrapFlow({
+          owner: OWNER,
+          punkId: 123,
+          proxy: ZERO_ADDRESS,
+        }),
       /legacy wrapper proxy must not be the zero address/,
     )
 
@@ -203,10 +215,11 @@ describe('SDK contract actions', () => {
     assert.equal(preflight.nextStep, 'deployStash')
     assert.equal(preflight.canSendNextStep, true)
     await assert.rejects(
-      () => undeployed.wrappers.modern.prepareWrapFlow({
-        owner: OWNER,
-        punkId: 123,
-      }),
+      () =>
+        undeployed.wrappers.modern.prepareWrapFlow({
+          owner: OWNER,
+          punkId: 123,
+        }),
       /Stash is not deployed/,
     )
   })
@@ -266,7 +279,13 @@ describe('SDK contract actions', () => {
       data: '0x1234',
     })
     assert.equal(erc1155Receiver.request.functionName, 'onERC1155Received')
-    assert.deepEqual(erc1155Receiver.request.args, [OPERATOR, OWNER, 1n, 2n, '0x1234'])
+    assert.deepEqual(erc1155Receiver.request.args, [
+      OPERATOR,
+      OWNER,
+      1n,
+      2n,
+      '0x1234',
+    ])
 
     const erc1155BatchReceiver = stash.prepareOnERC1155BatchReceived({
       operator: OPERATOR,
@@ -274,42 +293,55 @@ describe('SDK contract actions', () => {
       tokenIds: [1, 2],
       amounts: [3, 4],
     })
-    assert.equal(erc1155BatchReceiver.request.functionName, 'onERC1155BatchReceived')
-    assert.deepEqual(erc1155BatchReceiver.request.args, [OPERATOR, OWNER, [1n, 2n], [3n, 4n], '0x'])
+    assert.equal(
+      erc1155BatchReceiver.request.functionName,
+      'onERC1155BatchReceived',
+    )
+    assert.deepEqual(erc1155BatchReceiver.request.args, [
+      OPERATOR,
+      OWNER,
+      [1n, 2n],
+      [3n, 4n],
+      '0x',
+    ])
 
     assert.throws(
-      () => stash.prepareOnERC1155BatchReceived({
-        operator: OPERATOR,
-        from: OWNER,
-        tokenIds: [1],
-        amounts: [],
-      }),
+      () =>
+        stash.prepareOnERC1155BatchReceived({
+          operator: OPERATOR,
+          from: OWNER,
+          tokenIds: [1],
+          amounts: [],
+        }),
       /tokenIds and amounts must have the same length/,
     )
     assert.throws(
-      () => stash.preparePlaceOrder({
-        pricePerUnit: 10n,
-        numberOfUnits: 1,
-        valueWei: -1n,
-      }),
+      () =>
+        stash.preparePlaceOrder({
+          pricePerUnit: 10n,
+          numberOfUnits: 1,
+          valueWei: -1n,
+        }),
       /valueWei must be a non-negative bigint/,
     )
     assert.throws(
-      () => stash.prepareWithdrawERC721({
-        token: CRYPTOPUNKS_721_ADDRESS,
-        tokenIds: [-1],
-      }),
+      () =>
+        stash.prepareWithdrawERC721({
+          token: CRYPTOPUNKS_721_ADDRESS,
+          tokenIds: [-1],
+        }),
       /tokenIds\[0\] must be an unsigned 256-bit integer/,
     )
     assert.throws(
-      () => stash.prepareProcessPunkBid({
-        punkId: 123,
-        signature: '0x1234',
-        bid: {
-          ...makeBid(),
-          bidNonce: -1n,
-        },
-      }),
+      () =>
+        stash.prepareProcessPunkBid({
+          punkId: 123,
+          signature: '0x1234',
+          bid: {
+            ...makeBid(),
+            bidNonce: -1n,
+          },
+        }),
       /bidNonce must be an unsigned 256-bit integer/,
     )
   })
@@ -332,11 +364,14 @@ describe('SDK contract actions', () => {
       },
     })
 
-    assert.equal(await stash.onERC721Received({
-      operator: OPERATOR,
-      from: OWNER,
-      tokenId: 123,
-    }), '0x1234')
+    assert.equal(
+      await stash.onERC721Received({
+        operator: OPERATOR,
+        from: OWNER,
+        tokenId: 123,
+      }),
+      '0x1234',
+    )
     assert.equal(calls[0].account, OWNER)
     assert.equal(calls[0].functionName, 'onERC721Received')
 
@@ -379,15 +414,18 @@ describe('SDK contract actions', () => {
   it('keeps admin-only helpers off the user-facing SDK clients', () => {
     const punks = createPunksSdk({ addresses: { stash: STASH } })
     const stash = punks.stash.at(STASH)
-    assert.deepEqual({
-      factoryAddVersion: punks.stash.factory.addVersion,
-      stashInitialize: stash.initialize,
-      legacyPause: punks.wrappers.legacy.pause,
-    }, {
-      factoryAddVersion: undefined,
-      stashInitialize: undefined,
-      legacyPause: undefined,
-    })
+    assert.deepEqual(
+      {
+        factoryAddVersion: punks.stash.factory.addVersion,
+        stashInitialize: stash.initialize,
+        legacyPause: punks.wrappers.legacy.pause,
+      },
+      {
+        factoryAddVersion: undefined,
+        stashInitialize: undefined,
+        legacyPause: undefined,
+      },
+    )
   })
 
   it('rejects zero or undeployed Stash owner lookups clearly', async () => {
@@ -507,35 +545,47 @@ function makeBid() {
 }
 
 function manualStashPunkBidDigest(bid) {
-  const domainTypeHash = keccak256(stringToHex('EIP712Domain(uint256 chainId,address verifyingContract)'))
-  const orderTypeHash = keccak256(stringToHex('Order(uint16 numberOfUnits,uint80 pricePerUnit,address auction)'))
-  const punkBidTypeHash = keccak256(stringToHex(
-    'PunkBid(Order order,uint256 accountNonce,uint256 bidNonce,uint256 expiration,bytes32 root)Order(uint16 numberOfUnits,uint80 pricePerUnit,address auction)',
-  ))
-  const orderHash = keccak256(encodeAbiParameters(
-    parseAbiParameters('bytes32,uint16,uint80,address'),
-    [
+  const domainTypeHash = keccak256(
+    stringToHex('EIP712Domain(uint256 chainId,address verifyingContract)'),
+  )
+  const orderTypeHash = keccak256(
+    stringToHex(
+      'Order(uint16 numberOfUnits,uint80 pricePerUnit,address auction)',
+    ),
+  )
+  const punkBidTypeHash = keccak256(
+    stringToHex(
+      'PunkBid(Order order,uint256 accountNonce,uint256 bidNonce,uint256 expiration,bytes32 root)Order(uint16 numberOfUnits,uint80 pricePerUnit,address auction)',
+    ),
+  )
+  const orderHash = keccak256(
+    encodeAbiParameters(parseAbiParameters('bytes32,uint16,uint80,address'), [
       orderTypeHash,
       bid.order.numberOfUnits,
       bid.order.pricePerUnit,
       bid.order.auction,
-    ],
-  ))
-  const structHash = keccak256(encodeAbiParameters(
-    parseAbiParameters('bytes32,bytes32,uint256,uint256,uint256,bytes32'),
-    [
-      punkBidTypeHash,
-      orderHash,
-      bid.accountNonce,
-      bid.bidNonce,
-      bid.expiration,
-      bid.root,
-    ],
-  ))
-  const domainHash = keccak256(encodeAbiParameters(
-    parseAbiParameters('bytes32,uint256,address'),
-    [domainTypeHash, 1n, STASH],
-  ))
+    ]),
+  )
+  const structHash = keccak256(
+    encodeAbiParameters(
+      parseAbiParameters('bytes32,bytes32,uint256,uint256,uint256,bytes32'),
+      [
+        punkBidTypeHash,
+        orderHash,
+        bid.accountNonce,
+        bid.bidNonce,
+        bid.expiration,
+        bid.root,
+      ],
+    ),
+  )
+  const domainHash = keccak256(
+    encodeAbiParameters(parseAbiParameters('bytes32,uint256,address'), [
+      domainTypeHash,
+      1n,
+      STASH,
+    ]),
+  )
 
   return keccak256(concatHex(['0x1901', domainHash, structHash]))
 }

@@ -6,7 +6,9 @@
 // test asserts the exact wire format we want, not whatever a generic encoder
 // happens to emit.
 
-const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+const SIGNATURE = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+])
 
 const TYPE_IHDR = 0x49484452
 const TYPE_PLTE = 0x504c5445
@@ -132,7 +134,8 @@ export function expandIndexedToRgba(
   indexed: Uint8Array,
   paletteRgba: Uint8Array,
 ): Uint8Array {
-  if (indexed.length !== 576) throw new Error(`indexed length ${indexed.length}`)
+  if (indexed.length !== 576)
+    throw new Error(`indexed length ${indexed.length}`)
   const out = new Uint8Array(2304)
   for (let i = 0; i < 576; i++) {
     const c = indexed[i]
@@ -184,7 +187,11 @@ export function buildPngFlattened(
     if (li === undefined) {
       li = localCount++
       localOf.set(c, li)
-      localRgb.push(paletteRgba[c * 4], paletteRgba[c * 4 + 1], paletteRgba[c * 4 + 2])
+      localRgb.push(
+        paletteRgba[c * 4],
+        paletteRgba[c * 4 + 1],
+        paletteRgba[c * 4 + 2],
+      )
     }
     remapped[i] = li
   }
@@ -200,8 +207,8 @@ export function buildPngFlattened(
 
 export function buildSvg(indexed: Uint8Array, paletteRgba: Uint8Array): string {
   let out =
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n"
-    + "<rect width='24' height='24' fill='#638596'/>\n"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' shape-rendering='crispEdges'>\n" +
+    "<rect width='24' height='24' fill='#638596'/>\n"
 
   for (let y = 0; y < 24; y++) {
     let x = 0

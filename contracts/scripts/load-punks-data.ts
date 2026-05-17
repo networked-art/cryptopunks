@@ -63,10 +63,34 @@ async function main() {
   console.log(`progress state ${stateFilePath(chainId)}`)
   console.log(`seal after load: ${SEAL_AFTER_LOAD ? 'yes' : 'no'}`)
 
-  await loadBlob(state, contract, publicClient, BlobId.TraitBitmaps, manifest.files.traitBitmaps)
-  await loadBlob(state, contract, publicClient, BlobId.TraitMeta, manifest.files.traitMeta)
-  await loadBlob(state, contract, publicClient, BlobId.Palette, manifest.files.palette)
-  await loadBlob(state, contract, publicClient, BlobId.PixelOffsets, manifest.files.pixelOffsets)
+  await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.TraitBitmaps,
+    manifest.files.traitBitmaps,
+  )
+  await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.TraitMeta,
+    manifest.files.traitMeta,
+  )
+  await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.Palette,
+    manifest.files.palette,
+  )
+  await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.PixelOffsets,
+    manifest.files.pixelOffsets,
+  )
   await loadBlob(
     state,
     contract,
@@ -74,7 +98,13 @@ async function main() {
     BlobId.CompressedPixels,
     manifest.files.compressedPixels,
   )
-  await loadBlob(state, contract, publicClient, BlobId.ColorBitmaps, manifest.files.colorBitmaps)
+  await loadBlob(
+    state,
+    contract,
+    publicClient,
+    BlobId.ColorBitmaps,
+    manifest.files.colorBitmaps,
+  )
   await loadBlob(
     state,
     contract,
@@ -111,7 +141,12 @@ async function main() {
     'loadPackedScalars',
     manifest.files.packedScalars,
   )
-  await loadColorSupplies(state, contract, publicClient, manifest.files.colorSupplies)
+  await loadColorSupplies(
+    state,
+    contract,
+    publicClient,
+    manifest.files.colorSupplies,
+  )
 
   if (SEAL_AFTER_LOAD && !state.sealed) {
     await submit(
@@ -132,7 +167,9 @@ async function main() {
 
   if (SEAL_AFTER_LOAD || state.sealed) {
     const onchainHash = await contract.read.datasetHash()
-    if (onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()) {
+    if (
+      onchainHash.toLowerCase() !== manifest.hashes.datasetHash.toLowerCase()
+    ) {
       throw new Error(`datasetHash mismatch: ${onchainHash}`)
     }
     console.log(`sealed datasetHash ${onchainHash}`)
@@ -162,8 +199,14 @@ async function loadBlob(
     `blob ${blobName}: loading chunks ${startIndex}..${chunks - 1} (${bytes.length} bytes, ${fileName})`,
   )
   for (let index = startIndex; index < chunks; index++) {
-    const chunk = bytes.slice(index * CHUNK_SIZE, Math.min(bytes.length, (index + 1) * CHUNK_SIZE))
-    await submit(publicClient, contract.write.loadBlobChunk([blobId, index, bytesToHex(chunk)]))
+    const chunk = bytes.slice(
+      index * CHUNK_SIZE,
+      Math.min(bytes.length, (index + 1) * CHUNK_SIZE),
+    )
+    await submit(
+      publicClient,
+      contract.write.loadBlobChunk([blobId, index, bytesToHex(chunk)]),
+    )
     state.blobs[blobName] = index + 1
     await saveState(state)
   }
@@ -176,10 +219,14 @@ async function loadUint256Batches(
   method: WordMethod,
   fileName: string,
 ) {
-  const words = readUint256Words(new Uint8Array(await readFile(join(OUTPUT_DIR, fileName))))
+  const words = readUint256Words(
+    new Uint8Array(await readFile(join(OUTPUT_DIR, fileName))),
+  )
   const startIndex = state.words[method]
   if (startIndex >= words.length) {
-    console.log(`${method}: already loaded (${words.length}/${words.length} words)`)
+    console.log(
+      `${method}: already loaded (${words.length}/${words.length} words)`,
+    )
     return
   }
   console.log(
@@ -206,13 +253,19 @@ async function loadColorSupplies(
   }
   const startIndex = state.colorSupplies
   if (startIndex >= supplies.length) {
-    console.log(`color supplies: already loaded (${supplies.length}/${supplies.length})`)
+    console.log(
+      `color supplies: already loaded (${supplies.length}/${supplies.length})`,
+    )
     return
   }
   console.log(
     `color supplies: loading entries ${startIndex}..${supplies.length - 1} (${supplies.length} total)`,
   )
-  for (let start = startIndex; start < supplies.length; start += STORAGE_BATCH) {
+  for (
+    let start = startIndex;
+    start < supplies.length;
+    start += STORAGE_BATCH
+  ) {
     const batch = supplies.slice(start, start + STORAGE_BATCH)
     await submit(publicClient, contract.write.loadColorSupplies([start, batch]))
     state.colorSupplies = start + batch.length
@@ -230,7 +283,8 @@ async function resolvePunksDataAddress(publicClient: any): Promise<Address> {
     return getAddress(process.env.PUNKS_DATA_ADDRESS)
   }
   const chainId = await publicClient.getChainId()
-  const deploymentId = process.env.PUNKS_DATA_DEPLOYMENT_ID ?? `chain-${chainId}`
+  const deploymentId =
+    process.env.PUNKS_DATA_DEPLOYMENT_ID ?? `chain-${chainId}`
   const deployedAddressesPath = join(
     'ignition/deployments',
     deploymentId,
@@ -241,10 +295,9 @@ async function resolvePunksDataAddress(publicClient: any): Promise<Address> {
       `No PunksData address found. Set PUNKS_DATA_ADDRESS, or deploy first: hardhat ignition deploy ignition/modules/PunksData.ts --network <network>`,
     )
   }
-  const deployed = JSON.parse(await readFile(deployedAddressesPath, 'utf8')) as Record<
-    string,
-    string
-  >
+  const deployed = JSON.parse(
+    await readFile(deployedAddressesPath, 'utf8'),
+  ) as Record<string, string>
   const address = deployed['PunksData#PunksData']
   if (!address) {
     throw new Error(`PunksData#PunksData not found in ${deployedAddressesPath}`)
@@ -280,13 +333,16 @@ function freshState(address: Address, chainId: number): LoadState {
   }
 }
 
-async function loadOrInitState(address: Address, chainId: number): Promise<LoadState> {
+async function loadOrInitState(
+  address: Address,
+  chainId: number,
+): Promise<LoadState> {
   const path = stateFilePath(chainId)
   if (!existsSync(path)) return freshState(address, chainId)
   const existing = JSON.parse(await readFile(path, 'utf8')) as LoadState
   if (
-    existing.address.toLowerCase() !== address.toLowerCase()
-    || existing.chainId !== chainId
+    existing.address.toLowerCase() !== address.toLowerCase() ||
+    existing.chainId !== chainId
   ) {
     throw new Error(
       `State file ${path} mismatches current address/chainId (file: ${existing.address} on ${existing.chainId}, want: ${address} on ${chainId}). Delete it to start fresh.`,
@@ -303,11 +359,13 @@ async function saveState(state: LoadState) {
 }
 
 function readUint256Words(bytes: Uint8Array): bigint[] {
-  if (bytes.length % 32 !== 0) throw new Error('uint256 file length is not word-aligned')
+  if (bytes.length % 32 !== 0)
+    throw new Error('uint256 file length is not word-aligned')
   const words: bigint[] = []
   for (let offset = 0; offset < bytes.length; offset += 32) {
     let value = 0n
-    for (let i = 0; i < 32; i++) value = (value << 8n) | BigInt(bytes[offset + i])
+    for (let i = 0; i < 32; i++)
+      value = (value << 8n) | BigInt(bytes[offset + i])
     words.push(value)
   }
   return words

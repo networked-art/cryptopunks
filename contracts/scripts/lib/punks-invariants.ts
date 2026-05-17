@@ -20,7 +20,8 @@ function unpackScalar(packedScalars: bigint[], punkId: number) {
   const wordIndex = Math.floor(punkId / SCALARS_PER_WORD)
   const slot = punkId % SCALARS_PER_WORD
   const word = packedScalars[wordIndex]
-  const scalar = (word >> (BigInt(slot) * SCALAR_BITS)) & ((1n << SCALAR_BITS) - 1n)
+  const scalar =
+    (word >> (BigInt(slot) * SCALAR_BITS)) & ((1n << SCALAR_BITS) - 1n)
   return {
     pixelCount: Number(scalar & 0xffffn),
     colorCount: Number((scalar >> 16n) & 0xffn),
@@ -30,7 +31,10 @@ function unpackScalar(packedScalars: bigint[], punkId: number) {
   }
 }
 
-export function assertPopcountMatchesAttributeCount(dataset: BuiltDataset, ids?: number[]): void {
+export function assertPopcountMatchesAttributeCount(
+  dataset: BuiltDataset,
+  ids?: number[],
+): void {
   const targets = ids ?? Array.from({ length: PUNK_COUNT }, (_, i) => i)
   for (const punkId of targets) {
     const mask = dataset.traitMasks[punkId]
@@ -56,9 +60,12 @@ export function assertHeadTypeConsistency(
     const row = rowById.get(punkId)
     if (!row) continue
     const parsed = parseAttributes(row.attributes)
-    const expectedType = HEAD_VARIANT_TO_TYPE[parsed.headVariant as (typeof HEAD_VARIANTS)[number]]
+    const expectedType =
+      HEAD_VARIANT_TO_TYPE[parsed.headVariant as (typeof HEAD_VARIANTS)[number]]
     if (expectedType === undefined) {
-      throw new Error(`Punk ${punkId}: unknown head variant ${parsed.headVariant}`)
+      throw new Error(
+        `Punk ${punkId}: unknown head variant ${parsed.headVariant}`,
+      )
     }
     const scalar = unpackScalar(dataset.packedScalars, punkId)
     const actualType = NORMALIZED_TYPES[scalar.punkType]
@@ -94,12 +101,16 @@ export function assertPaletteAlphas(dataset: BuiltDataset): void {
     const alphaHex = dataset.palette[i].slice(6, 8)
     const alpha = Number.parseInt(alphaHex, 16)
     if (alpha !== 0x00 && alpha !== 0x80 && alpha !== 0xff) {
-      throw new Error(`palette[${i}] alpha=0x${alphaHex} not in {0x00, 0x80, 0xff}`)
+      throw new Error(
+        `palette[${i}] alpha=0x${alphaHex} not in {0x00, 0x80, 0xff}`,
+      )
     }
     if (alpha === 0x00) transparentCount += 1
   }
   if (transparentCount !== 1) {
-    throw new Error(`Expected exactly one transparent palette entry, got ${transparentCount}`)
+    throw new Error(
+      `Expected exactly one transparent palette entry, got ${transparentCount}`,
+    )
   }
 }
 
@@ -148,11 +159,15 @@ export function assertCompressedPixelsRoundTripToSource(
       (punkId + 1) * PIXELS_PER_PUNK,
     )
     if (!bytesEqual(decoded, decodedFromIndexedPixels)) {
-      throw new Error(`Punk ${punkId}: decoded sparse pixels != stored indexedPixels`)
+      throw new Error(
+        `Punk ${punkId}: decoded sparse pixels != stored indexedPixels`,
+      )
     }
     const reconstructedRgba = indexedToRgba(decoded, dataset.palette)
     if (reconstructedRgba.length !== RGBA_BYTES_PER_PUNK) {
-      throw new Error(`Punk ${punkId}: reconstructed rgba length ${reconstructedRgba.length}`)
+      throw new Error(
+        `Punk ${punkId}: reconstructed rgba length ${reconstructedRgba.length}`,
+      )
     }
     if (!bytesEqual(reconstructedRgba, row.image)) {
       throw new Error(`Punk ${punkId}: reconstructed rgba != source punkImage`)

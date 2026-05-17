@@ -33,17 +33,23 @@ describe('bitmap utilities', () => {
     const a = punkBitmapFromIds([1, 2, 3, 9999])
     const b = punkBitmapFromIds([3, 4, 9999])
 
-    assert.deepEqual(bitmapToPunkIds(unionPunkBitmaps([a, b])), [1, 2, 3, 4, 9999])
+    assert.deepEqual(
+      bitmapToPunkIds(unionPunkBitmaps([a, b])),
+      [1, 2, 3, 4, 9999],
+    )
     assert.deepEqual(bitmapToPunkIds(intersectPunkBitmaps([a, b])), [3, 9999])
     assert.deepEqual(bitmapToPunkIds(subtractPunkBitmaps(a, b)), [1, 2])
   })
 
   it('paginates ids in ascending punk order', () => {
     const bitmap = fullPunkBitmap()
-    assert.deepEqual(bitmapToPunkIds(bitmap, { offset: 9984, limit: 20 }), [
-      9984, 9985, 9986, 9987, 9988, 9989, 9990, 9991, 9992, 9993,
-      9994, 9995, 9996, 9997, 9998, 9999,
-    ])
+    assert.deepEqual(
+      bitmapToPunkIds(bitmap, { offset: 9984, limit: 20 }),
+      [
+        9984, 9985, 9986, 9987, 9988, 9989, 9990, 9991, 9992, 9993, 9994, 9995,
+        9996, 9997, 9998, 9999,
+      ],
+    )
   })
 
   it('returns an empty page for a zero limit', () => {

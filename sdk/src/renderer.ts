@@ -58,25 +58,33 @@ export class PunksRendererClient {
     )
   }
 
-  async getPunksDataAddress(options?: PunksRendererReadOptions): Promise<Address> {
+  async getPunksDataAddress(
+    options?: PunksRendererReadOptions,
+  ): Promise<Address> {
     return this.cached('PUNKS_DATA', options, () =>
       this.read<Address>('PUNKS_DATA', [], options),
     )
   }
 
-  async getPunksMarketAddress(options?: PunksRendererReadOptions): Promise<Address> {
+  async getPunksMarketAddress(
+    options?: PunksRendererReadOptions,
+  ): Promise<Address> {
     return this.cached('PUNKS_MARKET', options, () =>
       this.read<Address>('PUNKS_MARKET', [], options),
     )
   }
 
-  async getWrapperAddress(options?: PunksRendererReadOptions): Promise<Address> {
+  async getWrapperAddress(
+    options?: PunksRendererReadOptions,
+  ): Promise<Address> {
     return this.cached('WRAPPER', options, () =>
       this.read<Address>('WRAPPER', [], options),
     )
   }
 
-  async getC721WrapperAddress(options?: PunksRendererReadOptions): Promise<Address> {
+  async getC721WrapperAddress(
+    options?: PunksRendererReadOptions,
+  ): Promise<Address> {
     return this.cached('C721_WRAPPER', options, () =>
       this.read<Address>('C721_WRAPPER', [], options),
     )
@@ -125,9 +133,13 @@ export class PunksRendererClient {
   ): Promise<Uint8Array> {
     validatePunkId(punkId)
     return this.cached(`punkImage:${punkId}`, options, async () => {
-      const bytes = hexToBytes(await this.read<Hex>('punkImage', [punkId], options))
+      const bytes = hexToBytes(
+        await this.read<Hex>('punkImage', [punkId], options),
+      )
       if (bytes.length !== PIXELS_PER_PUNK * 4) {
-        throw new PunksDataValidationError('punkImage must contain 2304 RGBA bytes')
+        throw new PunksDataValidationError(
+          'punkImage must contain 2304 RGBA bytes',
+        )
       }
       return bytes
     })
@@ -178,7 +190,9 @@ export class PunksRendererClient {
     options?: PunksRendererReadOptions,
   ): Promise<Uint8Array> {
     validatePunkId(punkId)
-    return hexToBytes(await this.read<Hex>('punkMarketplacePng', [punkId], options))
+    return hexToBytes(
+      await this.read<Hex>('punkMarketplacePng', [punkId], options),
+    )
   }
 
   async getBackground(
@@ -201,9 +215,11 @@ export class PunksRendererClient {
       args,
       ...blockParams(options),
     }
-    return (this.publicClient.readContract as unknown as (value: typeof params) => Promise<T>)(
-      params,
-    )
+    return (
+      this.publicClient.readContract as unknown as (
+        value: typeof params,
+      ) => Promise<T>
+    )(params)
   }
 
   private cached<T>(
@@ -218,7 +234,10 @@ export class PunksRendererClient {
     return promise
   }
 
-  private getCached<T>(key: string, options?: PunksRendererReadOptions): Promise<T> | undefined {
+  private getCached<T>(
+    key: string,
+    options?: PunksRendererReadOptions,
+  ): Promise<T> | undefined {
     if (!this.shouldCache(options)) return undefined
     return this.cache.get(cacheKey(key, options)) as Promise<T> | undefined
   }
@@ -232,7 +251,8 @@ export class PunksRendererClient {
     const resolvedKey = cacheKey(key, options)
     this.cache.set(resolvedKey, promise)
     promise.catch(() => {
-      if (this.cache.get(resolvedKey) === promise) this.cache.delete(resolvedKey)
+      if (this.cache.get(resolvedKey) === promise)
+        this.cache.delete(resolvedKey)
     })
   }
 
@@ -259,7 +279,9 @@ function parsePunkMetadata(json: string): PunkMetadata {
   try {
     const value = JSON.parse(json) as unknown
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      throw new PunksDataValidationError('metadataJson must contain a JSON object')
+      throw new PunksDataValidationError(
+        'metadataJson must contain a JSON object',
+      )
     }
     return value as PunkMetadata
   } catch (error) {
@@ -273,14 +295,16 @@ function blockParams(options?: PunksRendererReadOptions): {
   blockTag?: PunksRendererReadOptions['blockTag']
 } {
   validateReadOptions(options)
-  if (options?.blockNumber !== undefined) return { blockNumber: options.blockNumber }
+  if (options?.blockNumber !== undefined)
+    return { blockNumber: options.blockNumber }
   if (options?.blockTag !== undefined) return { blockTag: options.blockTag }
   return {}
 }
 
 function cacheKey(key: string, options?: PunksRendererReadOptions): string {
   validateReadOptions(options)
-  if (options?.blockNumber !== undefined) return `${key}@${options.blockNumber.toString()}`
+  if (options?.blockNumber !== undefined)
+    return `${key}@${options.blockNumber.toString()}`
   if (options?.blockTag !== undefined) return `${key}@${options.blockTag}`
   return `${key}@default`
 }
@@ -295,10 +319,15 @@ function validateReadOptions(options?: PunksRendererReadOptions): void {
   }
   if (options.blockNumber !== undefined) {
     if (typeof options.blockNumber !== 'bigint' || options.blockNumber < 0n) {
-      throw new PunksDataValidationError('blockNumber must be a non-negative bigint')
+      throw new PunksDataValidationError(
+        'blockNumber must be a non-negative bigint',
+      )
     }
   }
-  if (options.blockTag !== undefined && !READ_BLOCK_TAGS.has(options.blockTag)) {
+  if (
+    options.blockTag !== undefined &&
+    !READ_BLOCK_TAGS.has(options.blockTag)
+  ) {
     throw new PunksDataValidationError(
       'blockTag must be latest, earliest, pending, safe, or finalized',
     )

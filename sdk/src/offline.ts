@@ -108,9 +108,7 @@ export type OfflinePunksSearchFileKey =
   | 'packedScalars'
   | 'colorSupplies'
 
-export type OfflinePunksPixelFileKey =
-  | 'pixelOffsets'
-  | 'compressedPixels'
+export type OfflinePunksPixelFileKey = 'pixelOffsets' | 'compressedPixels'
 
 export type OfflinePunksDataBundle = {
   manifestJson: string
@@ -314,8 +312,13 @@ export class OfflinePunksDataClient {
 
   assertCanonicalDatasetSync(options?: PunksDataReadOptions): void {
     validateOfflineReadOptions(options)
-    if (this.getDatasetHashSync().toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {
-      throw new PunksDataValidationError('offline data does not match the canonical dataset')
+    if (
+      this.getDatasetHashSync().toLowerCase() !==
+      PUNKS_DATA_DATASET_HASH.toLowerCase()
+    ) {
+      throw new PunksDataValidationError(
+        'offline data does not match the canonical dataset',
+      )
     }
   }
 
@@ -338,7 +341,10 @@ export class OfflinePunksDataClient {
     return traitId < TRAIT_COUNT
   }
 
-  async isValidTraitId(traitId: number, options?: PunksDataReadOptions): Promise<boolean> {
+  async isValidTraitId(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<boolean> {
     return this.isValidTraitIdSync(traitId, options)
   }
 
@@ -348,7 +354,10 @@ export class OfflinePunksDataClient {
     return this.store.traits[traitId].name
   }
 
-  async getTraitName(traitId: number, options?: PunksDataReadOptions): Promise<string> {
+  async getTraitName(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     return this.getTraitNameSync(traitId, options)
   }
 
@@ -358,7 +367,10 @@ export class OfflinePunksDataClient {
     return this.store.traits[traitId].kindId
   }
 
-  async getTraitKind(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getTraitKind(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getTraitKindSync(traitId, options)
   }
 
@@ -368,11 +380,18 @@ export class OfflinePunksDataClient {
     return this.store.traits[traitId].supply
   }
 
-  async getTraitSupply(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getTraitSupply(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getTraitSupplySync(traitId, options)
   }
 
-  hasTraitSync(punkId: number, trait: TraitRef, options?: PunksDataReadOptions): boolean {
+  hasTraitSync(
+    punkId: number,
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): boolean {
     validateOfflineReadOptions(options)
     validatePunkId(punkId)
     const traitId = this.resolveTraitIdSync(trait)
@@ -393,7 +412,10 @@ export class OfflinePunksDataClient {
     return this.store.traitMasks[punkId]
   }
 
-  async getTraitMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+  async getTraitMask(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
     return this.getTraitMaskSync(punkId, options)
   }
 
@@ -422,7 +444,13 @@ export class OfflinePunksDataClient {
     anyOfMask: bigint,
     options?: PunksDataReadOptions,
   ): Promise<boolean> {
-    return this.hasTraitsSync(punkId, requiredMask, forbiddenMask, anyOfMask, options)
+    return this.hasTraitsSync(
+      punkId,
+      requiredMask,
+      forbiddenMask,
+      anyOfMask,
+      options,
+    )
   }
 
   matchesTraitCriteriaSync(
@@ -467,12 +495,20 @@ export class OfflinePunksDataClient {
     return this.getTraitBitmapWordSync(trait, wordIndex, options)
   }
 
-  getTraitBitmapSync(trait: TraitRef, options?: PunksDataReadOptions): PunkBitmap {
+  getTraitBitmapSync(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): PunkBitmap {
     validateOfflineReadOptions(options)
-    return normalizePunkBitmap(this.store.traitBitmaps[this.resolveTraitIdSync(trait)])
+    return normalizePunkBitmap(
+      this.store.traitBitmaps[this.resolveTraitIdSync(trait)],
+    )
   }
 
-  async getTraitBitmap(trait: TraitRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
+  async getTraitBitmap(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PunkBitmap> {
     return this.getTraitBitmapSync(trait, options)
   }
 
@@ -482,7 +518,9 @@ export class OfflinePunksDataClient {
   ): Map<number, PunkBitmap> {
     validateOfflineReadOptions(options)
     const ids = this.resolveTraitIdsSync(traits)
-    return new Map(ids.map((id) => [id, normalizePunkBitmap(this.store.traitBitmaps[id])]))
+    return new Map(
+      ids.map((id) => [id, normalizePunkBitmap(this.store.traitBitmaps[id])]),
+    )
   }
 
   async getTraitBitmaps(
@@ -498,7 +536,10 @@ export class OfflinePunksDataClient {
     return this.store.scalars[punkId].punkType
   }
 
-  async getPunkType(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getPunkType(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getPunkTypeSync(punkId, options)
   }
 
@@ -508,17 +549,26 @@ export class OfflinePunksDataClient {
     return this.store.scalars[punkId].headVariant
   }
 
-  async getHeadVariant(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getHeadVariant(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getHeadVariantSync(punkId, options)
   }
 
-  getAttributeCountSync(punkId: number, options?: PunksDataReadOptions): number {
+  getAttributeCountSync(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): number {
     validateOfflineReadOptions(options)
     validatePunkId(punkId)
     return this.store.scalars[punkId].attributeCount
   }
 
-  async getAttributeCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getAttributeCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getAttributeCountSync(punkId, options)
   }
 
@@ -534,11 +584,16 @@ export class OfflinePunksDataClient {
   getColorSync(color: ColorRef, options?: PunksDataReadOptions): PaletteColor {
     validateOfflineReadOptions(options)
     const colorId = this.resolveColorIdSync(color)
-    const rgba = bytesToHex(this.store.paletteBytes.slice(colorId * 4, colorId * 4 + 4))
+    const rgba = bytesToHex(
+      this.store.paletteBytes.slice(colorId * 4, colorId * 4 + 4),
+    )
     return colorRecord(colorId, rgba, this.store.colorSupplies[colorId])
   }
 
-  async getColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
+  async getColor(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PaletteColor> {
     return this.getColorSync(color, options)
   }
 
@@ -547,7 +602,10 @@ export class OfflinePunksDataClient {
     return this.store.colorSupplies[this.resolveColorIdSync(color)]
   }
 
-  async getColorSupply(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+  async getColorSupply(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getColorSupplySync(color, options)
   }
 
@@ -557,15 +615,25 @@ export class OfflinePunksDataClient {
     return this.store.colorMasks[punkId]
   }
 
-  async getColorMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+  async getColorMask(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
     return this.getColorMaskSync(punkId, options)
   }
 
-  hasColorSync(punkId: number, color: ColorRef, options?: PunksDataReadOptions): boolean {
+  hasColorSync(
+    punkId: number,
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): boolean {
     validateOfflineReadOptions(options)
     validatePunkId(punkId)
     const colorId = this.resolveColorIdSync(color)
-    return colorId !== 0 && ((this.store.colorMasks[punkId] >> BigInt(colorId)) & 1n) === 1n
+    return (
+      colorId !== 0 &&
+      ((this.store.colorMasks[punkId] >> BigInt(colorId)) & 1n) === 1n
+    )
   }
 
   async hasColor(
@@ -582,7 +650,10 @@ export class OfflinePunksDataClient {
     return this.store.scalars[punkId].pixelCount
   }
 
-  async getPixelCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getPixelCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getPixelCountSync(punkId, options)
   }
 
@@ -592,7 +663,10 @@ export class OfflinePunksDataClient {
     return this.store.scalars[punkId].colorCount
   }
 
-  async getColorCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getColorCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getColorCountSync(punkId, options)
   }
 
@@ -615,12 +689,20 @@ export class OfflinePunksDataClient {
     return this.getColorBitmapWordSync(color, wordIndex, options)
   }
 
-  getColorBitmapSync(color: ColorRef, options?: PunksDataReadOptions): PunkBitmap {
+  getColorBitmapSync(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): PunkBitmap {
     validateOfflineReadOptions(options)
-    return normalizePunkBitmap(this.store.colorBitmaps[this.resolveColorIdSync(color)])
+    return normalizePunkBitmap(
+      this.store.colorBitmaps[this.resolveColorIdSync(color)],
+    )
   }
 
-  async getColorBitmap(color: ColorRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
+  async getColorBitmap(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PunkBitmap> {
     return this.getColorBitmapSync(color, options)
   }
 
@@ -630,7 +712,9 @@ export class OfflinePunksDataClient {
   ): Map<number, PunkBitmap> {
     validateOfflineReadOptions(options)
     const ids = this.resolveColorIdsSync(colors)
-    return new Map(ids.map((id) => [id, normalizePunkBitmap(this.store.colorBitmaps[id])]))
+    return new Map(
+      ids.map((id) => [id, normalizePunkBitmap(this.store.colorBitmaps[id])]),
+    )
   }
 
   async getColorBitmaps(
@@ -648,7 +732,10 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     validatePixelCount(pixelCount)
     validateBitmapWordIndex(wordIndex)
-    return punkBitmapWord(this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN], wordIndex)
+    return punkBitmapWord(
+      this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN],
+      wordIndex,
+    )
   }
 
   async getPixelCountBitmapWord(
@@ -665,7 +752,9 @@ export class OfflinePunksDataClient {
   ): PunkBitmap {
     validateOfflineReadOptions(options)
     validatePixelCount(pixelCount)
-    return normalizePunkBitmap(this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN])
+    return normalizePunkBitmap(
+      this.store.pixelCountBitmaps[pixelCount - PIXEL_COUNT_MIN],
+    )
   }
 
   async getPixelCountBitmap(
@@ -683,7 +772,10 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     validateColorCount(colorCount)
     validateBitmapWordIndex(wordIndex)
-    return punkBitmapWord(this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN], wordIndex)
+    return punkBitmapWord(
+      this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN],
+      wordIndex,
+    )
   }
 
   async getColorCountBitmapWord(
@@ -700,7 +792,9 @@ export class OfflinePunksDataClient {
   ): PunkBitmap {
     validateOfflineReadOptions(options)
     validateColorCount(colorCount)
-    return normalizePunkBitmap(this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN])
+    return normalizePunkBitmap(
+      this.store.colorCountBitmaps[colorCount - COLOR_COUNT_MIN],
+    )
   }
 
   async getColorCountBitmap(
@@ -710,7 +804,10 @@ export class OfflinePunksDataClient {
     return this.getColorCountBitmapSync(colorCount, options)
   }
 
-  getIndexedPixelsSync(punkId: number, options?: PunksDataReadOptions): Uint8Array {
+  getIndexedPixelsSync(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Uint8Array {
     validateOfflineReadOptions(options)
     validatePunkId(punkId)
     let pixels = this.indexedPixelsCache.get(punkId)
@@ -754,7 +851,9 @@ export class OfflinePunksDataClient {
     return this.store.paletteBytes.slice()
   }
 
-  async getPaletteRgbaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteRgbaBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.getPaletteRgbaBytesSync(options)
   }
 
@@ -769,7 +868,9 @@ export class OfflinePunksDataClient {
     return out
   }
 
-  async getPaletteRgbBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteRgbBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.getPaletteRgbBytesSync(options)
   }
 
@@ -782,7 +883,9 @@ export class OfflinePunksDataClient {
     return out
   }
 
-  async getPaletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteAlphaBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.getPaletteAlphaBytesSync(options)
   }
 
@@ -792,7 +895,9 @@ export class OfflinePunksDataClient {
     validateOfflineReadOptions(options)
     const includeSupplies = options?.includeSupplies ?? false
     return Array.from({ length: PALETTE_SIZE }, (_, colorId) => {
-      const rgba = bytesToHex(this.store.paletteBytes.slice(colorId * 4, colorId * 4 + 4))
+      const rgba = bytesToHex(
+        this.store.paletteBytes.slice(colorId * 4, colorId * 4 + 4),
+      )
       return colorRecord(
         colorId,
         rgba,
@@ -807,14 +912,20 @@ export class OfflinePunksDataClient {
     return this.getPaletteSync(options)
   }
 
-  getRgbaPixelsSync(punkId: number, options?: PunksDataReadOptions): Uint8Array {
+  getRgbaPixelsSync(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Uint8Array {
     return indexedPixelsToRgbaOffline(
       this.getIndexedPixelsSync(punkId, options),
       this.store.paletteBytes,
     )
   }
 
-  async getRgbaPixels(punkId: number, options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getRgbaPixels(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.getRgbaPixelsSync(punkId, options)
   }
 
@@ -823,11 +934,16 @@ export class OfflinePunksDataClient {
     return this.store.traits.map((record) => ({ ...record }))
   }
 
-  async getTraitCatalog(options?: PunksDataReadOptions): Promise<TraitRecord[]> {
+  async getTraitCatalog(
+    options?: PunksDataReadOptions,
+  ): Promise<TraitRecord[]> {
     return this.getTraitCatalogSync(options)
   }
 
-  resolveTraitSync(trait: TraitRef, options?: PunksDataReadOptions): TraitRecord {
+  resolveTraitSync(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): TraitRecord {
     validateOfflineReadOptions(options)
     if (typeof trait === 'number') {
       validateTraitId(trait)
@@ -837,7 +953,10 @@ export class OfflinePunksDataClient {
       validateTraitId(trait.id)
       return { ...this.store.traits[trait.id] }
     }
-    if (typeof trait !== 'string' && (typeof trait !== 'object' || trait === null)) {
+    if (
+      typeof trait !== 'string' &&
+      (typeof trait !== 'object' || trait === null)
+    ) {
       throw new PunksDataValidationError('trait reference needs an id or name')
     }
 
@@ -849,12 +968,17 @@ export class OfflinePunksDataClient {
     const exact = this.store.traits.find((record) => record.name === name)
     if (exact) return { ...exact }
     const lowerName = name.toLowerCase()
-    const match = this.store.traits.find((record) => record.name.toLowerCase() === lowerName)
+    const match = this.store.traits.find(
+      (record) => record.name.toLowerCase() === lowerName,
+    )
     if (!match) throw new PunksDataValidationError(`unknown trait ${name}`)
     return { ...match }
   }
 
-  async resolveTrait(trait: TraitRef, options?: PunksDataReadOptions): Promise<TraitRecord> {
+  async resolveTrait(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): Promise<TraitRecord> {
     return this.resolveTraitSync(trait, options)
   }
 
@@ -866,9 +990,12 @@ export class OfflinePunksDataClient {
     const required = this.resolveTraitIdsSync(criteria.required)
     const forbidden = this.resolveTraitIdsSync(criteria.forbidden)
     const anyOf = this.resolveTraitIdsSync(criteria.anyOf)
-    const requiredMask = (criteria.requiredMask ?? 0n) | maskFromIds(required, validateTraitId)
-    const forbiddenMask = (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateTraitId)
-    const anyOfMask = (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateTraitId)
+    const requiredMask =
+      (criteria.requiredMask ?? 0n) | maskFromIds(required, validateTraitId)
+    const forbiddenMask =
+      (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateTraitId)
+    const anyOfMask =
+      (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateTraitId)
     validateTraitCriteriaMasks(requiredMask, forbiddenMask, anyOfMask)
     return { requiredMask, forbiddenMask, anyOfMask }
   }
@@ -880,12 +1007,18 @@ export class OfflinePunksDataClient {
     return this.resolveTraitCriteriaSync(criteria, options)
   }
 
-  resolveColorSync(color: ColorRef, options?: PunksDataReadOptions): PaletteColor {
+  resolveColorSync(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): PaletteColor {
     validateOfflineReadOptions(options)
     return this.getColorSync(color)
   }
 
-  async resolveColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
+  async resolveColor(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PaletteColor> {
     return this.resolveColorSync(color, options)
   }
 
@@ -897,9 +1030,12 @@ export class OfflinePunksDataClient {
     const required = this.resolveColorIdsSync(criteria.required)
     const forbidden = this.resolveColorIdsSync(criteria.forbidden)
     const anyOf = this.resolveColorIdsSync(criteria.anyOf)
-    const requiredMask = (criteria.requiredMask ?? 0n) | maskFromIds(required, validateColorId)
-    const forbiddenMask = (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateColorId)
-    const anyOfMask = (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateColorId)
+    const requiredMask =
+      (criteria.requiredMask ?? 0n) | maskFromIds(required, validateColorId)
+    const forbiddenMask =
+      (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateColorId)
+    const anyOfMask =
+      (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateColorId)
     validateColorCriteriaMasks(requiredMask, forbiddenMask, anyOfMask)
     return { requiredMask, forbiddenMask, anyOfMask }
   }
@@ -920,7 +1056,10 @@ export class OfflinePunksDataClient {
     let bitmap = fullPunkBitmap()
 
     if (query.text !== undefined) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextSync(query.text)])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForTextSync(query.text),
+      ])
     }
     if (query.attributes !== undefined) {
       bitmap = intersectPunkBitmaps([
@@ -929,7 +1068,10 @@ export class OfflinePunksDataClient {
       ])
     }
     if (query.colors !== undefined) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForColorCriteriaSync(query.colors)])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForColorCriteriaSync(query.colors),
+      ])
     }
     const pixelCounts = normalizeNumericRange(
       'pixelCount',
@@ -941,7 +1083,9 @@ export class OfflinePunksDataClient {
       bitmap = intersectPunkBitmaps([
         bitmap,
         unionPunkBitmaps(
-          pixelCounts.map((count) => this.store.pixelCountBitmaps[count - PIXEL_COUNT_MIN]),
+          pixelCounts.map(
+            (count) => this.store.pixelCountBitmaps[count - PIXEL_COUNT_MIN],
+          ),
         ),
       ])
     }
@@ -955,7 +1099,9 @@ export class OfflinePunksDataClient {
       bitmap = intersectPunkBitmaps([
         bitmap,
         unionPunkBitmaps(
-          colorCounts.map((count) => this.store.colorCountBitmaps[count - COLOR_COUNT_MIN]),
+          colorCounts.map(
+            (count) => this.store.colorCountBitmaps[count - COLOR_COUNT_MIN],
+          ),
         ),
       ])
     }
@@ -968,14 +1114,22 @@ export class OfflinePunksDataClient {
     if (attributeCounts !== undefined) {
       bitmap = intersectPunkBitmaps([
         bitmap,
-        unionPunkBitmaps(attributeCounts.map((count) => this.bitmapForAttributeCount(count))),
+        unionPunkBitmaps(
+          attributeCounts.map((count) => this.bitmapForAttributeCount(count)),
+        ),
       ])
     }
     if (query.punkType !== undefined) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForPunkTypes(query.punkType)])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForPunkTypes(query.punkType),
+      ])
     }
     if (query.headVariant !== undefined) {
-      bitmap = intersectPunkBitmaps([bitmap, this.bitmapForHeadVariants(query.headVariant)])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        this.bitmapForHeadVariants(query.headVariant),
+      ])
     }
     if (query.ids !== undefined) {
       bitmap = intersectPunkBitmaps([bitmap, punkBitmapFromIds(query.ids)])
@@ -994,7 +1148,10 @@ export class OfflinePunksDataClient {
     return this.searchBitmapSync(query, options)
   }
 
-  searchSync(query: OfflinePunksSearchQuery = {}, options?: PunksDataReadOptions): number[] {
+  searchSync(
+    query: OfflinePunksSearchQuery = {},
+    options?: PunksDataReadOptions,
+  ): number[] {
     validateOfflinePagination(query)
     const sort = query.sort ?? 'id'
     const bitmap = this.searchBitmapSync(query, options)
@@ -1016,7 +1173,10 @@ export class OfflinePunksDataClient {
     return this.searchSync(query, options)
   }
 
-  countSync(query: OfflinePunksSearchQuery = {}, options?: PunksDataReadOptions): number {
+  countSync(
+    query: OfflinePunksSearchQuery = {},
+    options?: PunksDataReadOptions,
+  ): number {
     return countPunkBitmap(this.searchBitmapSync(query, options))
   }
 
@@ -1046,25 +1206,39 @@ export class OfflinePunksDataClient {
       punkTypes: punkTypeNames.map((name, value) => ({
         value,
         name,
-        count: countIntersection(bitmap, this.bitmapForPunkTypes(value as PunkTypeValue)),
+        count: countIntersection(
+          bitmap,
+          this.bitmapForPunkTypes(value as PunkTypeValue),
+        ),
       })),
       headVariants: headVariantNames.map((name, value) => ({
         value,
         name,
-        count: countIntersection(bitmap, this.bitmapForHeadVariants(value as HeadVariantValue)),
+        count: countIntersection(
+          bitmap,
+          this.bitmapForHeadVariants(value as HeadVariantValue),
+        ),
       })),
       pixelCounts: range(PIXEL_COUNT_MIN, PIXEL_COUNT_MAX).map((value) => ({
         value,
-        count: countIntersection(bitmap, this.store.pixelCountBitmaps[value - PIXEL_COUNT_MIN]),
+        count: countIntersection(
+          bitmap,
+          this.store.pixelCountBitmaps[value - PIXEL_COUNT_MIN],
+        ),
       })),
       colorCounts: range(COLOR_COUNT_MIN, COLOR_COUNT_MAX).map((value) => ({
         value,
-        count: countIntersection(bitmap, this.store.colorCountBitmaps[value - COLOR_COUNT_MIN]),
+        count: countIntersection(
+          bitmap,
+          this.store.colorCountBitmaps[value - COLOR_COUNT_MIN],
+        ),
       })),
-      attributeCounts: range(ATTRIBUTE_COUNT_MIN, ATTRIBUTE_COUNT_MAX).map((value) => ({
-        value,
-        count: countIntersection(bitmap, this.bitmapForAttributeCount(value)),
-      })),
+      attributeCounts: range(ATTRIBUTE_COUNT_MIN, ATTRIBUTE_COUNT_MAX).map(
+        (value) => ({
+          value,
+          count: countIntersection(bitmap, this.bitmapForAttributeCount(value)),
+        }),
+      ),
     }
   }
 
@@ -1111,7 +1285,9 @@ export class OfflinePunksDataClient {
       const punkTypeName = punkTypeNames[scalar.punkType]
       const headVariantName = headVariantNames[scalar.headVariant]
       if (punkTypeName === undefined) {
-        throw new PunksDataValidationError(`unknown punk type ${scalar.punkType} for punk ${punkId}`)
+        throw new PunksDataValidationError(
+          `unknown punk type ${scalar.punkType} for punk ${punkId}`,
+        )
       }
       if (headVariantName === undefined) {
         throw new PunksDataValidationError(
@@ -1133,8 +1309,12 @@ export class OfflinePunksDataClient {
         punkTypeName,
         headVariant: scalar.headVariant,
         headVariantName,
-        traits: catalog === undefined ? undefined : traitIds.map((id) => ({ ...catalog[id] })),
-        colors: palette === undefined ? undefined : colorIds.map((id) => palette[id]),
+        traits:
+          catalog === undefined
+            ? undefined
+            : traitIds.map((id) => ({ ...catalog[id] })),
+        colors:
+          palette === undefined ? undefined : colorIds.map((id) => palette[id]),
         indexedPixels: summaryOptions.includePixels
           ? this.getIndexedPixelsSync(punkId)
           : undefined,
@@ -1164,12 +1344,16 @@ export class OfflinePunksDataClient {
       return color
     }
     if (typeof color !== 'string') {
-      throw new PunksDataValidationError('color reference must be a color id or hex string')
+      throw new PunksDataValidationError(
+        'color reference must be a color id or hex string',
+      )
     }
     const rgba = normalizeRgbaHex(color)
     for (let colorId = 0; colorId < PALETTE_SIZE; colorId++) {
       const offset = colorId * 4
-      const candidate = bytesToHex(this.store.paletteBytes.slice(offset, offset + 4))
+      const candidate = bytesToHex(
+        this.store.paletteBytes.slice(offset, offset + 4),
+      )
       if (candidate.toLowerCase() === rgba.toLowerCase()) return colorId
     }
     throw new PunksDataValidationError(`unknown palette color ${color}`)
@@ -1179,12 +1363,19 @@ export class OfflinePunksDataClient {
     return uniqueNumbers(colors.map((color) => this.resolveColorIdSync(color)))
   }
 
-  private bitmapForAttributeCriteriaSync(criteria: AttributeCriteriaInput): PunkBitmap {
+  private bitmapForAttributeCriteriaSync(
+    criteria: AttributeCriteriaInput,
+  ): PunkBitmap {
     const masks = this.resolveTraitCriteriaSync(criteria)
     const requiredIds = idsFromMask(masks.requiredMask, TRAIT_COUNT)
     const forbiddenIds = idsFromMask(masks.forbiddenMask, TRAIT_COUNT)
     const anyOfIds = idsFromMask(masks.anyOfMask, TRAIT_COUNT)
-    return applyCriteriaRows(requiredIds, forbiddenIds, anyOfIds, this.store.traitBitmaps)
+    return applyCriteriaRows(
+      requiredIds,
+      forbiddenIds,
+      anyOfIds,
+      this.store.traitBitmaps,
+    )
   }
 
   private bitmapForColorCriteriaSync(criteria: ColorCriteriaInput): PunkBitmap {
@@ -1192,7 +1383,12 @@ export class OfflinePunksDataClient {
     const requiredIds = idsFromMask(masks.requiredMask, PALETTE_SIZE)
     const forbiddenIds = idsFromMask(masks.forbiddenMask, PALETTE_SIZE)
     const anyOfIds = idsFromMask(masks.anyOfMask, PALETTE_SIZE)
-    return applyCriteriaRows(requiredIds, forbiddenIds, anyOfIds, this.store.colorBitmaps)
+    return applyCriteriaRows(
+      requiredIds,
+      forbiddenIds,
+      anyOfIds,
+      this.store.colorBitmaps,
+    )
   }
 
   private bitmapForTextSync(text: string): PunkBitmap {
@@ -1202,10 +1398,14 @@ export class OfflinePunksDataClient {
     const groups = parseOfflinePunksSearchText(text)
     if (groups.length === 0) return fullPunkBitmap()
 
-    return unionPunkBitmaps(groups.map((terms) => this.bitmapForTextGroupSync(terms)))
+    return unionPunkBitmaps(
+      groups.map((terms) => this.bitmapForTextGroupSync(terms)),
+    )
   }
 
-  private bitmapForTextGroupSync(terms: readonly OfflinePunksTextSearchTerm[]): PunkBitmap {
+  private bitmapForTextGroupSync(
+    terms: readonly OfflinePunksTextSearchTerm[],
+  ): PunkBitmap {
     let bitmap = fullPunkBitmap()
     for (const term of terms) {
       bitmap = intersectPunkBitmaps([bitmap, this.bitmapForTextTermSync(term)])
@@ -1247,20 +1447,41 @@ export class OfflinePunksDataClient {
     }
   }
 
-  private bitmapForPunkTypes(input: PunkTypeRef | readonly PunkTypeRef[]): PunkBitmap {
+  private bitmapForPunkTypes(
+    input: PunkTypeRef | readonly PunkTypeRef[],
+  ): PunkBitmap {
     const values = normalizeArray(input).map((ref) => resolvePunkTypeRef(ref))
-    return unionPunkBitmaps(values.map((value) => this.bitmapForTraitKindName('NormalizedType', punkTypeNames[value])))
+    return unionPunkBitmaps(
+      values.map((value) =>
+        this.bitmapForTraitKindName('NormalizedType', punkTypeNames[value]),
+      ),
+    )
   }
 
-  private bitmapForHeadVariants(input: HeadVariantRef | readonly HeadVariantRef[]): PunkBitmap {
-    const values = normalizeArray(input).map((ref) => resolveHeadVariantRef(ref))
-    return unionPunkBitmaps(values.map((value) => this.bitmapForTraitKindName('HeadVariant', headVariantNames[value])))
+  private bitmapForHeadVariants(
+    input: HeadVariantRef | readonly HeadVariantRef[],
+  ): PunkBitmap {
+    const values = normalizeArray(input).map((ref) =>
+      resolveHeadVariantRef(ref),
+    )
+    return unionPunkBitmaps(
+      values.map((value) =>
+        this.bitmapForTraitKindName('HeadVariant', headVariantNames[value]),
+      ),
+    )
   }
 
   private bitmapForAttributeCount(count: number): PunkBitmap {
-    assertIntegerInRange('attributeCount', count, ATTRIBUTE_COUNT_MIN, ATTRIBUTE_COUNT_MAX)
+    assertIntegerInRange(
+      'attributeCount',
+      count,
+      ATTRIBUTE_COUNT_MIN,
+      ATTRIBUTE_COUNT_MAX,
+    )
     const trait = this.store.traits.find(
-      (record) => record.kind === 'AttributeCount' && record.name === `${count} Attributes`,
+      (record) =>
+        record.kind === 'AttributeCount' &&
+        record.name === `${count} Attributes`,
     )
     if (trait) return this.store.traitBitmaps[trait.id]
 
@@ -1271,49 +1492,72 @@ export class OfflinePunksDataClient {
     return punkBitmapFromIds(ids)
   }
 
-  private bitmapForTraitKindName(kind: TraitKindName, name: string): PunkBitmap {
-    const trait = this.store.traits.find((record) => record.kind === kind && record.name === name)
+  private bitmapForTraitKindName(
+    kind: TraitKindName,
+    name: string,
+  ): PunkBitmap {
+    const trait = this.store.traits.find(
+      (record) => record.kind === kind && record.name === name,
+    )
     return trait ? this.store.traitBitmaps[trait.id] : emptyPunkBitmap()
   }
 
   private sortPunkIds(ids: number[], sort: OfflinePunksSearchSort): number[] {
     const sorted = [...ids]
     const compareById = (a: number, b: number) => a - b
-    const compareMetric = (metric: (id: number) => number, desc = false) => (a: number, b: number) => {
-      const diff = metric(a) - metric(b)
-      return (desc ? -diff : diff) || compareById(a, b)
-    }
+    const compareMetric =
+      (metric: (id: number) => number, desc = false) =>
+      (a: number, b: number) => {
+        const diff = metric(a) - metric(b)
+        return (desc ? -diff : diff) || compareById(a, b)
+      }
 
     if (sort === 'id') return sorted
     if (sort === 'id-desc') return sorted.reverse()
-    if (sort === 'rarity') return sorted.sort(compareMetric((id) => this.rarityScore(id)))
+    if (sort === 'rarity')
+      return sorted.sort(compareMetric((id) => this.rarityScore(id)))
     if (sort === 'rarity-desc') {
       return sorted.sort(compareMetric((id) => this.rarityScore(id), true))
     }
     if (sort === 'pixelCount') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].pixelCount))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].pixelCount),
+      )
     }
     if (sort === 'pixelCount-desc') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].pixelCount, true))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].pixelCount, true),
+      )
     }
     if (sort === 'colorCount') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].colorCount))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].colorCount),
+      )
     }
     if (sort === 'colorCount-desc') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].colorCount, true))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].colorCount, true),
+      )
     }
     if (sort === 'attributeCount') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].attributeCount))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].attributeCount),
+      )
     }
     if (sort === 'attributeCount-desc') {
-      return sorted.sort(compareMetric((id) => this.store.scalars[id].attributeCount, true))
+      return sorted.sort(
+        compareMetric((id) => this.store.scalars[id].attributeCount, true),
+      )
     }
-    throw new PunksDataValidationError(`unknown offline search sort ${String(sort)}`)
+    throw new PunksDataValidationError(
+      `unknown offline search sort ${String(sort)}`,
+    )
   }
 
   private rarityScore(punkId: number): number {
     return idsFromMask(this.store.traitMasks[punkId], TRAIT_COUNT).reduce(
-      (score, traitId) => score + Math.log(this.store.traits[traitId].supply || 1),
+      (score, traitId) =>
+        score + Math.log(this.store.traits[traitId].supply || 1),
       0,
     )
   }
@@ -1346,7 +1590,9 @@ export async function loadOfflinePunksDataFromDirectory(
   const keys = offlineFileKeysForLoad(options)
   await Promise.all(
     keys.map(async (key) => {
-      files[key] = new Uint8Array(await readFile(join(directory, manifest.files[key])))
+      files[key] = new Uint8Array(
+        await readFile(join(directory, manifest.files[key])),
+      )
     }),
   )
   return { manifest, files }
@@ -1372,11 +1618,15 @@ export async function loadOfflinePunksDataFromUrl(
   return { manifest, files }
 }
 
-function offlineFileKeysForLoad(options: LoadOfflinePunksDataOptions): readonly OfflinePunksDataFileKey[] {
+function offlineFileKeysForLoad(
+  options: LoadOfflinePunksDataOptions,
+): readonly OfflinePunksDataFileKey[] {
   return options.includePixels === false ? SEARCH_FILE_KEYS : FILE_KEYS
 }
 
-function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBundle): OfflineStore {
+function parseOfflineStore(
+  source: OfflinePunksDataSource | OfflinePunksDataBundle,
+): OfflineStore {
   const normalized = normalizeOfflineSource(source)
   const manifest = parseManifest(normalized.manifest)
   validateManifest(manifest)
@@ -1412,13 +1662,26 @@ function parseOfflineStore(source: OfflinePunksDataSource | OfflinePunksDataBund
     PALETTE_SIZE,
     'colorSupplies',
   )
-  const traitMasks = parseTraitMaskPairs(requiredFile(normalized.files, 'traitMaskPairs'))
-  const colorMasks = parseWordArray(requiredFile(normalized.files, 'colorMasks'), PUNK_COUNT, 'colorMasks')
-  const scalars = parsePackedScalars(requiredFile(normalized.files, 'packedScalars'))
+  const traitMasks = parseTraitMaskPairs(
+    requiredFile(normalized.files, 'traitMaskPairs'),
+  )
+  const colorMasks = parseWordArray(
+    requiredFile(normalized.files, 'colorMasks'),
+    PUNK_COUNT,
+    'colorMasks',
+  )
+  const scalars = parsePackedScalars(
+    requiredFile(normalized.files, 'packedScalars'),
+  )
   const textIndex = buildTextSearchIndex(traits, traitBitmaps)
-  const pixelOffsets = normalized.files.pixelOffsets === undefined
-    ? undefined
-    : expectLength(normalized.files.pixelOffsets, (PUNK_COUNT + 1) * 3, 'pixelOffsets')
+  const pixelOffsets =
+    normalized.files.pixelOffsets === undefined
+      ? undefined
+      : expectLength(
+          normalized.files.pixelOffsets,
+          (PUNK_COUNT + 1) * 3,
+          'pixelOffsets',
+        )
   const compressedPixels = normalized.files.compressedPixels
 
   return {
@@ -1445,7 +1708,8 @@ function normalizeOfflineSource(
   if ('manifestJson' in source) {
     const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
     for (const key of FILE_KEYS) {
-      if (source.files[key] !== undefined) files[key] = decodeBase64(source.files[key])
+      if (source.files[key] !== undefined)
+        files[key] = decodeBase64(source.files[key])
     }
     return {
       manifest: source.manifestJson,
@@ -1455,7 +1719,8 @@ function normalizeOfflineSource(
 
   const files = {} as Partial<Record<OfflinePunksDataFileKey, Uint8Array>>
   for (const key of FILE_KEYS) {
-    if (source.files[key] !== undefined) files[key] = normalizeFileBytes(source.files[key], key)
+    if (source.files[key] !== undefined)
+      files[key] = normalizeFileBytes(source.files[key], key)
   }
   return {
     manifest: source.manifest,
@@ -1463,7 +1728,10 @@ function normalizeOfflineSource(
   }
 }
 
-function normalizeFileBytes(value: Uint8Array | string, key: string): Uint8Array {
+function normalizeFileBytes(
+  value: Uint8Array | string,
+  key: string,
+): Uint8Array {
   if (value instanceof Uint8Array) return value
   if (typeof value === 'string') return decodeBase64(value)
   throw new PunksDataValidationError(`${key} must be bytes or a base64 string`)
@@ -1480,7 +1748,9 @@ function requiredFile(
   return file
 }
 
-function parseManifest(input: string | OfflinePunksDataManifest): OfflinePunksDataManifest {
+function parseManifest(
+  input: string | OfflinePunksDataManifest,
+): OfflinePunksDataManifest {
   const parsed = typeof input === 'string' ? JSON.parse(input) : input
   if (typeof parsed !== 'object' || parsed === null) {
     throw new PunksDataValidationError('offline manifest must be an object')
@@ -1490,20 +1760,30 @@ function parseManifest(input: string | OfflinePunksDataManifest): OfflinePunksDa
 
 function validateManifest(manifest: OfflinePunksDataManifest): void {
   if (manifest.counts?.punks !== PUNK_COUNT) {
-    throw new PunksDataValidationError(`offline manifest must contain ${PUNK_COUNT} punks`)
+    throw new PunksDataValidationError(
+      `offline manifest must contain ${PUNK_COUNT} punks`,
+    )
   }
   if (manifest.counts.traits !== TRAIT_COUNT) {
-    throw new PunksDataValidationError(`offline manifest must contain ${TRAIT_COUNT} traits`)
+    throw new PunksDataValidationError(
+      `offline manifest must contain ${TRAIT_COUNT} traits`,
+    )
   }
   if (manifest.counts.colors !== PALETTE_SIZE) {
-    throw new PunksDataValidationError(`offline manifest must contain ${PALETTE_SIZE} colors`)
+    throw new PunksDataValidationError(
+      `offline manifest must contain ${PALETTE_SIZE} colors`,
+    )
   }
   if (typeof manifest.hashes?.datasetHash !== 'string') {
-    throw new PunksDataValidationError('offline manifest is missing hashes.datasetHash')
+    throw new PunksDataValidationError(
+      'offline manifest is missing hashes.datasetHash',
+    )
   }
   for (const key of FILE_KEYS) {
     if (typeof manifest.files?.[key] !== 'string') {
-      throw new PunksDataValidationError(`offline manifest is missing files.${key}`)
+      throw new PunksDataValidationError(
+        `offline manifest is missing files.${key}`,
+      )
     }
   }
 }
@@ -1511,7 +1791,9 @@ function validateManifest(manifest: OfflinePunksDataManifest): void {
 function parseTraitMeta(bytes: Uint8Array): TraitRecord[] {
   const headerLength = TRAIT_COUNT * 6
   if (bytes.length < headerLength) {
-    throw new PunksDataValidationError('traitMeta is shorter than its fixed record header')
+    throw new PunksDataValidationError(
+      'traitMeta is shorter than its fixed record header',
+    )
   }
   const decoder = new TextDecoder()
   return Array.from({ length: TRAIT_COUNT }, (_, id) => {
@@ -1523,11 +1805,15 @@ function parseTraitMeta(bytes: Uint8Array): TraitRecord[] {
     const nameStart = headerLength + nameOffset
     const nameEnd = nameStart + nameLength
     if (nameEnd > bytes.length) {
-      throw new PunksDataValidationError(`traitMeta name ${id} is out of bounds`)
+      throw new PunksDataValidationError(
+        `traitMeta name ${id} is out of bounds`,
+      )
     }
     const kind = traitKindNames[kindId]
     if (kind === undefined) {
-      throw new PunksDataValidationError(`unknown trait kind ${kindId} for trait ${id}`)
+      throw new PunksDataValidationError(
+        `unknown trait kind ${kindId} for trait ${id}`,
+      )
     }
     return {
       id,
@@ -1539,7 +1825,11 @@ function parseTraitMeta(bytes: Uint8Array): TraitRecord[] {
   })
 }
 
-function parseBitmapTable(bytes: Uint8Array, rows: number, label: string): PunkBitmap[] {
+function parseBitmapTable(
+  bytes: Uint8Array,
+  rows: number,
+  label: string,
+): PunkBitmap[] {
   expectLength(bytes, rows * BITMAP_WORD_COUNT * 32, label)
   return Array.from({ length: rows }, (_, row) => {
     const bitmap = emptyPunkBitmap()
@@ -1547,7 +1837,10 @@ function parseBitmapTable(bytes: Uint8Array, rows: number, label: string): PunkB
     for (let wordIndex = 0; wordIndex < BITMAP_WORD_COUNT; wordIndex++) {
       const wordOffset = rowOffset + wordIndex * 32
       for (let lane = 0; lane < 8; lane++) {
-        bitmap[wordIndex * 8 + lane] = readUint32(bytes, wordOffset + (7 - lane) * 4)
+        bitmap[wordIndex * 8 + lane] = readUint32(
+          bytes,
+          wordOffset + (7 - lane) * 4,
+        )
       }
     }
     return normalizePunkBitmap(bitmap)
@@ -1564,7 +1857,11 @@ function parseTraitMaskPairs(bytes: Uint8Array): bigint[] {
 }
 
 function parsePackedScalars(bytes: Uint8Array): PackedScalar[] {
-  const words = parseWordArray(bytes, Math.ceil(PUNK_COUNT / SCALARS_PER_WORD), 'packedScalars')
+  const words = parseWordArray(
+    bytes,
+    Math.ceil(PUNK_COUNT / SCALARS_PER_WORD),
+    'packedScalars',
+  )
   return Array.from({ length: PUNK_COUNT }, (_, punkId) => {
     const word = words[Math.floor(punkId / SCALARS_PER_WORD)]
     const shift = BigInt(punkId % SCALARS_PER_WORD) * SCALAR_BITS
@@ -1579,12 +1876,22 @@ function parsePackedScalars(bytes: Uint8Array): PackedScalar[] {
   })
 }
 
-function parseWordArray(bytes: Uint8Array, words: number, label: string): bigint[] {
+function parseWordArray(
+  bytes: Uint8Array,
+  words: number,
+  label: string,
+): bigint[] {
   expectLength(bytes, words * 32, label)
-  return Array.from({ length: words }, (_, wordIndex) => readUint256(bytes, wordIndex * 32))
+  return Array.from({ length: words }, (_, wordIndex) =>
+    readUint256(bytes, wordIndex * 32),
+  )
 }
 
-function parseUint32Array(bytes: Uint8Array, length: number, label: string): number[] {
+function parseUint32Array(
+  bytes: Uint8Array,
+  length: number,
+  label: string,
+): number[] {
   expectLength(bytes, length * 4, label)
   return Array.from({ length }, (_, index) => readUint32(bytes, index * 4))
 }
@@ -1594,11 +1901,15 @@ function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
   const start = readUint24(pixelOffsets, punkId * 3)
   const end = readUint24(pixelOffsets, (punkId + 1) * 3)
   if (end <= start || end > compressedPixels.length) {
-    throw new PunksDataValidationError(`compressed pixel entry ${punkId} is malformed`)
+    throw new PunksDataValidationError(
+      `compressed pixel entry ${punkId} is malformed`,
+    )
   }
   const entry = compressedPixels.slice(start, end)
   if (entry.length < COMPRESSED_PIXEL_HEADER_SIZE) {
-    throw new PunksDataValidationError(`compressed pixel entry ${punkId} is too short`)
+    throw new PunksDataValidationError(
+      `compressed pixel entry ${punkId} is too short`,
+    )
   }
 
   const visibleColorCount = entry[0]
@@ -1607,13 +1918,20 @@ function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
     visibleColorCount >= PALETTE_SIZE ||
     entry.length < COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount
   ) {
-    throw new PunksDataValidationError(`compressed pixel entry ${punkId} has invalid colors`)
+    throw new PunksDataValidationError(
+      `compressed pixel entry ${punkId} has invalid colors`,
+    )
   }
 
-  const localPalette = entry.slice(COMPRESSED_PIXEL_HEADER_SIZE, COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount)
+  const localPalette = entry.slice(
+    COMPRESSED_PIXEL_HEADER_SIZE,
+    COMPRESSED_PIXEL_HEADER_SIZE + visibleColorCount,
+  )
   for (const paletteId of localPalette) {
     if (paletteId === 0 || paletteId >= PALETTE_SIZE) {
-      throw new PunksDataValidationError(`compressed pixel entry ${punkId} has invalid palette id`)
+      throw new PunksDataValidationError(
+        `compressed pixel entry ${punkId} has invalid palette id`,
+      )
     }
   }
 
@@ -1634,7 +1952,9 @@ function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
         bitOffset += bitsPerIndex
       }
       if (localIndex >= visibleColorCount) {
-        throw new PunksDataValidationError(`compressed pixel entry ${punkId} has invalid index`)
+        throw new PunksDataValidationError(
+          `compressed pixel entry ${punkId} has invalid index`,
+        )
       }
       pixels[byteIndex * 8 + bitIndex] = localPalette[localIndex]
       visiblePixels++
@@ -1642,8 +1962,13 @@ function decodeIndexedPixels(store: OfflineStore, punkId: number): Uint8Array {
   }
 
   const expectedIndexBytes = Math.ceil(bitOffset / 8)
-  if (entry.length !== indexesOffset + expectedIndexBytes || visiblePixels === 0) {
-    throw new PunksDataValidationError(`compressed pixel entry ${punkId} length mismatch`)
+  if (
+    entry.length !== indexesOffset + expectedIndexBytes ||
+    visiblePixels === 0
+  ) {
+    throw new PunksDataValidationError(
+      `compressed pixel entry ${punkId} length mismatch`,
+    )
   }
   assertIndexedPixels(pixels)
   return pixels
@@ -1653,7 +1978,10 @@ function requirePixelData(store: OfflineStore): {
   pixelOffsets: Uint8Array
   compressedPixels: Uint8Array
 } {
-  if (store.pixelOffsets === undefined || store.compressedPixels === undefined) {
+  if (
+    store.pixelOffsets === undefined ||
+    store.compressedPixels === undefined
+  ) {
     throw new PunksDataValidationError(
       'offline pixel data is not loaded; pass a dataset that includes pixelOffsets and compressedPixels',
     )
@@ -1686,13 +2014,22 @@ function applyCriteriaRows(
 ): PunkBitmap {
   let bitmap = fullPunkBitmap()
   if (requiredIds.length > 0) {
-    bitmap = intersectPunkBitmaps([bitmap, ...requiredIds.map((id) => rows[id])])
+    bitmap = intersectPunkBitmaps([
+      bitmap,
+      ...requiredIds.map((id) => rows[id]),
+    ])
   }
   if (anyOfIds.length > 0) {
-    bitmap = intersectPunkBitmaps([bitmap, unionPunkBitmaps(anyOfIds.map((id) => rows[id]))])
+    bitmap = intersectPunkBitmaps([
+      bitmap,
+      unionPunkBitmaps(anyOfIds.map((id) => rows[id])),
+    ])
   }
   if (forbiddenIds.length > 0) {
-    bitmap = subtractPunkBitmaps(bitmap, unionPunkBitmaps(forbiddenIds.map((id) => rows[id])))
+    bitmap = subtractPunkBitmaps(
+      bitmap,
+      unionPunkBitmaps(forbiddenIds.map((id) => rows[id])),
+    )
   }
   return bitmap
 }
@@ -1736,8 +2073,11 @@ function resolvePunkTypeRef(ref: PunkTypeRef): PunkTypeValue {
     return ref as PunkTypeValue
   }
   const normalized = normalizeSearchText(ref)
-  const index = punkTypeNames.findIndex((name) => normalizeSearchText(name) === normalized)
-  if (index < 0) throw new PunksDataValidationError(`unknown punk type ${String(ref)}`)
+  const index = punkTypeNames.findIndex(
+    (name) => normalizeSearchText(name) === normalized,
+  )
+  if (index < 0)
+    throw new PunksDataValidationError(`unknown punk type ${String(ref)}`)
   return index as PunkTypeValue
 }
 
@@ -1752,11 +2092,14 @@ function resolveHeadVariantRef(ref: HeadVariantRef): HeadVariantValue {
     const candidate = normalizeSearchText(name)
     return candidate === normalized || candidate.replaceAll(' ', '') === compact
   })
-  if (index < 0) throw new PunksDataValidationError(`unknown head variant ${String(ref)}`)
+  if (index < 0)
+    throw new PunksDataValidationError(`unknown head variant ${String(ref)}`)
   return index as HeadVariantValue
 }
 
-export function parseOfflinePunksSearchText(input: string): OfflinePunksTextSearchTerm[][] {
+export function parseOfflinePunksSearchText(
+  input: string,
+): OfflinePunksTextSearchTerm[][] {
   if (typeof input !== 'string') {
     throw new PunksDataValidationError('text search must be a string')
   }
@@ -1815,7 +2158,11 @@ function normalizeSearchText(value: string): string {
     .trim()
 }
 
-function matchesTextIndexKey(key: string, term: string, exact: boolean): boolean {
+function matchesTextIndexKey(
+  key: string,
+  term: string,
+  exact: boolean,
+): boolean {
   return exact ? key === term : key.startsWith(term) || key.includes(` ${term}`)
 }
 
@@ -1823,10 +2170,16 @@ function parsePunkIdText(term: string): number | undefined {
   const clean = term.startsWith('#') ? term.slice(1) : term
   if (!/^\d+$/.test(clean)) return undefined
   const punkId = Number(clean)
-  return Number.isInteger(punkId) && punkId >= 0 && punkId < PUNK_COUNT ? punkId : undefined
+  return Number.isInteger(punkId) && punkId >= 0 && punkId < PUNK_COUNT
+    ? punkId
+    : undefined
 }
 
-function paginateIds(ids: number[], offset = 0, limit = Number.POSITIVE_INFINITY): number[] {
+function paginateIds(
+  ids: number[],
+  offset = 0,
+  limit = Number.POSITIVE_INFINITY,
+): number[] {
   if (limit === Number.POSITIVE_INFINITY) return ids.slice(offset)
   return ids.slice(offset, offset + limit)
 }
@@ -1853,7 +2206,9 @@ function validateOfflineReadOptions(options?: PunksDataReadOptions): void {
     throw new PunksDataValidationError('read options must be an object')
   }
   if (options.blockNumber !== undefined || options.blockTag !== undefined) {
-    throw new PunksDataValidationError('offline data is immutable and does not accept block options')
+    throw new PunksDataValidationError(
+      'offline data is immutable and does not accept block options',
+    )
   }
 }
 
@@ -1862,7 +2217,8 @@ function validateOfflinePagination(query: OfflinePunksSearchQuery): void {
   if (query.offset !== undefined) {
     assertIntegerInRange('offset', query.offset, 0, Number.MAX_SAFE_INTEGER)
   }
-  if (query.limit === undefined || query.limit === Number.POSITIVE_INFINITY) return
+  if (query.limit === undefined || query.limit === Number.POSITIVE_INFINITY)
+    return
   assertIntegerInRange('limit', query.limit, 0, Number.MAX_SAFE_INTEGER)
 }
 
@@ -1871,19 +2227,29 @@ function validateOfflineSearchQuery(query: OfflinePunksSearchQuery): void {
     throw new PunksDataValidationError('search query must be an object')
   }
   if (Object.prototype.hasOwnProperty.call(query, 'traits')) {
-    throw new PunksDataValidationError('search query uses attributes, not traits')
+    throw new PunksDataValidationError(
+      'search query uses attributes, not traits',
+    )
   }
 }
 
 function assertIntegerLike(label: string, value: number): void {
   if (!Number.isInteger(value) || value < 0) {
-    throw new PunksDataValidationError(`${label} must be a non-negative integer`)
+    throw new PunksDataValidationError(
+      `${label} must be a non-negative integer`,
+    )
   }
 }
 
-function expectLength(bytes: Uint8Array, expected: number, label: string): Uint8Array {
+function expectLength(
+  bytes: Uint8Array,
+  expected: number,
+  label: string,
+): Uint8Array {
   if (bytes.length !== expected) {
-    throw new PunksDataValidationError(`${label} must be ${expected} bytes, got ${bytes.length}`)
+    throw new PunksDataValidationError(
+      `${label} must be ${expected} bytes, got ${bytes.length}`,
+    )
   }
   return bytes
 }
@@ -1911,13 +2277,20 @@ function readUint256(bytes: Uint8Array, offset: number): bigint {
   return value
 }
 
-function readBits(data: Uint8Array, byteOffset: number, bitOffset: number, bitLength: number): number {
+function readBits(
+  data: Uint8Array,
+  byteOffset: number,
+  bitOffset: number,
+  bitLength: number,
+): number {
   let value = 0
   for (let i = 0; i < bitLength; i++) {
     const absoluteBit = bitOffset + i
     const byteIndex = byteOffset + (absoluteBit >> 3)
     if (byteIndex >= data.length) {
-      throw new PunksDataValidationError('compressed pixel bits are out of bounds')
+      throw new PunksDataValidationError(
+        'compressed pixel bits are out of bounds',
+      )
     }
     const bit = (data[byteIndex] >> (7 - (absoluteBit & 7))) & 1
     value = (value << 1) | bit
@@ -1936,7 +2309,8 @@ function bitsForPalette(visibleColorCount: number): number {
 }
 
 function decodeBase64(value: string): Uint8Array {
-  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(value, 'base64'))
+  if (typeof Buffer !== 'undefined')
+    return new Uint8Array(Buffer.from(value, 'base64'))
   const binary = globalThis.atob(value)
   const out = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i)

@@ -36,7 +36,10 @@ describe('PunksSdk', () => {
     assert.equal(transparentSvg.includes("<rect width='24' height='24'"), false)
 
     const png = punks.render.png(8348)
-    assert.deepEqual([...png.slice(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    assert.deepEqual(
+      [...png.slice(0, 8)],
+      [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    )
     assert.equal(punks.render.metadata(8348).name, 'CryptoPunk 8348')
   })
 
@@ -95,10 +98,16 @@ describe('PunksSdk', () => {
       priceWei: 5n,
       onlySellTo: BUYER,
     })
-    assert.equal(privateListing.request.functionName, 'offerPunkForSaleToAddress')
+    assert.equal(
+      privateListing.request.functionName,
+      'offerPunkForSaleToAddress',
+    )
     assert.deepEqual(privateListing.request.args, [10n, 5n, BUYER])
 
-    assert.equal(await punks.market.list({ punkId: 10, priceWei: 5n }), '0x1234')
+    assert.equal(
+      await punks.market.list({ punkId: 10, priceWei: 5n }),
+      '0x1234',
+    )
     assert.equal(writes[0].functionName, 'offerPunkForSale')
     assert.equal(writes[0].account, BUYER)
 
@@ -106,7 +115,10 @@ describe('PunksSdk', () => {
     assert.equal(enterBid.request.functionName, 'enterBidForPunk')
     assert.equal(enterBid.request.value, 7n)
 
-    const acceptBid = punks.market.prepareAcceptBid({ punkId: 10, minPriceWei: 6n })
+    const acceptBid = punks.market.prepareAcceptBid({
+      punkId: 10,
+      minPriceWei: 6n,
+    })
     assert.equal(acceptBid.request.functionName, 'acceptBidForPunk')
     assert.deepEqual(acceptBid.request.args, [10n, 6n])
 
@@ -134,7 +146,10 @@ describe('PunksSdk', () => {
       punkId: 123,
       stash: STASH,
     })
-    assert.deepEqual(c721Flow.map((plan) => plan.request.functionName), ['transferPunk', 'wrapPunk'])
+    assert.deepEqual(
+      c721Flow.map((plan) => plan.request.functionName),
+      ['transferPunk', 'wrapPunk'],
+    )
 
     const legacyProxy = punks.wrappers.legacy.prepareRegisterProxy()
     assert.equal(legacyProxy.request.address, WRAPPED_PUNKS_ADDRESS)
@@ -172,7 +187,9 @@ describe('PunksSdk', () => {
     assert.equal(process.request.functionName, 'processPunkBid')
     assert.equal(process.request.args[1], 123n)
 
-    const typedData = stash.typedDataForPunkBid({ bid: process.request.args[0] })
+    const typedData = stash.typedDataForPunkBid({
+      bid: process.request.args[0],
+    })
     assert.equal(typedData.domain.verifyingContract, STASH)
     assert.equal(typedData.domain.chainId, 1)
     assert.equal(typedData.primaryType, 'PunkBid')
@@ -196,7 +213,8 @@ describe('PunksSdk', () => {
     assert.equal(bid.request.value, 150n)
 
     assert.throws(
-      () => createPunksSdk().auctions.prepareBid({ auctionId: 1n, amountWei: 1n }),
+      () =>
+        createPunksSdk().auctions.prepareBid({ auctionId: 1n, amountWei: 1n }),
       PunksDataValidationError,
     )
   })

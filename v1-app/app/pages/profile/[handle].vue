@@ -1,40 +1,112 @@
 <template>
   <div class="container profile-page">
     <header class="profile-head">
-      <h1 v-if="ensProfile.data.value?.ens" class="profile-name">{{ ensProfile.data.value.ens }}</h1>
-      <h1 v-else class="profile-name muted">{{ shortAddr }}</h1>
+      <h1
+        v-if="ensProfile.data.value?.ens"
+        class="profile-name"
+      >
+        {{ ensProfile.data.value.ens }}
+      </h1>
+      <h1
+        v-else
+        class="profile-name muted"
+      >
+        {{ shortAddr }}
+      </h1>
 
       <ClientOnly>
-        <p v-if="resolvedAddress" class="profile-address muted">{{ resolvedAddress }}</p>
-        <p v-else-if="resolving" class="muted">Resolving…</p>
-        <p v-else class="error">Could not resolve {{ handle }}</p>
+        <p
+          v-if="resolvedAddress"
+          class="profile-address muted"
+        >
+          {{ resolvedAddress }}
+        </p>
+        <p
+          v-else-if="resolving"
+          class="muted"
+        >
+          Resolving…
+        </p>
+        <p
+          v-else
+          class="error"
+        >
+          Could not resolve {{ handle }}
+        </p>
       </ClientOnly>
     </header>
 
     <ClientOnly>
-      <div v-if="resolvedAddress" class="profile-cols">
+      <div
+        v-if="resolvedAddress"
+        class="profile-cols"
+      >
         <section class="profile-section">
           <h2 class="section-title">Owned punks</h2>
-          <p v-if="ownedLoading" class="muted">Loading…</p>
-          <p v-else-if="ownedError" class="error">Could not load owned punks. Configure <code>NUXT_PUBLIC_INDEXER_URL</code> for instant results.</p>
-          <PunkGrid v-else-if="owned.length" :ids="owned" :size="48" />
-          <p v-else class="muted">No punks held.</p>
+          <p
+            v-if="ownedLoading"
+            class="muted"
+          >
+            Loading…
+          </p>
+          <p
+            v-else-if="ownedError"
+            class="error"
+          >
+            Could not load owned punks. Configure
+            <code>NUXT_PUBLIC_INDEXER_URL</code> for instant results.
+          </p>
+          <PunkGrid
+            v-else-if="owned.length"
+            :ids="owned"
+            :size="48"
+          />
+          <p
+            v-else
+            class="muted"
+          >
+            No punks held.
+          </p>
         </section>
 
         <section class="profile-section">
           <h2 class="section-title">Collection bids placed</h2>
-          <div v-if="bids.length" class="bid-grid">
-            <BidCard v-for="b in bids" :key="String(b.id)" :bid="b" />
+          <div
+            v-if="bids.length"
+            class="bid-grid"
+          >
+            <BidCard
+              v-for="b in bids"
+              :key="String(b.id)"
+              :bid="b"
+            />
           </div>
-          <p v-else class="muted">No active collection bids.</p>
+          <p
+            v-else
+            class="muted"
+          >
+            No active collection bids.
+          </p>
         </section>
 
         <section class="profile-section">
           <h2 class="section-title">Recent activity</h2>
-          <ul v-if="activity.length" class="event-list">
-            <ActivityRow v-for="(e, i) in activity" :key="`${e.txHash}-${i}`" :event="e" />
+          <ul
+            v-if="activity.length"
+            class="event-list"
+          >
+            <ActivityRow
+              v-for="(e, i) in activity"
+              :key="`${e.txHash}-${i}`"
+              :event="e"
+            />
           </ul>
-          <p v-else class="muted">No recent activity for this address.</p>
+          <p
+            v-else
+            class="muted"
+          >
+            No recent activity for this address.
+          </p>
         </section>
       </div>
     </ClientOnly>
@@ -87,12 +159,18 @@ const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
 )
 
-const { bids } = usePunksMarketBids({ bidder: () => resolvedAddress.value ?? undefined })
-const { events: activity } = useActivityFeed({ bidder: () => resolvedAddress.value ?? undefined })
+const { bids } = usePunksMarketBids({
+  bidder: () => resolvedAddress.value ?? undefined,
+})
+const { events: activity } = useActivityFeed({
+  bidder: () => resolvedAddress.value ?? undefined,
+})
 
-const { ids: owned, loading: ownedLoading, error: ownedError } = useOwnedPunks(
-  () => resolvedAddress.value ?? undefined,
-)
+const {
+  ids: owned,
+  loading: ownedLoading,
+  error: ownedError,
+} = useOwnedPunks(() => resolvedAddress.value ?? undefined)
 </script>
 
 <style scoped>

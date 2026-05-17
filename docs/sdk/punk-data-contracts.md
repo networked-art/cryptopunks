@@ -46,7 +46,12 @@ const indexedPixels = punks.dataset.indexedPixels(8348)
 const hash = await punks.data.contract.datasetHash()
 const trait = await punks.data.contract.traitName(62)
 const pixels = await punks.data.contract.indexedPixelsOf(8348)
-const matches = await punks.data.contract.hasTraits(8348, required, forbidden, anyOf)
+const matches = await punks.data.contract.hasTraits(
+  8348,
+  required,
+  forbidden,
+  anyOf,
+)
 ```
 
 ## Legacy CryptopunksData

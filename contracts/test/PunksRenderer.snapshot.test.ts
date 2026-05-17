@@ -58,7 +58,7 @@ describe('PunksRenderer snapshot (10k)', () => {
 
   before(
     async () => {
-      ({ renderer } = await deployRendererWithFullDataset())
+      ;({ renderer } = await deployRendererWithFullDataset())
     },
     { timeout: 600_000 },
   )
@@ -102,7 +102,9 @@ async function deployRendererWithFullDataset() {
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
 
   await loadBlob(data, BlobId.Palette, palette)
   await loadBlob(data, BlobId.PixelOffsets, pixelOffsets)
@@ -126,7 +128,10 @@ async function readBin(fileName: string): Promise<Uint8Array> {
 async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const chunks = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let i = 0; i < chunks; i++) {
-    const slice = bytes.slice(i * CHUNK_SIZE, Math.min(bytes.length, (i + 1) * CHUNK_SIZE))
+    const slice = bytes.slice(
+      i * CHUNK_SIZE,
+      Math.min(bytes.length, (i + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, i, bytesToHex(slice)])
   }
 }

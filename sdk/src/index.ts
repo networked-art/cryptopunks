@@ -72,18 +72,9 @@ export {
   createPunks,
   createPunksSdk,
 } from './sdk'
-export {
-  PunksDataset,
-  createPunksDataset,
-} from './dataset'
-export {
-  PunkImageRenderer,
-  createPunkImageRenderer,
-} from './render'
-export {
-  PunksAuctionClient,
-  PunksMarketClient,
-} from './actions'
+export { PunksDataset, createPunksDataset } from './dataset'
+export { PunkImageRenderer, createPunkImageRenderer } from './render'
+export { PunksAuctionClient, PunksMarketClient } from './actions'
 export { PunksV1MarketClient } from './v1-market'
 export type {
   BidsMatchingPunkPage,
@@ -121,10 +112,7 @@ export {
   LegacyCryptoPunksDataClient,
   createLegacyCryptoPunksDataClient,
 } from './legacy-data'
-export {
-  PunksRendererClient,
-  createPunksRendererClient,
-} from './renderer'
+export { PunksRendererClient, createPunksRendererClient } from './renderer'
 export {
   CryptoPunks721Client,
   LegacyWrappedPunksClient,
@@ -219,9 +207,7 @@ export type {
   TransactionHash,
   WalletConfig,
 } from './actions'
-export type {
-  LegacyCryptoPunksDataClientConfig,
-} from './legacy-data'
+export type { LegacyCryptoPunksDataClientConfig } from './legacy-data'
 export type {
   C721BatchWrapFlowInput,
   C721StashStatus,

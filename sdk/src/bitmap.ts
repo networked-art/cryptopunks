@@ -5,7 +5,11 @@ import {
   PUNK_COUNT,
 } from './constants'
 import type { BitmapToPunkIdsOptions, PunkBitmap } from './types'
-import { PunksDataValidationError, assertIntegerInRange, validatePunkId } from './utils'
+import {
+  PunksDataValidationError,
+  assertIntegerInRange,
+  validatePunkId,
+} from './utils'
 
 const LANES_PER_BITMAP_WORD = 8
 const BITS_PER_LANE = 32
@@ -65,7 +69,10 @@ export function punkBitmapFromIds(punkIds: Iterable<number>): PunkBitmap {
   return bitmap
 }
 
-export function punkBitmapHasId(bitmap: PunkBitmapInput, punkId: number): boolean {
+export function punkBitmapHasId(
+  bitmap: PunkBitmapInput,
+  punkId: number,
+): boolean {
   validatePunkId(punkId)
   const lanes = bitmapLanes(bitmap)
   const laneIndex = Math.floor(punkId / BITS_PER_LANE)
@@ -73,7 +80,10 @@ export function punkBitmapHasId(bitmap: PunkBitmapInput, punkId: number): boolea
   return (((lanes[laneIndex] ?? 0) >>> bitIndex) & 1) === 1
 }
 
-export function punkBitmapWord(bitmap: PunkBitmapInput, wordIndex: number): bigint {
+export function punkBitmapWord(
+  bitmap: PunkBitmapInput,
+  wordIndex: number,
+): bigint {
   assertIntegerInRange('wordIndex', wordIndex, 0, BITMAP_WORD_COUNT - 1)
   if (!isTypedBitmap(bitmap)) return bitmapWordAt(bitmap, wordIndex)
 
@@ -82,7 +92,9 @@ export function punkBitmapWord(bitmap: PunkBitmapInput, wordIndex: number): bigi
   for (let lane = LANES_PER_BITMAP_WORD - 1; lane >= 0; lane--) {
     word = (word << 32n) | BigInt(bitmap[laneOffset + lane] ?? 0)
   }
-  return wordIndex === BITMAP_WORD_COUNT - 1 ? word & LAST_BITMAP_WORD_MASK : word
+  return wordIndex === BITMAP_WORD_COUNT - 1
+    ? word & LAST_BITMAP_WORD_MASK
+    : word
 }
 
 export function bitmapToPunkIds(
@@ -99,7 +111,8 @@ export function bitmapToPunkIds(
   if (!Number.isFinite(limit) && limit !== Number.POSITIVE_INFINITY) {
     throw new PunksDataValidationError('limit must be a non-negative integer')
   }
-  if (Number.isFinite(limit)) assertIntegerInRange('limit', limit, 0, Number.MAX_SAFE_INTEGER)
+  if (Number.isFinite(limit))
+    assertIntegerInRange('limit', limit, 0, Number.MAX_SAFE_INTEGER)
   if (limit === 0) return []
   if (minId > maxId) return []
 
@@ -133,15 +146,18 @@ export function countPunkBitmap(bitmap: PunkBitmapInput): number {
   const lanes = bitmapLanes(bitmap)
   let count = 0
   for (let index = 0; index <= LAST_PUNK_LANE_INDEX; index++) {
-    const lane = index === LAST_PUNK_LANE_INDEX
-      ? (lanes[index] ?? 0) & LAST_PUNK_LANE_MASK
-      : lanes[index] ?? 0
+    const lane =
+      index === LAST_PUNK_LANE_INDEX
+        ? (lanes[index] ?? 0) & LAST_PUNK_LANE_MASK
+        : (lanes[index] ?? 0)
     count += popcount32(lane)
   }
   return count
 }
 
-export function unionPunkBitmaps(bitmaps: Iterable<PunkBitmapInput>): PunkBitmap {
+export function unionPunkBitmaps(
+  bitmaps: Iterable<PunkBitmapInput>,
+): PunkBitmap {
   const out = emptyPunkBitmap()
   for (const bitmap of bitmaps) {
     const lanes = bitmapLanes(bitmap)
@@ -151,7 +167,9 @@ export function unionPunkBitmaps(bitmaps: Iterable<PunkBitmapInput>): PunkBitmap
   return out
 }
 
-export function intersectPunkBitmaps(bitmaps: Iterable<PunkBitmapInput>): PunkBitmap {
+export function intersectPunkBitmaps(
+  bitmaps: Iterable<PunkBitmapInput>,
+): PunkBitmap {
   let out: PunkBitmap | undefined
   for (const bitmap of bitmaps) {
     const lanes = bitmapLanes(bitmap)
@@ -182,7 +200,10 @@ export function invertPunkBitmap(bitmap: PunkBitmapInput): PunkBitmap {
   return subtractPunkBitmaps(fullPunkBitmap(), bitmap)
 }
 
-export function punkBitmapsEqual(a: PunkBitmapInput, b: PunkBitmapInput): boolean {
+export function punkBitmapsEqual(
+  a: PunkBitmapInput,
+  b: PunkBitmapInput,
+): boolean {
   const normalizedA = bitmapLanes(a)
   const normalizedB = bitmapLanes(b)
   for (let i = 0; i < BITMAP_LANE_COUNT; i++) {
@@ -199,10 +220,16 @@ function bitmapLanes(bitmap: PunkBitmapInput): PunkBitmap {
   return isTypedBitmap(bitmap) ? bitmap : normalizePunkBitmap(bitmap)
 }
 
-function unpackWordInto(out: PunkBitmap, wordIndex: number, word: bigint): void {
+function unpackWordInto(
+  out: PunkBitmap,
+  wordIndex: number,
+  word: bigint,
+): void {
   const laneOffset = wordIndex * LANES_PER_BITMAP_WORD
   for (let lane = 0; lane < LANES_PER_BITMAP_WORD; lane++) {
-    out[laneOffset + lane] = Number((word >> BigInt(lane * BITS_PER_LANE)) & 0xffffffffn)
+    out[laneOffset + lane] = Number(
+      (word >> BigInt(lane * BITS_PER_LANE)) & 0xffffffffn,
+    )
   }
 }
 
@@ -215,14 +242,20 @@ function bitmapWordAt(bitmap: readonly bigint[], index: number): bigint {
     throw new PunksDataValidationError(`bitmap word ${index} must be a bigint`)
   }
   if (word < 0n || word > FULL_BITMAP_WORD) {
-    throw new PunksDataValidationError(`bitmap word ${index} must be an unsigned 256-bit bigint`)
+    throw new PunksDataValidationError(
+      `bitmap word ${index} must be an unsigned 256-bit bigint`,
+    )
   }
   return index === BITMAP_WORD_COUNT - 1 ? word & LAST_BITMAP_WORD_MASK : word
 }
 
 function maskInvalidTail(bitmap: PunkBitmap): void {
   bitmap[LAST_PUNK_LANE_INDEX] &= LAST_PUNK_LANE_MASK
-  for (let index = LAST_PUNK_LANE_INDEX + 1; index < BITMAP_LANE_COUNT; index++) {
+  for (
+    let index = LAST_PUNK_LANE_INDEX + 1;
+    index < BITMAP_LANE_COUNT;
+    index++
+  ) {
     bitmap[index] = 0
   }
 }

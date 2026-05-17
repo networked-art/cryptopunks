@@ -20,20 +20,20 @@ call `wrapPunk`.
 const preflight = await punks.wrappers.modern.wrapPreflight({
   owner,
   punkId: 8348,
-});
+})
 
-preflight.currentOwner;
-preflight.expectedStash;
-preflight.stashDeployed;
-preflight.nextStep;
-preflight.canSendNextStep;
+preflight.currentOwner
+preflight.expectedStash
+preflight.stashDeployed
+preflight.nextStep
+preflight.canSendNextStep
 ```
 
 If `preflight.nextStep` is `deployStash`, deploy the Stash before depositing
 the Punk:
 
 ```ts
-await punks.wrappers.modern.deployStash(owner);
+await punks.wrappers.modern.deployStash(owner)
 ```
 
 Prepare or execute the complete flow:
@@ -42,14 +42,14 @@ Prepare or execute the complete flow:
 const steps = await punks.wrappers.modern.prepareWrapFlow({
   owner,
   punkId: 8348,
-});
+})
 
-for (const step of steps) await walletClient.writeContract(step.request);
+for (const step of steps) await walletClient.writeContract(step.request)
 
 await punks.wrappers.modern.wrapFlow({
   owner,
   punkId: 8348,
-});
+})
 ```
 
 Batch wrapping follows the same shape:
@@ -58,16 +58,16 @@ Batch wrapping follows the same shape:
 await punks.wrappers.modern.batchWrapFlow({
   owner,
   punkIds: [8348, 7804],
-});
+})
 ```
 
 Other wrapper actions:
 
 ```ts
-await punks.wrappers.modern.unwrap(8348);
-await punks.wrappers.modern.unwrapPunkBatch([8348, 7804]);
-await punks.wrappers.modern.migrateLegacyWrappedPunks([8348]);
-await punks.wrappers.modern.rescuePunk(1234);
+await punks.wrappers.modern.unwrap(8348)
+await punks.wrappers.modern.unwrapPunkBatch([8348, 7804])
+await punks.wrappers.modern.migrateLegacyWrappedPunks([8348])
+await punks.wrappers.modern.rescuePunk(1234)
 ```
 
 ## Legacy Wrapped Punks
@@ -76,16 +76,16 @@ The legacy wrapper uses a per-user proxy. Register the proxy once, transfer
 the original Punk to that proxy, then call `mint`.
 
 ```ts
-await punks.wrappers.legacy.registerProxy();
+await punks.wrappers.legacy.registerProxy()
 
 const preflight = await punks.wrappers.legacy.wrapPreflight({
   owner,
   punkId: 8348,
-});
+})
 
-preflight.expectedProxy;
-preflight.proxyRegistered;
-preflight.nextStep;
+preflight.expectedProxy
+preflight.proxyRegistered
+preflight.nextStep
 ```
 
 Prepare or execute the two-step flow:
@@ -94,12 +94,12 @@ Prepare or execute the two-step flow:
 const steps = await punks.wrappers.legacy.prepareWrapFlow({
   owner,
   punkId: 8348,
-});
+})
 
 await punks.wrappers.legacy.wrapFlow({
   owner,
   punkId: 8348,
-});
+})
 ```
 
 If no proxy is registered, `prepareWrapFlow()` rejects with a clear
@@ -116,15 +116,15 @@ const approval = await punks.wrappers.modern.approvalStatus({
   owner,
   operator,
   punkId: 8348,
-});
+})
 
-await punks.wrappers.modern.approve({ operator, punkId: 8348 });
-await punks.wrappers.modern.setApprovalForAll({ operator, approved: true });
+await punks.wrappers.modern.approve({ operator, punkId: 8348 })
+await punks.wrappers.modern.setApprovalForAll({ operator, approved: true })
 await punks.wrappers.modern.transferFrom({
   from: owner,
   to: receiver,
   punkId: 8348,
-});
+})
 ```
 
 Use the legacy client for the same operations on legacy wrapped tokens.

@@ -6,7 +6,12 @@ import {
   PUNKS_RENDERER_BACKGROUND_DEFAULT,
 } from './constants'
 import type { PunksDataset } from './dataset'
-import type { PaletteColor, PunkMetadata, PunkMetadataAttribute, PunkSummary } from './types'
+import type {
+  PaletteColor,
+  PunkMetadata,
+  PunkMetadataAttribute,
+  PunkSummary,
+} from './types'
 import {
   PunksDataValidationError,
   assertIndexedPixels,
@@ -15,7 +20,12 @@ import {
   validatePunkId,
 } from './utils'
 
-export type PunkRenderBackground = 'classic' | 'default' | 'transparent' | Hex | `#${string}`
+export type PunkRenderBackground =
+  | 'classic'
+  | 'default'
+  | 'transparent'
+  | Hex
+  | `#${string}`
 
 export type PunkRenderOptions = {
   background?: PunkRenderBackground
@@ -59,7 +69,10 @@ export class PunkImageRenderer {
   }
 
   metadata(punkId: number, options: PunkSvgOptions = {}): PunkMetadata {
-    const punk = this.dataset.get(punkId, { includeTraits: true, includeColors: true })
+    const punk = this.dataset.get(punkId, {
+      includeTraits: true,
+      includeColors: true,
+    })
     return metadataForPunk(punk, this.svgDataUri(punkId, options))
   }
 
@@ -72,7 +85,9 @@ export class PunkImageRenderer {
   }
 }
 
-export function createPunkImageRenderer(dataset: PunksDataset): PunkImageRenderer {
+export function createPunkImageRenderer(
+  dataset: PunksDataset,
+): PunkImageRenderer {
   return new PunkImageRenderer(dataset)
 }
 
@@ -104,10 +119,16 @@ function renderSvg(
       }
 
       let width = 1
-      while (x + width < PUNK_WIDTH && indexed[y * PUNK_WIDTH + x + width] === colorId) {
+      while (
+        x + width < PUNK_WIDTH &&
+        indexed[y * PUNK_WIDTH + x + width] === colorId
+      ) {
         width++
       }
-      const opacity = color.alpha === 255 ? '' : ` fill-opacity='${formatOpacity(color.alpha)}'`
+      const opacity =
+        color.alpha === 255
+          ? ''
+          : ` fill-opacity='${formatOpacity(color.alpha)}'`
       parts.push(
         `<rect x='${x}' y='${y}' width='${width}' height='1' fill='${cssRgb(color.rgba)}'${opacity}/>`,
       )
@@ -166,9 +187,21 @@ function metadataForPunk(punk: PunkSummary, image: string): PunkMetadata {
   const attributes: PunkMetadataAttribute[] = [
     { trait_type: 'Type', value: punk.punkTypeName },
     { trait_type: 'Head Variant', value: punk.headVariantName },
-    { display_type: 'number', trait_type: 'Attribute Count', value: punk.attributeCount },
-    { display_type: 'number', trait_type: 'Color Count', value: punk.colorCount },
-    { display_type: 'number', trait_type: 'Pixel Count', value: punk.pixelCount },
+    {
+      display_type: 'number',
+      trait_type: 'Attribute Count',
+      value: punk.attributeCount,
+    },
+    {
+      display_type: 'number',
+      trait_type: 'Color Count',
+      value: punk.colorCount,
+    },
+    {
+      display_type: 'number',
+      trait_type: 'Pixel Count',
+      value: punk.pixelCount,
+    },
   ]
   for (const trait of traits) {
     if (trait.kind === 'Accessory') {
@@ -185,8 +218,14 @@ function metadataForPunk(punk: PunkSummary, image: string): PunkMetadata {
   }
 }
 
-function normalizeBackground(background: PunkRenderBackground | undefined): Hex | undefined {
-  if (background === undefined || background === 'classic' || background === 'default') {
+function normalizeBackground(
+  background: PunkRenderBackground | undefined,
+): Hex | undefined {
+  if (
+    background === undefined ||
+    background === 'classic' ||
+    background === 'default'
+  ) {
     return PUNKS_RENDERER_BACKGROUND_DEFAULT
   }
   if (background === 'transparent') return undefined
@@ -203,7 +242,9 @@ function formatOpacity(alpha: number): string {
 
 function rgbaPng(rgba: Uint8Array, width: number, height: number): Uint8Array {
   if (rgba.length !== width * height * 4) {
-    throw new PunksDataValidationError('RGBA buffer length does not match image dimensions')
+    throw new PunksDataValidationError(
+      'RGBA buffer length does not match image dimensions',
+    )
   }
 
   const stride = 1 + width * 4
@@ -218,8 +259,14 @@ function rgbaPng(rgba: Uint8Array, width: number, height: number): Uint8Array {
   return pngFromScanlines(scanlines, width, height)
 }
 
-function pngFromScanlines(scanlines: Uint8Array, width: number, height: number): Uint8Array {
-  const signature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+function pngFromScanlines(
+  scanlines: Uint8Array,
+  width: number,
+  height: number,
+): Uint8Array {
+  const signature = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ])
   const ihdr = new Uint8Array(13)
   writeU32(ihdr, 0, width)
   writeU32(ihdr, 4, height)
@@ -253,7 +300,7 @@ function zlibNoCompression(data: Uint8Array): Uint8Array {
     header[0] = offset + chunk.length >= data.length ? 1 : 0
     header[1] = chunk.length & 0xff
     header[2] = chunk.length >> 8
-    const nlen = (~chunk.length) & 0xffff
+    const nlen = ~chunk.length & 0xffff
     header[3] = nlen & 0xff
     header[4] = nlen >> 8
     blocks.push(header, chunk)
@@ -308,7 +355,11 @@ function utf8Bytes(value: string): Uint8Array {
     if (code <= 0x7f) out.push(code)
     else if (code <= 0x7ff) out.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f))
     else if (code <= 0xffff) {
-      out.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f))
+      out.push(
+        0xe0 | (code >> 12),
+        0x80 | ((code >> 6) & 0x3f),
+        0x80 | (code & 0x3f),
+      )
     } else {
       out.push(
         0xf0 | (code >> 18),
@@ -322,7 +373,8 @@ function utf8Bytes(value: string): Uint8Array {
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
   let out = ''
   for (let i = 0; i < bytes.length; i += 3) {
     const a = bytes[i]

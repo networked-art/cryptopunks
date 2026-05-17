@@ -13,8 +13,12 @@ export function usePunksOffline(): PunksSdk {
 export function usePunksSdk() {
   const offline = usePunksOffline()
   const nuxtApp = useNuxtApp()
-  const dataset = nuxtApp.$punksDataset as Parameters<typeof createPunksSdk>[0] extends infer C
-    ? C extends { dataset?: infer D } ? D : never
+  const dataset = nuxtApp.$punksDataset as Parameters<
+    typeof createPunksSdk
+  >[0] extends infer C
+    ? C extends { dataset?: infer D }
+      ? D
+      : never
     : never
   const config = useConfig()
   const { address } = useAccount()

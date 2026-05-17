@@ -34,31 +34,8 @@ const RPC_URL =
 //  - min/max pixel-count and visible-color-count examples (per docs/07)
 //  - a handful spread by id for breadth
 const SNAPSHOT_IDS: readonly number[] = [
-  0, 1, 2, 4, 10, 15, 17,
-  31,
-  100,
-  117,
-  233,
-  281,
-  338,
-  372,
-  465,
-  510,
-  635,
-  641,
-  741,
-  1000,
-  1050,
-  2204,
-  3307,
-  4067,
-  5000,
-  6487,
-  6980,
-  7334,
-  8348,
-  8888,
-  9998,
+  0, 1, 2, 4, 10, 15, 17, 31, 100, 117, 233, 281, 338, 372, 465, 510, 635, 641,
+  741, 1000, 1050, 2204, 3307, 4067, 5000, 6487, 6980, 7334, 8348, 8888, 9998,
   9999,
 ]
 
@@ -76,7 +53,9 @@ async function main() {
     throw new Error(`Expected chain ${SOURCE_CHAIN_ID}, got ${chainId}`)
   }
 
-  const block = await publicClient.getBlock({ blockNumber: SOURCE_BLOCK_NUMBER })
+  const block = await publicClient.getBlock({
+    blockNumber: SOURCE_BLOCK_NUMBER,
+  })
   if (block.hash.toLowerCase() !== SOURCE_BLOCK_HASH.toLowerCase()) {
     throw new Error(`Pinned block hash mismatch: ${block.hash}`)
   }
@@ -90,7 +69,9 @@ async function main() {
     throw new Error(`Pinned source extcodehash mismatch: ${codeHash}`)
   }
 
-  console.log(`Snapshotting ${SNAPSHOT_IDS.length} Punks at block ${SOURCE_BLOCK_NUMBER}`)
+  console.log(
+    `Snapshotting ${SNAPSHOT_IDS.length} Punks at block ${SOURCE_BLOCK_NUMBER}`,
+  )
 
   const attributes: string[] = []
   const images: Uint8Array[] = []
@@ -154,7 +135,9 @@ async function main() {
   await writeFile(jsonPath, `${JSON.stringify(manifest, null, 2)}\n`)
 
   console.log(`Wrote ${jsonPath}`)
-  console.log(`Wrote ${binPath} (${concatenated.length} bytes, ${manifest.imagesSha256})`)
+  console.log(
+    `Wrote ${binPath} (${concatenated.length} bytes, ${manifest.imagesSha256})`,
+  )
 }
 
 function redactRpcUrl(url: string): string {

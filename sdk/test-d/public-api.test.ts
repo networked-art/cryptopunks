@@ -62,7 +62,8 @@ const factoryImplementation: Promise<Address> = factory.implementation(1n)
 const factoryImplementationAlias: Promise<Address> = factory.implementations(1n)
 const factoryStashAddress: Promise<Address> = factory.stashAddressFor(owner)
 const factoryDeployed: Promise<boolean> = factory.ownerHasDeployed(owner)
-const factoryOwnerStatus: Promise<StashOwnerStatus> = factory.statusForOwner(owner)
+const factoryOwnerStatus: Promise<StashOwnerStatus> =
+  factory.statusForOwner(owner)
 const factoryIsStash: Promise<boolean> = factory.isStash(stashAddress)
 const factoryIsAuction: Promise<boolean> = factory.isAuction(auction)
 const factoryDeployPlan: ContractWritePlan = factory.prepareDeployStash(owner)
@@ -146,45 +147,52 @@ punks.data.contract.isSealed
 // @ts-expect-error PunksData loader owner is not part of the public SDK client.
 punks.data.contract.owner
 
-const c721TransferPlan: ContractWritePlan = punks.wrappers.modern.prepareTransferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-})
-const c721TransferTx: Promise<TransactionHash> = punks.wrappers.modern.transferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-})
-const c721SafeTransferPlan: ContractWritePlan = punks.wrappers.modern.prepareSafeTransferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-  data: '0x',
-})
+const c721TransferPlan: ContractWritePlan =
+  punks.wrappers.modern.prepareTransferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+  })
+const c721TransferTx: Promise<TransactionHash> =
+  punks.wrappers.modern.transferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+  })
+const c721SafeTransferPlan: ContractWritePlan =
+  punks.wrappers.modern.prepareSafeTransferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+    data: '0x',
+  })
 
-const legacyTransferPlan: ContractWritePlan = punks.wrappers.legacy.prepareTransferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-})
-const legacyTransferTx: Promise<TransactionHash> = punks.wrappers.legacy.transferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-})
-const legacySafeTransferPlan: ContractWritePlan = punks.wrappers.legacy.prepareSafeTransferFrom({
-  from: owner,
-  to: receiver,
-  punkId: 8348,
-  data: '0x',
-})
+const legacyTransferPlan: ContractWritePlan =
+  punks.wrappers.legacy.prepareTransferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+  })
+const legacyTransferTx: Promise<TransactionHash> =
+  punks.wrappers.legacy.transferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+  })
+const legacySafeTransferPlan: ContractWritePlan =
+  punks.wrappers.legacy.prepareSafeTransferFrom({
+    from: owner,
+    to: receiver,
+    punkId: 8348,
+    data: '0x',
+  })
 const legacyOwner: Promise<Address> = punks.wrappers.legacy.owner()
 const legacyPaused: Promise<boolean> = punks.wrappers.legacy.paused()
-const legacyApprovalPlan: ContractWritePlan = punks.wrappers.legacy.prepareApprove({
-  operator,
-  punkId: 8348,
-})
+const legacyApprovalPlan: ContractWritePlan =
+  punks.wrappers.legacy.prepareApprove({
+    operator,
+    punkId: 8348,
+  })
 
 // @ts-expect-error Legacy wrapper metadata admin write is intentionally not public.
 punks.wrappers.legacy.prepareSetBaseURI

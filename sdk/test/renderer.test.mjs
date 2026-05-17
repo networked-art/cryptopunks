@@ -24,7 +24,9 @@ const METADATA = JSON.stringify({
 
 describe('PunksRendererClient', () => {
   it('reads renderer dependencies and per-Punk render outputs', async () => {
-    const sdk = createPunksRendererClient({ publicClient: makeFakePublicClient() })
+    const sdk = createPunksRendererClient({
+      publicClient: makeFakePublicClient(),
+    })
 
     assert.equal(sdk.address, PUNKS_RENDERER_ADDRESS)
     assert.equal(await sdk.getDataContract(), PUNKS_DATA_ADDRESS)
@@ -51,9 +53,15 @@ describe('PunksRendererClient', () => {
     )
     assert.equal(await sdk.getPunkSvg(10), SVG)
     assert.equal(await sdk.getPunkMarketplaceSvg(10), MARKETPLACE_SVG)
-    assert.deepEqual([...await sdk.getPunkPng(10)], [0x89, 0x50, 0x4e, 0x47])
-    assert.deepEqual([...await sdk.getPunkPngWithBackground(10, '#638596')], [0x12, 0x34, 0x56])
-    assert.deepEqual([...await sdk.getPunkMarketplacePng(10)], [0xab, 0xcd, 0xef])
+    assert.deepEqual([...(await sdk.getPunkPng(10))], [0x89, 0x50, 0x4e, 0x47])
+    assert.deepEqual(
+      [...(await sdk.getPunkPngWithBackground(10, '#638596'))],
+      [0x12, 0x34, 0x56],
+    )
+    assert.deepEqual(
+      [...(await sdk.getPunkMarketplacePng(10))],
+      [0xab, 0xcd, 0xef],
+    )
     assert.equal((await sdk.getPunkImage(10)).length, 2304)
     assert.equal(await sdk.getBackground(10), PUNKS_RENDERER_BACKGROUND_DEFAULT)
   })
@@ -83,7 +91,10 @@ describe('PunksRendererClient', () => {
     })
 
     await assert.rejects(() => sdk.getPunkSvg(10_000), PunksDataValidationError)
-    await assert.rejects(() => sdk.getTokenURI(10_000), PunksDataValidationError)
+    await assert.rejects(
+      () => sdk.getTokenURI(10_000),
+      PunksDataValidationError,
+    )
     await assert.rejects(
       () => sdk.getPunkPngWithBackground(0, '0x638596fe'),
       PunksDataValidationError,
@@ -104,7 +115,10 @@ describe('PunksRendererClient', () => {
       () => sdk.getPunkSvg(0, { blockTag: 'unsafe' }),
       PunksDataValidationError,
     )
-    await assert.rejects(() => sdk.getPunkSvg(0, null), PunksDataValidationError)
+    await assert.rejects(
+      () => sdk.getPunkSvg(0, null),
+      PunksDataValidationError,
+    )
     assert.equal(reads, 0)
   })
 

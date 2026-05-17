@@ -1,20 +1,35 @@
 <template>
   <div class="v1-panel">
-    <div v-if="!address" class="connect-row">
+    <div
+      v-if="!address"
+      class="connect-row"
+    >
       <EvmConnectDialog />
       <span class="muted">Connect a wallet to interact with this punk.</span>
     </div>
 
-    <div v-if="pending" class="muted">Reading onchain state…</div>
+    <div
+      v-if="pending"
+      class="muted"
+    >
+      Reading onchain state…
+    </div>
 
     <template v-else>
       <div class="state-grid">
         <div>
           <div class="label">Owner</div>
-          <NuxtLink v-if="owner" :to="`/profile/${owner}`">
+          <NuxtLink
+            v-if="owner"
+            :to="`/profile/${owner}`"
+          >
             <AccountBadge :address="owner" />
           </NuxtLink>
-          <span v-else class="muted">—</span>
+          <span
+            v-else
+            class="muted"
+            >—</span
+          >
         </div>
 
         <div>
@@ -28,7 +43,11 @@
               Not directed to PunksMarket — settlement uses raw V1.
             </div>
           </div>
-          <span v-else class="muted">Not for sale</span>
+          <span
+            v-else
+            class="muted"
+            >Not for sale</span
+          >
         </div>
 
         <div>
@@ -40,11 +59,18 @@
               <AccountBadge :address="bid.bidder" />
             </NuxtLink>
           </div>
-          <span v-else class="muted">None</span>
+          <span
+            v-else
+            class="muted"
+            >None</span
+          >
         </div>
       </div>
 
-      <div class="actions" v-if="address">
+      <div
+        class="actions"
+        v-if="address"
+      >
         <template v-if="isOwner">
           <div class="action-group">
             <input
@@ -59,25 +85,43 @@
               :disabled="!parsedListingWei"
               @click="actList"
             >
-              {{ listing?.isForSale ? "Update listing" : "List for sale" }}
+              {{ listing?.isForSale ? 'Update listing' : 'List for sale' }}
             </button>
-            <button v-if="listing?.isForSale" @click="actUnlist">
+            <button
+              v-if="listing?.isForSale"
+              @click="actUnlist"
+            >
               Cancel listing
             </button>
           </div>
-          <button v-if="bid?.hasBid" class="primary" @click="actAcceptBid">
+          <button
+            v-if="bid?.hasBid"
+            class="primary"
+            @click="actAcceptBid"
+          >
             Accept bid · <EthAmount :wei="bid.valueWei" />
           </button>
           <div class="action-group">
-            <input v-model="transferTo" type="text" placeholder="0x…" />
-            <button :disabled="!validTransferTarget" @click="actTransfer">
+            <input
+              v-model="transferTo"
+              type="text"
+              placeholder="0x…"
+            />
+            <button
+              :disabled="!validTransferTarget"
+              @click="actTransfer"
+            >
               Transfer
             </button>
           </div>
         </template>
 
         <template v-else>
-          <button v-if="listing?.isForSale" class="primary" @click="actBuy">
+          <button
+            v-if="listing?.isForSale"
+            class="primary"
+            @click="actBuy"
+          >
             Buy · <EthAmount :wei="listing.priceWei" />
           </button>
 
@@ -89,10 +133,17 @@
               min="0"
               placeholder="ETH"
             />
-            <button class="primary" :disabled="!parsedBidWei" @click="actBid">
-              {{ isOwnTopBid ? "Update bid" : "Place bid" }}
+            <button
+              class="primary"
+              :disabled="!parsedBidWei"
+              @click="actBid"
+            >
+              {{ isOwnTopBid ? 'Update bid' : 'Place bid' }}
             </button>
-            <button v-if="isOwnTopBid" @click="actWithdrawBid">
+            <button
+              v-if="isOwnTopBid"
+              @click="actWithdrawBid"
+            >
               Withdraw bid
             </button>
           </div>
@@ -126,55 +177,55 @@ import {
   type Address,
   type Hash,
   type TransactionReceipt,
-} from "viem";
-import type { ContractWritePlan } from "@networked-art/punks-sdk";
-import { useAccount } from "@wagmi/vue";
-import { usePunksMarketAddress } from "~/utils/addresses";
+} from 'viem'
+import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import { useAccount } from '@wagmi/vue'
+import { usePunksMarketAddress } from '~/utils/addresses'
 
-const props = defineProps<{ punkId: number }>();
-const emit = defineEmits<{ changed: [tx: Hash] }>();
+const props = defineProps<{ punkId: number }>()
+const emit = defineEmits<{ changed: [tx: Hash] }>()
 
-const { sdk } = usePunksSdk();
-const { execute } = useWritePlan();
-const { address } = useAccount();
-const punksMarketAddress = usePunksMarketAddress();
+const { sdk } = usePunksSdk()
+const { execute } = useWritePlan()
+const { address } = useAccount()
+const punksMarketAddress = usePunksMarketAddress()
 
-const owner = ref<Address | null>(null);
+const owner = ref<Address | null>(null)
 const listing = ref<{
-  isForSale: boolean;
-  priceWei: bigint;
-  onlySellTo: Address;
-} | null>(null);
+  isForSale: boolean
+  priceWei: bigint
+  onlySellTo: Address
+} | null>(null)
 const bid = ref<{ hasBid: boolean; bidder: Address; valueWei: bigint } | null>(
   null,
-);
-const pendingWithdrawal = ref<bigint | null>(null);
-const pending = ref(true);
+)
+const pendingWithdrawal = ref<bigint | null>(null)
+const pending = ref(true)
 
 const isOwner = computed(
   () =>
     !!address.value &&
     !!owner.value &&
     owner.value.toLowerCase() === address.value.toLowerCase(),
-);
+)
 const isOwnTopBid = computed(
   () =>
     !!address.value &&
     !!bid.value?.hasBid &&
     bid.value.bidder.toLowerCase() === address.value.toLowerCase(),
-);
+)
 const isDirectedToPunksMarket = computed(() => {
-  if (!listing.value?.isForSale) return false;
-  if (!punksMarketAddress.value) return false;
+  if (!listing.value?.isForSale) return false
+  if (!punksMarketAddress.value) return false
   return (
     listing.value.onlySellTo?.toLowerCase() ===
     punksMarketAddress.value.toLowerCase()
-  );
-});
-const validTransferTarget = computed(() => isAddress(transferTo.value.trim()));
+  )
+})
+const validTransferTarget = computed(() => isAddress(transferTo.value.trim()))
 
 async function refresh() {
-  pending.value = true;
+  pending.value = true
   try {
     const [o, l, b, w] = await Promise.all([
       sdk.value.market.ownerOf(props.punkId).catch(() => null),
@@ -183,128 +234,128 @@ async function refresh() {
       address.value
         ? sdk.value.market.pendingWithdrawal(address.value).catch(() => 0n)
         : Promise.resolve(0n),
-    ]);
-    owner.value = o as Address | null;
+    ])
+    owner.value = o as Address | null
     listing.value = {
       isForSale: l.isForSale,
       priceWei: l.priceWei,
       onlySellTo: l.onlySellTo,
-    };
-    bid.value = { hasBid: b.hasBid, bidder: b.bidder, valueWei: b.valueWei };
-    pendingWithdrawal.value = w as bigint;
+    }
+    bid.value = { hasBid: b.hasBid, bidder: b.bidder, valueWei: b.valueWei }
+    pendingWithdrawal.value = w as bigint
   } finally {
-    pending.value = false;
+    pending.value = false
   }
 }
 
-watchEffect(refresh);
+watchEffect(refresh)
 
 // ─── Dialog wiring ────────────────────────────────────────────────────────────
 
 type DialogRef = {
-  initializeRequest: (request?: () => Promise<Hash>) => void;
-} | null;
-const dialogRef = ref<DialogRef>(null);
+  initializeRequest: (request?: () => Promise<Hash>) => void
+} | null
+const dialogRef = ref<DialogRef>(null)
 const dialogText = ref<{
-  title?: Record<string, string>;
-  lead?: Record<string, string>;
-}>({});
+  title?: Record<string, string>
+  lead?: Record<string, string>
+}>({})
 
 function run(plan: ContractWritePlan) {
   dialogText.value = {
     title: { confirm: plan.description, waiting: plan.description },
     lead: { confirm: plan.description },
-  };
-  dialogRef.value?.initializeRequest(() => execute(plan));
+  }
+  dialogRef.value?.initializeRequest(() => execute(plan))
 }
 
 function onComplete(receipt: TransactionReceipt) {
-  refresh();
-  emit("changed", receipt.transactionHash as Hash);
+  refresh()
+  emit('changed', receipt.transactionHash as Hash)
 }
 
 // ─── Inputs ───────────────────────────────────────────────────────────────────
 
-const listingPriceInput = ref("");
-const bidInput = ref("");
-const transferTo = ref("");
+const listingPriceInput = ref('')
+const bidInput = ref('')
+const transferTo = ref('')
 
-const parsedListingWei = computed(() => parseEthSafe(listingPriceInput.value));
-const parsedBidWei = computed(() => parseEthSafe(bidInput.value));
+const parsedListingWei = computed(() => parseEthSafe(listingPriceInput.value))
+const parsedBidWei = computed(() => parseEthSafe(bidInput.value))
 
 function parseEthSafe(input: string): bigint | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
+  const trimmed = input.trim()
+  if (!trimmed) return null
   try {
-    const wei = parseEther(trimmed as `${number}`);
-    return wei > 0n ? wei : null;
+    const wei = parseEther(trimmed as `${number}`)
+    return wei > 0n ? wei : null
   } catch {
-    return null;
+    return null
   }
 }
 
 // ─── Action handlers ──────────────────────────────────────────────────────────
 
 function actList() {
-  const priceWei = parsedListingWei.value;
-  if (!priceWei) return;
+  const priceWei = parsedListingWei.value
+  if (!priceWei) return
   // Direct listings to PunksMarket when deployed — fixes the V1 payout bug for buyers.
-  const onlySellTo = punksMarketAddress.value ?? undefined;
+  const onlySellTo = punksMarketAddress.value ?? undefined
   run(
     sdk.value.market.prepareList({
       punkId: props.punkId,
       priceWei,
       onlySellTo,
     }),
-  );
+  )
 }
 
 function actUnlist() {
-  run(sdk.value.market.prepareUnlist(props.punkId));
+  run(sdk.value.market.prepareUnlist(props.punkId))
 }
 
 function actBuy() {
-  if (!listing.value?.isForSale) return;
+  if (!listing.value?.isForSale) return
   run(
     sdk.value.market.prepareBuy({
       punkId: props.punkId,
       priceWei: listing.value.priceWei,
     }),
-  );
+  )
 }
 
 function actBid() {
-  const amountWei = parsedBidWei.value;
-  if (!amountWei) return;
-  run(sdk.value.market.prepareEnterBid({ punkId: props.punkId, amountWei }));
+  const amountWei = parsedBidWei.value
+  if (!amountWei) return
+  run(sdk.value.market.prepareEnterBid({ punkId: props.punkId, amountWei }))
 }
 
 function actWithdrawBid() {
-  run(sdk.value.market.prepareWithdrawBid(props.punkId));
+  run(sdk.value.market.prepareWithdrawBid(props.punkId))
 }
 
 function actAcceptBid() {
-  if (!bid.value?.hasBid) return;
+  if (!bid.value?.hasBid) return
   run(
     sdk.value.market.prepareAcceptBid({
       punkId: props.punkId,
       minPriceWei: bid.value.valueWei,
     }),
-  );
+  )
 }
 
 function actTransfer() {
-  if (!validTransferTarget.value) return;
+  if (!validTransferTarget.value) return
   run(
     sdk.value.market.prepareTransfer({
       punkId: props.punkId,
       to: transferTo.value.trim() as Address,
     }),
-  );
+  )
 }
 
 function actWithdrawProceeds() {
-  run(sdk.value.market.prepareWithdraw());
+  run(sdk.value.market.prepareWithdraw())
 }
 </script>
 

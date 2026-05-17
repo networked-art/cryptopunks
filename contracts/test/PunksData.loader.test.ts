@@ -21,8 +21,10 @@ const CANONICAL_SIZES = {
   PixelOffsets: (PUNK_COUNT + 1) * PIXEL_OFFSET_BYTES,
   CompressedPixels: 1,
   ColorBitmaps: PALETTE_SIZE * BITMAP_WORDS_PER_ROW * BITMAP_WORD_BYTES,
-  PixelCountBitmaps: PIXEL_COUNT_RANGE * BITMAP_WORDS_PER_ROW * BITMAP_WORD_BYTES,
-  ColorCountBitmaps: COLOR_COUNT_RANGE * BITMAP_WORDS_PER_ROW * BITMAP_WORD_BYTES,
+  PixelCountBitmaps:
+    PIXEL_COUNT_RANGE * BITMAP_WORDS_PER_ROW * BITMAP_WORD_BYTES,
+  ColorCountBitmaps:
+    COLOR_COUNT_RANGE * BITMAP_WORDS_PER_ROW * BITMAP_WORD_BYTES,
 } as const
 
 enum BlobId {
@@ -134,7 +136,10 @@ describe('PunksData loader and seal validation', () => {
       const { ctx, data } = await deploy()
       const validWord = packMinimalScalarWord()
       await ctx.viem.assertions.revertWithCustomError(
-        data.write.loadPackedScalars([SCALAR_WORDS - 1, [validWord, validWord]]),
+        data.write.loadPackedScalars([
+          SCALAR_WORDS - 1,
+          [validWord, validWord],
+        ]),
         data,
         'InvalidLength',
       )
@@ -244,7 +249,9 @@ describe('PunksData loader and seal validation', () => {
 
     it('rejects PixelCountBitmaps wrong length', async () => {
       const { ctx, data } = await deploy()
-      await loadShape(data, { PixelCountBitmaps: CANONICAL_SIZES.PixelCountBitmaps - 1 })
+      await loadShape(data, {
+        PixelCountBitmaps: CANONICAL_SIZES.PixelCountBitmaps - 1,
+      })
       await ctx.viem.assertions.revertWithCustomError(
         data.write.seal([commitment()]),
         data,
@@ -254,7 +261,9 @@ describe('PunksData loader and seal validation', () => {
 
     it('rejects ColorCountBitmaps wrong length', async () => {
       const { ctx, data } = await deploy()
-      await loadShape(data, { ColorCountBitmaps: CANONICAL_SIZES.ColorCountBitmaps - 1 })
+      await loadShape(data, {
+        ColorCountBitmaps: CANONICAL_SIZES.ColorCountBitmaps - 1,
+      })
       await ctx.viem.assertions.revertWithCustomError(
         data.write.seal([commitment()]),
         data,
@@ -276,7 +285,9 @@ async function deploy() {
   const ctx: any = await network.create()
   const { viem } = ctx
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
   return { ctx, data }
 }
 

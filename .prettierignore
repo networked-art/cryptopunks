@@ -1,0 +1,23 @@
+node_modules
+dist
+.nuxt
+.output
+.nitro
+.cache
+.ponder
+generated
+dumps
+
+# Lockfile
+pnpm-lock.yaml
+
+# Hardhat
+contracts/artifacts
+contracts/cache
+contracts/types
+contracts/ignition/deployments
+contracts/coverage
+contracts/scripts/output
+
+# Vitepress cache
+docs/.vitepress/cache

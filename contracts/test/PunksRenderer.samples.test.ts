@@ -51,18 +51,20 @@ const SCALARS_PER_WORD = 5
 const PLACEHOLDER_PIXEL_COUNT = 148
 const PLACEHOLDER_COLOR_COUNT = 2
 const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
-const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [8, 333, 3560, 4501, 1420, 166, 11, 1] as const
+const CANONICAL_ATTRIBUTE_COUNT_SUPPLIES = [
+  8, 333, 3560, 4501, 1420, 166, 11, 1,
+] as const
 
 const SAMPLE_IDS = [0, 31, 117, 281, 372, 635, 4067, 6980, 8348] as const
 
 // Mirrors the BG_* constants in PunksRenderer.sol — the five marketplace
 // backgrounds the renderer can pick via `backgroundOf`.
 const BACKGROUNDS: ReadonlyArray<{ name: string; rgba: Hex }> = [
-  { name: 'default', rgba: '0x638596ff' },        // BG_DEFAULT (Larva owned)
-  { name: 'forsale', rgba: '0x8c5851ff' },        // BG_FOR_SALE
-  { name: 'bid', rgba: '0x8970b1ff' },            // BG_BID
-  { name: 'wrapped', rgba: '0x66a670ff' },        // BG_WRAPPED
-  { name: 'wrapped-c721', rgba: '0x75a475ff' },   // BG_WRAPPED_C721
+  { name: 'default', rgba: '0x638596ff' }, // BG_DEFAULT (Larva owned)
+  { name: 'forsale', rgba: '0x8c5851ff' }, // BG_FOR_SALE
+  { name: 'bid', rgba: '0x8970b1ff' }, // BG_BID
+  { name: 'wrapped', rgba: '0x66a670ff' }, // BG_WRAPPED
+  { name: 'wrapped-c721', rgba: '0x75a475ff' }, // BG_WRAPPED_C721
 ]
 
 enum BlobId {
@@ -99,7 +101,7 @@ describe('PunksRenderer samples', () => {
 
   before(
     async () => {
-      ({ renderer, snapshot } = await deployFixture())
+      ;({ renderer, snapshot } = await deployFixture())
       await mkdir(OUTPUT_DIR, { recursive: true })
     },
     { timeout: 120_000 },
@@ -119,9 +121,7 @@ describe('PunksRenderer samples', () => {
       await writeFile(svgPath, svg)
       written.push(svgPath)
 
-      const transparent = hexToBytes(
-        (await renderer.read.punkPng([id])) as Hex,
-      )
+      const transparent = hexToBytes((await renderer.read.punkPng([id])) as Hex)
       const pngPath = join(OUTPUT_DIR, `${slug}.png`)
       await writeFile(pngPath, transparent)
       written.push(pngPath)
@@ -193,14 +193,19 @@ async function deployFixture() {
   const traits = buildTestTraitCatalog(snapshot)
   const traitMeta = encodeTraitMeta(traits)
   const traitIdByKindAndName = buildTraitIdByKindAndName(traits)
-  const traitMaskPairGroups = buildTraitMaskPairGroups(snapshot, traitIdByKindAndName)
+  const traitMaskPairGroups = buildTraitMaskPairGroups(
+    snapshot,
+    traitIdByKindAndName,
+  )
   const colorMaskGroups = buildColorMaskGroups(snapshot, colorIdByRgba)
   const packedScalarGroups = buildPackedScalarGroups(snapshot, colorIdByRgba)
 
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
 
   await loadBlob(data, BlobId.TraitMeta, traitMeta)
   await loadBlob(data, BlobId.Palette, paletteBytes)
@@ -239,7 +244,9 @@ async function loadSnapshot(): Promise<Snapshot> {
   const bin = new Uint8Array(await readFile(SNAPSHOT_BIN))
   const images: Uint8Array[] = []
   for (let i = 0; i < json.snapshotIds.length; i++) {
-    images.push(bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage))
+    images.push(
+      bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage),
+    )
   }
   return { ...json, images }
 }
@@ -270,7 +277,8 @@ function buildColorMaskGroups(
   return snapshot.snapshotIds.map((id, i) => {
     const indexed = rgbaToIndexed(snapshot.images[i], colorIdByRgba)
     let mask = 0n
-    for (const colorId of sortedVisibleColors(indexed)) mask |= 1n << BigInt(colorId)
+    for (const colorId of sortedVisibleColors(indexed))
+      mask |= 1n << BigInt(colorId)
     return { start: id, values: [mask] }
   })
 }
@@ -288,8 +296,12 @@ function buildPackedScalarGroups(
     const visiblePixelCount = countVisiblePixels(indexed)
     const visibleColorCount = sortedVisibleColors(indexed).length
     const parsed = parseAttributes(snapshot.attributes[i])
-    const headIndex = HEAD_VARIANTS.indexOf(parsed.headVariant as (typeof HEAD_VARIANTS)[number])
-    const typeIndex = NORMALIZED_TYPES.indexOf(parsed.normalizedType as (typeof NORMALIZED_TYPES)[number])
+    const headIndex = HEAD_VARIANTS.indexOf(
+      parsed.headVariant as (typeof HEAD_VARIANTS)[number],
+    )
+    const typeIndex = NORMALIZED_TYPES.indexOf(
+      parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
+    )
     if (headIndex < 0 || typeIndex < 0) {
       throw new Error(`Punk ${id}: unknown head/type ${parsed.headVariant}`)
     }
@@ -304,8 +316,7 @@ function buildPackedScalarGroups(
   }
 
   const placeholder =
-    BigInt(PLACEHOLDER_PIXEL_COUNT) |
-    (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
+    BigInt(PLACEHOLDER_PIXEL_COUNT) | (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
 
   const out: Array<{ start: number; values: bigint[] }> = []
   for (const [wordIndex, slots] of wordSlots) {
@@ -333,7 +344,10 @@ async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const CHUNK_SIZE = 24_575
   const count = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let i = 0; i < count; i++) {
-    const slice = bytes.slice(i * CHUNK_SIZE, Math.min(bytes.length, (i + 1) * CHUNK_SIZE))
+    const slice = bytes.slice(
+      i * CHUNK_SIZE,
+      Math.min(bytes.length, (i + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, i, bytesToHex(slice)])
   }
 }
@@ -377,7 +391,8 @@ function buildTestTraitCatalog(snapshot: Snapshot): TraitRecord[] {
     }
   }
   for (let i = 0; i < CANONICAL_ATTRIBUTE_COUNT_SUPPLIES.length; i++) {
-    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply = CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
+    traits[ATTRIBUTE_COUNT_TRAIT_OFFSET + i].supply =
+      CANONICAL_ATTRIBUTE_COUNT_SUPPLIES[i]
   }
   return traits
 }
@@ -398,15 +413,22 @@ function buildTraitMaskPairGroups(
   for (let i = 0; i < snapshot.snapshotIds.length; i++) {
     const id = snapshot.snapshotIds[i]
     const pairIndex = Math.floor(id / 2)
-    const mask = buildExpectedTraitMask(snapshot.attributes[i], traitIdByKindAndName)
+    const mask = buildExpectedTraitMask(
+      snapshot.attributes[i],
+      traitIdByKindAndName,
+    )
     const current = packedByPair.get(pairIndex) ?? 0n
-    const packed = id % 2 === 0
-      ? (current & ~lowMask) | mask
-      : (current & lowMask) | (mask << 128n)
+    const packed =
+      id % 2 === 0
+        ? (current & ~lowMask) | mask
+        : (current & lowMask) | (mask << 128n)
     packedByPair.set(pairIndex, packed)
   }
 
-  return [...packedByPair.entries()].map(([start, value]) => ({ start, values: [value] }))
+  return [...packedByPair.entries()].map(([start, value]) => ({
+    start,
+    values: [value],
+  }))
 }
 
 function buildExpectedTraitMask(
@@ -415,20 +437,34 @@ function buildExpectedTraitMask(
 ): bigint {
   const parsed = parseAttributes(attributes)
   let mask = 0n
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(traitIdByKindAndName, `${KIND_HEAD_VARIANT}:${parsed.headVariant}`),
-  )
-  mask |= 1n << BigInt(
-    mustGet(
-      traitIdByKindAndName,
-      `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
-    ),
-  )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_NORMALIZED_TYPE}:${parsed.normalizedType}`,
+      ),
+    )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_HEAD_VARIANT}:${parsed.headVariant}`,
+      ),
+    )
+  mask |=
+    1n <<
+    BigInt(
+      mustGet(
+        traitIdByKindAndName,
+        `${KIND_ATTRIBUTE_COUNT}:${parsed.accessories.length} Attributes`,
+      ),
+    )
   for (const accessory of parsed.accessories) {
-    mask |= 1n << BigInt(mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
+    mask |=
+      1n <<
+      BigInt(mustGet(traitIdByKindAndName, `${KIND_ACCESSORY}:${accessory}`))
   }
   return mask
 }

@@ -14,16 +14,9 @@ import {
 } from './actions'
 import { PunksStashFacade } from './stash'
 import { PunksWrappersFacade } from './wrappers'
-import {
-  PunksDataset,
-  type PunksDatasetConfig,
-} from './dataset'
+import { PunksDataset, type PunksDatasetConfig } from './dataset'
 import { PunkImageRenderer } from './render'
-import type {
-  PunkQuery,
-  PunkSummary,
-  PunkSummaryOptions,
-} from './types'
+import type { PunkQuery, PunkSummary, PunkSummaryOptions } from './types'
 
 export type PunksSdkAddresses = {
   data?: Address
@@ -124,7 +117,10 @@ export class PunksSdk {
     return this.dataset.get(punkId, options)
   }
 
-  getMany(punkIds: readonly number[], options: PunkSummaryOptions = {}): PunkSummary[] {
+  getMany(
+    punkIds: readonly number[],
+    options: PunkSummaryOptions = {},
+  ): PunkSummary[] {
     return this.dataset.getMany(punkIds, options)
   }
 }

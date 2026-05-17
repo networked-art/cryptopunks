@@ -983,16 +983,20 @@ async function insertBidPredicates(
   excludeIds: number[],
 ) {
   const traitRows = [
-    ...bitsFromMask(criteria.requiredTraitMask, TRAIT_COUNT).map((trait_id) => ({
-      bid_id: bidId,
-      trait_id,
-      kind: 'required',
-    })),
-    ...bitsFromMask(criteria.forbiddenTraitMask, TRAIT_COUNT).map((trait_id) => ({
-      bid_id: bidId,
-      trait_id,
-      kind: 'forbidden',
-    })),
+    ...bitsFromMask(criteria.requiredTraitMask, TRAIT_COUNT).map(
+      (trait_id) => ({
+        bid_id: bidId,
+        trait_id,
+        kind: 'required',
+      }),
+    ),
+    ...bitsFromMask(criteria.forbiddenTraitMask, TRAIT_COUNT).map(
+      (trait_id) => ({
+        bid_id: bidId,
+        trait_id,
+        kind: 'forbidden',
+      }),
+    ),
     ...bitsFromMask(criteria.anyOfTraitMask, TRAIT_COUNT).map((trait_id) => ({
       bid_id: bidId,
       trait_id,
@@ -1000,16 +1004,20 @@ async function insertBidPredicates(
     })),
   ]
   const colorRows = [
-    ...bitsFromMask(criteria.requiredColorMask, PALETTE_SIZE).map((color_id) => ({
-      bid_id: bidId,
-      color_id,
-      kind: 'required',
-    })),
-    ...bitsFromMask(criteria.forbiddenColorMask, PALETTE_SIZE).map((color_id) => ({
-      bid_id: bidId,
-      color_id,
-      kind: 'forbidden',
-    })),
+    ...bitsFromMask(criteria.requiredColorMask, PALETTE_SIZE).map(
+      (color_id) => ({
+        bid_id: bidId,
+        color_id,
+        kind: 'required',
+      }),
+    ),
+    ...bitsFromMask(criteria.forbiddenColorMask, PALETTE_SIZE).map(
+      (color_id) => ({
+        bid_id: bidId,
+        color_id,
+        kind: 'forbidden',
+      }),
+    ),
     ...bitsFromMask(criteria.anyOfColorMask, PALETTE_SIZE).map((color_id) => ({
       bid_id: bidId,
       color_id,

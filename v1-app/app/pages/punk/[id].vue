@@ -1,26 +1,40 @@
 <template>
   <div class="container punk-page">
-    <NuxtLink to="/" class="back muted">← back to search</NuxtLink>
+    <NuxtLink
+      to="/"
+      class="back muted"
+      >← back to search</NuxtLink
+    >
 
     <section class="hero">
       <div class="hero-image">
-        <PunkImage :punk-id="id" :size="320" :background="background" glitch="random" />
+        <PunkImage
+          :punk-id="id"
+          :size="320"
+          :background="background"
+          glitch="random"
+        />
       </div>
 
       <div class="hero-info">
-        <h1 class="hero-title">
-          Punk <span class="dim">#</span>{{ id }}
-        </h1>
+        <h1 class="hero-title">Punk <span class="dim">#</span>{{ id }}</h1>
 
         <p class="hero-meta">
           <span class="tag">{{ summary.punkTypeName }}</span>
-          <span class="tag">{{ summary.attributeCount }} attribute{{ summary.attributeCount === 1 ? '' : 's' }}</span>
+          <span class="tag"
+            >{{ summary.attributeCount }} attribute{{
+              summary.attributeCount === 1 ? '' : 's'
+            }}</span
+          >
           <span class="tag">{{ summary.colorCount }} colors</span>
           <span class="tag">{{ summary.pixelCount }} px</span>
         </p>
 
         <ul class="trait-list">
-          <li v-for="t in traits" :key="t.id">
+          <li
+            v-for="t in traits"
+            :key="t.id"
+          >
             <span class="trait-kind">{{ t.kind }}</span>
             <span>{{ t.name }}</span>
             <span class="muted trait-supply">{{ t.supply }}</span>
@@ -28,7 +42,10 @@
         </ul>
 
         <ClientOnly>
-          <PunkV1Panel :punk-id="id" @changed="refreshAll" />
+          <PunkV1Panel
+            :punk-id="id"
+            @changed="refreshAll"
+          />
         </ClientOnly>
       </div>
     </section>
@@ -36,10 +53,27 @@
     <section class="punk-section">
       <h2 class="section-title">Matching collection bids</h2>
       <ClientOnly>
-        <div v-if="matchingPending" class="muted">Loading bids…</div>
-        <div v-else-if="!matchingBids.length" class="muted">No collection bids match this punk.</div>
-        <div v-else class="bid-grid">
-          <BidCard v-for="b in matchingBids" :key="String(b.id)" :bid="b" />
+        <div
+          v-if="matchingPending"
+          class="muted"
+        >
+          Loading bids…
+        </div>
+        <div
+          v-else-if="!matchingBids.length"
+          class="muted"
+        >
+          No collection bids match this punk.
+        </div>
+        <div
+          v-else
+          class="bid-grid"
+        >
+          <BidCard
+            v-for="b in matchingBids"
+            :key="String(b.id)"
+            :bid="b"
+          />
         </div>
       </ClientOnly>
     </section>
@@ -47,10 +81,22 @@
     <section class="punk-section">
       <h2 class="section-title">History</h2>
       <ClientOnly>
-        <ul v-if="history.length" class="event-list">
-          <ActivityRow v-for="(e, i) in history" :key="`${e.txHash}-${i}`" :event="e" />
+        <ul
+          v-if="history.length"
+          class="event-list"
+        >
+          <ActivityRow
+            v-for="(e, i) in history"
+            :key="`${e.txHash}-${i}`"
+            :event="e"
+          />
         </ul>
-        <div v-else class="muted">No recent events for this punk.</div>
+        <div
+          v-else
+          class="muted"
+        >
+          No recent events for this punk.
+        </div>
       </ClientOnly>
     </section>
   </div>
@@ -68,9 +114,15 @@ const traits = computed(() => summary.value.traits ?? [])
 
 const background = computed(() => 'classic' as const)
 
-const { events: history, refresh: refreshHistory } = useActivityFeed({ punkId: () => id.value })
+const { events: history, refresh: refreshHistory } = useActivityFeed({
+  punkId: () => id.value,
+})
 
-const { bids: allBids, pending: matchingPending, refresh: refreshBids } = usePunksMarketBids()
+const {
+  bids: allBids,
+  pending: matchingPending,
+  refresh: refreshBids,
+} = usePunksMarketBids()
 const matchingBids = computed(() =>
   allBids.value.filter((b) => {
     if (b.includeIds.length && !b.includeIds.includes(id.value)) return false

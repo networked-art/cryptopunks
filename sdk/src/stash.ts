@@ -1,12 +1,6 @@
 import type { Abi, Address, Hex, PublicClient, WalletClient } from 'viem'
-import {
-  stashAbi,
-  stashFactoryAbi,
-} from './abi'
-import {
-  STASH_FACTORY_ADDRESS,
-  ZERO_ADDRESS,
-} from './constants'
+import { stashAbi, stashFactoryAbi } from './abi'
+import { STASH_FACTORY_ADDRESS, ZERO_ADDRESS } from './constants'
 import type {
   ContractWritePlan,
   TransactionHash,
@@ -135,7 +129,9 @@ export class StashFactoryClient {
   }
 
   implementation(version: bigint | number): Promise<Address> {
-    return this.read<Address>('implementations', [normalizeUint256('version', version)])
+    return this.read<Address>('implementations', [
+      normalizeUint256('version', version),
+    ])
   }
 
   implementations(version: bigint | number): Promise<Address> {
@@ -182,12 +178,31 @@ export class StashFactoryClient {
     return this.write(this.prepareUpgradeStash())
   }
 
-  private plan(description: string, functionName: string, args: readonly unknown[]): ContractWritePlan {
-    return writePlan(this.address, stashFactoryAbi, description, functionName, args)
+  private plan(
+    description: string,
+    functionName: string,
+    args: readonly unknown[],
+  ): ContractWritePlan {
+    return writePlan(
+      this.address,
+      stashFactoryAbi,
+      description,
+      functionName,
+      args,
+    )
   }
 
-  private read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
-    return readContract<T>(this.publicClient, this.address, stashFactoryAbi, functionName, args)
+  private read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
+    return readContract<T>(
+      this.publicClient,
+      this.address,
+      stashFactoryAbi,
+      functionName,
+      args,
+    )
   }
 
   private write(plan: ContractWritePlan): Promise<TransactionHash> {
@@ -203,7 +218,9 @@ export class StashClient {
 
   constructor(config: StashClientConfig) {
     if (isZeroAddress(config.address)) {
-      throw new PunksDataValidationError('Stash address must not be the zero address')
+      throw new PunksDataValidationError(
+        'Stash address must not be the zero address',
+      )
     }
     this.address = config.address
     this.publicClient = config.publicClient
@@ -224,11 +241,15 @@ export class StashClient {
   }
 
   punkBidNonceUsesRemaining(bidNonce: bigint | number): Promise<bigint> {
-    return this.read<bigint>('punkBidNonceUsesRemaining', [normalizeUint256('bidNonce', bidNonce)])
+    return this.read<bigint>('punkBidNonceUsesRemaining', [
+      normalizeUint256('bidNonce', bidNonce),
+    ])
   }
 
   usedPunkBidNonces(bidNonce: bigint | number): Promise<boolean> {
-    return this.read<boolean>('usedPunkBidNonces', [normalizeUint256('bidNonce', bidNonce)])
+    return this.read<boolean>('usedPunkBidNonces', [
+      normalizeUint256('bidNonce', bidNonce),
+    ])
   }
 
   orderAt(paymentToken: Address, index: bigint | number): Promise<StashOrder> {
@@ -238,7 +259,10 @@ export class StashClient {
     ])
   }
 
-  paymentTokenToOrders(paymentToken: Address, index: bigint | number): Promise<StashOrder> {
+  paymentTokenToOrders(
+    paymentToken: Address,
+    index: bigint | number,
+  ): Promise<StashOrder> {
     return this.orderAt(paymentToken, index)
   }
 
@@ -270,7 +294,11 @@ export class StashClient {
   }
 
   fundEth(amountWei: bigint): Promise<TransactionHash> {
-    return sendTransaction(this.prepareFundEth(amountWei), this.walletClient, this.account)
+    return sendTransaction(
+      this.prepareFundEth(amountWei),
+      this.walletClient,
+      this.account,
+    )
   }
 
   preparePlaceOrder(params: {
@@ -282,10 +310,12 @@ export class StashClient {
     const valueWei = params.valueWei ?? 0n
     assertWei('valueWei', valueWei)
     assertIntegerInRange('numberOfUnits', params.numberOfUnits, 1, 65_535)
-    return this.plan('Place Stash order', 'placeOrder', [
-      params.pricePerUnit,
-      params.numberOfUnits,
-    ], valueWei)
+    return this.plan(
+      'Place Stash order',
+      'placeOrder',
+      [params.pricePerUnit, params.numberOfUnits],
+      valueWei,
+    )
   }
 
   placeOrder(params: {
@@ -296,7 +326,10 @@ export class StashClient {
     return this.write(this.preparePlaceOrder(params))
   }
 
-  prepareProcessOrder(params: { costPerUnit: bigint; numberOfUnits: number }): ContractWritePlan {
+  prepareProcessOrder(params: {
+    costPerUnit: bigint
+    numberOfUnits: number
+  }): ContractWritePlan {
     assertWei('costPerUnit', params.costPerUnit)
     assertIntegerInRange('numberOfUnits', params.numberOfUnits, 1, 65_535)
     return this.plan('Process Stash order', 'processOrder', [
@@ -305,18 +338,25 @@ export class StashClient {
     ])
   }
 
-  processOrder(params: { costPerUnit: bigint; numberOfUnits: number }): Promise<TransactionHash> {
+  processOrder(params: {
+    costPerUnit: bigint
+    numberOfUnits: number
+  }): Promise<TransactionHash> {
     return this.write(this.prepareProcessOrder(params))
   }
 
   prepareProcessPunkBid(input: ProcessStashPunkBidInput): ContractWritePlan {
     validatePunkId(input.punkId)
-    return this.plan(`Process Stash bid for CryptoPunk ${input.punkId}`, 'processPunkBid', [
-      normalizePunkBid(input.bid),
-      BigInt(input.punkId),
-      input.signature,
-      input.proof ?? [],
-    ])
+    return this.plan(
+      `Process Stash bid for CryptoPunk ${input.punkId}`,
+      'processPunkBid',
+      [
+        normalizePunkBid(input.bid),
+        BigInt(input.punkId),
+        input.signature,
+        input.proof ?? [],
+      ],
+    )
   }
 
   processPunkBid(input: ProcessStashPunkBidInput): Promise<TransactionHash> {
@@ -343,14 +383,19 @@ export class StashClient {
 
   prepareWrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Wrap CryptoPunk ${punkId} from Stash`, 'wrapPunk', [BigInt(punkId)])
+    return this.plan(`Wrap CryptoPunk ${punkId} from Stash`, 'wrapPunk', [
+      BigInt(punkId),
+    ])
   }
 
   wrapPunk(punkId: number): Promise<TransactionHash> {
     return this.write(this.prepareWrapPunk(punkId))
   }
 
-  prepareWithdraw(params: { token?: Address; amountWei: bigint }): ContractWritePlan {
+  prepareWithdraw(params: {
+    token?: Address
+    amountWei: bigint
+  }): ContractWritePlan {
     assertWei('amountWei', params.amountWei)
     return this.plan('Withdraw Stash funds', 'withdraw', [
       params.token ?? ZERO_ADDRESS,
@@ -358,18 +403,27 @@ export class StashClient {
     ])
   }
 
-  withdraw(params: { token?: Address; amountWei: bigint }): Promise<TransactionHash> {
+  withdraw(params: {
+    token?: Address
+    amountWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareWithdraw(params))
   }
 
-  prepareWithdrawERC721(params: { token: Address; tokenIds: readonly (bigint | number)[] }): ContractWritePlan {
+  prepareWithdrawERC721(params: {
+    token: Address
+    tokenIds: readonly (bigint | number)[]
+  }): ContractWritePlan {
     return this.plan('Withdraw ERC-721 tokens from Stash', 'withdrawERC721', [
       params.token,
       normalizeUint256Array('tokenIds', params.tokenIds),
     ])
   }
 
-  withdrawERC721(params: { token: Address; tokenIds: readonly (bigint | number)[] }): Promise<TransactionHash> {
+  withdrawERC721(params: {
+    token: Address
+    tokenIds: readonly (bigint | number)[]
+  }): Promise<TransactionHash> {
     return this.write(this.prepareWithdrawERC721(params))
   }
 
@@ -379,7 +433,9 @@ export class StashClient {
     amounts: readonly (bigint | number)[]
   }): ContractWritePlan {
     if (params.tokenIds.length !== params.amounts.length) {
-      throw new PunksDataValidationError('tokenIds and amounts must have the same length')
+      throw new PunksDataValidationError(
+        'tokenIds and amounts must have the same length',
+      )
     }
     return this.plan('Withdraw ERC-1155 tokens from Stash', 'withdrawERC1155', [
       params.token,
@@ -419,7 +475,9 @@ export class StashClient {
     return this.write(this.prepareOnERC721Received(input))
   }
 
-  prepareOnERC1155Received(input: StashERC1155ReceivedInput): ContractWritePlan {
+  prepareOnERC1155Received(
+    input: StashERC1155ReceivedInput,
+  ): ContractWritePlan {
     return this.plan('Handle ERC-1155 token receipt', 'onERC1155Received', [
       input.operator,
       input.from,
@@ -429,24 +487,36 @@ export class StashClient {
     ])
   }
 
-  onERC1155Received(input: StashERC1155ReceivedInput): Promise<TransactionHash> {
+  onERC1155Received(
+    input: StashERC1155ReceivedInput,
+  ): Promise<TransactionHash> {
     return this.write(this.prepareOnERC1155Received(input))
   }
 
-  prepareOnERC1155BatchReceived(input: StashERC1155BatchReceivedInput): ContractWritePlan {
+  prepareOnERC1155BatchReceived(
+    input: StashERC1155BatchReceivedInput,
+  ): ContractWritePlan {
     if (input.tokenIds.length !== input.amounts.length) {
-      throw new PunksDataValidationError('tokenIds and amounts must have the same length')
+      throw new PunksDataValidationError(
+        'tokenIds and amounts must have the same length',
+      )
     }
-    return this.plan('Handle ERC-1155 batch token receipt', 'onERC1155BatchReceived', [
-      input.operator,
-      input.from,
-      normalizeUint256Array('tokenIds', input.tokenIds),
-      normalizeUint256Array('amounts', input.amounts),
-      input.data ?? '0x',
-    ])
+    return this.plan(
+      'Handle ERC-1155 batch token receipt',
+      'onERC1155BatchReceived',
+      [
+        input.operator,
+        input.from,
+        normalizeUint256Array('tokenIds', input.tokenIds),
+        normalizeUint256Array('amounts', input.amounts),
+        input.data ?? '0x',
+      ],
+    )
   }
 
-  onERC1155BatchReceived(input: StashERC1155BatchReceivedInput): Promise<TransactionHash> {
+  onERC1155BatchReceived(
+    input: StashERC1155BatchReceivedInput,
+  ): Promise<TransactionHash> {
     return this.write(this.prepareOnERC1155BatchReceived(input))
   }
 
@@ -458,11 +528,17 @@ export class StashClient {
   }
 
   async signPunkBid(params: { bid: StashPunkBid }): Promise<Hex> {
-    if (!this.walletClient) throw new PunksDataValidationError('walletClient is required for signing')
+    if (!this.walletClient)
+      throw new PunksDataValidationError('walletClient is required for signing')
     const resolvedAccount = this.account ?? this.walletClient.account?.address
-    if (!resolvedAccount) throw new PunksDataValidationError('account is required for signing')
+    if (!resolvedAccount)
+      throw new PunksDataValidationError('account is required for signing')
     const typedData = this.typedDataForPunkBid(params)
-    return (this.walletClient.signTypedData as unknown as (value: typeof typedData & { account: Address }) => Promise<Hex>)({
+    return (
+      this.walletClient.signTypedData as unknown as (
+        value: typeof typedData & { account: Address },
+      ) => Promise<Hex>
+    )({
       ...typedData,
       account: resolvedAccount,
     })
@@ -474,15 +550,34 @@ export class StashClient {
     args: readonly unknown[],
     value?: bigint,
   ): ContractWritePlan {
-    return writePlan(this.address, stashAbi, description, functionName, args, value)
+    return writePlan(
+      this.address,
+      stashAbi,
+      description,
+      functionName,
+      args,
+      value,
+    )
   }
 
-  private async readOrder(functionName: string, args: readonly unknown[]): Promise<StashOrder> {
+  private async readOrder(
+    functionName: string,
+    args: readonly unknown[],
+  ): Promise<StashOrder> {
     return normalizeOrder(await this.read<unknown>(functionName, args))
   }
 
-  private read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
-    return readContract<T>(this.publicClient, this.address, stashAbi, functionName, args)
+  private read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
+    return readContract<T>(
+      this.publicClient,
+      this.address,
+      stashAbi,
+      functionName,
+      args,
+    )
   }
 
   private write(plan: ContractWritePlan): Promise<TransactionHash> {
@@ -525,7 +620,9 @@ export class PunksStashFacade {
   async forOwner(owner: Address): Promise<StashClient> {
     const status = await this.statusForOwner(owner)
     if (!status.deployed || isZeroAddress(status.address)) {
-      throw new PunksDataValidationError('Stash is not deployed for owner; deploy a Stash first')
+      throw new PunksDataValidationError(
+        'Stash is not deployed for owner; deploy a Stash first',
+      )
     }
     return this.at(status.address)
   }
@@ -543,7 +640,9 @@ export class PunksStashFacade {
   }
 }
 
-export function createStashFactoryClient(config: StashFactoryClientConfig = {}): StashFactoryClient {
+export function createStashFactoryClient(
+  config: StashFactoryClientConfig = {},
+): StashFactoryClient {
   return new StashFactoryClient(config)
 }
 
@@ -578,9 +677,14 @@ async function readContract<T>(
   functionName: string,
   args: readonly unknown[] = [],
 ): Promise<T> {
-  if (!publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+  if (!publicClient)
+    throw new PunksDataValidationError('publicClient is required for reads')
   const request = { address, abi, functionName, args }
-  return (publicClient.readContract as unknown as (value: typeof request) => Promise<T>)(request)
+  return (
+    publicClient.readContract as unknown as (
+      value: typeof request,
+    ) => Promise<T>
+  )(request)
 }
 
 async function writeContract(
@@ -588,14 +692,18 @@ async function writeContract(
   walletClient: WalletClient | undefined,
   account: Address | undefined,
 ): Promise<TransactionHash> {
-  if (!walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+  if (!walletClient)
+    throw new PunksDataValidationError('walletClient is required for writes')
   const resolvedAccount = account ?? walletClient.account?.address
-  const request = resolvedAccount === undefined
-    ? plan.request
-    : { ...plan.request, account: resolvedAccount }
-  return (walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
-    request,
-  )
+  const request =
+    resolvedAccount === undefined
+      ? plan.request
+      : { ...plan.request, account: resolvedAccount }
+  return (
+    walletClient.writeContract as unknown as (
+      value: typeof request,
+    ) => Promise<TransactionHash>
+  )(request)
 }
 
 async function sendTransaction(
@@ -603,14 +711,18 @@ async function sendTransaction(
   walletClient: WalletClient | undefined,
   account: Address | undefined,
 ): Promise<TransactionHash> {
-  if (!walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+  if (!walletClient)
+    throw new PunksDataValidationError('walletClient is required for writes')
   const resolvedAccount = account ?? walletClient.account?.address
-  const request = resolvedAccount === undefined
-    ? plan.request
-    : { ...plan.request, account: resolvedAccount }
-  return (walletClient.sendTransaction as unknown as (value: typeof request) => Promise<TransactionHash>)(
-    request,
-  )
+  const request =
+    resolvedAccount === undefined
+      ? plan.request
+      : { ...plan.request, account: resolvedAccount }
+  return (
+    walletClient.sendTransaction as unknown as (
+      value: typeof request,
+    ) => Promise<TransactionHash>
+  )(request)
 }
 
 function normalizePunkBid(bid: StashPunkBid): StashPunkBid {
@@ -632,7 +744,8 @@ function normalizePunkBid(bid: StashPunkBid): StashPunkBid {
 function normalizeOrder(value: unknown): StashOrder {
   if (Array.isArray(value)) {
     const [numberOfUnits, pricePerUnit, auction] = value
-    if (typeof auction !== 'string') throw new PunksDataValidationError('invalid Stash order')
+    if (typeof auction !== 'string')
+      throw new PunksDataValidationError('invalid Stash order')
     return {
       numberOfUnits: Number(numberOfUnits),
       pricePerUnit: BigInt(pricePerUnit),
@@ -641,7 +754,8 @@ function normalizeOrder(value: unknown): StashOrder {
   }
   if (typeof value === 'object' && value !== null) {
     const order = value as Record<string, unknown>
-    if (typeof order.auction !== 'string') throw new PunksDataValidationError('invalid Stash order')
+    if (typeof order.auction !== 'string')
+      throw new PunksDataValidationError('invalid Stash order')
     return {
       numberOfUnits: Number(order.numberOfUnits),
       pricePerUnit: BigInt(order.pricePerUnit as bigint | number | string),
@@ -652,7 +766,8 @@ function normalizeOrder(value: unknown): StashOrder {
 }
 
 function normalizePunkIds(punkIds: readonly number[]): number[] {
-  if (punkIds.length === 0) throw new PunksDataValidationError('punkIds must not be empty')
+  if (punkIds.length === 0)
+    throw new PunksDataValidationError('punkIds must not be empty')
   return punkIds.map((punkId) => {
     validatePunkId(punkId)
     return punkId
@@ -667,14 +782,20 @@ function assertWei(label: string, value: bigint): void {
 
 function normalizeUint256(label: string, value: bigint | number): bigint {
   if (typeof value === 'number' && !Number.isSafeInteger(value)) {
-    throw new PunksDataValidationError(`${label} must be a safe integer or bigint`)
+    throw new PunksDataValidationError(
+      `${label} must be a safe integer or bigint`,
+    )
   }
   if (typeof value !== 'bigint' && typeof value !== 'number') {
-    throw new PunksDataValidationError(`${label} must be a safe integer or bigint`)
+    throw new PunksDataValidationError(
+      `${label} must be a safe integer or bigint`,
+    )
   }
   const normalized = BigInt(value)
   if (normalized < 0n || normalized > UINT256_MAX) {
-    throw new PunksDataValidationError(`${label} must be an unsigned 256-bit integer`)
+    throw new PunksDataValidationError(
+      `${label} must be an unsigned 256-bit integer`,
+    )
   }
   return normalized
 }
@@ -683,7 +804,9 @@ function normalizeUint256Array(
   label: string,
   values: readonly (bigint | number)[],
 ): bigint[] {
-  return values.map((value, index) => normalizeUint256(`${label}[${index}]`, value))
+  return values.map((value, index) =>
+    normalizeUint256(`${label}[${index}]`, value),
+  )
 }
 
 function isZeroAddress(address: Address): boolean {

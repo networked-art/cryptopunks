@@ -85,10 +85,7 @@ export class PunksV1MarketClient {
 
   /// Checks whether a single bid would accept the given punk. The
   /// non-reverting twin of the on-chain matcher.
-  async matchesPunk(
-    bidId: bigint | number,
-    punkId: number,
-  ): Promise<boolean> {
+  async matchesPunk(bidId: bigint | number, punkId: number): Promise<boolean> {
     validatePunkId(punkId)
     return this.read<boolean>('matchesPunk', [BigInt(bidId), punkId])
   }

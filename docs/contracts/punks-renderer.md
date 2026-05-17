@@ -41,14 +41,14 @@ constructor(
 
 Parameters:
 
-| Parameter | Meaning |
-| --- | --- |
-| `punksData` | Data contract used for all pixels, palette, traits, and metrics |
-| `punksMarket` | Optional CryptoPunks market used by `backgroundOf` |
-| `wrapper` | Optional wrapped CryptoPunks owner address |
-| `c721Wrapper` | Optional C721 wrapper owner address |
-| `reverseRegistrar` | Optional ENS reverse registrar |
-| `reverseName` | Optional reverse name to set during construction |
+| Parameter          | Meaning                                                         |
+| ------------------ | --------------------------------------------------------------- |
+| `punksData`        | Data contract used for all pixels, palette, traits, and metrics |
+| `punksMarket`      | Optional CryptoPunks market used by `backgroundOf`              |
+| `wrapper`          | Optional wrapped CryptoPunks owner address                      |
+| `c721Wrapper`      | Optional C721 wrapper owner address                             |
+| `reverseRegistrar` | Optional ENS reverse registrar                                  |
+| `reverseName`      | Optional reverse name to set during construction                |
 
 Passing the zero address for `punksMarket` disables market lookups and makes
 `backgroundOf` return the default background. Passing the zero address for
@@ -56,13 +56,13 @@ Passing the zero address for `punksMarket` disables market lookups and makes
 
 The mainnet Ignition module defaults are:
 
-| Dependency | Address |
-| --- | --- |
-| CryptoPunks market | `0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb` |
-| Wrapped CryptoPunks | `0xb7f7f6c52f2e2fdb1963eab30438024864c313f6` |
-| C721 wrapper | `0x000000000000003607fce1ac9e043a86675c5c2f` |
+| Dependency            | Address                                      |
+| --------------------- | -------------------------------------------- |
+| CryptoPunks market    | `0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb` |
+| Wrapped CryptoPunks   | `0xb7f7f6c52f2e2fdb1963eab30438024864c313f6` |
+| C721 wrapper          | `0x000000000000003607fce1ac9e043a86675c5c2f` |
 | ENS reverse registrar | `0xa58e81fe9b61b5c3fe2afd33cf304c454abfc7cb` |
-| Reverse name | `renderer.punksdata.eth` |
+| Reverse name          | `renderer.punksdata.eth`                     |
 
 ## Read API
 
@@ -182,12 +182,12 @@ addresses. Resolution order is:
 
 Colors are RGBA bytes:
 
-| State | Color |
-| --- | --- |
-| Default | `0x638596ff` |
-| For sale | `0x8c5851ff` |
-| Has bid | `0x8970b1ff` |
-| Wrapped | `0x66a670ff` |
+| State        | Color        |
+| ------------ | ------------ |
+| Default      | `0x638596ff` |
+| For sale     | `0x8c5851ff` |
+| Has bid      | `0x8970b1ff` |
+| Wrapped      | `0x66a670ff` |
 | C721 wrapped | `0x75a475ff` |
 
 All marketplace backgrounds are opaque, so they are valid inputs to the
@@ -200,9 +200,9 @@ The Ignition module at `contracts/ignition/modules/PunksRenderer.ts` deploys
 
 Mainnet deployment addresses recorded in the repo:
 
-| Contract | Address |
-| --- | --- |
-| `PunksData` | `0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C` |
+| Contract        | Address                                      |
+| --------------- | -------------------------------------------- |
+| `PunksData`     | `0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C` |
 | `PunksRenderer` | `0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741` |
 
 Use the deployment artifacts under

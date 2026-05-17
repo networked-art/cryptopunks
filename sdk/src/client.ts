@@ -106,8 +106,13 @@ export class PunksDataClient {
     this.address = config.address ?? PUNKS_DATA_ADDRESS
     this.cacheEnabled = config.cache ?? true
     this.multicallBatchSize = config.multicallBatchSize ?? 256
-    if (!Number.isInteger(this.multicallBatchSize) || this.multicallBatchSize < 1) {
-      throw new PunksDataValidationError('multicallBatchSize must be a positive integer')
+    if (
+      !Number.isInteger(this.multicallBatchSize) ||
+      this.multicallBatchSize < 1
+    ) {
+      throw new PunksDataValidationError(
+        'multicallBatchSize must be a positive integer',
+      )
     }
   }
 
@@ -116,7 +121,9 @@ export class PunksDataClient {
   }
 
   async getDatasetHash(options?: PunksDataReadOptions): Promise<Hex> {
-    return this.cached('datasetHash', options, () => this.read<Hex>('datasetHash', [], options))
+    return this.cached('datasetHash', options, () =>
+      this.read<Hex>('datasetHash', [], options),
+    )
   }
 
   datasetHash(options?: PunksDataReadOptions): Promise<Hex> {
@@ -126,7 +133,9 @@ export class PunksDataClient {
   async assertCanonicalDataset(options?: PunksDataReadOptions): Promise<void> {
     const datasetHash = await this.getDatasetHash(options)
     if (datasetHash.toLowerCase() !== PUNKS_DATA_DATASET_HASH.toLowerCase()) {
-      throw new PunksDataValidationError('PunksData contract does not match the canonical dataset')
+      throw new PunksDataValidationError(
+        'PunksData contract does not match the canonical dataset',
+      )
     }
   }
 
@@ -140,12 +149,18 @@ export class PunksDataClient {
     return this.getTraitCount(options)
   }
 
-  async isValidTraitId(traitId: number, options?: PunksDataReadOptions): Promise<boolean> {
+  async isValidTraitId(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<boolean> {
     assertIntegerLike('traitId', traitId)
     return this.read<boolean>('isValidTraitId', [traitId], options)
   }
 
-  async getTraitName(traitId: number, options?: PunksDataReadOptions): Promise<string> {
+  async getTraitName(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     validateTraitId(traitId)
     return this.cached(`traitName:${traitId}`, options, () =>
       this.read<string>('traitName', [traitId], options),
@@ -156,7 +171,10 @@ export class PunksDataClient {
     return this.getTraitName(traitId, options)
   }
 
-  async getTraitKind(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getTraitKind(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validateTraitId(traitId)
     return this.cached(`traitKind:${traitId}`, options, async () =>
       Number(await this.read<bigint | number>('traitKind', [traitId], options)),
@@ -167,14 +185,22 @@ export class PunksDataClient {
     return this.getTraitKind(traitId, options)
   }
 
-  async getTraitSupply(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getTraitSupply(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validateTraitId(traitId)
     return this.cached(`traitSupply:${traitId}`, options, async () =>
-      Number(await this.read<bigint | number>('traitSupply', [traitId], options)),
+      Number(
+        await this.read<bigint | number>('traitSupply', [traitId], options),
+      ),
     )
   }
 
-  traitSupply(traitId: number, options?: PunksDataReadOptions): Promise<number> {
+  traitSupply(
+    traitId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getTraitSupply(traitId, options)
   }
 
@@ -188,7 +214,10 @@ export class PunksDataClient {
     return this.read<boolean>('hasTrait', [punkId, traitId], options)
   }
 
-  async getTraitMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+  async getTraitMask(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
     validatePunkId(punkId)
     return this.read<bigint>('traitMaskOf', [punkId], options)
   }
@@ -246,9 +275,17 @@ export class PunksDataClient {
     return this.getTraitBitmapWord(trait, wordIndex, options)
   }
 
-  async getTraitBitmap(trait: TraitRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
+  async getTraitBitmap(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PunkBitmap> {
     const traitId = await this.resolveTraitId(trait, options)
-    const rows = await this.readBitmapRows([traitId], 'traitBitmapWord', 'traitBitmap', options)
+    const rows = await this.readBitmapRows(
+      [traitId],
+      'traitBitmapWord',
+      'traitBitmap',
+      options,
+    )
     return rows.get(traitId) ?? emptyPunkBitmap()
   }
 
@@ -257,33 +294,59 @@ export class PunksDataClient {
     options?: PunksDataReadOptions,
   ): Promise<Map<number, PunkBitmap>> {
     const traitIds = await this.resolveTraitIds(traits, options)
-    return this.readBitmapRows(traitIds, 'traitBitmapWord', 'traitBitmap', options)
+    return this.readBitmapRows(
+      traitIds,
+      'traitBitmapWord',
+      'traitBitmap',
+      options,
+    )
   }
 
-  async getPunkType(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getPunkType(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validatePunkId(punkId)
-    return Number(await this.read<bigint | number>('punkTypeOf', [punkId], options))
+    return Number(
+      await this.read<bigint | number>('punkTypeOf', [punkId], options),
+    )
   }
 
   punkTypeOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
     return this.getPunkType(punkId, options)
   }
 
-  async getHeadVariant(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getHeadVariant(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validatePunkId(punkId)
-    return Number(await this.read<bigint | number>('headVariantOf', [punkId], options))
+    return Number(
+      await this.read<bigint | number>('headVariantOf', [punkId], options),
+    )
   }
 
-  headVariantOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  headVariantOf(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getHeadVariant(punkId, options)
   }
 
-  async getAttributeCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getAttributeCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validatePunkId(punkId)
-    return Number(await this.read<bigint | number>('attributeCountOf', [punkId], options))
+    return Number(
+      await this.read<bigint | number>('attributeCountOf', [punkId], options),
+    )
   }
 
-  attributeCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  attributeCountOf(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getAttributeCount(punkId, options)
   }
 
@@ -302,7 +365,10 @@ export class PunksDataClient {
     return this.read<Hex>('colorOf', [colorId], options)
   }
 
-  async getColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
+  async getColor(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PaletteColor> {
     const colorId = await this.resolveColorId(color, options)
     const [rgba, supply] = await Promise.all([
       this.read<Hex>('colorOf', [colorId], options),
@@ -311,18 +377,29 @@ export class PunksDataClient {
     return colorRecord(colorId, rgba, supply)
   }
 
-  async getColorSupply(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+  async getColorSupply(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     const colorId = await this.resolveColorId(color, options)
     return this.cached(`colorSupply:${colorId}`, options, async () =>
-      Number(await this.read<bigint | number>('colorSupply', [colorId], options)),
+      Number(
+        await this.read<bigint | number>('colorSupply', [colorId], options),
+      ),
     )
   }
 
-  colorSupply(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+  colorSupply(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getColorSupply(color, options)
   }
 
-  async getColorMask(punkId: number, options?: PunksDataReadOptions): Promise<bigint> {
+  async getColorMask(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<bigint> {
     validatePunkId(punkId)
     return this.read<bigint>('colorMaskOf', [punkId], options)
   }
@@ -341,21 +418,37 @@ export class PunksDataClient {
     return this.read<boolean>('hasColor', [punkId, colorId], options)
   }
 
-  async getPixelCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getPixelCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validatePunkId(punkId)
-    return Number(await this.read<bigint | number>('pixelCountOf', [punkId], options))
+    return Number(
+      await this.read<bigint | number>('pixelCountOf', [punkId], options),
+    )
   }
 
-  pixelCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  pixelCountOf(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getPixelCount(punkId, options)
   }
 
-  async getColorCount(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  async getColorCount(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     validatePunkId(punkId)
-    return Number(await this.read<bigint | number>('colorCountOf', [punkId], options))
+    return Number(
+      await this.read<bigint | number>('colorCountOf', [punkId], options),
+    )
   }
 
-  colorCountOf(punkId: number, options?: PunksDataReadOptions): Promise<number> {
+  colorCountOf(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return this.getColorCount(punkId, options)
   }
 
@@ -377,9 +470,17 @@ export class PunksDataClient {
     return this.getColorBitmapWord(color, wordIndex, options)
   }
 
-  async getColorBitmap(color: ColorRef, options?: PunksDataReadOptions): Promise<PunkBitmap> {
+  async getColorBitmap(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PunkBitmap> {
     const colorId = await this.resolveColorId(color, options)
-    const rows = await this.readBitmapRows([colorId], 'colorBitmapWord', 'colorBitmap', options)
+    const rows = await this.readBitmapRows(
+      [colorId],
+      'colorBitmapWord',
+      'colorBitmap',
+      options,
+    )
     return rows.get(colorId) ?? emptyPunkBitmap()
   }
 
@@ -388,7 +489,12 @@ export class PunksDataClient {
     options?: PunksDataReadOptions,
   ): Promise<Map<number, PunkBitmap>> {
     const colorIds = await this.resolveColorIds(colors, options)
-    return this.readBitmapRows(colorIds, 'colorBitmapWord', 'colorBitmap', options)
+    return this.readBitmapRows(
+      colorIds,
+      'colorBitmapWord',
+      'colorBitmap',
+      options,
+    )
   }
 
   async getPixelCountBitmapWord(
@@ -398,7 +504,11 @@ export class PunksDataClient {
   ): Promise<bigint> {
     validatePixelCount(pixelCount)
     validateBitmapWordIndex(wordIndex)
-    return this.read<bigint>('pixelCountBitmapWord', [pixelCount, wordIndex], options)
+    return this.read<bigint>(
+      'pixelCountBitmapWord',
+      [pixelCount, wordIndex],
+      options,
+    )
   }
 
   pixelCountBitmapWord(
@@ -430,7 +540,11 @@ export class PunksDataClient {
   ): Promise<bigint> {
     validateColorCount(colorCount)
     validateBitmapWordIndex(wordIndex)
-    return this.read<bigint>('colorCountBitmapWord', [colorCount, wordIndex], options)
+    return this.read<bigint>(
+      'colorCountBitmapWord',
+      [colorCount, wordIndex],
+      options,
+    )
   }
 
   colorCountBitmapWord(
@@ -455,14 +569,22 @@ export class PunksDataClient {
     return rows.get(colorCount) ?? emptyPunkBitmap()
   }
 
-  async getIndexedPixels(punkId: number, options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getIndexedPixels(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     validatePunkId(punkId)
-    const pixels = hexToBytes(await this.read<Hex>('indexedPixelsOf', [punkId], options))
+    const pixels = hexToBytes(
+      await this.read<Hex>('indexedPixelsOf', [punkId], options),
+    )
     assertIndexedPixels(pixels)
     return pixels
   }
 
-  indexedPixelsOf(punkId: number, options?: PunksDataReadOptions): Promise<Uint8Array> {
+  indexedPixelsOf(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.getIndexedPixels(punkId, options)
   }
 
@@ -474,7 +596,9 @@ export class PunksDataClient {
   ): Promise<number> {
     validatePunkId(punkId)
     validateCoordinate(x, y)
-    return Number(await this.read<bigint | number>('colorAt', [punkId, x, y], options))
+    return Number(
+      await this.read<bigint | number>('colorAt', [punkId, x, y], options),
+    )
   }
 
   colorAt(
@@ -486,11 +610,17 @@ export class PunksDataClient {
     return this.getColorAt(punkId, x, y, options)
   }
 
-  async getPaletteRgbaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteRgbaBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.cached('paletteRgbaBytes', options, async () => {
-      const bytes = hexToBytes(await this.read<Hex>('paletteRgbaBytes', [], options))
+      const bytes = hexToBytes(
+        await this.read<Hex>('paletteRgbaBytes', [], options),
+      )
       if (bytes.length !== PALETTE_SIZE * 4) {
-        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} RGBA colors`)
+        throw new PunksDataValidationError(
+          `palette must contain ${PALETTE_SIZE} RGBA colors`,
+        )
       }
       return bytes
     })
@@ -500,11 +630,17 @@ export class PunksDataClient {
     return this.getPaletteRgbaBytes(options)
   }
 
-  async getPaletteRgbBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteRgbBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.cached('paletteRgbBytes', options, async () => {
-      const bytes = hexToBytes(await this.read<Hex>('paletteRgbBytes', [], options))
+      const bytes = hexToBytes(
+        await this.read<Hex>('paletteRgbBytes', [], options),
+      )
       if (bytes.length !== PALETTE_SIZE * 3) {
-        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} RGB colors`)
+        throw new PunksDataValidationError(
+          `palette must contain ${PALETTE_SIZE} RGB colors`,
+        )
       }
       return bytes
     })
@@ -514,11 +650,17 @@ export class PunksDataClient {
     return this.getPaletteRgbBytes(options)
   }
 
-  async getPaletteAlphaBytes(options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getPaletteAlphaBytes(
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     return this.cached('paletteAlphaBytes', options, async () => {
-      const bytes = hexToBytes(await this.read<Hex>('paletteAlphaBytes', [], options))
+      const bytes = hexToBytes(
+        await this.read<Hex>('paletteAlphaBytes', [], options),
+      )
       if (bytes.length !== PALETTE_SIZE) {
-        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} alpha values`)
+        throw new PunksDataValidationError(
+          `palette must contain ${PALETTE_SIZE} alpha values`,
+        )
       }
       return bytes
     })
@@ -536,7 +678,9 @@ export class PunksDataClient {
     return this.cached(cacheKey, options, async () => {
       const rgba = await this.getPaletteRgbaBytes(options)
       if (rgba.length !== PALETTE_SIZE * 4) {
-        throw new PunksDataValidationError(`palette must contain ${PALETTE_SIZE} RGBA colors`)
+        throw new PunksDataValidationError(
+          `palette must contain ${PALETTE_SIZE} RGBA colors`,
+        )
       }
       const supplies = includeSupplies
         ? await this.readMany<bigint | number>(
@@ -559,7 +703,10 @@ export class PunksDataClient {
     })
   }
 
-  async getRgbaPixels(punkId: number, options?: PunksDataReadOptions): Promise<Uint8Array> {
+  async getRgbaPixels(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<Uint8Array> {
     const [indexedPixels, paletteBytes] = await Promise.all([
       this.getIndexedPixels(punkId, options),
       this.getPaletteRgbaBytes(options),
@@ -567,7 +714,9 @@ export class PunksDataClient {
     return indexedPixelsToRgba(indexedPixels, paletteBytes)
   }
 
-  async getTraitCatalog(options?: PunksDataReadOptions): Promise<TraitRecord[]> {
+  async getTraitCatalog(
+    options?: PunksDataReadOptions,
+  ): Promise<TraitRecord[]> {
     return this.cached('traitCatalog', options, async () => {
       const calls: ContractReadCall[] = []
       for (let traitId = 0; traitId < TRAIT_COUNT; traitId++) {
@@ -577,13 +726,18 @@ export class PunksDataClient {
           { functionName: 'traitSupply', args: [traitId] },
         )
       }
-      const values = await this.readMany<string | bigint | number>(calls, options)
+      const values = await this.readMany<string | bigint | number>(
+        calls,
+        options,
+      )
       const catalog: TraitRecord[] = []
       for (let traitId = 0; traitId < TRAIT_COUNT; traitId++) {
         const offset = traitId * 3
         const kind = Number(values[offset + 1])
         if (!traitKindNames[kind]) {
-          throw new PunksDataValidationError(`unknown trait kind ${kind} for trait ${traitId}`)
+          throw new PunksDataValidationError(
+            `unknown trait kind ${kind} for trait ${traitId}`,
+          )
         }
         catalog.push({
           id: traitId,
@@ -597,7 +751,10 @@ export class PunksDataClient {
     })
   }
 
-  async resolveTrait(trait: TraitRef, options?: PunksDataReadOptions): Promise<TraitRecord> {
+  async resolveTrait(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): Promise<TraitRecord> {
     const catalog = await this.getTraitCatalog(options)
     if (typeof trait === 'number') {
       validateTraitId(trait)
@@ -608,7 +765,10 @@ export class PunksDataClient {
       return catalog[trait.id]
     }
 
-    if (typeof trait !== 'string' && (typeof trait !== 'object' || trait === null)) {
+    if (
+      typeof trait !== 'string' &&
+      (typeof trait !== 'object' || trait === null)
+    ) {
       throw new PunksDataValidationError('trait reference needs an id or name')
     }
     const rawName = typeof trait === 'string' ? trait : trait.name
@@ -619,7 +779,9 @@ export class PunksDataClient {
     const exact = catalog.find((record) => record.name === name)
     if (exact) return exact
     const lowerName = name.toLowerCase()
-    const match = catalog.find((record) => record.name.toLowerCase() === lowerName)
+    const match = catalog.find(
+      (record) => record.name.toLowerCase() === lowerName,
+    )
     if (!match) throw new PunksDataValidationError(`unknown trait ${name}`)
     return match
   }
@@ -637,12 +799,16 @@ export class PunksDataClient {
       (criteria.requiredMask ?? 0n) | maskFromIds(required, validateTraitId)
     const forbiddenMask =
       (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateTraitId)
-    const anyOfMask = (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateTraitId)
+    const anyOfMask =
+      (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateTraitId)
     validateTraitCriteriaMasks(requiredMask, forbiddenMask, anyOfMask)
     return { requiredMask, forbiddenMask, anyOfMask }
   }
 
-  private async resolveTraitId(trait: TraitRef, options?: PunksDataReadOptions): Promise<number> {
+  private async resolveTraitId(
+    trait: TraitRef,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return (await this.resolveTrait(trait, options)).id
   }
 
@@ -650,26 +816,39 @@ export class PunksDataClient {
     traits: readonly TraitRef[] = [],
     options?: PunksDataReadOptions,
   ): Promise<number[]> {
-    const ids = await Promise.all(traits.map((trait) => this.resolveTraitId(trait, options)))
+    const ids = await Promise.all(
+      traits.map((trait) => this.resolveTraitId(trait, options)),
+    )
     return uniqueNumbers(ids)
   }
 
-  async resolveColor(color: ColorRef, options?: PunksDataReadOptions): Promise<PaletteColor> {
+  async resolveColor(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<PaletteColor> {
     return this.getColor(color, options)
   }
 
-  private async resolveColorId(color: ColorRef, options?: PunksDataReadOptions): Promise<number> {
+  private async resolveColorId(
+    color: ColorRef,
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     if (typeof color === 'number') {
       validateColorId(color)
       return color
     }
     if (typeof color !== 'string') {
-      throw new PunksDataValidationError('color reference must be a color id or hex string')
+      throw new PunksDataValidationError(
+        'color reference must be a color id or hex string',
+      )
     }
     const rgba = normalizeRgbaHex(color)
     const palette = await this.getPalette(options)
-    const match = palette.find((entry) => entry.rgba.toLowerCase() === rgba.toLowerCase())
-    if (!match) throw new PunksDataValidationError(`unknown palette color ${color}`)
+    const match = palette.find(
+      (entry) => entry.rgba.toLowerCase() === rgba.toLowerCase(),
+    )
+    if (!match)
+      throw new PunksDataValidationError(`unknown palette color ${color}`)
     return match.id
   }
 
@@ -677,7 +856,9 @@ export class PunksDataClient {
     colors: readonly ColorRef[] = [],
     options?: PunksDataReadOptions,
   ): Promise<number[]> {
-    const ids = await Promise.all(colors.map((color) => this.resolveColorId(color, options)))
+    const ids = await Promise.all(
+      colors.map((color) => this.resolveColorId(color, options)),
+    )
     return uniqueNumbers(ids)
   }
 
@@ -694,7 +875,8 @@ export class PunksDataClient {
       (criteria.requiredMask ?? 0n) | maskFromIds(required, validateColorId)
     const forbiddenMask =
       (criteria.forbiddenMask ?? 0n) | maskFromIds(forbidden, validateColorId)
-    const anyOfMask = (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateColorId)
+    const anyOfMask =
+      (criteria.anyOfMask ?? 0n) | maskFromIds(anyOf, validateColorId)
     validateColorCriteriaMasks(requiredMask, forbiddenMask, anyOfMask)
     return { requiredMask, forbiddenMask, anyOfMask }
   }
@@ -733,7 +915,12 @@ export class PunksDataClient {
         'pixelCountBitmap',
         options,
       )
-      bitmap = intersectPunkBitmaps([bitmap, unionPunkBitmaps(pixelCounts.map((id) => rows.get(id) ?? emptyPunkBitmap()))])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        unionPunkBitmaps(
+          pixelCounts.map((id) => rows.get(id) ?? emptyPunkBitmap()),
+        ),
+      ])
     }
 
     const colorCounts = normalizeNumericRange(
@@ -749,7 +936,12 @@ export class PunksDataClient {
         'colorCountBitmap',
         options,
       )
-      bitmap = intersectPunkBitmaps([bitmap, unionPunkBitmaps(colorCounts.map((id) => rows.get(id) ?? emptyPunkBitmap()))])
+      bitmap = intersectPunkBitmaps([
+        bitmap,
+        unionPunkBitmaps(
+          colorCounts.map((id) => rows.get(id) ?? emptyPunkBitmap()),
+        ),
+      ])
     }
 
     if (query.ids !== undefined) {
@@ -762,7 +954,10 @@ export class PunksDataClient {
     return bitmap
   }
 
-  async search(query: PunksSearchQuery = {}, options?: PunksDataReadOptions): Promise<number[]> {
+  async search(
+    query: PunksSearchQuery = {},
+    options?: PunksDataReadOptions,
+  ): Promise<number[]> {
     validatePagination(query)
     const bitmap = await this.searchBitmap(query, options)
     return bitmapToPunkIds(bitmap, {
@@ -771,7 +966,10 @@ export class PunksDataClient {
     })
   }
 
-  async count(query: PunksSearchQuery = {}, options?: PunksDataReadOptions): Promise<number> {
+  async count(
+    query: PunksSearchQuery = {},
+    options?: PunksDataReadOptions,
+  ): Promise<number> {
     return countPunkBitmap(await this.searchBitmap(query, options))
   }
 
@@ -801,7 +999,8 @@ export class PunksDataClient {
         { functionName: 'punkTypeOf', args: [punkId] },
         { functionName: 'headVariantOf', args: [punkId] },
       )
-      if (summaryOptions.includePixels) calls.push({ functionName: 'indexedPixelsOf', args: [punkId] })
+      if (summaryOptions.includePixels)
+        calls.push({ functionName: 'indexedPixelsOf', args: [punkId] })
     }
 
     const [values, catalog, palette] = await Promise.all([
@@ -823,7 +1022,9 @@ export class PunksDataClient {
       const punkTypeName = punkTypeNames[punkType]
       const headVariantName = headVariantNames[headVariant]
       if (punkTypeName === undefined) {
-        throw new PunksDataValidationError(`unknown punk type ${punkType} for punk ${punkId}`)
+        throw new PunksDataValidationError(
+          `unknown punk type ${punkType} for punk ${punkId}`,
+        )
       }
       if (headVariantName === undefined) {
         throw new PunksDataValidationError(
@@ -850,8 +1051,10 @@ export class PunksDataClient {
         punkTypeName,
         headVariant,
         headVariantName,
-        traits: catalog === undefined ? undefined : traitIds.map((id) => catalog[id]),
-        colors: palette === undefined ? undefined : colorIds.map((id) => palette[id]),
+        traits:
+          catalog === undefined ? undefined : traitIds.map((id) => catalog[id]),
+        colors:
+          palette === undefined ? undefined : colorIds.map((id) => palette[id]),
         indexedPixels,
       })
     }
@@ -903,7 +1106,10 @@ export class PunksDataClient {
     const missing: number[] = []
     for (const rowId of uniqueRowIds) {
       validateBitmapRowId(cachePrefix, rowId)
-      const cached = this.getCached<PunkBitmap>(`${cachePrefix}:${rowId}`, options)
+      const cached = this.getCached<PunkBitmap>(
+        `${cachePrefix}:${rowId}`,
+        options,
+      )
       if (cached) rows.set(rowId, await cached)
       else missing.push(rowId)
     }
@@ -918,7 +1124,9 @@ export class PunksDataClient {
       const words = await this.readMany<bigint>(calls, options)
       let cursor = 0
       for (const rowId of missing) {
-        const row = normalizePunkBitmap(words.slice(cursor, cursor + BITMAP_WORD_COUNT))
+        const row = normalizePunkBitmap(
+          words.slice(cursor, cursor + BITMAP_WORD_COUNT),
+        )
         cursor += BITMAP_WORD_COUNT
         rows.set(rowId, row)
         this.setCached(`${cachePrefix}:${rowId}`, options, Promise.resolve(row))
@@ -933,7 +1141,8 @@ export class PunksDataClient {
     args: readonly unknown[] = [],
     options?: PunksDataReadOptions,
   ): Promise<T> {
-    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+    if (!this.publicClient)
+      throw new PunksDataValidationError('publicClient is required for reads')
     const params = {
       address: this.address,
       abi: punksDataReadAbi,
@@ -941,9 +1150,11 @@ export class PunksDataClient {
       args,
       ...blockParams(options),
     }
-    return (this.publicClient.readContract as unknown as (value: typeof params) => Promise<T>)(
-      params,
-    )
+    return (
+      this.publicClient.readContract as unknown as (
+        value: typeof params,
+      ) => Promise<T>
+    )(params)
   }
 
   private async readMany<T>(
@@ -951,14 +1162,27 @@ export class PunksDataClient {
     options?: PunksDataReadOptions,
   ): Promise<T[]> {
     if (calls.length === 0) return []
-    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
-    const multicall = (this.publicClient as unknown as { multicall?: (args: unknown) => Promise<unknown[]> }).multicall
+    if (!this.publicClient)
+      throw new PunksDataValidationError('publicClient is required for reads')
+    const multicall = (
+      this.publicClient as unknown as {
+        multicall?: (args: unknown) => Promise<unknown[]>
+      }
+    ).multicall
     if (!multicall) {
-      return Promise.all(calls.map((call) => this.read<T>(call.functionName, call.args ?? [], options)))
+      return Promise.all(
+        calls.map((call) =>
+          this.read<T>(call.functionName, call.args ?? [], options),
+        ),
+      )
     }
 
     const out: T[] = []
-    for (let offset = 0; offset < calls.length; offset += this.multicallBatchSize) {
+    for (
+      let offset = 0;
+      offset < calls.length;
+      offset += this.multicallBatchSize
+    ) {
       const batch = calls.slice(offset, offset + this.multicallBatchSize)
       const values = await multicall({
         contracts: batch.map((call) => ({
@@ -987,17 +1211,25 @@ export class PunksDataClient {
     return promise
   }
 
-  private getCached<T>(key: string, options?: PunksDataReadOptions): Promise<T> | undefined {
+  private getCached<T>(
+    key: string,
+    options?: PunksDataReadOptions,
+  ): Promise<T> | undefined {
     if (!this.shouldCache(options)) return undefined
     return this.cache.get(cacheKey(key, options)) as Promise<T> | undefined
   }
 
-  private setCached<T>(key: string, options: PunksDataReadOptions | undefined, promise: Promise<T>): void {
+  private setCached<T>(
+    key: string,
+    options: PunksDataReadOptions | undefined,
+    promise: Promise<T>,
+  ): void {
     if (!this.shouldCache(options)) return
     const resolvedKey = cacheKey(key, options)
     this.cache.set(resolvedKey, promise)
     promise.catch(() => {
-      if (this.cache.get(resolvedKey) === promise) this.cache.delete(resolvedKey)
+      if (this.cache.get(resolvedKey) === promise)
+        this.cache.delete(resolvedKey)
     })
   }
 
@@ -1006,7 +1238,9 @@ export class PunksDataClient {
   }
 }
 
-export function createPunksDataClient(config: PunksDataClientConfig): PunksDataClient {
+export function createPunksDataClient(
+  config: PunksDataClientConfig,
+): PunksDataClient {
   return new PunksDataClient(config)
 }
 
@@ -1016,7 +1250,9 @@ export function indexedPixelsToRgba(
 ): Uint8Array {
   assertIndexedPixels(indexedPixels)
   if (paletteRgbaBytes.length < PALETTE_SIZE * 4) {
-    throw new PunksDataValidationError(`palette must contain at least ${PALETTE_SIZE} RGBA colors`)
+    throw new PunksDataValidationError(
+      `palette must contain at least ${PALETTE_SIZE} RGBA colors`,
+    )
   }
   const out = new Uint8Array(indexedPixels.length * 4)
   for (let i = 0; i < indexedPixels.length; i++) {
@@ -1054,7 +1290,9 @@ function applyCriteriaRows(
   if (forbiddenIds.length > 0) {
     bitmap = subtractPunkBitmaps(
       bitmap,
-      unionPunkBitmaps(forbiddenIds.map((id) => rows.get(id) ?? emptyPunkBitmap())),
+      unionPunkBitmaps(
+        forbiddenIds.map((id) => rows.get(id) ?? emptyPunkBitmap()),
+      ),
     )
   }
   return bitmap
@@ -1084,14 +1322,16 @@ function blockParams(options?: PunksDataReadOptions): {
   blockTag?: PunksDataReadOptions['blockTag']
 } {
   validateReadOptions(options)
-  if (options?.blockNumber !== undefined) return { blockNumber: options.blockNumber }
+  if (options?.blockNumber !== undefined)
+    return { blockNumber: options.blockNumber }
   if (options?.blockTag !== undefined) return { blockTag: options.blockTag }
   return {}
 }
 
 function cacheKey(key: string, options?: PunksDataReadOptions): string {
   validateReadOptions(options)
-  if (options?.blockNumber !== undefined) return `${key}@${options.blockNumber.toString()}`
+  if (options?.blockNumber !== undefined)
+    return `${key}@${options.blockNumber.toString()}`
   if (options?.blockTag !== undefined) return `${key}@${options.blockTag}`
   return `${key}@default`
 }
@@ -1106,10 +1346,15 @@ function validateReadOptions(options?: PunksDataReadOptions): void {
   }
   if (options.blockNumber !== undefined) {
     if (typeof options.blockNumber !== 'bigint' || options.blockNumber < 0n) {
-      throw new PunksDataValidationError('blockNumber must be a non-negative bigint')
+      throw new PunksDataValidationError(
+        'blockNumber must be a non-negative bigint',
+      )
     }
   }
-  if (options.blockTag !== undefined && !READ_BLOCK_TAGS.has(options.blockTag)) {
+  if (
+    options.blockTag !== undefined &&
+    !READ_BLOCK_TAGS.has(options.blockTag)
+  ) {
     throw new PunksDataValidationError(
       'blockTag must be latest, earliest, pending, safe, or finalized',
     )
@@ -1121,7 +1366,8 @@ function validatePagination(query: PunksSearchQuery): void {
   if (query.offset !== undefined) {
     assertIntegerInRange('offset', query.offset, 0, Number.MAX_SAFE_INTEGER)
   }
-  if (query.limit === undefined || query.limit === Number.POSITIVE_INFINITY) return
+  if (query.limit === undefined || query.limit === Number.POSITIVE_INFINITY)
+    return
   assertIntegerInRange('limit', query.limit, 0, Number.MAX_SAFE_INTEGER)
 }
 
@@ -1130,7 +1376,9 @@ function validateSearchQuery(query: PunksSearchQuery): void {
     throw new PunksDataValidationError('search query must be an object')
   }
   if (Object.prototype.hasOwnProperty.call(query, 'traits')) {
-    throw new PunksDataValidationError('search query uses attributes, not traits')
+    throw new PunksDataValidationError(
+      'search query uses attributes, not traits',
+    )
   }
 }
 
@@ -1139,11 +1387,16 @@ function validateBitmapRowId(cachePrefix: string, rowId: number): void {
   else if (cachePrefix === 'colorBitmap') validateColorId(rowId)
   else if (cachePrefix === 'pixelCountBitmap') validatePixelCount(rowId)
   else if (cachePrefix === 'colorCountBitmap') validateColorCount(rowId)
-  else throw new PunksDataValidationError(`unknown bitmap cache prefix ${cachePrefix}`)
+  else
+    throw new PunksDataValidationError(
+      `unknown bitmap cache prefix ${cachePrefix}`,
+    )
 }
 
 function assertIntegerLike(label: string, value: number): void {
   if (!Number.isInteger(value) || value < 0) {
-    throw new PunksDataValidationError(`${label} must be a non-negative integer`)
+    throw new PunksDataValidationError(
+      `${label} must be a non-negative integer`,
+    )
   }
 }

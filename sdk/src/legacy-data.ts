@@ -2,10 +2,7 @@ import type { Address, PublicClient } from 'viem'
 import { legacyCryptoPunksDataAbi } from './abi'
 import { CRYPTOPUNKS_DATA_ADDRESS } from './constants'
 import type { PunksDataReadOptions } from './types'
-import {
-  PunksDataValidationError,
-  validatePunkId,
-} from './utils'
+import { PunksDataValidationError, validatePunkId } from './utils'
 
 export type LegacyCryptoPunksDataClientConfig = {
   publicClient?: PublicClient
@@ -21,21 +18,33 @@ export class LegacyCryptoPunksDataClient {
     this.address = config.address ?? CRYPTOPUNKS_DATA_ADDRESS
   }
 
-  async punkImageSvg(punkId: number, options?: PunksDataReadOptions): Promise<string> {
+  async punkImageSvg(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     validatePunkId(punkId)
     return this.read<string>('punkImageSvg', [punkId], options)
   }
 
-  async punkAttributes(punkId: number, options?: PunksDataReadOptions): Promise<string> {
+  async punkAttributes(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     validatePunkId(punkId)
     return this.read<string>('punkAttributes', [punkId], options)
   }
 
-  getPunkImageSvg(punkId: number, options?: PunksDataReadOptions): Promise<string> {
+  getPunkImageSvg(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     return this.punkImageSvg(punkId, options)
   }
 
-  getPunkAttributes(punkId: number, options?: PunksDataReadOptions): Promise<string> {
+  getPunkAttributes(
+    punkId: number,
+    options?: PunksDataReadOptions,
+  ): Promise<string> {
     return this.punkAttributes(punkId, options)
   }
 
@@ -44,7 +53,8 @@ export class LegacyCryptoPunksDataClient {
     args: readonly unknown[],
     options?: PunksDataReadOptions,
   ): Promise<T> {
-    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+    if (!this.publicClient)
+      throw new PunksDataValidationError('publicClient is required for reads')
     const params = {
       address: this.address,
       abi: legacyCryptoPunksDataAbi,
@@ -52,9 +62,11 @@ export class LegacyCryptoPunksDataClient {
       args,
       ...blockParams(options),
     }
-    return (this.publicClient.readContract as unknown as (value: typeof params) => Promise<T>)(
-      params,
-    )
+    return (
+      this.publicClient.readContract as unknown as (
+        value: typeof params,
+      ) => Promise<T>
+    )(params)
   }
 }
 
@@ -71,7 +83,8 @@ function blockParams(options?: PunksDataReadOptions): {
   if (options?.blockNumber !== undefined && options.blockTag !== undefined) {
     throw new PunksDataValidationError('use blockNumber or blockTag, not both')
   }
-  if (options?.blockNumber !== undefined) return { blockNumber: options.blockNumber }
+  if (options?.blockNumber !== undefined)
+    return { blockNumber: options.blockNumber }
   if (options?.blockTag !== undefined) return { blockTag: options.blockTag }
   return {}
 }

@@ -138,14 +138,8 @@ describe('PunksCollectionBids', () => {
       }
       assert.equal(criteria.requiredTraitMask, traitBit(7))
 
-      assert.deepEqual(
-        await bids.read.getBidIncludeIds([bidId]),
-        [1, 2, 3],
-      )
-      assert.deepEqual(
-        await bids.read.getBidExcludeIds([bidId]),
-        [4, 5],
-      )
+      assert.deepEqual(await bids.read.getBidIncludeIds([bidId]), [1, 2, 3])
+      assert.deepEqual(await bids.read.getBidExcludeIds([bidId]), [4, 5])
       assert.equal(await bids.read.lastBidId(), bidId)
     })
 
@@ -273,10 +267,7 @@ describe('PunksCollectionBids', () => {
       const gas = receipt.gasUsed * receipt.effectiveGasPrice
 
       assert.equal(after - before + gas, parseEther('1.05'))
-      assert.equal(
-        await publicClient.getBalance({ address: bids.address }),
-        0n,
-      )
+      assert.equal(await publicClient.getBalance({ address: bids.address }), 0n)
 
       const [, , storedBidder] = (await bids.read.bids([bidId])) as [
         bigint,
@@ -497,10 +488,7 @@ describe('PunksCollectionBids', () => {
       assert.equal(settlerAfter - settlerBefore + gas, parseEther('0.05'))
 
       // No ETH is stuck in the bid book.
-      assert.equal(
-        await publicClient.getBalance({ address: bids.address }),
-        0n,
-      )
+      assert.equal(await publicClient.getBalance({ address: bids.address }), 0n)
 
       // Bid storage is cleared.
       const [, , storedBidder] = (await bids.read.bids([bidId])) as [
@@ -723,8 +711,6 @@ describe('PunksCollectionBids', () => {
   it('rejects arbitrary ETH sends', async () => {
     const ctx = await deployCollectionBidsStack()
     const { bids, other } = ctx
-    await assert.rejects(
-      other.sendTransaction({ to: bids.address, value: 1n }),
-    )
+    await assert.rejects(other.sendTransaction({ to: bids.address, value: 1n }))
   })
 })

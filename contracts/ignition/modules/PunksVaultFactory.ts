@@ -6,7 +6,10 @@ import { buildModule } from '@nomicfoundation/hardhat-ignition/modules'
 // deployment artifact alongside the factory.
 export default buildModule('PunksVaultFactory', (m) => {
   const punksVaultFactory = m.contract('PunksVaultFactory', [])
-  const implementationAddress = m.staticCall(punksVaultFactory, 'IMPLEMENTATION')
+  const implementationAddress = m.staticCall(
+    punksVaultFactory,
+    'IMPLEMENTATION',
+  )
   const punksVault = m.contractAt('PunksVault', implementationAddress)
   return { punksVaultFactory, punksVault }
 })

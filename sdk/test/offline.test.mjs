@@ -12,7 +12,8 @@ import {
 import { bundledOfflinePunksData } from '../dist/offline-data.js'
 import { bundledOfflinePunksDataWithPixels } from '../dist/offline-pixel-data.js'
 
-const DATASET_HASH = '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
+const DATASET_HASH =
+  '0x92117ce6cb6bb70f9ffb9bf51ebbca6a84eae10e70639295d9c4a07958cd1f68'
 
 describe('OfflinePunksDataClient', () => {
   it('loads the bundled canonical dataset and exposes contract-compatible reads', async () => {
@@ -32,7 +33,10 @@ describe('OfflinePunksDataClient', () => {
     assert.equal(hoodie.id, 62)
     assert.equal(hoodie.supply, 259)
 
-    assert.equal(sdk.countSync({ attributes: { required: ['Hoodie'] } }), hoodie.supply)
+    assert.equal(
+      sdk.countSync({ attributes: { required: ['Hoodie'] } }),
+      hoodie.supply,
+    )
     assert.deepEqual(sdk.searchSync({ text: '#8348' }), [8348])
     assert.throws(
       () => sdk.searchSync({ traits: { required: ['Hoodie'] } }),
@@ -48,21 +52,27 @@ describe('OfflinePunksDataClient', () => {
   it('supports richer offline filters, text search, facets, sorting, and sync/async parity', async () => {
     const sdk = createOfflinePunksDataClient()
 
-    assert.deepEqual(parseOfflinePunksSearchText('zombie mohawk OR ape "3d glasses"'), [
+    assert.deepEqual(
+      parseOfflinePunksSearchText('zombie mohawk OR ape "3d glasses"'),
       [
-        { text: 'zombie', exact: false },
-        { text: 'mohawk', exact: false },
+        [
+          { text: 'zombie', exact: false },
+          { text: 'mohawk', exact: false },
+        ],
+        [
+          { text: 'ape', exact: false },
+          { text: '3d glasses', exact: true },
+        ],
       ],
-      [
-        { text: 'ape', exact: false },
-        { text: '3d glasses', exact: true },
-      ],
-    ])
+    )
 
     assert.equal(sdk.countSync({ punkType: 'Alien' }), 9)
     assert.equal(sdk.countSync({ headVariant: 'Female2' }), 1174)
     assert.deepEqual(sdk.searchSync({ attributeCount: 7 }), [8348])
-    assert.deepEqual(sdk.searchSync({ text: 'top hat mole', attributeCount: 7 }), [8348])
+    assert.deepEqual(
+      sdk.searchSync({ text: 'top hat mole', attributeCount: 7 }),
+      [8348],
+    )
     assert.equal(
       sdk.countSync({ text: '"3d glasses"' }),
       sdk.countSync({ attributes: { required: ['3D Glasses'] } }),
@@ -87,8 +97,14 @@ describe('OfflinePunksDataClient', () => {
 
     const facets = sdk.facetsSync({ text: 'alien' })
     assert.equal(facets.total, 9)
-    assert.equal(facets.punkTypes.find((facet) => facet.name === 'Alien').count, 9)
-    assert.equal(facets.attributes.find((facet) => facet.name === 'Alien').count, 9)
+    assert.equal(
+      facets.punkTypes.find((facet) => facet.name === 'Alien').count,
+      9,
+    )
+    assert.equal(
+      facets.attributes.find((facet) => facet.name === 'Alien').count,
+      9,
+    )
 
     assert.deepEqual(
       sdk.searchSync({
@@ -101,7 +117,9 @@ describe('OfflinePunksDataClient', () => {
   })
 
   it('hydrates summaries and decodes compressed indexed pixels', () => {
-    const sdk = createOfflinePunksDataClient({ dataset: bundledOfflinePunksDataWithPixels })
+    const sdk = createOfflinePunksDataClient({
+      dataset: bundledOfflinePunksDataWithPixels,
+    })
     const punk = sdk.getPunkSync(0, {
       includeTraits: true,
       includeColors: true,
@@ -113,7 +131,14 @@ describe('OfflinePunksDataClient', () => {
     assert.equal(punk.headVariantName, 'Female 2')
     assert.deepEqual(
       punk.traits.map((trait) => trait.name),
-      ['Female', 'Female 2', '3 Attributes', 'Blonde Bob', 'Earring', 'Green Eye Shadow'],
+      [
+        'Female',
+        'Female 2',
+        '3 Attributes',
+        'Blonde Bob',
+        'Earring',
+        'Green Eye Shadow',
+      ],
     )
     assert.equal(punk.indexedPixels.length, 576)
     assert.equal(sdk.getColorAtSync(0, 0, 0), punk.indexedPixels[0])
@@ -137,7 +162,10 @@ describe('OfflinePunksDataClient', () => {
     const dir = await mkdtemp(join(tmpdir(), 'punks-offline-'))
     try {
       const manifest = JSON.parse(bundledOfflinePunksData.manifestJson)
-      await writeFile(join(dir, 'manifest.json'), bundledOfflinePunksData.manifestJson)
+      await writeFile(
+        join(dir, 'manifest.json'),
+        bundledOfflinePunksData.manifestJson,
+      )
       await Promise.all(
         Object.entries(bundledOfflinePunksData.files).map(([key]) =>
           writeFile(
@@ -147,7 +175,9 @@ describe('OfflinePunksDataClient', () => {
         ),
       )
 
-      const dataset = await loadOfflinePunksDataFromDirectory(dir, { includePixels: false })
+      const dataset = await loadOfflinePunksDataFromDirectory(dir, {
+        includePixels: false,
+      })
       const sdk = createOfflinePunksDataClientFromDataset(dataset)
       assert.equal(sdk.getDatasetHashSync(), DATASET_HASH)
       assert.deepEqual(sdk.searchSync({ attributeCount: 7 }), [8348])

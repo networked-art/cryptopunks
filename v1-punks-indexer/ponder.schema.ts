@@ -204,13 +204,10 @@ export const punkVisual = onchainTable(
 )
 
 // Sentinel rows so backfill runs are idempotent across restarts.
-export const backfillMarker = onchainTable(
-  'backfill_markers',
-  (t) => ({
-    name: t.text().primaryKey(),
-    completed_at: t.bigint().notNull(),
-  }),
-)
+export const backfillMarker = onchainTable('backfill_markers', (t) => ({
+  name: t.text().primaryKey(),
+  completed_at: t.bigint().notNull(),
+}))
 
 // Unified user-facing activity. type ∈ { assign, transfer, wrap, unwrap,
 // listing, listing_cancelled, bid, bid_adjusted, bid_cancelled, sale,

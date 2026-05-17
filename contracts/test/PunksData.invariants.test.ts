@@ -79,7 +79,9 @@ async function loadSnapshot(): Promise<Snapshot> {
   const bin = new Uint8Array(await readFile(SNAPSHOT_BIN))
   const images: Uint8Array[] = []
   for (let i = 0; i < json.snapshotIds.length; i++) {
-    images.push(bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage))
+    images.push(
+      bin.subarray(i * json.bytesPerImage, (i + 1) * json.bytesPerImage),
+    )
   }
   return { ...json, images }
 }
@@ -96,7 +98,9 @@ async function buildPartialDatasetFromSnapshot(): Promise<{
 
   const indexedPixels = new Uint8Array(PUNK_COUNT * PIXELS_PER_PUNK)
   const colorMasks = new Array<bigint>(PUNK_COUNT).fill(0n)
-  const packedScalars = new Array<bigint>(Math.ceil(PUNK_COUNT / SCALARS_PER_WORD)).fill(0n)
+  const packedScalars = new Array<bigint>(
+    Math.ceil(PUNK_COUNT / SCALARS_PER_WORD),
+  ).fill(0n)
   const pixelOffsets = new Uint8Array((PUNK_COUNT + 1) * 3)
   const compressedEntries: Uint8Array[] = []
   const offsets = new Map<number, { start: number; end: number }>()
@@ -116,7 +120,9 @@ async function buildPartialDatasetFromSnapshot(): Promise<{
     const visibleColorCount = visibleColors.length
     const visiblePixelCount = countVisiblePixels(indexed)
     const parsed = parseAttributes(row.attributes)
-    const headIndex = HEAD_VARIANTS.indexOf(parsed.headVariant as (typeof HEAD_VARIANTS)[number])
+    const headIndex = HEAD_VARIANTS.indexOf(
+      parsed.headVariant as (typeof HEAD_VARIANTS)[number],
+    )
     const typeIndex = NORMALIZED_TYPES.indexOf(
       parsed.normalizedType as (typeof NORMALIZED_TYPES)[number],
     )
@@ -204,13 +210,15 @@ function setScalarSlot(
     const placeholder =
       BigInt(PLACEHOLDER_PIXEL_COUNT) | (BigInt(PLACEHOLDER_COLOR_COUNT) << 16n)
     let word = 0n
-    for (let s = 0; s < SCALARS_PER_WORD; s++) word |= placeholder << BigInt(s * 48)
+    for (let s = 0; s < SCALARS_PER_WORD; s++)
+      word |= placeholder << BigInt(s * 48)
     packedScalars[wordIndex] = word
   }
   // Clear the slot then write the real scalar.
   const slotMask = (1n << 48n) - 1n
   const shift = BigInt(slot * 48)
-  packedScalars[wordIndex] = (packedScalars[wordIndex] & ~(slotMask << shift)) | (value << shift)
+  packedScalars[wordIndex] =
+    (packedScalars[wordIndex] & ~(slotMask << shift)) | (value << shift)
 }
 
 function makePartialDataset(parts: {

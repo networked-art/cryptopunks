@@ -2,32 +2,70 @@
   <div class="bid-form">
     <h3 class="form-title">Place a collection bid</h3>
 
-    <p v-if="!marketAddress" class="warn">PunksMarket contract is not configured yet.</p>
+    <p
+      v-if="!marketAddress"
+      class="warn"
+    >
+      PunksMarket contract is not configured yet.
+    </p>
 
     <div class="form-grid">
       <label>
         <span class="label">Bid amount</span>
-        <input v-model="bidEth" type="number" step="0.01" min="0" placeholder="0.5" />
+        <input
+          v-model="bidEth"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="0.5"
+        />
       </label>
       <label>
         <span class="label">Optional settlement bounty</span>
-        <input v-model="settlementEth" type="number" step="0.001" min="0" placeholder="0" />
+        <input
+          v-model="settlementEth"
+          type="number"
+          step="0.001"
+          min="0"
+          placeholder="0"
+        />
       </label>
 
       <label class="full">
         <span class="label">Include punk IDs (optional)</span>
-        <input v-model="includeText" type="text" placeholder="e.g. 8348, 1234, 7777" />
-        <span v-if="includeIds.length" class="hint muted">{{ includeIds.length }} ids</span>
+        <input
+          v-model="includeText"
+          type="text"
+          placeholder="e.g. 8348, 1234, 7777"
+        />
+        <span
+          v-if="includeIds.length"
+          class="hint muted"
+          >{{ includeIds.length }} ids</span
+        >
       </label>
       <label class="full">
         <span class="label">Exclude punk IDs (optional)</span>
-        <input v-model="excludeText" type="text" placeholder="e.g. 0, 1, 2" />
-        <span v-if="excludeIds.length" class="hint muted">{{ excludeIds.length }} ids</span>
+        <input
+          v-model="excludeText"
+          type="text"
+          placeholder="e.g. 0, 1, 2"
+        />
+        <span
+          v-if="excludeIds.length"
+          class="hint muted"
+          >{{ excludeIds.length }} ids</span
+        >
       </label>
     </div>
 
     <p class="muted total">
-      Total locked: <strong><EthAmount :wei="totalWei" :precision="6" /></strong>
+      Total locked:
+      <strong
+        ><EthAmount
+          :wei="totalWei"
+          :precision="6"
+      /></strong>
     </p>
 
     <div class="actions">
@@ -110,9 +148,14 @@ const EMPTY_FILTER = {
   maxColorCount: 0,
 }
 
-type DialogRef = { initializeRequest: (request?: () => Promise<Hash>) => void } | null
+type DialogRef = {
+  initializeRequest: (request?: () => Promise<Hash>) => void
+} | null
 const dialogRef = ref<DialogRef>(null)
-const dialogText = ref<{ title?: Record<string, string>; lead?: Record<string, string> }>({})
+const dialogText = ref<{
+  title?: Record<string, string>
+  lead?: Record<string, string>
+}>({})
 
 async function actPlace() {
   if (!bidWei.value || !marketAddress.value) return

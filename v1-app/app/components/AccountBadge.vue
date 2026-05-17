@@ -1,6 +1,9 @@
 <template>
   <span class="account-badge">
-    <span class="dot" :style="{ background: dotColor }" />
+    <span
+      class="dot"
+      :style="{ background: dotColor }"
+    />
     <span class="label">{{ displayName }}</span>
   </span>
 </template>
@@ -15,7 +18,9 @@ const props = defineProps<{
 
 const { data } = useEnsWithAvatar(() => props.address)
 
-const displayName = computed(() => data.value?.ens || shortAddress(props.address))
+const displayName = computed(
+  () => data.value?.ens || shortAddress(props.address),
+)
 
 // Cheap deterministic color from address for the dot.
 const dotColor = computed(() => {

@@ -21,20 +21,20 @@ auction reads need a `publicClient`.
 
 ## Root API
 
-| Surface | Use it for |
-| --- | --- |
-| `punks.search`, `punks.count`, `punks.facets` | Local collection filtering |
-| `punks.dataset` | Bundled trait, palette, bitmap, and optional pixel data |
-| `punks.render` | Local SVG, PNG, RGBA, metadata, token URI output |
-| `punks.market` | Original CryptoPunks market reads/writes |
-| `punks.data.contract` | `PunksData.sol` reads |
-| `punks.data.legacy` | Original `CryptopunksData` SVG and attributes |
-| `punks.wrappers.modern` | CryptoPunks721 and Stash wrapping flows |
-| `punks.wrappers.legacy` | Legacy Wrapped Punks proxy wrapping flows |
-| `punks.stash.factory` | StashFactory deployment, lookup, implementation status, upgrades |
-| `punks.stash.at(address)` | Individual Stash funding, liquidity, bids, withdrawals |
-| `punks.offers` | Networked Art criterion offers |
-| `punks.auctions` | Vaults, lots, bidding, settlement |
+| Surface                                       | Use it for                                                       |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| `punks.search`, `punks.count`, `punks.facets` | Local collection filtering                                       |
+| `punks.dataset`                               | Bundled trait, palette, bitmap, and optional pixel data          |
+| `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI output                 |
+| `punks.market`                                | Original CryptoPunks market reads/writes                         |
+| `punks.data.contract`                         | `PunksData.sol` reads                                            |
+| `punks.data.legacy`                           | Original `CryptopunksData` SVG and attributes                    |
+| `punks.wrappers.modern`                       | CryptoPunks721 and Stash wrapping flows                          |
+| `punks.wrappers.legacy`                       | Legacy Wrapped Punks proxy wrapping flows                        |
+| `punks.stash.factory`                         | StashFactory deployment, lookup, implementation status, upgrades |
+| `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals           |
+| `punks.offers`                                | Networked Art criterion offers                                   |
+| `punks.auctions`                              | Vaults, lots, bidding, settlement                                |
 
 ## Choosing The Right Surface
 

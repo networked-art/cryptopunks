@@ -32,11 +32,13 @@ export type ActivityEvent = {
 
 const LOOKBACK_BLOCKS = 50_000n // ~1 week of mainnet
 
-export function useActivityFeed(opts: {
-  punkId?: MaybeRefOrGetter<number | undefined>
-  bidder?: MaybeRefOrGetter<Address | undefined>
-  seller?: MaybeRefOrGetter<Address | undefined>
-} = {}) {
+export function useActivityFeed(
+  opts: {
+    punkId?: MaybeRefOrGetter<number | undefined>
+    bidder?: MaybeRefOrGetter<Address | undefined>
+    seller?: MaybeRefOrGetter<Address | undefined>
+  } = {},
+) {
   const config = useConfig()
   const punksMarket = usePunksMarketAddress()
 
@@ -54,9 +56,9 @@ export function useActivityFeed(opts: {
       const head = await client.getBlockNumber()
       const from = head > LOOKBACK_BLOCKS ? head - LOOKBACK_BLOCKS : 0n
 
-      const v1Events = (cryptoPunksMarketAbi as readonly { type: string }[]).filter(
-        (x) => x.type === 'event',
-      ) as never
+      const v1Events = (
+        cryptoPunksMarketAbi as readonly { type: string }[]
+      ).filter((x) => x.type === 'event') as never
       const v1Logs = await client.getLogs({
         address: PUNKS_V1_ADDRESS,
         fromBlock: from,
@@ -92,7 +94,8 @@ export function useActivityFeed(opts: {
       })
 
       filtered.sort((a, b) => {
-        if (a.blockNumber !== b.blockNumber) return Number(b.blockNumber - a.blockNumber)
+        if (a.blockNumber !== b.blockNumber)
+          return Number(b.blockNumber - a.blockNumber)
         return b.logIndex - a.logIndex
       })
 
@@ -120,7 +123,9 @@ function mapMaybe(out: ActivityEvent[], value: ActivityEvent | null) {
   if (value) out.push(value)
 }
 
-function mapV1Log(log: Log & { eventName?: string; args?: Record<string, unknown> }): ActivityEvent | null {
+function mapV1Log(
+  log: Log & { eventName?: string; args?: Record<string, unknown> },
+): ActivityEvent | null {
   const args = log.args ?? {}
   const base = {
     blockNumber: log.blockNumber!,
@@ -168,7 +173,9 @@ function mapV1Log(log: Log & { eventName?: string; args?: Record<string, unknown
   }
 }
 
-function mapPmLog(log: Log & { eventName?: string; args?: Record<string, unknown> }): ActivityEvent | null {
+function mapPmLog(
+  log: Log & { eventName?: string; args?: Record<string, unknown> },
+): ActivityEvent | null {
   const args = log.args ?? {}
   const base = {
     blockNumber: log.blockNumber!,

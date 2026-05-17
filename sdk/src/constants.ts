@@ -64,7 +64,13 @@ export const PunkType = {
   Zombie: 4,
 } as const
 
-export const punkTypeNames = ['Alien', 'Ape', 'Female', 'Male', 'Zombie'] as const
+export const punkTypeNames = [
+  'Alien',
+  'Ape',
+  'Female',
+  'Male',
+  'Zombie',
+] as const
 
 export const HeadVariant = {
   Alien: 0,

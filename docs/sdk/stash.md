@@ -2,12 +2,12 @@
 
 `punks.stash` covers StashFactory and individual Stash contracts.
 
-| Surface | Use it for |
-| --- | --- |
-| `punks.stash.factory` | Deployment lookup, deployment, implementation status, and Stash upgrades |
-| `punks.stash.at(address)` | Work with a known Stash address |
-| `punks.stash.forOwner(owner)` | Resolve a deployed Stash for an owner |
-| `punks.stash.current` | Stash client from `addresses.stash`, when configured |
+| Surface                       | Use it for                                                               |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| `punks.stash.factory`         | Deployment lookup, deployment, implementation status, and Stash upgrades |
+| `punks.stash.at(address)`     | Work with a known Stash address                                          |
+| `punks.stash.forOwner(owner)` | Resolve a deployed Stash for an owner                                    |
+| `punks.stash.current`         | Stash client from `addresses.stash`, when configured                     |
 
 `forOwner()` rejects if the factory reports that the owner has not deployed a
 Stash or if the resolved Stash address is zero.

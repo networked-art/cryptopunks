@@ -1,12 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { network } from 'hardhat'
-import {
-  bytesToHex,
-  encodeAbiParameters,
-  keccak256,
-  type Hex,
-} from 'viem'
+import { bytesToHex, encodeAbiParameters, keccak256, type Hex } from 'viem'
 
 const PUNK_COUNT = 10_000
 const TRAIT_COUNT = 111
@@ -51,9 +46,13 @@ describe('PunksData', () => {
       deployer.account.address.toLowerCase(),
     )
 
-    const dataAsOther = await ctx.viem.getContractAt('PunksData', data.address, {
-      client: { wallet: other },
-    })
+    const dataAsOther = await ctx.viem.getContractAt(
+      'PunksData',
+      data.address,
+      {
+        client: { wallet: other },
+      },
+    )
     await assert.rejects(
       () => dataAsOther.write.loadColorMasks([0, [0n]]),
       /0x30cd7471|NotOwner/,
@@ -208,7 +207,10 @@ describe('PunksData', () => {
     // Color bitmaps: 284,160 bytes / 12 chunks. Same cross-chunk + last-word coverage.
     assert.equal(await data.read.colorBitmapWord([19, 7]), CROSS_CHUNK_PATTERN)
     assert.equal(
-      await data.read.colorBitmapWord([MAX_COLOR_COUNT - 1, WORDS_PER_BITMAP - 1]),
+      await data.read.colorBitmapWord([
+        MAX_COLOR_COUNT - 1,
+        WORDS_PER_BITMAP - 1,
+      ]),
       LAST_CHUNK_PATTERN,
     )
 
@@ -253,7 +255,10 @@ describe('PunksData', () => {
     )
 
     // redundant required & anyOf overlap is allowed (no revert, no semantic change)
-    assert.equal(await data.read.hasTraits([0, set(0), 0n, set(0) | set(2)]), true)
+    assert.equal(
+      await data.read.hasTraits([0, set(0), 0n, set(0) | set(2)]),
+      true,
+    )
 
     // bit out of canonical range (>= 111) reverts
     await ctx.viem.assertions.revertWithCustomError(
@@ -293,7 +298,11 @@ describe('PunksData', () => {
       },
       {
         label: 'visibleColorCount == 0',
-        entry: makeMalformedEntry({ visibleColorCount: 0, paletteIds: [], visibleBits: [] }),
+        entry: makeMalformedEntry({
+          visibleColorCount: 0,
+          paletteIds: [],
+          visibleBits: [],
+        }),
       },
       {
         label: 'visibleColorCount > paletteCount - 1',
@@ -381,11 +390,15 @@ describe('PunksData', () => {
   })
 })
 
-async function deployLoadedPunksData(opts?: { pixelOverrideForPunk0?: Uint8Array }) {
+async function deployLoadedPunksData(opts?: {
+  pixelOverrideForPunk0?: Uint8Array
+}) {
   const connection: any = await network.create()
   const { viem } = connection
   const [deployer, other] = await viem.getWalletClients()
-  const data = await viem.deployContract('PunksData', [deployer.account.address])
+  const data = await viem.deployContract('PunksData', [
+    deployer.account.address,
+  ])
   const fixture = makeFixture(opts)
 
   await loadBlob(data, BlobId.TraitBitmaps, fixture.traitBitmaps)
@@ -401,13 +414,24 @@ async function deployLoadedPunksData(opts?: { pixelOverrideForPunk0?: Uint8Array
   await data.write.loadColorMasks([0, [fixture.colorMask]])
   await data.write.loadPackedScalars([0, [fixture.packedScalarWord]])
   await data.write.loadColorSupplies([0, fixture.colorSupplies])
-  return { connection, viem, deployer, other, data, fixture, hashes: fixture.hashes }
+  return {
+    connection,
+    viem,
+    deployer,
+    other,
+    data,
+    fixture,
+    hashes: fixture.hashes,
+  }
 }
 
 async function loadBlob(data: any, blobId: BlobId, bytes: Uint8Array) {
   const chunkCount = Math.ceil(bytes.length / CHUNK_SIZE)
   for (let index = 0; index < chunkCount; index++) {
-    const chunk = bytes.slice(index * CHUNK_SIZE, Math.min(bytes.length, (index + 1) * CHUNK_SIZE))
+    const chunk = bytes.slice(
+      index * CHUNK_SIZE,
+      Math.min(bytes.length, (index + 1) * CHUNK_SIZE),
+    )
     await data.write.loadBlobChunk([blobId, index, bytesToHex(chunk)])
   }
 }
@@ -425,7 +449,12 @@ function makeFixture(opts?: { pixelOverrideForPunk0?: Uint8Array }) {
   // (spans chunk 0 [0..24574] -> chunk 1 [24575..49149]).
   writeBitmapWord(traitBitmaps, 19, 7, CROSS_CHUNK_PATTERN)
   // Last word in the last chunk of trait bitmaps.
-  writeBitmapWord(traitBitmaps, TRAIT_COUNT - 1, WORDS_PER_BITMAP - 1, LAST_CHUNK_PATTERN)
+  writeBitmapWord(
+    traitBitmaps,
+    TRAIT_COUNT - 1,
+    WORDS_PER_BITMAP - 1,
+    LAST_CHUNK_PATTERN,
+  )
 
   const traitMeta = makeTraitMeta()
   const palette = new Uint8Array(MAX_COLOR_COUNT * 4)
@@ -448,9 +477,16 @@ function makeFixture(opts?: { pixelOverrideForPunk0?: Uint8Array }) {
   writeBitmapWord(colorBitmaps, 1, 0, 1n)
   writeBitmapWord(colorBitmaps, 2, 0, 1n)
   writeBitmapWord(colorBitmaps, 19, 7, CROSS_CHUNK_PATTERN)
-  writeBitmapWord(colorBitmaps, MAX_COLOR_COUNT - 1, WORDS_PER_BITMAP - 1, LAST_CHUNK_PATTERN)
+  writeBitmapWord(
+    colorBitmaps,
+    MAX_COLOR_COUNT - 1,
+    WORDS_PER_BITMAP - 1,
+    LAST_CHUNK_PATTERN,
+  )
 
-  const pixelCountBitmaps = new Uint8Array((332 - 148 + 1) * WORDS_PER_BITMAP * 32)
+  const pixelCountBitmaps = new Uint8Array(
+    (332 - 148 + 1) * WORDS_PER_BITMAP * 32,
+  )
   writeBitmapWord(pixelCountBitmaps, 0, 0, 1n)
   const colorCountBitmaps = new Uint8Array((14 - 2 + 1) * WORDS_PER_BITMAP * 32)
   writeBitmapWord(colorCountBitmaps, 0, 0, 1n)
@@ -461,11 +497,41 @@ function makeFixture(opts?: { pixelOverrideForPunk0?: Uint8Array }) {
   colorSupplies[2] = 48
 
   const packedScalarWord = packScalarWord([
-    { pixelCount: 148, colorCount: 2, attributeCount: 0, punkType: 0, headVariant: 0 },
-    { pixelCount: 148, colorCount: 2, attributeCount: 0, punkType: 0, headVariant: 0 },
-    { pixelCount: 148, colorCount: 2, attributeCount: 0, punkType: 0, headVariant: 0 },
-    { pixelCount: 148, colorCount: 2, attributeCount: 0, punkType: 0, headVariant: 0 },
-    { pixelCount: 148, colorCount: 2, attributeCount: 0, punkType: 0, headVariant: 0 },
+    {
+      pixelCount: 148,
+      colorCount: 2,
+      attributeCount: 0,
+      punkType: 0,
+      headVariant: 0,
+    },
+    {
+      pixelCount: 148,
+      colorCount: 2,
+      attributeCount: 0,
+      punkType: 0,
+      headVariant: 0,
+    },
+    {
+      pixelCount: 148,
+      colorCount: 2,
+      attributeCount: 0,
+      punkType: 0,
+      headVariant: 0,
+    },
+    {
+      pixelCount: 148,
+      colorCount: 2,
+      attributeCount: 0,
+      punkType: 0,
+      headVariant: 0,
+    },
+    {
+      pixelCount: 148,
+      colorCount: 2,
+      attributeCount: 0,
+      punkType: 0,
+      headVariant: 0,
+    },
   ])
 
   const hashes = makeHashes()
@@ -521,7 +587,10 @@ function traitKind(id: number): TraitKind {
   return TraitKind.Accessory
 }
 
-function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]): Uint8Array {
+function encodeSparseIndexed(
+  indexed: Uint8Array,
+  visibleColors: number[],
+): Uint8Array {
   const bitmap = new Uint8Array(VISIBLE_BITMAP_BYTES)
   const indexBytes = new Uint8Array(Math.ceil(148 / 8))
   let bitOffset = 0
@@ -534,7 +603,12 @@ function encodeSparseIndexed(indexed: Uint8Array, visibleColors: number[]): Uint
     writeBits(indexBytes, bitOffset, 1, localIndex)
     bitOffset += 1
   }
-  return concatBytes([Uint8Array.of(visibleColors.length), bitmap, Uint8Array.from(visibleColors), indexBytes])
+  return concatBytes([
+    Uint8Array.of(visibleColors.length),
+    bitmap,
+    Uint8Array.from(visibleColors),
+    indexBytes,
+  ])
 }
 
 function packScalarWord(
@@ -575,7 +649,13 @@ function makeHashes() {
         { type: 'bytes32' },
         { type: 'bytes32' },
       ],
-      [traitCatalogHash, punkMaskHash, paletteHash, indexedPixelsHash, compressedPixelsHash],
+      [
+        traitCatalogHash,
+        punkMaskHash,
+        paletteHash,
+        indexedPixelsHash,
+        compressedPixelsHash,
+      ],
     ),
   )
   return {
@@ -588,11 +668,21 @@ function makeHashes() {
   }
 }
 
-function writeBitmapWord(out: Uint8Array, row: number, wordIndex: number, value: bigint) {
+function writeBitmapWord(
+  out: Uint8Array,
+  row: number,
+  wordIndex: number,
+  value: bigint,
+) {
   writeUint256(out, (row * WORDS_PER_BITMAP + wordIndex) * 32, value)
 }
 
-function writeBits(target: Uint8Array, bitOffset: number, bitLength: number, value: number) {
+function writeBits(
+  target: Uint8Array,
+  bitOffset: number,
+  bitLength: number,
+  value: number,
+) {
   for (let i = 0; i < bitLength; i++) {
     const bit = (value >> (bitLength - 1 - i)) & 1
     if (bit === 0) continue
@@ -674,7 +764,8 @@ function makeMalformedEntry(opts: {
     bitmap[pixel >> 3] |= 1 << (7 - (pixel & 7))
   }
 
-  const indexBytesLen = Math.ceil((visibleBits.length * bitsPerIndex) / 8) + extraIndexBytes
+  const indexBytesLen =
+    Math.ceil((visibleBits.length * bitsPerIndex) / 8) + extraIndexBytes
   const indexBytes = new Uint8Array(indexBytesLen)
   let bitOffset = 0
   for (let i = 0; i < visibleBits.length; i++) {

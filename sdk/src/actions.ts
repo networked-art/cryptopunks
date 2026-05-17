@@ -114,9 +114,11 @@ export class PunksMarketClient {
 
   async listing(punkId: number): Promise<PunkListing> {
     validatePunkId(punkId)
-    const [isForSale, punkIndex, seller, minValue, onlySellTo] = await this.read<
-      readonly [boolean, bigint, Address, bigint, Address]
-    >('punksOfferedForSale', [BigInt(punkId)])
+    const [isForSale, punkIndex, seller, minValue, onlySellTo] =
+      await this.read<readonly [boolean, bigint, Address, bigint, Address]>(
+        'punksOfferedForSale',
+        [BigInt(punkId)],
+      )
     return {
       punkId: Number(punkIndex),
       isForSale,
@@ -150,7 +152,8 @@ export class PunksMarketClient {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     assertWei('priceWei', params.priceWei)
-    const privateListing = params.onlySellTo !== undefined && params.onlySellTo !== ZERO_ADDRESS
+    const privateListing =
+      params.onlySellTo !== undefined && params.onlySellTo !== ZERO_ADDRESS
     return {
       description: privateListing
         ? `List CryptoPunk ${params.punkId} to one buyer`
@@ -158,7 +161,9 @@ export class PunksMarketClient {
       request: {
         address: this.address,
         abi: cryptoPunksMarketAbi,
-        functionName: privateListing ? 'offerPunkForSaleToAddress' : 'offerPunkForSale',
+        functionName: privateListing
+          ? 'offerPunkForSaleToAddress'
+          : 'offerPunkForSale',
         args: privateListing
           ? [BigInt(params.punkId), params.priceWei, params.onlySellTo]
           : [BigInt(params.punkId), params.priceWei],
@@ -166,7 +171,11 @@ export class PunksMarketClient {
     }
   }
 
-  list(params: { punkId: number; priceWei: bigint; onlySellTo?: Address }): Promise<TransactionHash> {
+  list(params: {
+    punkId: number
+    priceWei: bigint
+    onlySellTo?: Address
+  }): Promise<TransactionHash> {
     return this.write(this.prepareList(params))
   }
 
@@ -207,9 +216,14 @@ export class PunksMarketClient {
     priceWei?: bigint
     maxPriceWei?: bigint
   }): Promise<TransactionHash> {
-    const listing = params.priceWei === undefined ? await this.listing(params.punkId) : undefined
+    const listing =
+      params.priceWei === undefined
+        ? await this.listing(params.punkId)
+        : undefined
     if (listing !== undefined && !listing.isForSale) {
-      throw new PunksDataValidationError(`CryptoPunk ${params.punkId} is not listed for sale`)
+      throw new PunksDataValidationError(
+        `CryptoPunk ${params.punkId} is not listed for sale`,
+      )
     }
     const priceWei = params.priceWei ?? listing?.priceWei ?? 0n
     if (params.maxPriceWei !== undefined && priceWei > params.maxPriceWei) {
@@ -218,7 +232,10 @@ export class PunksMarketClient {
     return this.write(this.prepareBuy({ punkId: params.punkId, priceWei }))
   }
 
-  prepareEnterBid(params: { punkId: number; amountWei: bigint }): ContractWritePlan {
+  prepareEnterBid(params: {
+    punkId: number
+    amountWei: bigint
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
     assertWei('amountWei', params.amountWei)
     return {
@@ -233,11 +250,17 @@ export class PunksMarketClient {
     }
   }
 
-  enterBid(params: { punkId: number; amountWei: bigint }): Promise<TransactionHash> {
+  enterBid(params: {
+    punkId: number
+    amountWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareEnterBid(params))
   }
 
-  prepareAcceptBid(params: { punkId: number; minPriceWei: bigint }): ContractWritePlan {
+  prepareAcceptBid(params: {
+    punkId: number
+    minPriceWei: bigint
+  }): ContractWritePlan {
     validatePunkId(params.punkId)
     assertWei('minPriceWei', params.minPriceWei)
     return {
@@ -251,7 +274,10 @@ export class PunksMarketClient {
     }
   }
 
-  acceptBid(params: { punkId: number; minPriceWei: bigint }): Promise<TransactionHash> {
+  acceptBid(params: {
+    punkId: number
+    minPriceWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareAcceptBid(params))
   }
 
@@ -304,8 +330,12 @@ export class PunksMarketClient {
     return this.write(this.prepareWithdraw())
   }
 
-  private async read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
-    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+  private async read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
+    if (!this.publicClient)
+      throw new PunksDataValidationError('publicClient is required for reads')
     return readContract<T>(this.publicClient, {
       address: this.address,
       abi: cryptoPunksMarketAbi,
@@ -440,7 +470,9 @@ export class PunksAuctionClient {
 
   /// Owner-only setup path: deploys the vault if needed and additively
   /// approves operators. msg.sender is the immutable owner.
-  async prepareEnsureMyVault(operators: readonly Address[]): Promise<ContractWritePlan> {
+  async prepareEnsureMyVault(
+    operators: readonly Address[],
+  ): Promise<ContractWritePlan> {
     return {
       description: 'Deploy your vault and approve operators',
       request: {
@@ -480,7 +512,10 @@ export class PunksAuctionClient {
     }
   }
 
-  async reclaim(params: { punkId: number; standard?: PunkStandardRef }): Promise<TransactionHash> {
+  async reclaim(params: {
+    punkId: number
+    standard?: PunkStandardRef
+  }): Promise<TransactionHash> {
     return this.write(await this.prepareReclaim(params))
   }
 
@@ -532,9 +567,12 @@ export class PunksAuctionClient {
   }
 
   prepareCancelLot(lotId: bigint | number): ContractWritePlan {
-    return simpleAuctionWrite(this.requireAddress(), 'Cancel CryptoPunks lot', 'cancelLot', [
-      BigInt(lotId),
-    ])
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Cancel CryptoPunks lot',
+      'cancelLot',
+      [BigInt(lotId)],
+    )
   }
 
   cancelLot(lotId: bigint | number): Promise<TransactionHash> {
@@ -542,9 +580,12 @@ export class PunksAuctionClient {
   }
 
   prepareClearStaleLot(lotId: bigint | number): ContractWritePlan {
-    return simpleAuctionWrite(this.requireAddress(), 'Clear stale CryptoPunks lot', 'clearStaleLot', [
-      BigInt(lotId),
-    ])
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Clear stale CryptoPunks lot',
+      'clearStaleLot',
+      [BigInt(lotId)],
+    )
   }
 
   clearStaleLot(lotId: bigint | number): Promise<TransactionHash> {
@@ -579,7 +620,10 @@ export class PunksAuctionClient {
     return this.write(this.prepareOpenAuction(params))
   }
 
-  prepareBid(params: { auctionId: bigint | number; amountWei: bigint }): ContractWritePlan {
+  prepareBid(params: {
+    auctionId: bigint | number
+    amountWei: bigint
+  }): ContractWritePlan {
     assertWei('amountWei', params.amountWei)
     return {
       description: `Bid on CryptoPunks auction ${params.auctionId.toString()}`,
@@ -593,21 +637,25 @@ export class PunksAuctionClient {
     }
   }
 
-  bid(params: { auctionId: bigint | number; amountWei: bigint }): Promise<TransactionHash> {
+  bid(params: {
+    auctionId: bigint | number
+    amountWei: bigint
+  }): Promise<TransactionHash> {
     return this.write(this.prepareBid(params))
   }
 
   preparePlaceOffer(input: PlaceOfferInput): ContractWritePlan {
     assertWei('amountWei', input.amountWei)
-    const slots =
-      input.slots?.map((slot) => this.slot(slot)) ??
-      [this.slot({
+    const slots = input.slots?.map((slot) => this.slot(slot)) ?? [
+      this.slot({
         query: input.query,
         standard: input.standard,
         includeIds: input.includeIds,
         excludeIds: input.excludeIds,
-      })]
-    if (slots.length === 0) throw new PunksDataValidationError('offer must contain at least one slot')
+      }),
+    ]
+    if (slots.length === 0)
+      throw new PunksDataValidationError('offer must contain at least one slot')
     return {
       description: 'Place CryptoPunks offer',
       request: {
@@ -625,9 +673,12 @@ export class PunksAuctionClient {
   }
 
   prepareCancelOffer(offerId: bigint | number): ContractWritePlan {
-    return simpleAuctionWrite(this.requireAddress(), 'Cancel CryptoPunks offer', 'cancelOffer', [
-      BigInt(offerId),
-    ])
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Cancel CryptoPunks offer',
+      'cancelOffer',
+      [BigInt(offerId)],
+    )
   }
 
   cancelOffer(offerId: bigint | number): Promise<TransactionHash> {
@@ -667,11 +718,12 @@ export class PunksAuctionClient {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     assertWei('expectedListingWei', params.expectedListingWei)
-    return simpleAuctionWrite(this.requireAddress(), 'Accept CryptoPunks offer', 'acceptOffer', [
-      BigInt(params.offerId),
-      params.punkId,
-      params.expectedListingWei,
-    ])
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Accept CryptoPunks offer',
+      'acceptOffer',
+      [BigInt(params.offerId), params.punkId, params.expectedListingWei],
+    )
   }
 
   acceptOffer(params: {
@@ -727,9 +779,12 @@ export class PunksAuctionClient {
   }
 
   prepareSettle(auctionId: bigint | number): ContractWritePlan {
-    return simpleAuctionWrite(this.requireAddress(), 'Settle CryptoPunks auction', 'settle', [
-      BigInt(auctionId),
-    ])
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Settle CryptoPunks auction',
+      'settle',
+      [BigInt(auctionId)],
+    )
   }
 
   settle(auctionId: bigint | number): Promise<TransactionHash> {
@@ -744,13 +799,18 @@ export class PunksAuctionClient {
     return this.read<boolean>('auctionActive', [BigInt(auctionId)])
   }
 
-  private async marketAddressFor(standard: PunkStandardValue): Promise<Address> {
+  private async marketAddressFor(
+    standard: PunkStandardValue,
+  ): Promise<Address> {
     return standard === PunkStandard.CryptoPunks
       ? this.canonicalMarketAddress()
       : this.v1MarketAddress()
   }
 
-  private async read<T>(functionName: string, args: readonly unknown[] = []): Promise<T> {
+  private async read<T>(
+    functionName: string,
+    args: readonly unknown[] = [],
+  ): Promise<T> {
     return readContract<T>(this.requirePublicClient(), {
       address: this.requireAddress(),
       abi: punksAuctionAbi,
@@ -765,30 +825,38 @@ export class PunksAuctionClient {
 
   private requireAddress(): Address {
     if (!this.address) {
-      throw new PunksDataValidationError('auction address is required for auction actions')
+      throw new PunksDataValidationError(
+        'auction address is required for auction actions',
+      )
     }
     return this.address
   }
 
   private requirePublicClient(): PublicClient {
-    if (!this.publicClient) throw new PunksDataValidationError('publicClient is required for reads')
+    if (!this.publicClient)
+      throw new PunksDataValidationError('publicClient is required for reads')
     return this.publicClient
   }
 
   private requireAccount(): Address {
     if (!this.account) {
-      throw new PunksDataValidationError('account is required for owner-scoped actions')
+      throw new PunksDataValidationError(
+        'account is required for owner-scoped actions',
+      )
     }
     return this.account
   }
 }
 
 function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
-  if (items.length === 0) throw new PunksDataValidationError('lot must contain at least one item')
+  if (items.length === 0)
+    throw new PunksDataValidationError('lot must contain at least one item')
   const anyWeight = items.some((item) => item.weightBps !== undefined)
   const allWeight = items.every((item) => item.weightBps !== undefined)
   if (anyWeight && !allWeight) {
-    throw new PunksDataValidationError('provide weightBps for every lot item or none of them')
+    throw new PunksDataValidationError(
+      'provide weightBps for every lot item or none of them',
+    )
   }
 
   const defaultWeights = splitWeights(items.length)
@@ -804,7 +872,9 @@ function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
   })
   const totalWeight = normalized.reduce((sum, item) => sum + item.weightBps, 0)
   if (totalWeight !== 10_000) {
-    throw new PunksDataValidationError('lot item weights must sum to 10000 basis points')
+    throw new PunksDataValidationError(
+      'lot item weights must sum to 10000 basis points',
+    )
   }
   return normalized
 }
@@ -813,7 +883,10 @@ function splitWeights(count: number): number[] {
   assertIntegerInRange('item count', count, 1, 100)
   const base = Math.floor(10_000 / count)
   const remainder = 10_000 - base * count
-  return Array.from({ length: count }, (_, index) => base + (index === 0 ? remainder : 0))
+  return Array.from(
+    { length: count },
+    (_, index) => base + (index === 0 ? remainder : 0),
+  )
 }
 
 function simpleAuctionWrite(
@@ -837,9 +910,11 @@ async function readContract<T>(
   publicClient: PublicClient,
   request: ContractWriteRequest,
 ): Promise<T> {
-  return (publicClient.readContract as unknown as (value: ContractWriteRequest) => Promise<T>)(
-    request,
-  )
+  return (
+    publicClient.readContract as unknown as (
+      value: ContractWriteRequest,
+    ) => Promise<T>
+  )(request)
 }
 
 async function writeContract(
@@ -847,14 +922,18 @@ async function writeContract(
   walletClient: WalletClient | undefined,
   account: Address | undefined,
 ): Promise<TransactionHash> {
-  if (!walletClient) throw new PunksDataValidationError('walletClient is required for writes')
+  if (!walletClient)
+    throw new PunksDataValidationError('walletClient is required for writes')
   const resolvedAccount = account ?? walletClient.account?.address
-  const request = resolvedAccount === undefined
-    ? plan.request
-    : { ...plan.request, account: resolvedAccount }
-  return (walletClient.writeContract as unknown as (value: typeof request) => Promise<TransactionHash>)(
-    request,
-  )
+  const request =
+    resolvedAccount === undefined
+      ? plan.request
+      : { ...plan.request, account: resolvedAccount }
+  return (
+    walletClient.writeContract as unknown as (
+      value: typeof request,
+    ) => Promise<TransactionHash>
+  )(request)
 }
 
 function assertWei(label: string, value: bigint): void {

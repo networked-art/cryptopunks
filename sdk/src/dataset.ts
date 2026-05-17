@@ -57,7 +57,10 @@ export class PunksDataset {
     return this.source.getPunkSync(punkId, options)
   }
 
-  getMany(punkIds: readonly number[], options: PunkSummaryOptions = {}): PunkSummary[] {
+  getMany(
+    punkIds: readonly number[],
+    options: PunkSummaryOptions = {},
+  ): PunkSummary[] {
     return this.source.getPunksSync(punkIds, options)
   }
 
@@ -82,11 +85,16 @@ export class PunksDataset {
   }
 
   rgbaPixels(punkId: number): Uint8Array {
-    return indexedPixelsToRgba(this.indexedPixels(punkId), this.source.getPaletteRgbaBytesSync())
+    return indexedPixelsToRgba(
+      this.indexedPixels(punkId),
+      this.source.getPaletteRgbaBytesSync(),
+    )
   }
 }
 
-export function createPunksDataset(config: PunksDatasetConfig = {}): PunksDataset {
+export function createPunksDataset(
+  config: PunksDatasetConfig = {},
+): PunksDataset {
   return new PunksDataset(config)
 }
 

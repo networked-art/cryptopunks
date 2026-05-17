@@ -1,7 +1,20 @@
 <template>
-  <div ref="containerRef" class="punk-grid" @scroll.passive="onScroll">
-    <div v-if="ids.length === 0" class="empty">No punks match.</div>
-    <div v-else class="grid-scroll" :style="{ height: totalHeight + 'px' }">
+  <div
+    ref="containerRef"
+    class="punk-grid"
+    @scroll.passive="onScroll"
+  >
+    <div
+      v-if="ids.length === 0"
+      class="empty"
+    >
+      No punks match.
+    </div>
+    <div
+      v-else
+      class="grid-scroll"
+      :style="{ height: totalHeight + 'px' }"
+    >
       <NuxtLink
         v-for="cell in visible"
         :key="cell.id"
@@ -61,10 +74,13 @@ const visible = computed(() => {
   return out
 })
 
-watch(() => props.ids, () => {
-  scrollTop.value = 0
-  if (containerRef.value) containerRef.value.scrollTop = 0
-})
+watch(
+  () => props.ids,
+  () => {
+    scrollTop.value = 0
+    if (containerRef.value) containerRef.value.scrollTop = 0
+  },
+)
 
 function onScroll(e: Event) {
   scrollTop.value = (e.target as HTMLElement).scrollTop
@@ -120,7 +136,9 @@ onBeforeUnmount(() => observer?.disconnect())
   border: 0;
   border-radius: 3px;
   background-repeat: no-repeat;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
 }
 
 .cell:hover {
