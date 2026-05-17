@@ -130,6 +130,7 @@ export async function deployPunksMarketStack() {
 
   const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
   const punksData = await viem.deployContract('MockPunksData')
+  await etchReverseRegistrar(connection)
   const market = await viem.deployContract('PunksMarket', [
     punksV1.address,
     punksData.address,
