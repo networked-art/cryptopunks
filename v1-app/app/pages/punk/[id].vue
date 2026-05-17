@@ -61,7 +61,7 @@
             <span class="trait-kind">{{ t.kind }}</span>
             <NuxtLink
               class="trait-name"
-              :to="traitHref(t.name)"
+              :to="searchHref(t.query)"
               >{{ t.name }}</NuxtLink
             >
             <span class="muted trait-supply">{{ t.supply }}</span>
@@ -132,7 +132,6 @@
 
 <script setup lang="ts">
 import {
-  HeadVariant,
   headVariantNames,
   skinToneHeadVariants,
   skinToneNames,
@@ -148,6 +147,14 @@ useHead(() => ({ title: `Punk #${id.value} · punksmarket.xyz` }))
 const offline = usePunksOffline()
 const summary = computed(() => offline.get(id.value, { includeTraits: true }))
 
+type DisplayTrait = {
+  id: number
+  kind: string
+  name: string
+  supply: number
+  query: string
+}
+
 /// HeadVariant trait rows are reframed as "Skin Tone" using our Dark →
 /// Brown → Fair → Albino vocabulary. Alien / Ape / Zombie punks have no
 /// skin tone — the NormalizedType row already shows the type, so we drop
@@ -155,22 +162,37 @@ const summary = computed(() => offline.get(id.value, { includeTraits: true }))
 const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
   (() => {
     const map: Partial<Record<HeadVariantName, SkinToneName>> = {}
-    for (let tone = 0; tone < skinToneHeadVariants.length; tone++) {
-      for (const hv of skinToneHeadVariants[tone]) {
+    skinToneHeadVariants.forEach((pair, tone) => {
+      for (const hv of pair) {
         map[headVariantNames[hv]] = skinToneNames[tone]
       }
-    }
+    })
     return map
   })()
 
-const traits = computed(() =>
-  (summary.value.traits ?? []).flatMap((t) => {
-    if (t.kind !== 'HeadVariant') return [t]
+const traits = computed<DisplayTrait[]>(() =>
+  (summary.value.traits ?? []).flatMap((t): DisplayTrait[] => {
+    if (t.kind !== 'HeadVariant') {
+      return [{ ...t, query: quoteIfMultiword(t.name) }]
+    }
     const tone = skinToneByHeadVariant[t.name as HeadVariantName]
     if (!tone) return []
-    return [{ ...t, kind: 'Skin Tone', name: tone }]
+    return [
+      {
+        ...t,
+        kind: 'Skin Tone',
+        name: tone,
+        query: `${tone.toLowerCase()} skin`,
+      },
+    ]
   }),
 )
+
+function quoteIfMultiword(text: string) {
+  // Quote multi-word trait names so the text parser treats them as one
+  // term instead of an AND of every word.
+  return /\s/.test(text) ? `"${text}"` : text
+}
 
 const { isWrapped } = usePunkOwner(() => id.value)
 
@@ -191,12 +213,6 @@ function refreshAll() {
 
 function searchHref(text: string) {
   return { path: '/', query: { q: text } }
-}
-
-function traitHref(name: string) {
-  // Quote multi-word trait names so the text parser treats them as one
-  // term instead of an AND of every word.
-  return searchHref(/\s/.test(name) ? `"${name}"` : name)
 }
 </script>
 
