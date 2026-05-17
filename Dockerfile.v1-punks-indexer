@@ -12,7 +12,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/v1-punks-indexer/node_modules ./v1-punks-indexer/node_modules
 COPY v1-punks-indexer ./v1-punks-indexer
 WORKDIR /app/v1-punks-indexer
-RUN pnpm codegen
+RUN pnpm exec ponder codegen
 
 EXPOSE 42069
-CMD pnpm start --schema=${DATABASE_SCHEMA:-ponder} --views-schema=${PONDER_VIEWS_SCHEMA:-v1_punks}
+CMD ["sh", "-c", "pnpm start --schema=${DATABASE_SCHEMA:-ponder} --views-schema=${PONDER_VIEWS_SCHEMA:-v1_punks}"]
