@@ -16,7 +16,11 @@ import {
   type PunkTypeValue,
   type SkinToneValue,
 } from './constants'
-import type { OfflinePunksDataClient, OfflinePunksSearchQuery } from './offline'
+import {
+  normalizeSearchText,
+  type OfflinePunksDataClient,
+  type OfflinePunksSearchQuery,
+} from './offline'
 import {
   parseSearchText,
   type ParsedNumericConstraint,
@@ -161,13 +165,19 @@ export function compilePunksFilter(
       'ids in text cannot be represented as a PunksFilter; use compileOfferSlot or query.ids / query.excludeIds',
     )
   }
-  return buildFilter(data, folded.query, folded.freeTermTraitIds)
+  return buildFilter(
+    data,
+    folded.query,
+    folded.freeTermRequired,
+    folded.freeTermAnyOfGroups,
+  )
 }
 
 function buildFilter(
   data: OfflinePunksDataClient,
   foldedQuery: PunkQuery,
-  freeTermTraitIds: readonly number[],
+  freeTermRequired: readonly number[],
+  freeTermAnyOfGroups: readonly number[][],
 ): PunksFilter {
   const traitCriteria = data.resolveTraitCriteriaSync(foldedQuery.attributes)
   const colorCriteria = data.resolveColorCriteriaSync(foldedQuery.colors)
@@ -193,7 +203,10 @@ function buildFilter(
     anyOfTraitMask |= groupMask
   }
 
-  for (const traitId of freeTermTraitIds) addRequiredTrait(traitId)
+  for (const traitId of freeTermRequired) addRequiredTrait(traitId)
+  for (let i = 0; i < freeTermAnyOfGroups.length; i++) {
+    addAnyOfTraitGroup(freeTermAnyOfGroups[i], `text term #${i + 1}`)
+  }
 
   const typeIds = normalizePunkTypeRefs(foldedQuery.type ?? foldedQuery.punkType)
   if (typeIds.length === 1) addRequiredTrait(typeIds[0])
@@ -264,14 +277,24 @@ function buildFilter(
 
 /// Resolves any `query.text` into structured query fields, merging the text's
 /// numeric, skin-tone, and id constraints with the existing structured query
-/// and returning the (case-insensitive) trait ids for free terms that did not
-/// match a known pattern. Throws when:
+/// and returning the trait ids the free terms resolve to (using the same
+/// substring rules as offline search). Throws when:
 ///   - the text contains OR groups (onchain filter cannot express that);
-///   - a free term doesn't match a known trait name;
+///   - a free term doesn't match any trait name;
 ///   - a numeric / skin-tone constraint conflicts with the existing query.
+///
+/// `freeTermRequired` holds trait ids that must be ANDed into
+/// `requiredTraitMask` — one per term that resolved unambiguously to a single
+/// trait (or whose match set has a canonical member subsuming the others).
+/// `freeTermAnyOfGroups` holds OR-groups of trait ids — one per term that
+/// matched multiple traits with no canonical member. The onchain filter only
+/// has one `anyOfTraitMask` slot, so at most one group survives; additional
+/// groups (or conflicts with type / head / attributeCount any-of groups) are
+/// rejected by `buildFilter`.
 type FoldedText = {
   query: PunkQuery
-  freeTermTraitIds: number[]
+  freeTermRequired: number[]
+  freeTermAnyOfGroups: number[][]
   includeIds: number[]
   excludeIds: number[]
 }
@@ -280,8 +303,14 @@ function foldTextIntoQuery(
   data: OfflinePunksDataClient,
   query: PunkQuery,
 ): FoldedText {
+  const empty = {
+    freeTermRequired: [] as number[],
+    freeTermAnyOfGroups: [] as number[][],
+    includeIds: [] as number[],
+    excludeIds: [] as number[],
+  }
   if (query.text === undefined || query.text.trim() === '') {
-    return { query, freeTermTraitIds: [], includeIds: [], excludeIds: [] }
+    return { query, ...empty }
   }
   const parsed = parseSearchText(query.text)
   const nonEmpty = parsed.orGroups.filter(
@@ -296,7 +325,7 @@ function foldTextIntoQuery(
   )
   if (nonEmpty.length === 0) {
     const { text: _omitted, ...rest } = query
-    return { query: rest, freeTermTraitIds: [], includeIds: [], excludeIds: [] }
+    return { query: rest, ...empty }
   }
   if (nonEmpty.length > 1) {
     throw new PunksDataValidationError(
@@ -304,7 +333,10 @@ function foldTextIntoQuery(
     )
   }
   const group = nonEmpty[0]
-  const freeTermTraitIds = resolveFreeTermTraitIds(data, group.freeTerms)
+  const { freeTermRequired, freeTermAnyOfGroups } = resolveFreeTerms(
+    data,
+    group.freeTerms,
+  )
 
   const { text: _omitted, ...rest } = query
   const folded: PunkQuery = { ...rest }
@@ -334,32 +366,47 @@ function foldTextIntoQuery(
   }
   return {
     query: folded,
-    freeTermTraitIds,
+    freeTermRequired,
+    freeTermAnyOfGroups,
     includeIds: group.includeIds ?? [],
     excludeIds: group.excludeIds ?? [],
   }
 }
 
-function resolveFreeTermTraitIds(
+function resolveFreeTerms(
   data: OfflinePunksDataClient,
   terms: readonly SearchTextTerm[],
-): number[] {
-  const ids: number[] = []
+): { freeTermRequired: number[]; freeTermAnyOfGroups: number[][] } {
+  const required: number[] = []
+  const anyOfGroups: number[][] = []
   for (const term of terms) {
-    let resolved: { id: number } | undefined
-    try {
-      resolved = data.resolveTraitSync(term.text)
-    } catch {
-      resolved = undefined
-    }
-    if (resolved === undefined) {
+    const matches = data.findTraitsByTextSync(term.text, { exact: term.exact })
+    if (matches.length === 0) {
       throw new PunksDataValidationError(
-        `cannot represent text term "${term.text}" as an onchain filter: not a known trait name; quote a full trait name or use query.attributes`,
+        `cannot represent text term "${term.text}" as an onchain filter: no trait name matches`,
       )
     }
-    if (!ids.includes(resolved.id)) ids.push(resolved.id)
+    /// Prefer a canonical match — a trait whose normalized name *equals* the
+    /// normalized term. When one exists, every other match is a strict
+    /// trait-mask subset of it (e.g. `male` → NormalizedType.Male covers
+    /// HeadVariant Male 1..4), so we can encode the term as a single
+    /// required trait without burning the filter's only any-of slot.
+    const normalized = normalizeSearchText(term.text)
+    const canonical = matches.find(
+      (m) => normalizeSearchText(m.name) === normalized,
+    )
+    if (canonical !== undefined) {
+      if (!required.includes(canonical.id)) required.push(canonical.id)
+      continue
+    }
+    if (matches.length === 1) {
+      const id = matches[0].id
+      if (!required.includes(id)) required.push(id)
+      continue
+    }
+    anyOfGroups.push(matches.map((m) => m.id))
   }
-  return ids
+  return { freeTermRequired: required, freeTermAnyOfGroups: anyOfGroups }
 }
 
 function mergeQueryNumeric(
@@ -461,7 +508,12 @@ export function compileOfferSlot(
     'excludeIds',
   )
   return {
-    criteria: buildFilter(data, folded.query, folded.freeTermTraitIds),
+    criteria: buildFilter(
+      data,
+      folded.query,
+      folded.freeTermRequired,
+      folded.freeTermAnyOfGroups,
+    ),
     standard: normalizePunkStandard(input.standard ?? 'cryptopunks'),
     includeIds,
     excludeIds,

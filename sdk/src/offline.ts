@@ -990,6 +990,38 @@ export class OfflinePunksDataClient {
     return this.resolveTraitSync(trait, options)
   }
 
+  /// Returns every trait record whose name matches `text` under the same
+  /// substring rules as offline search: a fuzzy term matches a trait whose
+  /// normalized name starts with the term or contains it as a whole word
+  /// (` ${term}`). An `exact: true` term only matches a trait whose
+  /// normalized name equals the normalized term. Returns `[]` for an empty
+  /// or non-matching term.
+  findTraitsByTextSync(
+    text: string,
+    options: { exact?: boolean } & PunksDataReadOptions = {},
+  ): TraitRecord[] {
+    const { exact = false, ...readOptions } = options
+    validateOfflineReadOptions(readOptions)
+    const normalized = normalizeSearchText(text)
+    if (!normalized) return []
+    const out: TraitRecord[] = []
+    for (const trait of this.store.traits) {
+      const key = normalizeSearchText(trait.name)
+      if (!key) continue
+      if (matchesTextIndexKey(key, normalized, exact)) {
+        out.push({ ...trait })
+      }
+    }
+    return out
+  }
+
+  async findTraitsByText(
+    text: string,
+    options: { exact?: boolean } & PunksDataReadOptions = {},
+  ): Promise<TraitRecord[]> {
+    return this.findTraitsByTextSync(text, options)
+  }
+
   resolveTraitCriteriaSync(
     criteria: TraitCriteriaInput = {},
     options?: PunksDataReadOptions,
@@ -2256,7 +2288,12 @@ function readTextSearchTokens(input: string): OfflinePunksTextSearchTerm[] {
   return tokens
 }
 
-function normalizeSearchText(value: string): string {
+/// Canonicalizes a string for comparison against the offline text-search
+/// index. Lower-cases, collapses underscores/hyphens to spaces, drops other
+/// punctuation, and trims whitespace. Re-exported so callers outside the
+/// offline client (e.g. the onchain filter compiler) can canonicalize trait
+/// names and search terms the same way.
+export function normalizeSearchText(value: string): string {
   return value
     .toLowerCase()
     .replaceAll(/[_-]+/g, ' ')
