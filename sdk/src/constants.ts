@@ -10,6 +10,9 @@ export const PUNKS_RENDERER_ADDRESS =
   '0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741' as Address
 export const CRYPTOPUNKS_MARKET_ADDRESS =
   '0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb' as Address
+/// The bug-aware Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ market (deployed 2017-06-22).
+export const CRYPTOPUNKS_V1_ADDRESS =
+  '0x6ba6f2207e343923ba692e5cae646fb0f566db8d' as Address
 export const CRYPTOPUNKS_DATA_ADDRESS =
   '0x16f5a35647d6f03d5d3da7b35409d65ba03af3b2' as Address
 export const WRAPPED_PUNKS_ADDRESS =
