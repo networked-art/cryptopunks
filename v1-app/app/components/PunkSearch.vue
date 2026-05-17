@@ -151,7 +151,6 @@ const query = computed<PunkQuery>(() => {
     attributes:
       required.length || forbidden.length ? { required, forbidden } : undefined,
     sort: sort.value,
-    limit: 5000,
   }
 })
 
