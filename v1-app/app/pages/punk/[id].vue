@@ -19,17 +19,38 @@
       </div>
 
       <div class="hero-info">
-        <h1 class="hero-title">Punk <span class="dim">#</span>{{ id }}</h1>
+        <h1 class="hero-title">
+          Punk <span class="dim">#</span>{{ id }}<span
+            v-if="isWrapped"
+            class="dim"
+          >
+            (Wrapped)</span
+          >
+        </h1>
 
         <p class="hero-meta">
-          <span class="tag">{{ summary.punkTypeName }}</span>
-          <span class="tag"
+          <NuxtLink
+            class="tag"
+            :to="searchHref(summary.punkTypeName)"
+            >{{ summary.punkTypeName }}</NuxtLink
+          >
+          <NuxtLink
+            class="tag"
+            :to="searchHref(`${summary.attributeCount} attributes`)"
             >{{ summary.attributeCount }} attribute{{
               summary.attributeCount === 1 ? '' : 's'
-            }}</span
+            }}</NuxtLink
           >
-          <span class="tag">{{ summary.colorCount }} colors</span>
-          <span class="tag">{{ summary.pixelCount }} px</span>
+          <NuxtLink
+            class="tag"
+            :to="searchHref(`${summary.colorCount} colors`)"
+            >{{ summary.colorCount }} colors</NuxtLink
+          >
+          <NuxtLink
+            class="tag"
+            :to="searchHref(`${summary.pixelCount} pixels`)"
+            >{{ summary.pixelCount }} px</NuxtLink
+          >
         </p>
 
         <ul class="trait-list">
@@ -38,7 +59,11 @@
             :key="t.id"
           >
             <span class="trait-kind">{{ t.kind }}</span>
-            <span>{{ t.name }}</span>
+            <NuxtLink
+              class="trait-name"
+              :to="traitHref(t.name)"
+              >{{ t.name }}</NuxtLink
+            >
             <span class="muted trait-supply">{{ t.supply }}</span>
           </li>
         </ul>
@@ -106,6 +131,15 @@
 </template>
 
 <script setup lang="ts">
+import {
+  HeadVariant,
+  headVariantNames,
+  skinToneHeadVariants,
+  skinToneNames,
+  type HeadVariantName,
+  type SkinToneName,
+} from '@networked-art/punks-sdk'
+
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
 
@@ -113,7 +147,32 @@ useHead(() => ({ title: `Punk #${id.value} · punksmarket.xyz` }))
 
 const offline = usePunksOffline()
 const summary = computed(() => offline.get(id.value, { includeTraits: true }))
-const traits = computed(() => summary.value.traits ?? [])
+
+/// HeadVariant trait rows are reframed as "Skin Tone" using our Dark →
+/// Brown → Fair → Albino vocabulary. Alien / Ape / Zombie punks have no
+/// skin tone — the NormalizedType row already shows the type, so we drop
+/// the head-variant row entirely for them rather than showing nothing.
+const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
+  (() => {
+    const map: Partial<Record<HeadVariantName, SkinToneName>> = {}
+    for (let tone = 0; tone < skinToneHeadVariants.length; tone++) {
+      for (const hv of skinToneHeadVariants[tone]) {
+        map[headVariantNames[hv]] = skinToneNames[tone]
+      }
+    }
+    return map
+  })()
+
+const traits = computed(() =>
+  (summary.value.traits ?? []).flatMap((t) => {
+    if (t.kind !== 'HeadVariant') return [t]
+    const tone = skinToneByHeadVariant[t.name as HeadVariantName]
+    if (!tone) return []
+    return [{ ...t, kind: 'Skin Tone', name: tone }]
+  }),
+)
+
+const { isWrapped } = usePunkOwner(() => id.value)
 
 const { events: history, refresh: refreshHistory } = useActivityFeed({
   punkId: () => id.value,
@@ -128,6 +187,16 @@ const {
 function refreshAll() {
   refreshHistory()
   refreshBids()
+}
+
+function searchHref(text: string) {
+  return { path: '/', query: { q: text } }
+}
+
+function traitHref(name: string) {
+  // Quote multi-word trait names so the text parser treats them as one
+  // term instead of an AND of every word.
+  return searchHref(/\s/.test(name) ? `"${name}"` : name)
 }
 </script>
 
@@ -203,6 +272,16 @@ function refreshAll() {
   letter-spacing: 0.06em;
   width: 60px;
   flex-shrink: 0;
+}
+
+.trait-name {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.trait-name:hover {
+  border-bottom-color: currentColor;
 }
 
 .trait-supply {

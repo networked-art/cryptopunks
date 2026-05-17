@@ -25,7 +25,8 @@
           v-if="punkId !== undefined"
           :to="`/punk/${punkId}`"
           class="punk-id"
-          >{{ event.wrapped ? 'Wrapped Punk' : 'Punk' }} #{{ punkId }}</NuxtLink
+          >Punk #{{ punkId
+          }}<span v-if="event.wrapped"> (Wrapped)</span></NuxtLink
         >
       </div>
       <div class="row-line muted">

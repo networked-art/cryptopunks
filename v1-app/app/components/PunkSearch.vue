@@ -33,13 +33,35 @@ const props = withDefaults(
 )
 
 const offline = usePunksOffline()
+const route = useRoute()
 const router = useRouter()
 
-const text = ref('')
+const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing.
 const debouncedText = useDebounced(text, 80)
+
+/// Persist the debounced query into `?q=…` so the search survives reloads,
+/// is shareable, and back/forward navigation works. `router.replace` so we
+/// don't litter history with one entry per keystroke.
+watch(debouncedText, (next) => {
+  const q = next.trim()
+  const current = typeof route.query.q === 'string' ? route.query.q : ''
+  if (q === current) return
+  const { q: _omit, ...rest } = route.query
+  router.replace({ query: q ? { ...rest, q } : rest })
+})
+
+/// Pick up external query changes (back/forward, `/?q=hoodie` link from
+/// another page) and reflect them in the input.
+watch(
+  () => route.query.q,
+  (q) => {
+    const next = typeof q === 'string' ? q : ''
+    if (next !== text.value) text.value = next
+  },
+)
 
 /// Search-text capabilities are surfaced in the placeholder so users discover
 /// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
