@@ -12,7 +12,8 @@
           :punk-id="id"
           :size="320"
           :background="background"
-          glitch="random"
+          glitch="always"
+          :speed="0.01"
         />
       </div>
 
