@@ -1,3 +1,6 @@
+const siteDescription =
+  'Native-ETH market for the broken C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎.'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   extends: ['@1001-digital/layers.evm'],
@@ -7,7 +10,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'punksmarket.xyz',
+      title: 'punksmarket.app',
       meta: [
         {
           name: 'viewport',
@@ -15,12 +18,17 @@ export default defineNuxtConfig({
         },
         {
           name: 'description',
-          content:
-            'Search, bid, and trade CryptoPunks. A clean V1 marketplace.',
+          content: siteDescription,
         },
-        { property: 'og:title', content: 'punksmarket.xyz' },
+        { property: 'og:title', content: 'punksmarket.app' },
+        { property: 'og:description', content: siteDescription },
         { property: 'og:type', content: 'website' },
+        { property: 'og:image', content: 'https://punksmarket.app/og.png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '675' },
         { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:description', content: siteDescription },
+        { name: 'twitter:image', content: 'https://punksmarket.app/og.png' },
       ],
       link: [{ rel: 'icon', type: 'image/png', href: '/icon.png' }],
     },
