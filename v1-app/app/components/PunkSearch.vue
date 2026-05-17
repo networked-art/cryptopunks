@@ -126,6 +126,13 @@ const selectedHeads = reactive(new Set<string>())
 const requiredTraitsText = ref('')
 const forbiddenTraitsText = ref('')
 
+/// Debounce text inputs so the input field stays responsive while the
+/// search + grid re-render only run after the user pauses typing. Discrete
+/// controls (chips, sort) stay immediate.
+const debouncedText = useDebounced(text, 200)
+const debouncedRequired = useDebounced(requiredTraitsText, 200)
+const debouncedForbidden = useDebounced(forbiddenTraitsText, 200)
+
 /// Search-text capabilities are surfaced in the placeholder so users discover
 /// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
 /// language: trait names, `<n> colors / attributes / pixels`, `<tone> skin`,
@@ -141,11 +148,11 @@ function toggle(set: Set<string>, value: string) {
 }
 
 const query = computed<PunkQuery>(() => {
-  const required = parseList(requiredTraitsText.value)
-  const forbidden = parseList(forbiddenTraitsText.value)
+  const required = parseList(debouncedRequired.value)
+  const forbidden = parseList(debouncedForbidden.value)
   return {
     ...props.baseQuery,
-    text: text.value.trim() || undefined,
+    text: debouncedText.value.trim() || undefined,
     type: selectedTypes.size ? [...selectedTypes] : undefined,
     head: selectedHeads.size ? [...selectedHeads] : undefined,
     attributes:

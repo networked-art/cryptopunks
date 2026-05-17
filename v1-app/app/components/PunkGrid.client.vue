@@ -102,18 +102,26 @@ function cellStyle(c: { id: number; row: number; col: number }) {
 }
 
 let observer: ResizeObserver | null = null
-onMounted(() => {
-  if (!containerRef.value) return
-  width.value = containerRef.value.clientWidth
-  height.value = containerRef.value.clientHeight
-  observer = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      width.value = entry.contentRect.width
-      height.value = entry.contentRect.height
-    }
-  })
-  observer.observe(containerRef.value)
-})
+/// Watch the ref instead of relying on onMounted: this component is wrapped in
+/// Nuxt's ClientOnly, so the real template (with `ref="containerRef"`) renders
+/// a tick after the wrapper's onMounted fires against the placeholder div.
+watch(
+  containerRef,
+  (el) => {
+    if (!el) return
+    width.value = el.clientWidth
+    height.value = el.clientHeight
+    observer?.disconnect()
+    observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        width.value = entry.contentRect.width
+        height.value = entry.contentRect.height
+      }
+    })
+    observer.observe(el)
+  },
+  { immediate: true, flush: 'post' },
+)
 
 onBeforeUnmount(() => observer?.disconnect())
 </script>
