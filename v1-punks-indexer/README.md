@@ -10,12 +10,14 @@ Copy `.env.local.example` to `.env.local` and set:
 - `PONDER_RPC_URLS_1`: one or more mainnet HTTP RPC URLs separated by spaces.
 - `PONDER_RPC_FALLBACK_URLS_1`: optional fallback HTTP RPC URLs.
 - `PONDER_WS_URL_1`: optional mainnet WebSocket RPC URL.
-- `PUNKS_MARKET_ADDRESS`: deployed `PunksMarket.sol` address.
-- `PUNKS_MARKET_START_BLOCK`: deployment block for `PUNKS_MARKET_ADDRESS`.
+- `PUNKS_MARKET_ADDRESS`: optional deployed `PunksMarket.sol` address
+  override.
+- `PUNKS_MARKET_START_BLOCK`: optional deployment block override for
+  `PUNKS_MARKET_ADDRESS`.
 - `DATABASE_URL`: Postgres URL for ENS profile cache and Ponder.
 
-If `PUNKS_MARKET_ADDRESS` is unset, the generated config keeps the contract
-shape available for type generation but points it at the zero address.
+If unset, the generated config indexes the mainnet deployment at
+`0x64e507FEBF26521b73FbdfA533106B2042533218` from block `25118216`.
 
 ## Local Postgres
 

@@ -1,7 +1,12 @@
 <template>
   <div class="container bids-page">
     <header class="page-head">
-      <h1>Collection bids</h1>
+      <div class="page-head-row">
+        <h1>Collection bids</h1>
+        <ClientOnly>
+          <CollectionBidDialog @placed="refresh" />
+        </ClientOnly>
+      </div>
       <p class="muted">
         Open ETH bids on the PunksMarket bid book. Any holder of a matching V1
         punk can accept.
@@ -19,8 +24,6 @@
     </div>
 
     <ClientOnly>
-      <CollectionBidForm @placed="refresh" />
-
       <div
         v-if="pending"
         class="muted"
@@ -66,6 +69,13 @@ const { bids, pending, error, refresh } = usePunksMarketBids()
   display: flex;
   flex-direction: column;
   gap: var(--size-4);
+}
+
+.page-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
 }
 
 .page-head h1 {

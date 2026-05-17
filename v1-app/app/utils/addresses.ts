@@ -10,12 +10,17 @@ export const V1_WRAPPER_ADDRESS =
 
 /**
  * Address of our `PunksMarket.sol` (the wrapping market + collection bid book).
- * Comes from runtime config — left blank until the contract is deployed.
+ * Runtime config may override this, but the deployed mainnet market is the
+ * default for local app runs and production builds.
  */
+export const PUNKS_MARKET_ADDRESS =
+  '0x64e507FEBF26521b73FbdfA533106B2042533218' as Address
+
 export function usePunksMarketAddress() {
   const config = useRuntimeConfig()
-  const fromConfig = ((config.public as Record<string, unknown>)
+  const configured = ((config.public as Record<string, unknown>)
     .punksMarketAddress ?? '') as string
+  const fromConfig = configured || PUNKS_MARKET_ADDRESS
   return computed<Address | null>(() => {
     if (!fromConfig || fromConfig === '0x' || fromConfig.length < 42)
       return null

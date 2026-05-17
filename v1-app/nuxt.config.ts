@@ -1,5 +1,4 @@
-const siteDescription =
-  'Native-ETH market for the broken C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎.'
+const siteDescription = 'Native-ETH market for the broken C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎.'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -41,7 +40,7 @@ export default defineNuxtConfig({
     rpcUrl: '',
     public: {
       indexerUrl: 'https://indexer-v1.punksmarket.app',
-      punksMarketAddress: '',
+      punksMarketAddress: '0x64e507FEBF26521b73FbdfA533106B2042533218',
       evm: {
         walletConnectProjectId: '',
         chains: {

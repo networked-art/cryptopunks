@@ -12,6 +12,7 @@
         >{{ counts.filtered.toLocaleString() }} /
         {{ counts.total.toLocaleString() }}</span
       >
+      <CollectionBidDialog :query="query" />
     </header>
 
     <PunkGrid
