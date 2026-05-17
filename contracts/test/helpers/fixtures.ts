@@ -6,6 +6,12 @@ import { network } from 'hardhat'
 export const REVERSE_REGISTRAR =
   '0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb' as const
 
+export const PUNKS_V1_MARKET =
+  '0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D' as const
+
+export const PUNKS_DATA =
+  '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as const
+
 export async function etchReverseRegistrar(connection: any): Promise<void> {
   const { viem } = connection
   const mock = await viem.deployContract('ReverseRegistrarMock')
@@ -128,13 +134,24 @@ export async function deployPunksMarketStack() {
   const [deployer, seller, bidder, buyer, settler, other, attacker] =
     await viem.getWalletClients()
 
-  const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
-  const punksData = await viem.deployContract('MockPunksData')
+  const punksV1Mock = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
+  const punksDataMock = await viem.deployContract('MockPunksData')
+  const publicClient = await viem.getPublicClient()
+  await connection.networkHelpers.setCode(
+    PUNKS_V1_MARKET,
+    await publicClient.getCode({ address: punksV1Mock.address }),
+  )
+  await connection.networkHelpers.setCode(
+    PUNKS_DATA,
+    await publicClient.getCode({ address: punksDataMock.address }),
+  )
+  const punksV1 = await viem.getContractAt(
+    'MockCryptoPunksMarketV1Buggy',
+    PUNKS_V1_MARKET,
+  )
+  const punksData = await viem.getContractAt('MockPunksData', PUNKS_DATA)
   await etchReverseRegistrar(connection)
-  const market = await viem.deployContract('PunksMarket', [
-    punksV1.address,
-    punksData.address,
-  ])
+  const market = await viem.deployContract('PunksMarket')
 
   return {
     connection,

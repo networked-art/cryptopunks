@@ -78,7 +78,7 @@ async function placeBid(
 }
 
 describe('PunksMarket', () => {
-  it('exposes the V1 market and PunksData through immutables', async () => {
+  it('exposes the hardcoded V1 market and PunksData through immutables', async () => {
     const { market, punksV1, punksData } = await deployPunksMarketStack()
 
     assert.equal(
@@ -92,26 +92,6 @@ describe('PunksMarket', () => {
     assert.equal(
       ((await market.read.PUNKS_VISUAL()) as string).toLowerCase(),
       punksData.address.toLowerCase(),
-    )
-  })
-
-  it('rejects zero-address constructor args', async () => {
-    const ctx = await deployPunksMarketStack()
-    await ctx.viem.assertions.revertWithCustomError(
-      ctx.viem.deployContract('PunksMarket', [
-        zeroAddress,
-        ctx.punksData.address,
-      ]),
-      ctx.market,
-      'ZeroAddress',
-    )
-    await ctx.viem.assertions.revertWithCustomError(
-      ctx.viem.deployContract('PunksMarket', [
-        ctx.punksV1.address,
-        zeroAddress,
-      ]),
-      ctx.market,
-      'ZeroAddress',
     )
   })
 

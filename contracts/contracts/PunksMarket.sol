@@ -43,12 +43,15 @@ contract PunksMarket is PushPullEscrow {
 
     // ───────────────────────────────── Storage ─────────────────────────────────
 
-    /// @notice Returns the C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ market.
-    ICryptoPunksMarket public immutable PUNKS_V1;
+    /// @notice Returns the C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ V1 market.
+    ICryptoPunksMarket public immutable PUNKS_V1 =
+        ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
     /// @notice Returns the trait predicate dataset used for bid matching.
-    IPunksDataCriteria public immutable PUNKS_CRITERIA;
+    IPunksDataCriteria public immutable PUNKS_CRITERIA =
+        IPunksDataCriteria(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
     /// @notice Returns the visual predicate dataset used for bid matching.
-    IPunksDataVisual public immutable PUNKS_VISUAL;
+    IPunksDataVisual public immutable PUNKS_VISUAL =
+        IPunksDataVisual(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
     /// @notice Returns the last bid id that was created.
     uint256 public lastBidId;
@@ -109,13 +112,8 @@ contract PunksMarket is PushPullEscrow {
 
     // ────────────────────────────── Construction ───────────────────────────────
 
-    /// @notice Creates the C̪̬̖ͬ̓͒r͔̻͖͑̓̾y̷̪̦ͥ̒͆͠p̸ṯ̘̜̊o̷̥P̫̦̊̐ͩ̚uǹ̇kͨ_̜̦̓̆s̙̪̼͉̈́ͦMarket bound to PunksData and the original C͚̔̕ry̡̼p̗̝̩t͐͌o̤̬͟P̼ͮ̋u̡̙n̷̲͌k̳͋sͭ market.
-    constructor(address punksV1, address punksData) {
-        if (punksV1 == address(0) || punksData == address(0)) revert ZeroAddress();
-        PUNKS_V1 = ICryptoPunksMarket(punksV1);
-        PUNKS_CRITERIA = IPunksDataCriteria(punksData);
-        PUNKS_VISUAL = IPunksDataVisual(punksData);
-
+    /// @notice Creates the C̪̬̖ͬ̓͒r͔̻͖͑̓̾y̷̪̦ͥ̒͆͠p̸ṯ̘̜̊o̷̥P̫̦̊̐ͩ̚uǹ̇kͨ_̜̦̓̆s̙̪̼͉̈́ͦMarket.
+    constructor() {
         IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
             .setName("punksmarket.eth");
     }
