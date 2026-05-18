@@ -93,6 +93,7 @@ export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
     address?: MaybeRefOrGetter<Address | undefined>
+    kinds?: MaybeRefOrGetter<ActivityKind[] | undefined>
     limit?: number
   } = {},
 ) {
@@ -109,6 +110,9 @@ export function useActivityFeed(
 
     const punkId = toValue(opts.punkId)
     if (punkId !== undefined) where.punk_id = String(punkId)
+
+    const kinds = toValue(opts.kinds)
+    if (kinds && kinds.length) where.type_in = kinds
 
     const address = toValue(opts.address)?.toLowerCase()
     if (address) {
@@ -187,6 +191,7 @@ export function useActivityFeed(
   watchEffect(() => {
     void toValue(opts.punkId)
     void toValue(opts.address)
+    void toValue(opts.kinds)
     load()
   })
 

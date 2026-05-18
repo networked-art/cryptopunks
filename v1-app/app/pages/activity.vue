@@ -9,6 +9,27 @@
     </header>
 
     <ClientOnly>
+      <Tags class="filters">
+        <Tag
+          v-for="f in FILTERS"
+          :key="f.key"
+          small
+          :dismissable="activeFilters.has(f.key)"
+          :class="{ active: activeFilters.has(f.key) }"
+          @click="!activeFilters.has(f.key) && toggle(f.key)"
+          @dismiss="toggle(f.key)"
+        >
+          {{ f.label }}
+        </Tag>
+        <Button
+          v-if="activeFilters.size"
+          class="small link muted"
+          @click="clear"
+        >
+          Clear
+        </Button>
+      </Tags>
+
       <div
         v-if="pending"
         class="muted"
@@ -52,13 +73,75 @@
 </template>
 
 <script setup lang="ts">
+import type { ActivityKind } from '~/composables/useActivityFeed'
+
 useSeoMeta({
   title: 'Activity · punksmarket.xyz',
   ogTitle: 'Activity · punksmarket.xyz',
   twitterTitle: 'Activity · punksmarket.xyz',
 })
 
-const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFeed()
+type FilterKey = 'sales' | 'transfers' | 'bids' | 'wraps' | 'unwraps'
+
+const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
+  { key: 'sales', label: 'Sales', kinds: ['sale'] },
+  { key: 'transfers', label: 'Transfers', kinds: ['transfer'] },
+  { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_adjusted', 'bid_cancelled'] },
+  { key: 'wraps', label: 'Wraps', kinds: ['wrap'] },
+  { key: 'unwraps', label: 'Unwraps', kinds: ['unwrap'] },
+]
+
+const FILTER_KEYS = new Set<FilterKey>(FILTERS.map((f) => f.key))
+
+const route = useRoute()
+const router = useRouter()
+
+function parseQuery(raw: unknown): FilterKey[] {
+  const str = Array.isArray(raw) ? raw[0] : raw
+  if (typeof str !== 'string' || !str) return []
+  const seen = new Set<FilterKey>()
+  for (const part of str.split(',')) {
+    const k = part.trim() as FilterKey
+    if (FILTER_KEYS.has(k)) seen.add(k)
+  }
+  return [...seen]
+}
+
+const activeFilters = computed(() => new Set(parseQuery(route.query.t)))
+
+const selectedKinds = computed<ActivityKind[] | undefined>(() => {
+  if (!activeFilters.value.size) return undefined
+  const kinds = new Set<ActivityKind>()
+  for (const f of FILTERS) {
+    if (activeFilters.value.has(f.key)) {
+      for (const k of f.kinds) kinds.add(k)
+    }
+  }
+  return [...kinds]
+})
+
+function writeQuery(next: Set<FilterKey>) {
+  const ordered = FILTERS.filter((f) => next.has(f.key)).map((f) => f.key)
+  const t = ordered.join(',')
+  router.replace({
+    query: { ...route.query, t: t || undefined },
+  })
+}
+
+function toggle(key: FilterKey) {
+  const next = new Set(activeFilters.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  writeQuery(next)
+}
+
+function clear() {
+  writeQuery(new Set())
+}
+
+const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFeed({
+  kinds: selectedKinds,
+})
 </script>
 
 <style scoped>
@@ -74,6 +157,19 @@ const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFe
   font-weight: 500;
   font-size: 22px;
   letter-spacing: -0.02em;
+}
+
+.filters {
+  align-items: center;
+}
+
+.tag:not(.active) {
+  cursor: pointer;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .event-list {
