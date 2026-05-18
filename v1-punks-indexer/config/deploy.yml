@@ -14,12 +14,17 @@ proxy:
   hosts:
     - <%= ENV["INDEXER_HOST"] %>
   app_port: 42069
+  # /ready stays 503 until Ponder finishes historical indexing and swaps the
+  # views schema; the old container keeps serving until that flips to 200, so
+  # schema-change deploys reindex with zero gap. Timeout is sized for a
+  # from-scratch backfill of all three contracts; matched-schema redeploys
+  # become ready within seconds.
   healthcheck:
-    path: /health
+    path: /ready
     interval: 5
-    timeout: 300
+    timeout: 3600
 
-deploy_timeout: 300
+deploy_timeout: 3600
 
 registry:
   username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
