@@ -152,21 +152,11 @@
           </p>
 
           <div class="action-group">
-            <input
-              v-model="bidInput"
-              type="text"
-              inputmode="decimal"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="ETH"
+            <PunkBidForm
+              :punk-id="punkId"
+              :existing-bid="ownActiveBid"
+              @placed="onBidPlaced"
             />
-            <Button
-              class="primary"
-              :disabled="!parsedBidWei"
-              @click="actBid"
-            >
-              {{ ownActiveBid ? 'Update bid' : 'Place bid' }}
-            </Button>
             <Button
               v-if="ownActiveBid"
               @click="actWithdrawBid"
@@ -199,15 +189,11 @@
 
 <script setup lang="ts">
 import {
-  parseEther,
   type Address,
   type Hash,
   type TransactionReceipt,
 } from 'viem'
-import {
-  emptyPunksFilter,
-  type ContractWritePlan,
-} from '@networked-art/punks-sdk'
+import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
 import { V1_WRAPPER_ADDRESS, PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import { isLiveListingOwner } from '~/utils/listings'
@@ -328,26 +314,15 @@ function onComplete(receipt: TransactionReceipt) {
   emit('changed', receipt.transactionHash as Hash)
 }
 
-// ─── Inputs ───────────────────────────────────────────────────────────────────
-
-const bidInput = ref('')
-
-const parsedBidWei = computed(() => parseEthSafe(bidInput.value))
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
-
 // ─── Action handlers ──────────────────────────────────────────────────────────
 
 function onListed(tx: Hash) {
+  refresh()
+  refreshOwner()
+  emit('changed', tx)
+}
+
+function onBidPlaced(tx: Hash) {
   refresh()
   refreshOwner()
   emit('changed', tx)
@@ -365,34 +340,6 @@ function actBuy() {
       punkId: props.punkId,
       expectedListingWei: listing.priceWei,
       recipient: address.value as Address,
-    }),
-  )
-}
-
-function actBid() {
-  const newWei = parsedBidWei.value
-  if (!newWei) return
-  const existing = ownActiveBid.value
-  if (!existing) {
-    run(
-      sdk.value.v1Market.preparePlaceBid({
-        bidWei: newWei,
-        criteria: emptyPunksFilter(),
-        includeIds: [props.punkId],
-      }),
-    )
-    return
-  }
-  if (newWei === existing.bidWei) return
-  const increase = newWei > existing.bidWei
-  const weiToAdjust = increase
-    ? newWei - existing.bidWei
-    : existing.bidWei - newWei
-  run(
-    sdk.value.v1Market.prepareAdjustBidPrice({
-      bidId: existing.id,
-      weiToAdjust,
-      increase,
     }),
   )
 }
@@ -506,11 +453,6 @@ function actUnwrap() {
   display: flex;
   gap: var(--size-2);
   flex-wrap: wrap;
-}
-
-.action-group input {
-  flex: 1;
-  min-width: 120px;
 }
 
 .withdraw {
