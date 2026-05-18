@@ -81,9 +81,15 @@
       >
         <template v-if="isOwner && isWrapped">
           <p class="warn">
-            This punk is wrapped — unwrap it to list, transfer, or accept
-            bids via the Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ market.
+            This punk is wrapped — unwrap it to list, transfer, or accept bids
+            via the Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟Market.
           </p>
+          <Button
+            class="primary"
+            @click="actUnwrap"
+          >
+            Unwrap
+          </Button>
         </template>
 
         <template v-else-if="isOwner">
@@ -226,7 +232,8 @@ import {
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
-import { usePunksMarketAddress } from '~/utils/addresses'
+import { V1_WRAPPER_ADDRESS, usePunksMarketAddress } from '~/utils/addresses'
+import { v1WrapperAbi } from '~/utils/v1WrapperAbi'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{
@@ -280,12 +287,13 @@ const topBid = computed<CollectionBid | null>(
 const ownActiveBid = computed<CollectionBid | null>(() => {
   const me = address.value?.toLowerCase()
   if (!me) return null
-  return (
-    props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
-  )
+  return props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
 })
 const canAcceptTopBid = computed(
-  () => !!topBid.value && !!punksMarketAddress.value && isDirectedToPunksMarket.value,
+  () =>
+    !!topBid.value &&
+    !!punksMarketAddress.value &&
+    isDirectedToPunksMarket.value,
 )
 const canBuy = computed(() => isDirectedToPunksMarket.value)
 
@@ -299,7 +307,11 @@ async function refresh() {
         : Promise.resolve(0n),
     ])
     listing.value = l
-      ? { isForSale: l.isForSale, priceWei: l.priceWei, onlySellTo: l.onlySellTo }
+      ? {
+          isForSale: l.isForSale,
+          priceWei: l.priceWei,
+          onlySellTo: l.onlySellTo,
+        }
       : null
     pendingWithdrawal.value = w as bigint
   } finally {
@@ -442,6 +454,18 @@ function actTransfer() {
 
 function actWithdrawProceeds() {
   run(sdk.value.market.prepareWithdraw())
+}
+
+function actUnwrap() {
+  run({
+    description: `Unwrap CryptoPunk ${props.punkId}`,
+    request: {
+      address: V1_WRAPPER_ADDRESS,
+      abi: v1WrapperAbi,
+      functionName: 'unwrap',
+      args: [BigInt(props.punkId)],
+    },
+  })
 }
 </script>
 
