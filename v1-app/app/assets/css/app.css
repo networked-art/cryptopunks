@@ -40,6 +40,9 @@
   --ui-padding-block: var(--space-2);
   --ui-padding-inline: var(--space-3);
 
+  --tag-background: var(--gray-z-0);
+  --tag-border-radius: var(--radius-sm);
+
   --button-primary-background: #ff04b4;
   --button-primary-border-color: #ff04b4;
   --button-primary-color: #fff;
@@ -125,20 +128,46 @@ textarea {
 }
 
 .tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--size-2);
-  height: 20px;
-  font-size: 11px;
+  cursor: pointer;
+  transition:
+    color var(--speed),
+    background-color var(--speed),
+    box-shadow var(--speed);
+
+  color: var(--muted) !important;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
+
+  &.active,
+  &:hover,
+  &:focus {
+    color: var(--accent) !important;
+    box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+
+    button {
+      color: var(--accent) !important;
+      box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+    }
+  }
+
+  &:not(.small) {
+    min-block-size: var(--form-item-height);
+  }
+
+  &.small {
+    padding: var(--size-1);
+    min-block-size: var(--size-4);
+    font-size: var(--font-sm) !important;
+  }
 }
 
-.tag.live {
+/* Tag's container uses `align-items: stretch` (so the dismiss button fills the
+   full height); make the label span a flex box so its text stays centered. */
+.tag > span {
+  display: flex;
+  align-items: center;
+}
+
+.tag:hover {
   color: var(--accent);
-  border-color: var(--accent-soft);
+  box-shadow: var(--border-shadow-highlight);
 }

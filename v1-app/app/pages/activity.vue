@@ -13,7 +13,6 @@
         <Tag
           v-for="f in FILTERS"
           :key="f.key"
-          small
           :dismissable="activeFilters.has(f.key)"
           :class="{ active: activeFilters.has(f.key) }"
           @click="!activeFilters.has(f.key) && toggle(f.key)"
@@ -86,7 +85,11 @@ type FilterKey = 'sales' | 'transfers' | 'bids' | 'wraps' | 'unwraps'
 const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
   { key: 'sales', label: 'Sales', kinds: ['sale'] },
   { key: 'transfers', label: 'Transfers', kinds: ['transfer'] },
-  { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_adjusted', 'bid_cancelled'] },
+  {
+    key: 'bids',
+    label: 'Bids',
+    kinds: ['bid', 'bid_adjusted', 'bid_cancelled'],
+  },
   { key: 'wraps', label: 'Wraps', kinds: ['wrap'] },
   { key: 'unwraps', label: 'Unwraps', kinds: ['unwrap'] },
 ]
@@ -139,9 +142,10 @@ function clear() {
   writeQuery(new Set())
 }
 
-const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFeed({
-  kinds: selectedKinds,
-})
+const { events, pending, loadingMore, error, hasMore, loadMore } =
+  useActivityFeed({
+    kinds: selectedKinds,
+  })
 </script>
 
 <style scoped>
@@ -163,13 +167,8 @@ const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFe
   align-items: center;
 }
 
-.tag:not(.active) {
-  cursor: pointer;
-  opacity: 0.6;
-
-  &:hover {
-    opacity: 1;
-  }
+.filters :deep(button.link) {
+  font-size: var(--font-sm);
 }
 
 .event-list {

@@ -29,36 +29,30 @@
           >
         </h1>
 
-        <p class="hero-meta">
-          <NuxtLink
-            class="tag"
-            :to="searchHref(summary.punkTypeName)"
-            >{{ summary.punkTypeName }}</NuxtLink
-          >
+        <Tags class="hero-meta">
+          <NuxtLink :to="searchHref(summary.punkTypeName)">
+            <Tag small>{{ summary.punkTypeName }}</Tag>
+          </NuxtLink>
           <NuxtLink
             v-if="skinTag"
-            class="tag"
             :to="searchHref(skinTag.query)"
-            >{{ skinTag.label }}</NuxtLink
           >
-          <NuxtLink
-            class="tag"
-            :to="searchHref(`${summary.attributeCount} attributes`)"
-            >{{ summary.attributeCount }} attribute{{
-              summary.attributeCount === 1 ? '' : 's'
-            }}</NuxtLink
-          >
-          <NuxtLink
-            class="tag"
-            :to="searchHref(`${summary.colorCount} colors`)"
-            >{{ summary.colorCount }} colors</NuxtLink
-          >
-          <NuxtLink
-            class="tag"
-            :to="searchHref(`${summary.pixelCount} pixels`)"
-            >{{ summary.pixelCount }} px</NuxtLink
-          >
-        </p>
+            <Tag small>{{ skinTag.label }}</Tag>
+          </NuxtLink>
+          <NuxtLink :to="searchHref(`${summary.attributeCount} attributes`)">
+            <Tag small
+              >{{ summary.attributeCount }} attribute{{
+                summary.attributeCount === 1 ? '' : 's'
+              }}</Tag
+            >
+          </NuxtLink>
+          <NuxtLink :to="searchHref(`${summary.colorCount} colors`)">
+            <Tag small>{{ summary.colorCount }} colors</Tag>
+          </NuxtLink>
+          <NuxtLink :to="searchHref(`${summary.pixelCount} pixels`)">
+            <Tag small>{{ summary.pixelCount }} px</Tag>
+          </NuxtLink>
+        </Tags>
 
         <ul class="trait-list">
           <li
@@ -298,17 +292,6 @@ function searchHref(text: string) {
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 0;
-}
-
-.hero-meta {
-  margin: 0;
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.hero-meta :deep(.tag) {
-  background: var(--gray-z-0);
 }
 
 .trait-list {

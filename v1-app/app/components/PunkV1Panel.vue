@@ -26,11 +26,11 @@
             <NuxtLink :to="`/profile/${owner}`">
               <AccountBadge :address="owner" />
             </NuxtLink>
-            <span
+            <Tag
               v-if="isWrapped"
-              class="tag wrap-tag"
+              small
               title="Wrapped — the V1 contract reports the wrapper as owner; this is the ERC-721 holder."
-              >wrapped</span
+              >wrapped</Tag
             >
           </div>
           <span
@@ -427,12 +427,6 @@ function actUnwrap() {
   align-items: center;
   gap: var(--size-2);
   flex-wrap: wrap;
-}
-
-.wrap-tag {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .warn {
