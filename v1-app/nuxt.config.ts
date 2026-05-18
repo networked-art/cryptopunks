@@ -76,6 +76,8 @@ export default defineNuxtConfig({
         '@1001-digital/layers.evm > @walletconnect/ethereum-provider',
         '@1001-digital/layers.evm > @safe-global/safe-apps-sdk',
         '@1001-digital/layers.evm > @safe-global/safe-apps-provider',
+        '@1001-digital/layers.evm > @1001-digital/components.evm',
+        '@tanstack/vue-query',
         // '@networked-art/punks-sdk',
         // '@networked-art/punks-sdk/offline',
       ],
