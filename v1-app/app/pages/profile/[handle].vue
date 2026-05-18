@@ -123,8 +123,6 @@ import { shortAddress } from '@1001-digital/components.evm'
 const route = useRoute()
 const handle = computed(() => String(route.params.handle))
 
-useHead(() => ({ title: `${handle.value} · punksmarket.xyz` }))
-
 const config = useConfig()
 
 const ensProfile = useEnsWithAvatar(handle)
@@ -158,6 +156,11 @@ watchEffect(async () => {
 const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
 )
+
+const titleLabel = computed(
+  () => ensProfile.data.value?.ens ?? shortAddr.value,
+)
+useHead(() => ({ title: `${titleLabel.value} · punksmarket.xyz` }))
 
 const { bids } = usePunksMarketBids({
   bidder: () => resolvedAddress.value ?? undefined,
