@@ -29,33 +29,42 @@
         years.
       </p>
       <p>
-        Still, these are the the first CryptoPunks LarvaLabs ever deployed,
-        retired only once the bug surfaced. Like an artist's preparatory
-        sketches or working proofs, their value to collectors is historical, the
-        artifact behind everything that came after.
+        Still, these are the first CryptoPunks LarvaLabs ever deployed — the
+        official release, retired only once the bug surfaced. Like a misprinted
+        first edition or an error coin pulled from circulation, their value to
+        collectors is historical: the artifact behind everything that came
+        after.
       </p>
       <p>
-        In early 2022, a
+        Wrappers became the workaround. A wrapper mints a new ERC-721 backed by
+        an underlying punk and lets collectors trade that derivative on standard
+        marketplaces. The tradeoff is that the original contract is bypassed
+        entirely: every sale moves the wrapper, not the original token, and
+        LarvaLabs' marketplace stays silent — no transfers or sales are written
+        onto the artifact itself.
+      </p>
+      <p>
+        Most of the trading since early 2022 has happened on
+        <a
+          href="https://x.com/frankNFT_eth"
+          target="_blank"
+          rel="noopener"
+          >Frank</a
+        >'s
         <a
           href="https://evm.now/address/0x282bdd42f4eb70e7a9d9f40c8fea0825b7f68c5d"
-          >Wrapper Contract</a
-        >
-        was built that enabled a market to form around these artifacts. Yet the
-        wrapper hides exactly what makes the originals special. Collectors trade
-        the wrapped token, not the punk itself; the underlying CryptoPunks
-        contract is bypassed entirely. Every sale of the derivative leaves
-        LarvaLabs' marketplace silent — no transfers or sales are written onto
-        the artifact.
+          >V1 wrapper</a
+        >, which gave these punks a real market when none existed. This contract
+        aims to route that activity back to the original CryptoPunks contract.
       </p>
-      <p>This contract attempts to fix that.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-title">The workaround</h2>
       <p>
         PunksMarket only handles listings directed to itself. Sellers list with
-        <code>offerPunkForSaleToAddress(punkId, price, PunksMarket)</code>. To
-        settle, the contract:
+        <code>offerPunkForSaleToAddress(punkId, price, punksmarket.eth)</code>.
+        To settle, the contract:
       </p>
       <ol>
         <li>buys the punk as the temporary holder,</li>
