@@ -101,8 +101,10 @@ function bidToQuery(bid: CollectionBid): PunkQuery {
 }
 
 /// Rebuild the front-end search query string that selects the same punks
-/// this bid covers. Filters with features the text grammar can't express
-/// (forbidden masks, exotic any-of groups) leave the link unrendered.
+/// this bid covers. An empty result means the bid imposes no filter — link
+/// to the unfiltered grid instead of `/?q=`. Filters with features the
+/// text grammar can't express (forbidden masks, exotic any-of groups)
+/// throw and leave the link unrendered.
 const matchesLink = computed(() => {
   try {
     const q = formatSearchText(offline.dataset.source, {
@@ -110,8 +112,7 @@ const matchesLink = computed(() => {
       includeIds: props.bid.includeIds,
       excludeIds: props.bid.excludeIds,
     })
-    if (!q) return null
-    return { path: '/', query: { q } }
+    return q ? { path: '/', query: { q } } : { path: '/' }
   } catch {
     return null
   }
