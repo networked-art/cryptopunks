@@ -94,20 +94,11 @@
 
         <template v-else-if="isOwner">
           <div class="action-group">
-            <input
-              v-model="listingPriceInput"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="ETH"
+            <PunkListForm
+              :punk-id="punkId"
+              :is-listed="!!listing?.isForSale"
+              @listed="onListed"
             />
-            <Button
-              class="primary"
-              :disabled="!parsedListingWei"
-              @click="actList"
-            >
-              {{ listing?.isForSale ? 'Update listing' : 'List for sale' }}
-            </Button>
             <Button
               v-if="listing?.isForSale"
               @click="actUnlist"
@@ -134,19 +125,10 @@
           >
             Direct your listing to PunksMarket to accept this bid.
           </p>
-          <div class="action-group">
-            <input
-              v-model="transferTo"
-              type="text"
-              placeholder="0x…"
-            />
-            <Button
-              :disabled="!validTransferTarget"
-              @click="actTransfer"
-            >
-              Transfer
-            </Button>
-          </div>
+          <PunkTransferForm
+            :punk-id="punkId"
+            @transferred="onTransferred"
+          />
         </template>
 
         <template v-else>
@@ -171,9 +153,10 @@
           >
             <input
               v-model="bidInput"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
               placeholder="ETH"
             />
             <Button
@@ -222,7 +205,6 @@
 <script setup lang="ts">
 import {
   parseEther,
-  isAddress,
   type Address,
   type Hash,
   type TransactionReceipt,
@@ -276,7 +258,6 @@ const isDirectedToPunksMarket = computed(() => {
     punksMarketAddress.value.toLowerCase()
   )
 })
-const validTransferTarget = computed(() => isAddress(transferTo.value.trim()))
 
 /// Top of the matching-bids book — the page already queries the indexer
 /// `bids/matching/punk/:id` endpoint with `ORDER BY bid_wei DESC`.
@@ -348,18 +329,15 @@ function onComplete(receipt: TransactionReceipt) {
 
 // ─── Inputs ───────────────────────────────────────────────────────────────────
 
-const listingPriceInput = ref('')
 const bidInput = ref('')
-const transferTo = ref('')
 
-const parsedListingWei = computed(() => parseEthSafe(listingPriceInput.value))
 const parsedBidWei = computed(() => parseEthSafe(bidInput.value))
 
-function parseEthSafe(input: string): bigint | null {
-  const trimmed = input.trim()
+function parseEthSafe(input: unknown): bigint | null {
+  const trimmed = String(input ?? '').trim()
   if (!trimmed) return null
   try {
-    const wei = parseEther(trimmed as `${number}`)
+    const wei = parseEther(trimmed)
     return wei > 0n ? wei : null
   } catch {
     return null
@@ -368,18 +346,10 @@ function parseEthSafe(input: string): bigint | null {
 
 // ─── Action handlers ──────────────────────────────────────────────────────────
 
-function actList() {
-  const priceWei = parsedListingWei.value
-  if (!priceWei) return
-  // Direct listings to PunksMarket when deployed — fixes the V1 payout bug for buyers.
-  const onlySellTo = punksMarketAddress.value ?? undefined
-  run(
-    sdk.value.market.prepareList({
-      punkId: props.punkId,
-      priceWei,
-      onlySellTo,
-    }),
-  )
+function onListed(tx: Hash) {
+  refresh()
+  refreshOwner()
+  emit('changed', tx)
 }
 
 function actUnlist() {
@@ -442,14 +412,10 @@ function actAcceptBid() {
   )
 }
 
-function actTransfer() {
-  if (!validTransferTarget.value) return
-  run(
-    sdk.value.market.prepareTransfer({
-      punkId: props.punkId,
-      to: transferTo.value.trim() as Address,
-    }),
-  )
+function onTransferred(tx: Hash) {
+  refresh()
+  refreshOwner()
+  emit('changed', tx)
 }
 
 function actWithdrawProceeds() {
