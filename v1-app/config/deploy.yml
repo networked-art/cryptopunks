@@ -40,6 +40,7 @@ env:
   secret:
     - NUXT_RPC_URL
     - NUXT_PUBLIC_EVM_WALLET_CONNECT_PROJECT_ID
+    - NUXT_PUBLIC_PUBLIC_URL
 
 ssh:
   user: root
