@@ -206,6 +206,11 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
 
 ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const meta = eventMeta(event)
+  const existing = await context.db.find(listing, {
+    punk_id: event.args.punkIndex,
+  })
+  const seller =
+    existing && existing.seller !== ZERO_ADDRESS ? existing.seller : undefined
 
   await insertActivity(context, {
     id: eventId(event),
@@ -213,6 +218,8 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
     source_event: 'PunkNoLongerForSale',
     type: 'listing_cancelled',
     punk_id: event.args.punkIndex,
+    actor: seller,
+    seller,
     ...meta,
   })
 
