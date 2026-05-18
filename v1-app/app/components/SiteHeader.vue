@@ -29,22 +29,47 @@
 
       <ClientOnly>
         <div class="connect">
-          <EvmConnectDialog>
-            <template #connected="{ address }">
-              <NuxtLink
+          <EvmConnectDialog v-if="!isConnected" />
+          <EvmProfile
+            v-else
+            class-name="unstyled profile-trigger"
+          >
+            <template #default="{ address }">
+              <AccountBadge
                 v-if="address"
-                :to="`/profile/${address}`"
-                class="profile-link"
-              >
-                <AccountBadge :address="address" />
-              </NuxtLink>
+                :address="address"
+              />
             </template>
-          </EvmConnectDialog>
+            <template #actions="{ ens, address }">
+              <Button
+                v-if="address"
+                class="block"
+                @click="viewProfile(ens || address)"
+              >
+                <Icon name="home" />
+                <span>View Profile</span>
+              </Button>
+            </template>
+          </EvmProfile>
         </div>
       </ClientOnly>
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+import { useConnection } from '@wagmi/vue'
+
+const { isConnected } = useConnection()
+
+const viewProfile = (id: string) => {
+  const dialog = document.querySelector('.dialog.evm-profile.open')
+  if (dialog?.nextElementSibling?.classList.contains('overlay')) {
+    ;(dialog.nextElementSibling as HTMLElement).click()
+  }
+  navigateTo(`/profile/${id}`)
+}
+</script>
 
 <style scoped>
 .site-header {
@@ -124,7 +149,10 @@
   gap: var(--size-3);
 }
 
-.profile-link {
+.connect :deep(.profile-trigger) {
+  padding: 0;
   border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 </style>
