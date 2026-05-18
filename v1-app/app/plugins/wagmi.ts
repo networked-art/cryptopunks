@@ -22,6 +22,12 @@ export default defineNuxtPlugin({
       chains: Record<string, { rpcs?: string }>
       ens?: { indexers?: string }
     }
+    const publicUrl = (runtimeConfig.public as { publicUrl?: string })
+      .publicUrl
+    const clientRpcPath = publicEvm.chains.mainnet?.rpcs ?? ''
+    const clientRpcUrl = publicUrl
+      ? new URL(clientRpcPath, publicUrl).toString()
+      : clientRpcPath
 
     const runtimeChains: Record<string, { rpcs?: string }> = import.meta.server
       ? {
@@ -31,7 +37,15 @@ export default defineNuxtPlugin({
             rpcs: (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? '',
           },
         }
-      : publicEvm.chains
+      : {
+          ...publicEvm.chains,
+          mainnet: {
+            ...publicEvm.chains.mainnet,
+            // viem and walletconnect both need an absolute URL; the
+            // configured value is a same-origin path like `/api/rpc`.
+            rpcs: clientRpcUrl,
+          },
+        }
 
     const indexers =
       publicEvm.ens?.indexers?.split(/\s+/).filter(Boolean) || []

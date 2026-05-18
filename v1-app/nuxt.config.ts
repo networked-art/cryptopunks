@@ -39,6 +39,9 @@ export default defineNuxtConfig({
     // Server-only RPC URL. Override with NUXT_RPC_URL.
     rpcUrl: '',
     public: {
+      // Public origin used to build absolute URLs (e.g. the in-app RPC
+      // proxy). Override with NUXT_PUBLIC_PUBLIC_URL in production.
+      publicUrl: 'http://localhost:3000',
       indexerUrl: 'https://indexer-v1.punksmarket.app',
       punksMarketAddress: '0x64e507FEBF26521b73FbdfA533106B2042533218',
       evm: {
@@ -46,7 +49,9 @@ export default defineNuxtConfig({
         chains: {
           // Browser reads route through the same-origin proxy below. The
           // server-side wagmi plugin override swaps this for `rpcUrl` so
-          // viem-on-Node hits the upstream directly.
+          // viem-on-Node hits the upstream directly. The wagmi plugin
+          // also prefixes this path with `publicUrl` to make it absolute,
+          // since viem/walletconnect both require absolute URLs.
           mainnet: { rpcs: '/api/rpc' },
         },
       },
