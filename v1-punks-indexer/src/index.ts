@@ -21,6 +21,7 @@ import { getAddress } from 'viem'
 import { CryptoPunksV1Abi } from '../abis/CryptoPunksV1Abi'
 import {
   CRYPTOPUNKS_V1_ADDRESS,
+  PUNKS_MARKET_ADDRESS,
   V1_WRAPPER_ADDRESS,
   ZERO_ADDRESS,
 } from '../utils/contracts'
@@ -212,16 +213,20 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const seller =
     existing && existing.seller !== ZERO_ADDRESS ? existing.seller : undefined
 
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkNoLongerForSale',
-    type: 'listing_cancelled',
-    punk_id: event.args.punkIndex,
-    actor: seller,
-    seller,
-    ...meta,
-  })
+  // A V1 listing whose buyer was the PunksMarket is consumed as part of a
+  // market settlement; the market's own sale row already covers it.
+  if (existing?.only_sell_to !== PUNKS_MARKET_ADDRESS) {
+    await insertActivity(context, {
+      id: eventId(event),
+      source: SOURCE_V1,
+      source_event: 'PunkNoLongerForSale',
+      type: 'listing_cancelled',
+      punk_id: event.args.punkIndex,
+      actor: seller,
+      seller,
+      ...meta,
+    })
+  }
 
   await clearNativeListing(context, event.args.punkIndex, meta)
 })
@@ -820,7 +825,22 @@ async function insertActivity(
   context: Context,
   values: typeof activityEvent.$inferInsert,
 ) {
+  if (shouldSuppressActivity(values)) return
   await context.db.insert(activityEvent).values(values).onConflictDoNothing()
+}
+
+// PunksMarket settlements shuffle the punk through the market contract before
+// delivery, emitting redundant V1 / wrapper logs alongside the market's own
+// sale event. Drop those so a single settlement is one activity row.
+function shouldSuppressActivity(
+  values: typeof activityEvent.$inferInsert,
+): boolean {
+  if (values.source !== SOURCE_V1 && values.source !== SOURCE_WRAPPER) {
+    return false
+  }
+  return (
+    values.from === PUNKS_MARKET_ADDRESS || values.to === PUNKS_MARKET_ADDRESS
+  )
 }
 
 function eventId(event: PonderEvent): string {
