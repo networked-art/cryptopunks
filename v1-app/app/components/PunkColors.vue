@@ -1,13 +1,18 @@
 <template>
   <div class="punk-colors">
-    <NuxtLink
+    <Tooltip
       v-for="c in colors"
       :key="c.id"
-      class="swatch"
-      :to="{ path: '/', query: { q: `#${c.bare}` } }"
-      :style="{ background: c.css }"
-      :title="c.label"
-    />
+    >
+      <template #trigger>
+        <NuxtLink
+          class="swatch"
+          :to="{ path: '/', query: { q: `#${c.bare}` } }"
+          :style="{ background: c.css }"
+        />
+      </template>
+      {{ c.label }}
+    </Tooltip>
   </div>
 </template>
 
