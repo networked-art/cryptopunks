@@ -33,16 +33,22 @@
       class="bid-matches"
     >
       <NuxtLink
+        v-if="matchesLink"
         class="muted matches-link"
         :to="matchesLink"
         >{{ matchCount.toLocaleString() }} matching punks</NuxtLink
+      >
+      <span
+        v-else
+        class="muted matches-link"
+        >{{ matchCount.toLocaleString() }} matching punks</span
       >
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import type { PunkQuery } from '@networked-art/punks-sdk'
+import { formatSearchText, type PunkQuery } from '@networked-art/punks-sdk'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
@@ -94,7 +100,22 @@ function bidToQuery(bid: CollectionBid): PunkQuery {
   return query
 }
 
-const matchesLink = computed(() => `/?bid=${props.bid.id}`)
+/// Rebuild the front-end search query string that selects the same punks
+/// this bid covers. Filters with features the text grammar can't express
+/// (forbidden masks, exotic any-of groups) leave the link unrendered.
+const matchesLink = computed(() => {
+  try {
+    const q = formatSearchText(offline.dataset.source, {
+      criteria: props.bid.criteria,
+      includeIds: props.bid.includeIds,
+      excludeIds: props.bid.excludeIds,
+    })
+    if (!q) return null
+    return { path: '/', query: { q } }
+  } catch {
+    return null
+  }
+})
 </script>
 
 <style scoped>

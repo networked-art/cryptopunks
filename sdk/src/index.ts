@@ -119,6 +119,8 @@ export type {
   ParsedSearchTextGroup,
   SearchTextTerm,
 } from './text-parse'
+export { formatSearchText } from './text-format'
+export type { FormatSearchTextInput } from './text-format'
 export {
   PunksDataClient,
   createPunksDataClient,
