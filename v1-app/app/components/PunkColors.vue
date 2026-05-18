@@ -7,7 +7,7 @@
       <template #trigger>
         <NuxtLink
           class="swatch"
-          :to="{ path: '/', query: { q: `#${c.bare}` } }"
+          :to="{ path: '/', query: { q: `#${c.rgba}` } }"
           :style="{ background: c.css }"
         />
       </template>
@@ -26,18 +26,21 @@ const summary = computed(() =>
 
 /// Rare-first: the lowest-supply color comes first so distinctive palette
 /// entries are surfaced ahead of common ones like skin and background.
-/// SDK hex values are `0x…`-prefixed; CSS needs `#…`, and the search URL
-/// uses the bare 6-hex form (`?color=a66e2c`).
+/// SDK hex values are `0x…`-prefixed; CSS needs `#…`. The search URL uses
+/// the full `rrggbbaa` form so semi-transparent palette entries survive
+/// the round-trip — a 6-hex query is treated as `…ff` by the SDK and
+/// would resolve to the wrong (opaque) color.
 const colors = computed(() =>
   [...(summary.value.colors ?? [])]
     .sort((a, b) => (a.supply ?? Infinity) - (b.supply ?? Infinity))
     .map((c) => {
-      const bare = stripHexPrefix(c.rgb)
+      const rgba = stripHexPrefix(c.rgba)
+      const display = rgba.endsWith('ff') ? rgba.slice(0, 6) : rgba
       return {
         ...c,
-        bare,
-        css: `#${stripHexPrefix(c.rgba)}`,
-        label: `#${bare}${
+        rgba,
+        css: `#${rgba}`,
+        label: `#${display}${
           c.supply !== undefined
             ? ` · used by ${c.supply.toLocaleString()} punks`
             : ''
