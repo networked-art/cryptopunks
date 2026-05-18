@@ -11,8 +11,10 @@
     <span
       v-else
       class="thumb thumb-bid"
-      >#{{ event.bidId }}</span
+      :title="event.bidId !== undefined ? `Bid #${event.bidId}` : undefined"
     >
+      <Icon name="lucide:gavel" />
+    </span>
 
     <div class="row-body">
       <div class="row-line">
@@ -181,7 +183,6 @@ const PM_SUFFIX = new Set([
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-sm);
   color: var(--text-dim);
-  font-size: 11px;
 }
 
 .row-body {
