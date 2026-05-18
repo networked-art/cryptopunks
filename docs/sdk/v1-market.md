@@ -1,16 +1,19 @@
-# V̶ ̶1̶ Market
+# V1 Market
 
-`punks.v1Market` covers the V̶ ̶1̶ "CryptoPunks" criteria-bid market. Reads
-require a `publicClient`; writes require a `walletClient`.
+`punks.v1Market` wraps a criteria-bid market that interacts with the broken
+CryptoPunks contract deployed by LarvaLabs on June 9th 2017. It gives those
+original Punks back a working secondary market: bids are escrowed in ETH and
+settlement routes around the original contract's sale-proceeds accounting bug.
+
+Reads require a `publicClient`; writes require a `walletClient`.
 
 ```ts
 const punks = createPunksSdk({ publicClient, walletClient })
 ```
 
-The V̶ ̶1̶ market is an onchain criteria-bid orderbook: bidders place bids
-backed by ETH escrow, each carrying a `Punks.Filter` plus optional include /
-exclude id lists. Sellers accept against any V̶ ̶1̶ Punk they own that matches
-the bid.
+Each bid carries a `Punks.Filter` plus optional include / exclude id lists.
+Sellers accept against any Punk they own on the original (June 2017) contract
+that matches the bid.
 
 ## Reads
 
@@ -110,7 +113,8 @@ const criteria = compilePunksFilter(punks.dataset.source, {
 ## Indexer Composition
 
 For richer queries (global lists, per-trait / per-color matching, sorted
-pagination) the SDK ships an HTTP client for the v1 punks indexer:
+pagination) the SDK ships an HTTP client for the indexer that tracks bids on
+the original (June 2017) CryptoPunks contract:
 
 ```ts
 import {

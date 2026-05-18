@@ -19,8 +19,8 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
   metadata, token URI generation, and exact onchain renderer reads.
 - [Original Marketplace](/sdk/original-marketplace) covers original-market
   reads and writes.
-- [V̶ ̶1̶ Market](/sdk/v1-market) covers the V̶ ̶1̶ "CryptoPunks" criteria-bid
-  market and indexer composition.
+- [V1 Market](/sdk/v1-market) covers the criteria-bid market that wraps the
+  broken June 2017 CryptoPunks contract.
 - [Punk Data Contracts](/sdk/punk-data-contracts) explains local dataset
   usage, `PunksData.sol`, and legacy `CryptopunksData`.
 - [Wrappers](/sdk/wrappers) covers modern Stash wrapping, legacy proxy

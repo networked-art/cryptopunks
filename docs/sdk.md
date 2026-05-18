@@ -26,7 +26,7 @@ const ids = punks.search({
 | `punks.dataset`                               | Trait catalog, palette, summaries, optional indexed pixels, bitmaps        |
 | `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle |
 | `punks.market`                                | Original CryptoPunks market reads/writes                                   |
-| `punks.v1Market`                              | V̶ ̶1̶ "CryptoPunks" criteria-bid market reads/writes                          |
+| `punks.v1Market`                              | Criteria-bid market that wraps the broken June 2017 CryptoPunks contract |
 | `punks.data.contract`                         | Exact reads for `PunksData.sol`                                            |
 | `punks.data.legacy`                           | Original `CryptopunksData` SVG and attribute reads                         |
 | `punks.wrappers.modern`                       | CryptoPunks721 reads, approvals, and Stash wrapping flows                  |
@@ -57,7 +57,7 @@ Labs `CryptopunksData` SVG or attribute strings.
 | [Data And Search](/sdk/data-search)               | Query filtering, facets, dataset reads, and offer-slot compilation                       |
 | [Rendering And Metadata](/sdk/rendering)          | Local images, metadata, token URI generation, and exact onchain renderer reads           |
 | [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes                                             |
-| [V̶ ̶1̶ Market](/sdk/v1-market)                       | V̶ ̶1̶ "CryptoPunks" criteria-bid market and indexer composition                              |
+| [V1 Market](/sdk/v1-market)                       | Criteria-bid market for the broken June 2017 CryptoPunks contract, plus indexer composition |
 | [Punk Data Contracts](/sdk/punk-data-contracts)   | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData`                             |
 | [Wrappers](/sdk/wrappers)                         | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers                   |
 | [Stash](/sdk/stash)                               | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and orders               |
