@@ -1,66 +1,72 @@
 <template>
-  <div class="bid-form">
-    <p
-      v-if="!marketAddress"
-      class="warn"
-    >
-      PunksMarket contract is not configured yet.
-    </p>
-
-    <p
-      v-else-if="compileError"
-      class="warn"
-    >
-      {{ compileError }}
-    </p>
-
-    <p
-      v-else-if="query"
-      class="muted match-count"
-    >
-      Bid applies to <strong>{{ matchCount.toLocaleString() }}</strong>
-      matching punk{{ matchCount === 1 ? '' : 's' }}.
-    </p>
-
-    <label>
-      <span class="label">Bid amount</span>
-      <input
-        v-model="bidEth"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="0.5"
-      />
-    </label>
-
-    <div class="actions">
+  <EvmTransactionFlowDialog
+    chain="mainnet"
+    keep-open
+    :request="placeBid"
+    :text="dialogText"
+    @complete="onComplete"
+  >
+    <template #start="{ start }">
       <Button
-        class="primary"
-        :disabled="!canPlace"
-        @click="actPlace"
+        :disabled="!canStart"
+        @click="start"
       >
-        {{ address ? 'Place bid' : 'Connect wallet' }}
+        {{ address ? 'Bid' : 'Connect wallet' }}
       </Button>
-    </div>
+    </template>
 
-    <EvmTransactionFlowDialog
-      ref="dialogRef"
-      chain="mainnet"
-      :text="dialogText"
-      keep-open
-      skip-confirmation
-      @complete="onComplete"
-    />
-  </div>
+    <template #confirm>
+      <p
+        v-if="compileError"
+        class="warn"
+      >
+        {{ compileError }}
+      </p>
+      <p
+        v-else-if="query"
+        class="muted match-count"
+      >
+        Bid applies to
+        <strong>{{ matchCount.toLocaleString() }}</strong> matching punk{{
+          matchCount === 1 ? '' : 's'
+        }}.
+      </p>
+
+      <label class="bid-amount">
+        <span class="label">Bid amount</span>
+        <input
+          v-model="bidEth"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="0.5"
+        />
+      </label>
+    </template>
+
+    <template #error>
+      <label class="bid-amount">
+        <span class="label">Bid amount</span>
+        <input
+          v-model="bidEth"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="0.5"
+        />
+      </label>
+    </template>
+  </EvmTransactionFlowDialog>
 </template>
 
 <script setup lang="ts">
 import { parseEther, type Hash } from 'viem'
 import { writeContract } from '@wagmi/core'
-import { useAccount, useConfig } from '@wagmi/vue'
+import { useConnection, useConfig } from '@wagmi/vue'
 import {
   compileOfferSlot,
-  emptyPunksFilter,
   type PunkQuery,
   type PunksFilter,
 } from '@networked-art/punks-sdk'
@@ -72,18 +78,18 @@ const emit = defineEmits<{ placed: [] }>()
 
 const marketAddress = usePunksMarketAddress()
 const config = useConfig()
-const { address } = useAccount()
+const { address } = useConnection()
 const offline = usePunksOffline()
 
 const bidEth = ref('')
 
 const bidWei = computed(() => parseEthSafe(bidEth.value))
 
-function parseEthSafe(input: string): bigint | null {
-  const trimmed = input.trim()
+function parseEthSafe(input: unknown): bigint | null {
+  const trimmed = String(input ?? '').trim()
   if (!trimmed) return null
   try {
-    const wei = parseEther(trimmed as `${number}`)
+    const wei = parseEther(trimmed)
     return wei > 0n ? wei : null
   } catch {
     return null
@@ -147,55 +153,44 @@ const matchCount = computed(() => {
   }
 })
 
-const canPlace = computed(
+const canStart = computed(
   () =>
     !!address.value &&
     !!marketAddress.value &&
-    bidWei.value !== null &&
     !compileError.value &&
     matchCount.value > 0,
 )
 
-type DialogRef = {
-  initializeRequest: (request?: () => Promise<Hash>) => void
-} | null
-const dialogRef = ref<DialogRef>(null)
-const dialogText = ref<{
-  title?: Record<string, string>
-  lead?: Record<string, string>
-}>({})
+const dialogText = {
+  title: { confirm: 'Place collection bid' },
+  lead: {
+    confirm: 'Enter the amount of ETH you want to bid for the matching punks.',
+  },
+  action: { confirm: 'Place bid' },
+}
 
-async function actPlace() {
-  if (!canPlace.value) return
-
+async function placeBid(): Promise<Hash> {
   const slot =
-    compiled.value && 'ok' in compiled.value
-      ? compiled.value.ok
-      : {
-          criteria: emptyPunksFilter(),
-          includeIds: [] as number[],
-          excludeIds: [] as number[],
-        }
-
-  dialogText.value = {
-    title: { confirm: 'Place collection bid' },
-    lead: { confirm: 'Place collection bid' },
+    compiled.value && 'ok' in compiled.value ? compiled.value.ok : null
+  if (!slot) {
+    throw new Error(
+      compileError.value ??
+        'Search cannot be expressed as an onchain bid filter.',
+    )
+  }
+  if (bidWei.value === null) {
+    throw new Error('Enter a bid amount greater than zero.')
+  }
+  if (!marketAddress.value) {
+    throw new Error('PunksMarket contract is not configured yet.')
   }
 
-  dialogRef.value?.initializeRequest(async () => {
-    return writeContract(config, {
-      address: marketAddress.value!,
-      abi: punksMarketAbi,
-      functionName: 'placeBid',
-      args: [
-        bidWei.value!,
-        0n,
-        slot.criteria,
-        slot.includeIds,
-        slot.excludeIds,
-      ],
-      value: bidWei.value!,
-    })
+  return writeContract(config, {
+    address: marketAddress.value,
+    abi: punksMarketAbi,
+    functionName: 'placeBid',
+    args: [bidWei.value, 0n, slot.criteria, slot.includeIds, slot.excludeIds],
+    value: bidWei.value,
   })
 }
 
@@ -205,39 +200,4 @@ function onComplete() {
 }
 </script>
 
-<style scoped>
-.bid-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-3);
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-}
-
-.label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.warn {
-  color: #b8761c;
-  font-size: 12px;
-  margin: 0;
-}
-
-.match-count {
-  font-size: 12px;
-  margin: 0;
-}
-</style>
+<style scoped></style>

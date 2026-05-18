@@ -4,7 +4,7 @@
       <div class="page-head-row">
         <h1>Collection bids</h1>
         <ClientOnly>
-          <CollectionBidDialog @placed="refresh" />
+          <CollectionBidForm @placed="refresh" />
         </ClientOnly>
       </div>
       <p class="muted">
