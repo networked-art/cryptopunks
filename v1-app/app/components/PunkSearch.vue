@@ -10,13 +10,17 @@
           @keydown.enter="onEnter"
         />
         <ClientOnly>
-          <CollectionBidForm :query="query" />
+          <CollectionBidForm
+            v-if="address"
+            :query="query"
+          />
         </ClientOnly>
       </FormInputGroup>
-      <span class="muted result-count"
-        >{{ counts.filtered.toLocaleString() }} /
-        {{ counts.total.toLocaleString() }}</span
-      >
+      <span class="muted result-count">
+        {{ counts.filtered.toLocaleString()
+        }}<span class="result-total">
+          / {{ counts.total.toLocaleString() }}</span>
+      </span>
     </header>
 
     <PunkGrid
@@ -27,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+import { useConnection } from '@wagmi/vue'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
 const props = withDefaults(
@@ -40,6 +45,7 @@ const props = withDefaults(
 const offline = usePunksOffline()
 const route = useRoute()
 const router = useRouter()
+const { address } = useConnection()
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
@@ -176,5 +182,11 @@ function onEnter() {
 .result-count {
   font-size: 12px;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .result-total {
+    display: none;
+  }
 }
 </style>
