@@ -4,15 +4,25 @@ WORKDIR /app
 
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY sdk/package.json ./sdk/
 COPY v1-punks-indexer/package.json ./v1-punks-indexer/
-RUN pnpm install --frozen-lockfile --filter v1-punks-indexer
+RUN pnpm install --frozen-lockfile --filter v1-punks-indexer...
+
+FROM deps AS build
+COPY sdk ./sdk
+COPY v1-punks-indexer ./v1-punks-indexer
+
+WORKDIR /app/sdk
+RUN pnpm build
+
+WORKDIR /app/v1-punks-indexer
+RUN ./node_modules/.bin/ponder codegen
 
 FROM base AS production
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/v1-punks-indexer/node_modules ./v1-punks-indexer/node_modules
-COPY v1-punks-indexer ./v1-punks-indexer
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/sdk ./sdk
+COPY --from=build /app/v1-punks-indexer ./v1-punks-indexer
 WORKDIR /app/v1-punks-indexer
-RUN pnpm exec ponder codegen
 
 EXPOSE 42069
-CMD ["sh", "-c", "pnpm start --schema=${DATABASE_SCHEMA:-ponder} --views-schema=${PONDER_VIEWS_SCHEMA:-v1_punks}"]
+CMD ["sh", "-c", "./node_modules/.bin/ponder start --schema=${DATABASE_SCHEMA:-ponder} --views-schema=${PONDER_VIEWS_SCHEMA:-v1_punks}"]
