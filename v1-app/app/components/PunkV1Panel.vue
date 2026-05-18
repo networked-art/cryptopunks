@@ -100,7 +100,7 @@
           <div class="action-group">
             <PunkListForm
               :punk-id="punkId"
-              :is-listed="!!liveListing"
+              :current-price-wei="liveListing?.priceWei ?? null"
               @listed="onListed"
             />
             <Button

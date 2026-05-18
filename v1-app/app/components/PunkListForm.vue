@@ -12,7 +12,7 @@
         :disabled="!address"
         @click="start"
       >
-        {{ isListed ? 'Update listing' : 'List for sale' }}
+        {{ currentPriceWei ? 'Update listing' : 'List for sale' }}
       </Button>
     </template>
 
@@ -47,13 +47,13 @@
 </template>
 
 <script setup lang="ts">
-import { parseEther, type Hash } from 'viem'
+import { formatEther, parseEther, type Hash } from 'viem'
 import { useAccount } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
 const props = defineProps<{
   punkId: number
-  isListed?: boolean
+  currentPriceWei?: bigint | null
 }>()
 const emit = defineEmits<{ listed: [tx: Hash] }>()
 
@@ -76,12 +76,14 @@ function parseEthSafe(input: unknown): bigint | null {
 }
 
 const dialogText = computed(() => {
-  const title = props.isListed ? 'Update listing' : 'List for sale'
+  const current = props.currentPriceWei
+  const title = current ? 'Update listing' : 'List for sale'
+  const lead = current
+    ? `Your current listing is ${formatEther(current)} Ξ. Enter a new ETH price.`
+    : 'Enter the price in ETH at which to list this punk.'
   return {
     title: { confirm: title },
-    lead: {
-      confirm: 'Enter the price in ETH at which to list this punk.',
-    },
+    lead: { confirm: lead },
     action: { confirm: title },
   }
 })
