@@ -7,7 +7,7 @@
       <template #trigger>
         <NuxtLink
           class="swatch"
-          :to="{ path: '/', query: { q: `#${c.rgba}` } }"
+          :to="{ path: '/', query: { q: `#${c.hex}` } }"
           :style="{ background: c.css }"
         />
       </template>
@@ -26,21 +26,21 @@ const summary = computed(() =>
 
 /// Rare-first: the lowest-supply color comes first so distinctive palette
 /// entries are surfaced ahead of common ones like skin and background.
-/// SDK hex values are `0x…`-prefixed; CSS needs `#…`. The search URL uses
-/// the full `rrggbbaa` form so semi-transparent palette entries survive
-/// the round-trip — a 6-hex query is treated as `…ff` by the SDK and
-/// would resolve to the wrong (opaque) color.
+/// SDK hex values are `0x…`-prefixed; CSS needs `#…`. Fully-opaque entries
+/// link/label with the 6-hex form; semi-transparent ones keep the alpha
+/// byte so the search query resolves to the right palette color (a bare
+/// 6-hex is treated as `…ff` by the SDK).
 const colors = computed(() =>
   [...(summary.value.colors ?? [])]
     .sort((a, b) => (a.supply ?? Infinity) - (b.supply ?? Infinity))
     .map((c) => {
       const rgba = stripHexPrefix(c.rgba)
-      const display = rgba.endsWith('ff') ? rgba.slice(0, 6) : rgba
+      const hex = rgba.endsWith('ff') ? rgba.slice(0, 6) : rgba
       return {
         ...c,
-        rgba,
+        hex,
         css: `#${rgba}`,
-        label: `#${display}${
+        label: `#${hex}${
           c.supply !== undefined
             ? ` · used by ${c.supply.toLocaleString()} punks`
             : ''
