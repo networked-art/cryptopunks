@@ -214,8 +214,12 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
     existing && existing.seller !== ZERO_ADDRESS ? existing.seller : undefined
 
   // A V1 listing whose buyer was the PunksMarket is consumed as part of a
-  // market settlement; the market's own sale row already covers it.
-  if (existing?.only_sell_to !== PUNKS_MARKET_ADDRESS) {
+  // market settlement; the market's own sale row already covers it. DB-stored
+  // hex columns are lowercase, so re-normalize before comparing.
+  const onlySellTo = existing?.only_sell_to
+  const isMarketListing =
+    onlySellTo != null && normalize(onlySellTo) === PUNKS_MARKET_ADDRESS
+  if (!isMarketListing) {
     await insertActivity(context, {
       id: eventId(event),
       source: SOURCE_V1,
