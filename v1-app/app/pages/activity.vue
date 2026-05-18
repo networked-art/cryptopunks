@@ -3,8 +3,14 @@
     <header class="page-head">
       <h1>Activity</h1>
       <p class="muted">
-        Recent V1 listings, sales, and bids across the original market and
-        PunksMarket.
+        Recent listings and sales on
+        <a
+          href="https://evm.now/address/0x6ba6f2207e343923ba692e5cae646fb0f566db8d"
+          >CryptoPunks.sol</a
+        >, and bids on
+        <a href="https://evm.now/address/punksmarket.eth/code"
+          >PunksMarket.sol</a
+        >.
       </p>
     </header>
 
