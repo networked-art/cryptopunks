@@ -194,6 +194,9 @@ onBeforeUnmount(() => {
 
 .grid-scroll {
   position: relative;
+  /* Scope the hover/focus z-index below so it can't escape above the
+     sticky search bar / site header. */
+  isolation: isolate;
 }
 
 .cell {
