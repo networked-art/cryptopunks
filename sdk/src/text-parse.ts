@@ -46,7 +46,8 @@ export type ParsedSearchText = {
 
 /// Parses a search text string into structured constraints + free-term
 /// fallback. Recognizes:
-///   - `<n> color(s)`, `<n> attribute(s)`, `<n> attr(s)`, `<n> pixel(s)` →
+///   - `<n> color(s)`, `<n> attribute(s)`, `<n> attr(s)`, `<n> trait(s)`,
+///     `<n> pixel(s)` →
 ///     numeric eq constraint on the matching axis;
 ///   - `<n>-<m> color(s)` etc. → numeric range;
 ///   - `<= <n> color(s)`, `>= <n> color(s)`, `< <n>`, `> <n>` → numeric
@@ -295,11 +296,11 @@ type CountAxis = 'colorCount' | 'attributeCount' | 'pixelCount'
 /// Aliases per count axis. The bigram rule (`<n> <word>`) accepts any
 /// non-empty prefix of any alias, so `2 c`, `2 co`, `2 colors` all parse
 /// the same way — and `2 cap` does not, because `cap` is not a prefix of
-/// `color(s)`. Axes start with distinct letters, so prefixes never collide
-/// across axes.
+/// `color(s)`. Aliases use disjoint starting letters across axes (c, a/t,
+/// p), so prefixes never collide across axes.
 const COUNT_AXIS_ALIASES: Record<CountAxis, readonly string[]> = {
   colorCount: ['color', 'colors'],
-  attributeCount: ['attribute', 'attributes', 'attrs'],
+  attributeCount: ['attribute', 'attributes', 'attrs', 'trait', 'traits'],
   pixelCount: ['pixel', 'pixels'],
 }
 
