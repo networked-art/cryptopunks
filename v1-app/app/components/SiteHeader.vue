@@ -52,7 +52,7 @@
   background: var(--bg);
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: calc(var(--z-index-ui) + 1);
   backdrop-filter: blur(8px);
 }
 

@@ -152,7 +152,7 @@ function onEnter() {
 .search-bar {
   position: sticky;
   top: 56px;
-  z-index: 20;
+  z-index: var(--z-index-ui);
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2);
