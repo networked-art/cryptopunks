@@ -22,6 +22,11 @@
         active-class="nav-active"
         >Activity</NuxtLink
       >
+      <NuxtLink
+        to="/about"
+        active-class="nav-active"
+        >About</NuxtLink
+      >
     </BottomNav>
   </div>
 </template>
