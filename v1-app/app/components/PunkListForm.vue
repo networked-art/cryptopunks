@@ -28,13 +28,6 @@
           placeholder="0.5"
         />
       </label>
-      <p
-        v-if="!punksMarketAddress"
-        class="warn"
-      >
-        PunksMarket not configured — listing will use raw V1 and won't be
-        directed to the market contract.
-      </p>
     </template>
 
     <template #error>
@@ -56,7 +49,7 @@
 <script setup lang="ts">
 import { parseEther, type Hash } from 'viem'
 import { useAccount } from '@wagmi/vue'
-import { usePunksMarketAddress } from '~/utils/addresses'
+import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
 const props = defineProps<{
   punkId: number
@@ -67,7 +60,6 @@ const emit = defineEmits<{ listed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useAccount()
-const punksMarketAddress = usePunksMarketAddress()
 
 const priceEth = ref('')
 const priceWei = computed(() => parseEthSafe(priceEth.value))
@@ -102,7 +94,7 @@ async function list(): Promise<Hash> {
     sdk.value.market.prepareList({
       punkId: props.punkId,
       priceWei: priceWei.value,
-      onlySellTo: punksMarketAddress.value ?? undefined,
+      onlySellTo: PUNKS_MARKET_ADDRESS,
     }),
   )
 }

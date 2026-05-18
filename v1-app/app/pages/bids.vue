@@ -13,16 +13,6 @@
       </p>
     </header>
 
-    <div
-      v-if="!marketAddress"
-      class="empty"
-    >
-      <p class="muted">No PunksMarket contract configured.</p>
-      <p class="dim">
-        Set <code>NUXT_PUBLIC_PUNKS_MARKET_ADDRESS</code> in the environment.
-      </p>
-    </div>
-
     <ClientOnly>
       <div
         v-if="pending"
@@ -37,7 +27,7 @@
         Failed to load bids: {{ error }}
       </div>
       <div
-        v-else-if="!bids.length && marketAddress"
+        v-else-if="!bids.length"
         class="empty muted"
       >
         No active collection bids yet.
@@ -59,7 +49,6 @@
 <script setup lang="ts">
 useHead({ title: 'Bids · punksmarket.xyz' })
 
-const marketAddress = usePunksMarketAddress()
 const { bids, pending, error, refresh } = usePunksMarketBids()
 </script>
 
@@ -100,13 +89,5 @@ const { bids, pending, error, refresh } = usePunksMarketBids()
 
 .error {
   color: var(--accent);
-}
-
-code {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 11px;
 }
 </style>

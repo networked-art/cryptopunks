@@ -43,7 +43,6 @@ export default defineNuxtConfig({
       // proxy). Override with NUXT_PUBLIC_PUBLIC_URL in production.
       publicUrl: 'http://localhost:3000',
       indexerUrl: 'https://indexer-v1.punksmarket.app',
-      punksMarketAddress: '0x64e507FEBF26521b73FbdfA533106B2042533218',
       evm: {
         walletConnectProjectId: '',
         chains: {

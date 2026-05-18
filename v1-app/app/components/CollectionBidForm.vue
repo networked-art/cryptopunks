@@ -71,12 +71,11 @@ import {
   type PunksFilter,
 } from '@networked-art/punks-sdk'
 import { punksMarketAbi } from '~/utils/punksMarketAbi'
-import { usePunksMarketAddress } from '~/utils/addresses'
+import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
 const props = defineProps<{ query?: PunkQuery }>()
 const emit = defineEmits<{ placed: [] }>()
 
-const marketAddress = usePunksMarketAddress()
 const config = useConfig()
 const { address } = useConnection()
 const offline = usePunksOffline()
@@ -154,11 +153,7 @@ const matchCount = computed(() => {
 })
 
 const canStart = computed(
-  () =>
-    !!address.value &&
-    !!marketAddress.value &&
-    !compileError.value &&
-    matchCount.value > 0,
+  () => !!address.value && !compileError.value && matchCount.value > 0,
 )
 
 const dialogText = {
@@ -181,12 +176,9 @@ async function placeBid(): Promise<Hash> {
   if (bidWei.value === null) {
     throw new Error('Enter a bid amount greater than zero.')
   }
-  if (!marketAddress.value) {
-    throw new Error('PunksMarket contract is not configured yet.')
-  }
 
   return writeContract(config, {
-    address: marketAddress.value,
+    address: PUNKS_MARKET_ADDRESS,
     abi: punksMarketAbi,
     functionName: 'placeBid',
     args: [bidWei.value, 0n, slot.criteria, slot.includeIds, slot.excludeIds],

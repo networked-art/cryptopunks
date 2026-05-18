@@ -45,7 +45,7 @@
           <div v-if="listing?.isForSale">
             <EthAmount :wei="listing.priceWei" />
             <div
-              v-if="!isDirectedToPunksMarket && punksMarketAddress"
+              v-if="!isDirectedToPunksMarket"
               class="warn"
             >
               Not directed to PunksMarket — settlement uses raw V1.
@@ -114,12 +114,6 @@
             Accept bid · <EthAmount :wei="topBid!.bidWei" />
           </Button>
           <p
-            v-else-if="topBid && !punksMarketAddress"
-            class="warn"
-          >
-            PunksMarket not configured — cannot accept bid.
-          </p>
-          <p
             v-else-if="topBid && !isDirectedToPunksMarket"
             class="warn"
           >
@@ -147,10 +141,7 @@
             Listing not directed to PunksMarket — refusing to buy via raw V1.
           </p>
 
-          <div
-            class="action-group"
-            v-if="punksMarketAddress"
-          >
+          <div class="action-group">
             <input
               v-model="bidInput"
               type="text"
@@ -173,12 +164,6 @@
               Withdraw bid
             </Button>
           </div>
-          <p
-            v-else
-            class="muted"
-          >
-            Bidding requires the PunksMarket contract — not configured yet.
-          </p>
         </template>
 
         <Button
@@ -214,7 +199,7 @@ import {
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
-import { V1_WRAPPER_ADDRESS, usePunksMarketAddress } from '~/utils/addresses'
+import { V1_WRAPPER_ADDRESS, PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import { v1WrapperAbi } from '~/utils/v1WrapperAbi'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
@@ -227,7 +212,6 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useAccount()
-const punksMarketAddress = usePunksMarketAddress()
 
 const {
   owner,
@@ -252,10 +236,9 @@ const isOwner = computed(
 )
 const isDirectedToPunksMarket = computed(() => {
   if (!listing.value?.isForSale) return false
-  if (!punksMarketAddress.value) return false
   return (
     listing.value.onlySellTo?.toLowerCase() ===
-    punksMarketAddress.value.toLowerCase()
+    PUNKS_MARKET_ADDRESS.toLowerCase()
   )
 })
 
@@ -271,10 +254,7 @@ const ownActiveBid = computed<CollectionBid | null>(() => {
   return props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
 })
 const canAcceptTopBid = computed(
-  () =>
-    !!topBid.value &&
-    !!punksMarketAddress.value &&
-    isDirectedToPunksMarket.value,
+  () => !!topBid.value && isDirectedToPunksMarket.value,
 )
 const canBuy = computed(() => isDirectedToPunksMarket.value)
 
