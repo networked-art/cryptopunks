@@ -1,7 +1,10 @@
 import type { Address } from 'viem'
 import { isAddressEqual } from 'viem'
 import { V1_WRAPPER_ADDRESS } from '~/utils/addresses'
+import { v1WrapperAbi } from '~/utils/v1WrapperAbi'
 import { queryIndexer } from '~/utils/indexer'
+import { getPublicClient } from '@wagmi/core'
+import { useConfig } from '@wagmi/vue'
 
 /**
  * Canonical owner of a V1 Punk. The indexer normalizes wrap state so a single
@@ -29,6 +32,7 @@ type PunkOwnerRow = {
 
 export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
   const { sdk } = usePunksSdk()
+  const config = useConfig()
 
   const owner = ref<Address | null>(null)
   const isWrapped = ref(false)
@@ -57,9 +61,14 @@ export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
       try {
         const raw = (await sdk.value.market.ownerOf(id)) as Address | null
         if (raw && isAddressEqual(raw, V1_WRAPPER_ADDRESS)) {
-          owner.value = (await sdk.value.wrappers.legacy.ownerOf(
-            id,
-          )) as Address
+          const publicClient = getPublicClient(config)
+          if (!publicClient) throw new Error('no public client')
+          owner.value = (await publicClient.readContract({
+            address: V1_WRAPPER_ADDRESS,
+            abi: v1WrapperAbi,
+            functionName: 'ownerOf',
+            args: [BigInt(id)],
+          })) as Address
           isWrapped.value = true
         } else {
           owner.value = raw

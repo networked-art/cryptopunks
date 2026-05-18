@@ -3,7 +3,7 @@ import {
   CRYPTOPUNKS_V1_ADDRESS,
 } from '@networked-art/punks-sdk'
 import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
-import { V1_WRAPPER_ADDRESS, usePunksMarketAddress } from '~/utils/addresses'
+import { usePunksMarketAddress } from '~/utils/addresses'
 
 /**
  * Offline-only SDK + the source bundle. The bundle is reused by
@@ -20,7 +20,6 @@ export default defineNuxtPlugin(() => {
     addresses: {
       market: CRYPTOPUNKS_V1_ADDRESS,
       v1Market: punksMarket,
-      wrappedPunks: V1_WRAPPER_ADDRESS,
     },
   })
   return {

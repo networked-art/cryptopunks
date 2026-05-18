@@ -6,7 +6,7 @@ import {
 import { getPublicClient, getWalletClient } from '@wagmi/core'
 import { useAccount, useConfig } from '@wagmi/vue'
 import type { PublicClient, WalletClient } from 'viem'
-import { V1_WRAPPER_ADDRESS, usePunksMarketAddress } from '~/utils/addresses'
+import { usePunksMarketAddress } from '~/utils/addresses'
 
 /** Offline SDK — search, dataset, rendering. Available everywhere. */
 export function usePunksOffline(): PunksSdk {
@@ -53,7 +53,6 @@ export function usePunksSdk() {
       addresses: {
         market: CRYPTOPUNKS_V1_ADDRESS,
         v1Market: punksMarket.value ?? undefined,
-        wrappedPunks: V1_WRAPPER_ADDRESS,
       },
     })
   })
