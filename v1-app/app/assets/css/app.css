@@ -39,6 +39,14 @@
   --border-radius-lg: var(--radius);
   --ui-padding-block: var(--space-2);
   --ui-padding-inline: var(--space-3);
+
+  --button-primary-background: #ff04b4;
+  --button-primary-border-color: #ff04b4;
+  --button-primary-color: #fff;
+  --button-primary-background-highlight: #ff3dc7;
+  --button-primary-border-color-highlight: #ff3dc7;
+  --button-primary-color-highlight: #fff;
+  --button-primary-font-weight: 600;
 }
 
 * {
@@ -77,19 +85,6 @@ select,
 textarea {
   font: inherit;
   color: inherit;
-}
-
-button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-  font-weight: 600;
-}
-
-button.primary:hover:not(:disabled) {
-  background: #ff5773;
-  border-color: #ff5773;
-  color: var(--bg);
 }
 
 .muted {
