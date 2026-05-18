@@ -13,7 +13,7 @@
           :href="`https://evm.now/address/${PUNKS_MARKET_ADDRESS}/code`"
           target="_blank"
           rel="noopener"
-          >C̩ͤ̊̄ͦͅry̸̢̯̍ͨ́̍p̛̞̘̊ͪ̕t̝o̩͗̈́͜P̹̗u̗ͬnḳ͚̫̋sMarket</a
+          >PunksMarket.sol</a
         >
         is a smart contract that interacts with the CryptoPunks contract
         deployed
@@ -80,8 +80,8 @@
         <a
           href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
           >fixed redeploy on June 22nd 2017</a
-        >. The new C̩ͤ̊̄ͦͅry̸̢̯̍ͨ́̍p̛̞̘̊ͪ̕t̝o̩͗̈́͜P̹̗u̗ͬnḳ͚̫̋sMarket.sol contract enables bidding on individual
-        punks as well as the entire collection, specific traits, and color
+        >. The new PunksMarket.sol contract enables bidding on individual punks
+        as well as the entire collection, specific traits, and color
         combinations.
       </p>
       <p>
