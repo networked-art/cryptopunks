@@ -47,7 +47,7 @@ const route = useRoute()
 const router = useRouter()
 const { address } = useConnection()
 const LISTING_QUALIFIER =
-  /(^|[\s,])(?:listings?|listed|for\s+sale|on\s+sale)(?=$|[\s,])/gi
+  /(^|[\s,])(?:for\s+sale|on\s+sale|lis[a-z]*|sale)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
