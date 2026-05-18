@@ -47,7 +47,11 @@
 </template>
 
 <script setup lang="ts">
-useHead({ title: 'Bids · punksmarket.xyz' })
+useSeoMeta({
+  title: 'Bids · punksmarket.xyz',
+  ogTitle: 'Bids · punksmarket.xyz',
+  twitterTitle: 'Bids · punksmarket.xyz',
+})
 
 const { bids, pending, error, refresh } = usePunksMarketBids()
 </script>

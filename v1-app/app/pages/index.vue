@@ -9,11 +9,15 @@ const route = useRoute()
 const query = computed(() =>
   typeof route.query.q === 'string' ? route.query.q.trim() : '',
 )
-useHead(() => ({
-  title: query.value
-    ? `${query.value} · punksmarket.xyz`
-    : 'Search · punksmarket.xyz',
-}))
+useSeoMeta({
+  title: () =>
+    query.value
+      ? `${query.value} · punksmarket.xyz`
+      : 'Search · punksmarket.xyz',
+  ogTitle: () => (query.value ? `${query.value} · punksmarket.xyz` : 'punksmarket.xyz'),
+  twitterTitle: () =>
+    query.value ? `${query.value} · punksmarket.xyz` : 'punksmarket.xyz',
+})
 </script>
 
 <style scoped>

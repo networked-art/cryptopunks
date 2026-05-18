@@ -52,7 +52,11 @@
 </template>
 
 <script setup lang="ts">
-useHead({ title: 'Activity · punksmarket.xyz' })
+useSeoMeta({
+  title: 'Activity · punksmarket.xyz',
+  ogTitle: 'Activity · punksmarket.xyz',
+  twitterTitle: 'Activity · punksmarket.xyz',
+})
 
 const { events, pending, loadingMore, error, hasMore, loadMore } = useActivityFeed()
 </script>

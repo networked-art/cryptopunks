@@ -160,7 +160,11 @@ const shortAddr = computed(() =>
 const titleLabel = computed(
   () => ensProfile.data.value?.ens ?? shortAddr.value,
 )
-useHead(() => ({ title: `${titleLabel.value} · punksmarket.xyz` }))
+useSeoMeta({
+  title: () => `${titleLabel.value} · punksmarket.xyz`,
+  ogTitle: () => `${titleLabel.value} · punksmarket.xyz`,
+  twitterTitle: () => `${titleLabel.value} · punksmarket.xyz`,
+})
 
 const { bids } = usePunksMarketBids({
   bidder: () => resolvedAddress.value ?? undefined,

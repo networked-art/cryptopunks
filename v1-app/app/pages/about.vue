@@ -141,7 +141,11 @@
 <script setup lang="ts">
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
-useHead({ title: 'About · punksmarket.xyz' })
+useSeoMeta({
+  title: 'About · punksmarket.xyz',
+  ogTitle: 'About · punksmarket.xyz',
+  twitterTitle: 'About · punksmarket.xyz',
+})
 </script>
 
 <style scoped>

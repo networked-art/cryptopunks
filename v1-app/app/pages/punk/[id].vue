@@ -154,7 +154,11 @@ import {
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
 
-useHead(() => ({ title: `Punk #${id.value} · punksmarket.xyz` }))
+useSeoMeta({
+  title: () => `Punk #${id.value} · punksmarket.xyz`,
+  ogTitle: () => `Punk #${id.value} · punksmarket.xyz`,
+  twitterTitle: () => `Punk #${id.value} · punksmarket.xyz`,
+})
 
 const offline = usePunksOffline()
 const summary = computed(() => offline.get(id.value, { includeTraits: true }))
