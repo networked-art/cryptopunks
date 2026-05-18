@@ -183,7 +183,20 @@ function buildFilter(
   const colorCriteria = data.resolveColorCriteriaSync(foldedQuery.colors)
   let requiredTraitMask = traitCriteria.requiredMask
   let forbiddenTraitMask = traitCriteria.forbiddenMask
-  let anyOfTraitMask = traitCriteria.anyOfMask
+  /// Defer any-of resolution until every required trait is known: an any-of
+  /// candidate that contains a required trait is automatically satisfied and
+  /// can be dropped, freeing the filter's only any-of slot for a non-redundant
+  /// group. This keeps queries like `wild white albino` representable —
+  /// `wild` produces a {Wild Hair, Wild Blonde, Wild White Hair} any-of, but
+  /// `white` already requires Wild White Hair, so the `wild` group is dropped
+  /// and the skin-tone any-of [Female 4, Male 4] survives unchallenged.
+  const anyOfCandidates: { mask: bigint; label: string }[] = []
+  if (traitCriteria.anyOfMask !== 0n) {
+    anyOfCandidates.push({
+      mask: traitCriteria.anyOfMask,
+      label: 'query.attributes.anyOf',
+    })
+  }
 
   const addRequiredTrait = (traitId: number): void => {
     validateTraitId(traitId)
@@ -194,13 +207,10 @@ function buildFilter(
     label: string,
   ): void => {
     if (traitIds.length === 0) return
-    const groupMask = maskFromIds(traitIds, validateTraitId)
-    if (anyOfTraitMask !== 0n && anyOfTraitMask !== groupMask) {
-      throw new PunksDataValidationError(
-        `${label} cannot be combined with another any-of trait group in one onchain filter`,
-      )
-    }
-    anyOfTraitMask |= groupMask
+    anyOfCandidates.push({
+      mask: maskFromIds(traitIds, validateTraitId),
+      label,
+    })
   }
 
   for (const traitId of freeTermRequired) addRequiredTrait(traitId)
@@ -234,6 +244,22 @@ function buildFilter(
     addAnyOfTraitGroup(
       attributeCounts.map((count) => ATTRIBUTE_COUNT_TRAIT_OFFSET + count),
       'attributeCount',
+    )
+  }
+
+  let anyOfTraitMask = 0n
+  for (const { mask, label } of anyOfCandidates) {
+    /// Group is automatically satisfied — every punk matching `requiredTraitMask`
+    /// already has at least one of these traits, so the group adds no
+    /// information.
+    if ((requiredTraitMask & mask) !== 0n) continue
+    if (anyOfTraitMask === 0n) {
+      anyOfTraitMask = mask
+      continue
+    }
+    if (anyOfTraitMask === mask) continue
+    throw new PunksDataValidationError(
+      `${label} cannot be combined with another any-of trait group in one onchain filter`,
     )
   }
 
@@ -507,16 +533,39 @@ export function compileOfferSlot(
     ],
     'excludeIds',
   )
-  return {
-    criteria: buildFilter(
-      data,
-      folded.query,
-      folded.freeTermRequired,
-      folded.freeTermAnyOfGroups,
-    ),
-    standard: normalizePunkStandard(input.standard ?? 'cryptopunks'),
-    includeIds,
-    excludeIds,
+  const standard = normalizePunkStandard(input.standard ?? 'cryptopunks')
+  try {
+    return {
+      criteria: buildFilter(
+        data,
+        folded.query,
+        folded.freeTermRequired,
+        folded.freeTermAnyOfGroups,
+      ),
+      standard,
+      includeIds,
+      excludeIds,
+    }
+  } catch (filterError) {
+    /// Last-resort fallback for queries that can't compress into one onchain
+    /// filter (e.g. multiple non-redundant any-of groups). Run the same
+    /// search the user sees and pin those ids as `includeIds[]` with an
+    /// empty criteria — the contract matches a punk if it appears in
+    /// `includeIds`, so the bid covers exactly the searched set. Capped at
+    /// 64 by `PunksMarket.MAX_INCLUDE_IDS`; broader searches must refine.
+    if (!(filterError instanceof PunksDataValidationError)) throw filterError
+    /// Run the search against the *original* query so user-visible text terms
+    /// (`hair`, `earring`, …) still contribute — `folded.query` already had
+    /// its text stripped into structured fields for the filter compile path.
+    const matched = data.searchSync(toOfflineSearchQuery(query))
+    const merged = uniqueIds([...includeIds, ...matched], 'includeIds')
+    if (merged.length === 0 || merged.length > 64) throw filterError
+    return {
+      criteria: emptyPunksFilter(),
+      standard,
+      includeIds: merged,
+      excludeIds,
+    }
   }
 }
 
