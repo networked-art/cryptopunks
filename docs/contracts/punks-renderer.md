@@ -67,19 +67,29 @@ The mainnet Ignition module defaults are:
 ## Read API
 
 ```solidity
-function dataContract() external view returns (address);
-function punkAttributes(uint16 punkId) external view returns (string memory);
-function metadataJson(uint16 punkId) external view returns (string memory);
-function tokenURI(uint256 tokenId) external view returns (string memory);
+// Dependency accessors. The first three are auto-generated public-immutable
+// getters; `dataContract()` is the canonical accessor on `IPunksRenderer`.
+function PUNKS_DATA()    external view returns (address);
+function PUNKS_MARKET()  external view returns (address);
+function WRAPPER()       external view returns (address);
+function C721_WRAPPER()  external view returns (address);
+function dataContract()  external view returns (address);
 
+// Attributes and metadata.
+function punkAttributes(uint16 punkId) external view returns (string memory);
+function metadataJson(uint16 punkId)   external view returns (string memory);
+function tokenURI(uint256 tokenId)     external view returns (string memory);
+
+// Image output.
 function punkImage(uint16 punkId) external view returns (bytes memory);
-function punkSvg(uint16 punkId) external view returns (string memory);
-function punkPng(uint16 punkId) external view returns (bytes memory);
+function punkSvg(uint16 punkId)   external view returns (string memory);
+function punkPng(uint16 punkId)   external view returns (bytes memory);
 function punkPng(uint16 punkId, bytes4 backgroundRgba) external view returns (bytes memory);
 
-function backgroundOf(uint16 punkId) external view returns (bytes4 rgba);
-function punkMarketplaceSvg(uint16 punkId) external view returns (string memory);
-function punkMarketplacePng(uint16 punkId) external view returns (bytes memory);
+// Marketplace-aware variants.
+function backgroundOf(uint16 punkId)        external view returns (bytes4 rgba);
+function punkMarketplaceSvg(uint16 punkId)  external view returns (string memory);
+function punkMarketplacePng(uint16 punkId)  external view returns (bytes memory);
 ```
 
 Most Punk id validation is delegated to `PunksData`. `tokenURI` accepts a

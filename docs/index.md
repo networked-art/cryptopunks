@@ -19,12 +19,16 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
   metadata, token URI generation, and exact onchain renderer reads.
 - [Original Marketplace](/sdk/original-marketplace) covers original-market
   reads and writes.
+- [V̶ ̶1̶ Market](/sdk/v1-market) covers the V̶ ̶1̶ "CryptoPunks" criteria-bid
+  market and indexer composition.
 - [Punk Data Contracts](/sdk/punk-data-contracts) explains local dataset
   usage, `PunksData.sol`, and legacy `CryptopunksData`.
 - [Wrappers](/sdk/wrappers) covers modern Stash wrapping, legacy proxy
   wrapping, approvals, and transfers.
 - [Stash](/sdk/stash) covers StashFactory, funding, liquidity, Punk bids,
   withdrawals, and orders.
+- [Stash Bids](/sdk/stash-bids) covers the Node Foundation offchain bids
+  orderbook, signing, submission, and settlement.
 - [Offers And Auctions](/sdk/offers-and-auctions) covers criterion offers,
   vault custody, lots, bids, and settlement.
 - [Utilities And Caching](/sdk/utilities) covers constants, ABIs, bitmap

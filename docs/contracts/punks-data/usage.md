@@ -37,16 +37,17 @@ ranges into one validated `Filter` type. Consumer contracts store the filter
 once and call `matches` per Punk during settlement:
 
 ```solidity
-import {Punks} from "punks-contracts/lib/Punks.sol";
-import {IPunksData} from "punks-contracts/interfaces/IPunksData.sol";
+import {Punks} from "@networked-art/punks-contracts/contracts/lib/Punks.sol";
+import {IPunksDataMatcher}
+    from "@networked-art/punks-contracts/contracts/interfaces/IPunksDataMatcher.sol";
 
 contract MyConsumer {
     using Punks for Punks.Filter;
 
-    IPunksData public immutable PUNKS_DATA;
+    IPunksDataMatcher public immutable PUNKS_DATA;
 
     constructor(address punksData) {
-        PUNKS_DATA = IPunksData(punksData);
+        PUNKS_DATA = IPunksDataMatcher(punksData);
     }
 
     function place(Punks.Filter calldata f) external {
@@ -60,11 +61,30 @@ contract MyConsumer {
 }
 ```
 
-`Filter` covers all four dimensions — trait masks (required/forbidden/anyOf),
-color masks (same shape), pixel-count range, and color-count range. Set a
-range's `max` to `0` to disable it. `matches` short-circuits in cost order
-(traits → colors → pixel range → color count range) so partial filters pay
-only for what they query.
+`Punks.Filter` packs all four dimensions into one struct:
+
+```solidity
+struct Filter {
+    uint256 requiredTraitMask;
+    uint256 forbiddenTraitMask;
+    uint256 anyOfTraitMask;
+    uint256 requiredColorMask;
+    uint256 forbiddenColorMask;
+    uint256 anyOfColorMask;
+    uint16  minPixelCount;
+    uint16  maxPixelCount;
+    uint8   minColorCount;
+    uint8   maxColorCount;
+}
+```
+
+Set a range's `max` to `0` to disable it; setting `max == 0` also requires
+`min == 0`. `matches` short-circuits in cost order (traits → colors → pixel
+range → color count range) so partial filters pay only for what they query.
+
+`IPunksDataMatcher` bundles `IPunksDataCriteria` and `IPunksDataVisual` —
+the exact subset `Punks.matches` calls into. Use it instead of the full
+`IPunksData` interface when a consumer only evaluates filters.
 
 This avoids dynamic arrays of trait filters and keeps settlement gas bounded.
 
@@ -132,6 +152,7 @@ Use the split interfaces when a consumer only needs part of the ABI:
 - `IPunksDataCriteria` for trait predicates and catalog data.
 - `IPunksDataVisual` for color and visual metric predicates.
 - `IPunksDataIndexed` for decoded pixels and palette bytes.
+- `IPunksDataMatcher` (= criteria + visual) for `Punks.matches` consumers.
 
 `PunksRenderer` is the first deployed consumer of this data contract. It reads
 `indexedPixelsOf`, palette bytes, trait names, scalar metrics, and masks to

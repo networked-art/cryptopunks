@@ -10,24 +10,32 @@ const punks = createPunksSdk({
 })
 ```
 
+Bid flows on the original market are not surfaced as helpers on this client.
+Use [Offers And Auctions](/sdk/offers-and-auctions) for the Networked Art
+auction/offer system, [Stash](/sdk/stash) for offchain Stash Punk bids, or the
+exported `cryptoPunksMarketAbi` for direct viem calls.
+
 ## Reads
 
-Read collection metadata, ownership, listings, bids, and withdrawable ETH:
+Read collection metadata, ownership, listings, and withdrawable ETH:
 
 ```ts
 const name = await punks.market.name()
 const symbol = await punks.market.symbol()
+const imageHash = await punks.market.imageHash()
 const totalSupply = await punks.market.totalSupply()
 const remaining = await punks.market.punksRemainingToAssign()
+const nextIndex = await punks.market.nextPunkIndexToAssign()
 
 const owner = await punks.market.ownerOf(8348)
+const balance = await punks.market.balanceOf(owner)
 const listing = await punks.market.listing(8348)
-const bid = await punks.market.bidFor(8348)
 const escrowed = await punks.market.pendingWithdrawal(owner)
 ```
 
-`listing.priceWei`, `bid.valueWei`, and pending withdrawals are returned as
-`bigint`.
+`listing.priceWei` and pending withdrawals are returned as `bigint`.
+`listing.isForSale`, `listing.seller`, and `listing.onlySellTo` reflect the
+underlying `punksOfferedForSale` mapping.
 
 ## Writes
 
@@ -64,18 +72,6 @@ await punks.market.buy({
   maxPriceWei: 100n * 10n ** 18n,
 })
 
-await punks.market.enterBid({
-  punkId: 8348,
-  amountWei: 90n * 10n ** 18n,
-})
-
-await punks.market.acceptBid({
-  punkId: 8348,
-  minPriceWei: 90n * 10n ** 18n,
-})
-
-await punks.market.withdrawBid(8348)
-
 await punks.market.transfer({
   punkId: 8348,
   to: receiver,
@@ -84,6 +80,6 @@ await punks.market.transfer({
 await punks.market.withdraw()
 ```
 
-`buy()` can fetch the live listing price when `priceWei` is omitted. Pass
+`buy()` fetches the live listing price when `priceWei` is omitted. Pass
 `maxPriceWei` to keep the transaction from using a price above the value your
-UI displayed.
+UI displayed; pass `priceWei` directly to lock the exact value sent.

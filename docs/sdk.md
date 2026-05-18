@@ -26,12 +26,14 @@ const ids = punks.search({
 | `punks.dataset`                               | Trait catalog, palette, summaries, optional indexed pixels, bitmaps        |
 | `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle |
 | `punks.market`                                | Original CryptoPunks market reads/writes                                   |
+| `punks.v1Market`                              | V̶ ̶1̶ "CryptoPunks" criteria-bid market reads/writes                          |
 | `punks.data.contract`                         | Exact reads for `PunksData.sol`                                            |
 | `punks.data.legacy`                           | Original `CryptopunksData` SVG and attribute reads                         |
 | `punks.wrappers.modern`                       | CryptoPunks721 reads, approvals, and Stash wrapping flows                  |
 | `punks.wrappers.legacy`                       | Legacy Wrapped Punks reads, approvals, proxy wrapping flows                |
 | `punks.stash.factory`                         | StashFactory lookup, deployment, implementation status, and Stash upgrades |
 | `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals, and orders         |
+| `punks.stashBids`                             | Node Foundation offchain Stash Punk bids orderbook                         |
 | `punks.offers`                                | Criterion offers through the Networked Art auction contract                |
 | `punks.auctions`                              | Vault deposits, lots, bids, settlement, reclaim                            |
 | `punks.contracts`                             | Low-level `PunksData` and `PunksRenderer` viem wrappers                    |
@@ -55,9 +57,11 @@ Labs `CryptopunksData` SVG or attribute strings.
 | [Data And Search](/sdk/data-search)               | Query filtering, facets, dataset reads, and offer-slot compilation                       |
 | [Rendering And Metadata](/sdk/rendering)          | Local images, metadata, token URI generation, and exact onchain renderer reads           |
 | [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes                                             |
+| [V̶ ̶1̶ Market](/sdk/v1-market)                       | V̶ ̶1̶ "CryptoPunks" criteria-bid market and indexer composition                              |
 | [Punk Data Contracts](/sdk/punk-data-contracts)   | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData`                             |
 | [Wrappers](/sdk/wrappers)                         | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers                   |
 | [Stash](/sdk/stash)                               | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and orders               |
+| [Stash Bids](/sdk/stash-bids)                     | Node Foundation offchain bids orderbook, signing, submission, and settlement             |
 | [Offers And Auctions](/sdk/offers-and-auctions)   | Criterion offers, vaults, lots, bids, settlement                                         |
 | [Utilities And Caching](/sdk/utilities)           | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior |
 
@@ -86,11 +90,26 @@ Marketplace and auction reads need a `publicClient`; writes need a
 const punks = createPunksSdk({
   publicClient,
   walletClient,
+  account,
+  bidsBaseUrl: 'https://bids.cryptopunks.app/api/v1',
   addresses: {
-    auction: '0x...',
+    data,
+    legacyData,
+    renderer,
+    market,
+    v1Market,
+    auction,
+    wrappedPunks,
+    c721Wrapper,
+    stashFactory,
+    stash,
   },
 })
 ```
+
+Every `addresses` entry is optional and defaults to the canonical mainnet
+deployment. `bidsBaseUrl` overrides the Node Foundation orderbook host used
+by `punks.stashBids`.
 
 ## Transaction Plans
 

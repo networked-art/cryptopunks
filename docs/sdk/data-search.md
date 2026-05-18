@@ -31,15 +31,18 @@ const ids = punks.search({
 Available dimensions:
 
 - `text`
-- `type`
-- `head`
-- `attributes`
-- `colors`
-- `pixelCount`
-- `colorCount`
-- `attributeCount`
+- `type` (alias `punkType`)
+- `head` (alias `headVariant`)
+- `skinTone` — selects the four human head-variant slots: `Dark`, `Brown`,
+  `Fair`, `Albino`. Aliens, Apes, and Zombies are never selected by a skin
+  tone.
+- `attributes` — `required`, `forbidden`, `anyOf`
+- `colors` — `required`, `forbidden`, `anyOf`
+- `pixelCount`, `colorCount`, `attributeCount` — number or `{ eq, min, max }`
 - `ids` / `excludeIds`
-- `sort`, `offset`, `limit`
+- `sort` — `id`, `rarity`, `pixelCount`, `colorCount`, `attributeCount`, each
+  with a `-desc` variant
+- `offset`, `limit`
 
 Use `count()` and `facets()` for result counts and filter UIs:
 
@@ -63,8 +66,9 @@ const hoodie = punks.dataset.trait('Hoodie')
 const palette = punks.dataset.palette({ includeSupplies: true })
 ```
 
-`punks.dataset.indexedPixels()` requires a dataset that includes
-`@networked-art/punks-sdk/offline-pixel-data`.
+`punks.dataset.indexedPixels(punkId)` requires the pixel bundle. Pass
+`bundledOfflinePunksDataWithPixels` from
+`@networked-art/punks-sdk/offline-pixel-data` to `createPunksSdk` to enable it.
 
 ## Offer Slot Compilation
 
@@ -86,7 +90,8 @@ materialized basket, pass `includeIds` and `excludeIds`.
 
 ## Low-Level Data Contract
 
-Configure a `publicClient` to access exact `PunksData` reads:
+`punks.contracts.data` is `undefined` unless `createPunksSdk` was given a
+`publicClient`. Configure one to access exact `PunksData` reads:
 
 ```ts
 const punks = createPunksSdk({ publicClient })

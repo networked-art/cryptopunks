@@ -46,12 +46,20 @@ const indexedPixels = punks.dataset.indexedPixels(8348)
 const hash = await punks.data.contract.datasetHash()
 const trait = await punks.data.contract.traitName(62)
 const pixels = await punks.data.contract.indexedPixelsOf(8348)
+
+// Raw mask-based predicate that mirrors `PunksData.sol`:
 const matches = await punks.data.contract.hasTraits(
   8348,
-  required,
-  forbidden,
-  anyOf,
+  requiredMask,
+  forbiddenMask,
+  anyOfMask,
 )
+
+// Convenience that takes name arrays and resolves masks for you:
+const matchesByName = await punks.data.contract.matchesTraitCriteria(8348, {
+  required: ['Hoodie'],
+  forbidden: ['Cigarette'],
+})
 ```
 
 ## Legacy CryptopunksData

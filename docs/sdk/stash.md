@@ -31,14 +31,31 @@ caller upgrades:
 const version = await punks.stash.factory.currentVersion()
 const implementation = await punks.stash.factory.implementation(version)
 const deployed = await punks.stash.factory.ownerHasDeployed(owner)
+const stashAddress = await punks.stash.factory.stashAddressFor(owner)
 const isKnownStash = await punks.stash.factory.isStash(stashAddress)
+const isKnownAuction = await punks.stash.factory.isAuction(auctionAddress)
 
+await punks.stash.factory.deployStash(owner)
 await punks.stash.factory.upgradeStash()
 ```
 
-Use the `prepare*` variants for simulation or custom submission. Raw ABI
-exports remain available for protocol-owner tooling that needs manual admin
-calls.
+`punks.stash.deploy(owner)` and `punks.stash.prepareDeploy(owner)` are facade
+aliases for `factory.deployStash` / `prepareDeployStash`. Use the `prepare*`
+variants for simulation or custom submission. Raw ABI exports remain available
+for protocol-owner tooling that needs manual admin calls.
+
+## Stash Reads
+
+A `StashClient` exposes ownership, nonces, orders, and balance reads:
+
+```ts
+const owner = await stash.owner()
+const version = await stash.version()
+const accountNonce = await stash.punkAccountNonce()
+const usesLeft = await stash.punkBidNonceUsesRemaining(bidNonce)
+const used = await stash.usedPunkBidNonces(bidNonce)
+const order = await stash.orderAt(paymentToken, index)
+```
 
 ## Funding And Liquidity
 
@@ -122,6 +139,15 @@ Cancel one bid nonce or all outstanding bid signatures:
 ```ts
 await stash.cancelPunkBid(12n)
 await stash.cancelAllPunkBids()
+```
+
+## Wrap A Punk Held By Stash
+
+When the Stash already holds an original CryptoPunk, the owner can wrap it
+into the modern CryptoPunks721 token without first withdrawing:
+
+```ts
+await stash.wrapPunk(8348)
 ```
 
 ## Withdrawals
