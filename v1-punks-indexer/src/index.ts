@@ -342,7 +342,9 @@ ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
     owner: to,
     isWrapped: false,
     lastTransferAt: event.block.timestamp,
-    lastSaleWei: saleWei,
+    // A 0-wei `PunkBought` is the V1 transfer workaround, not a real sale —
+    // don't overwrite the punk's last meaningful sale price with zero.
+    lastSaleWei: saleWei === 0n ? undefined : saleWei,
     block: event.block.number,
     timestamp: event.block.timestamp,
   })
@@ -830,7 +832,29 @@ async function insertActivity(
   values: typeof activityEvent.$inferInsert,
 ) {
   if (shouldSuppressActivity(values)) return
-  await context.db.insert(activityEvent).values(values).onConflictDoNothing()
+  const normalized = normalizeZeroEthSale(values)
+  await context.db.insert(activityEvent).values(normalized).onConflictDoNothing()
+}
+
+// A 0-wei `sale` is the V1 contract's transfer workaround
+// (`offerPunkForSaleToAddress(_, 0, _)` + `buyPunk`). Functionally a transfer
+// — reclassify so the Sales / Transfers split stays meaningful. `source` and
+// `source_event` are preserved so the audit trail still points at PunkBought.
+function normalizeZeroEthSale(
+  values: typeof activityEvent.$inferInsert,
+): typeof activityEvent.$inferInsert {
+  if (values.type !== 'sale') return values
+  if (values.wei_amount && values.wei_amount > 0n) return values
+  return {
+    ...values,
+    type: 'transfer',
+    actor: values.from ?? values.seller ?? values.actor,
+    buyer: null,
+    seller: null,
+    wei_amount: null,
+    listing_wei: null,
+    bid_wei: null,
+  }
 }
 
 // PunksMarket settlements shuffle the punk through the market contract before
