@@ -1,5 +1,8 @@
 <template>
-  <li class="activity-row">
+  <li
+    class="activity-row"
+    :class="{ 'is-market-sale': isMarketSale }"
+  >
     <NuxtLink
       v-if="punkId !== undefined"
       :to="`/punk/${punkId}`"
@@ -80,6 +83,9 @@ import { txUrl } from '~/utils/explorer'
 const props = defineProps<{ event: ActivityEvent }>()
 
 const punkId = computed(() => props.event.punkId)
+const isMarketSale = computed(
+  () => props.event.kind === 'sale' && props.event.source === 'punks_market',
+)
 
 const SPRITE_COLS = 100
 const SPRITE_SIZE = 44
@@ -99,11 +105,7 @@ const spriteStyle = computed(() => {
 })
 
 const kindLabel = computed(() => {
-  const base = KIND_LABEL[props.event.kind] ?? props.event.kind
-  if (props.event.source === 'punks_market' && PM_SUFFIX.has(props.event.kind)) {
-    return `${base} (PM)`
-  }
-  return base
+  return KIND_LABEL[props.event.kind] ?? props.event.kind
 })
 
 const kindClass = computed(() => `kind-${props.event.kind}`)
@@ -137,14 +139,6 @@ const KIND_LABEL: Record<string, string> = {
   escrow_withdrawal: 'Escrow withdrawal',
 }
 
-// Event kinds that PunksMarket emits a distinct flavor of — used to tag
-// collection-bid activity apart from native V1 bids in the UI.
-const PM_SUFFIX = new Set([
-  'sale',
-  'bid',
-  'bid_adjusted',
-  'bid_cancelled',
-])
 </script>
 
 <style scoped>
@@ -160,6 +154,10 @@ const PM_SUFFIX = new Set([
 
 .activity-row:hover {
   background: var(--bg-elevated);
+}
+
+.activity-row.is-market-sale {
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .thumb {
