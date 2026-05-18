@@ -42,14 +42,18 @@
 
         <div>
           <div class="label">Listing</div>
-          <div v-if="listing?.isForSale">
-            <EthAmount :wei="listing.priceWei" />
+          <div v-if="liveListing">
+            <EthAmount :wei="liveListing.priceWei" />
             <div
               v-if="!isDirectedToPunksMarket"
               class="warn"
             >
               Not directed to PunksMarket — settlement uses raw V1.
             </div>
+          </div>
+          <div v-else-if="staleListing">
+            <span class="muted">Stale offer</span>
+            <div class="warn">Seller no longer owns this punk.</div>
           </div>
           <span
             v-else
@@ -96,14 +100,14 @@
           <div class="action-group">
             <PunkListForm
               :punk-id="punkId"
-              :is-listed="!!listing?.isForSale"
+              :is-listed="!!liveListing"
               @listed="onListed"
             />
             <Button
-              v-if="listing?.isForSale"
+              v-if="liveListing || staleListing"
               @click="actUnlist"
             >
-              Cancel listing
+              {{ staleListing ? 'Clear stale offer' : 'Cancel listing' }}
             </Button>
           </div>
           <Button
@@ -127,18 +131,24 @@
 
         <template v-else>
           <Button
-            v-if="listing?.isForSale"
+            v-if="liveListing"
             class="primary"
             :disabled="!canBuy"
             @click="actBuy"
           >
-            Buy · <EthAmount :wei="listing.priceWei" />
+            Buy · <EthAmount :wei="liveListing.priceWei" />
           </Button>
           <p
-            v-if="listing?.isForSale && !canBuy"
+            v-if="liveListing && !canBuy"
             class="warn"
           >
             Listing not directed to PunksMarket — refusing to buy via raw V1.
+          </p>
+          <p
+            v-else-if="staleListing"
+            class="warn"
+          >
+            Stale raw offer — seller no longer owns this punk.
           </p>
 
           <div class="action-group">
@@ -200,6 +210,7 @@ import {
 } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
 import { V1_WRAPPER_ADDRESS, PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
+import { isLiveListingOwner } from '~/utils/listings'
 import { v1WrapperAbi } from '~/utils/v1WrapperAbi'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
@@ -221,6 +232,7 @@ const {
 } = usePunkOwner(() => props.punkId)
 const listing = ref<{
   isForSale: boolean
+  seller: Address
   priceWei: bigint
   onlySellTo: Address
 } | null>(null)
@@ -234,11 +246,19 @@ const isOwner = computed(
     !!owner.value &&
     owner.value.toLowerCase() === address.value.toLowerCase(),
 )
+const liveListing = computed(() => {
+  const live = listing.value
+  if (!live?.isForSale || !owner.value) return null
+  return isLiveListingOwner(live.seller, owner.value) ? live : null
+})
+const staleListing = computed(
+  () => !!listing.value?.isForSale && !!owner.value && !liveListing.value,
+)
 const isDirectedToPunksMarket = computed(() => {
-  if (!listing.value?.isForSale) return false
+  const listing = liveListing.value
+  if (!listing) return false
   return (
-    listing.value.onlySellTo?.toLowerCase() ===
-    PUNKS_MARKET_ADDRESS.toLowerCase()
+    listing.onlySellTo?.toLowerCase() === PUNKS_MARKET_ADDRESS.toLowerCase()
   )
 })
 
@@ -270,6 +290,7 @@ async function refresh() {
     listing.value = l
       ? {
           isForSale: l.isForSale,
+          seller: l.seller,
           priceWei: l.priceWei,
           onlySellTo: l.onlySellTo,
         }
@@ -337,11 +358,12 @@ function actUnlist() {
 }
 
 function actBuy() {
-  if (!listing.value?.isForSale || !canBuy.value) return
+  const listing = liveListing.value
+  if (!listing || !canBuy.value) return
   run(
     sdk.value.v1Market.prepareBuyPunk({
       punkId: props.punkId,
-      expectedListingWei: listing.value.priceWei,
+      expectedListingWei: listing.priceWei,
       recipient: address.value as Address,
     }),
   )
