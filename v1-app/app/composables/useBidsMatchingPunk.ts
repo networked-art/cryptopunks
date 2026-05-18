@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import type { PunksFilter } from '@networked-art/punks-sdk'
 import type { CollectionBid } from './usePunksMarketBids'
 import { getIndexerUrl, IndexerNotConfigured } from '~/utils/indexer'
 
@@ -14,8 +15,22 @@ type IndexerBid = {
   settlementWei: string
   active: boolean
   blockNumber: string
+  criteria: IndexerBidCriteria
   includeIds: number[]
   excludeIds: number[]
+}
+
+type IndexerBidCriteria = {
+  requiredTraitMask: string
+  forbiddenTraitMask: string
+  anyOfTraitMask: string
+  requiredColorMask: string
+  forbiddenColorMask: string
+  anyOfColorMask: string
+  minPixelCount: number
+  maxPixelCount: number
+  minColorCount: number
+  maxColorCount: number
 }
 
 /// Server-side, criteria-correct list of active PunksMarket bids that would
@@ -63,9 +78,25 @@ function mapBid(row: IndexerBid): CollectionBid {
     bidder: row.bidder as Address,
     bidWei: BigInt(row.bidWei),
     settlementWei: BigInt(row.settlementWei),
+    criteria: parseCriteria(row.criteria),
     includeIds: row.includeIds.map(Number),
     excludeIds: row.excludeIds.map(Number),
     active: row.active,
     placedAtBlock: BigInt(row.blockNumber),
+  }
+}
+
+function parseCriteria(raw: IndexerBidCriteria | undefined): PunksFilter {
+  return {
+    requiredTraitMask: BigInt(raw?.requiredTraitMask ?? '0'),
+    forbiddenTraitMask: BigInt(raw?.forbiddenTraitMask ?? '0'),
+    anyOfTraitMask: BigInt(raw?.anyOfTraitMask ?? '0'),
+    requiredColorMask: BigInt(raw?.requiredColorMask ?? '0'),
+    forbiddenColorMask: BigInt(raw?.forbiddenColorMask ?? '0'),
+    anyOfColorMask: BigInt(raw?.anyOfColorMask ?? '0'),
+    minPixelCount: raw?.minPixelCount ?? 0,
+    maxPixelCount: raw?.maxPixelCount ?? 0,
+    minColorCount: raw?.minColorCount ?? 0,
+    maxColorCount: raw?.maxColorCount ?? 0,
   }
 }

@@ -1,4 +1,5 @@
 import type { Address } from 'viem'
+import type { PunksFilter } from '@networked-art/punks-sdk'
 import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export type CollectionBid = {
@@ -6,6 +7,7 @@ export type CollectionBid = {
   bidder: Address
   bidWei: bigint
   settlementWei: bigint
+  criteria: PunksFilter
   includeIds: number[]
   excludeIds: number[]
   active: boolean
@@ -19,6 +21,7 @@ type RawMarketBid = {
   settlement_wei: string
   active: boolean
   block_number: string
+  criteria_json: string
   include_ids_json: string
   exclude_ids_json: string
 }
@@ -33,6 +36,7 @@ const BIDS_QUERY = `
         settlement_wei
         active
         block_number
+        criteria_json
         include_ids_json
         exclude_ids_json
       }
@@ -96,6 +100,7 @@ function mapBid(row: RawMarketBid): CollectionBid {
     bidder: row.bidder as Address,
     bidWei: BigInt(row.bid_wei),
     settlementWei: BigInt(row.settlement_wei),
+    criteria: parseCriteria(row.criteria_json),
     includeIds: parseIds(row.include_ids_json),
     excludeIds: parseIds(row.exclude_ids_json),
     active: row.active,
@@ -111,4 +116,59 @@ function parseIds(raw: string | null | undefined): number[] {
   } catch {
     return []
   }
+}
+
+function parseCriteria(raw: string | null | undefined): PunksFilter {
+  const empty: PunksFilter = {
+    requiredTraitMask: 0n,
+    forbiddenTraitMask: 0n,
+    anyOfTraitMask: 0n,
+    requiredColorMask: 0n,
+    forbiddenColorMask: 0n,
+    anyOfColorMask: 0n,
+    minPixelCount: 0,
+    maxPixelCount: 0,
+    minColorCount: 0,
+    maxColorCount: 0,
+  }
+  if (!raw) return empty
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    return {
+      requiredTraitMask: toBig(parsed.requiredTraitMask),
+      forbiddenTraitMask: toBig(parsed.forbiddenTraitMask),
+      anyOfTraitMask: toBig(parsed.anyOfTraitMask),
+      requiredColorMask: toBig(parsed.requiredColorMask),
+      forbiddenColorMask: toBig(parsed.forbiddenColorMask),
+      anyOfColorMask: toBig(parsed.anyOfColorMask),
+      minPixelCount: toInt(parsed.minPixelCount),
+      maxPixelCount: toInt(parsed.maxPixelCount),
+      minColorCount: toInt(parsed.minColorCount),
+      maxColorCount: toInt(parsed.maxColorCount),
+    }
+  } catch {
+    return empty
+  }
+}
+
+function toBig(value: unknown): bigint {
+  if (typeof value === 'bigint') return value
+  if (typeof value === 'number') return BigInt(value)
+  if (typeof value === 'string' && value.length > 0) {
+    try {
+      return BigInt(value)
+    } catch {
+      return 0n
+    }
+  }
+  return 0n
+}
+
+function toInt(value: unknown): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string' && value.length > 0) {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
 }

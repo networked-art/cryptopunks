@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PunkQuery } from '@networked-art/punks-sdk'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
@@ -50,16 +51,48 @@ const offline = usePunksOffline()
 
 const matchCount = computed(() => {
   try {
-    return offline.count({
-      ids: props.bid.includeIds.length ? props.bid.includeIds : undefined,
-      excludeIds: props.bid.excludeIds.length
-        ? props.bid.excludeIds
-        : undefined,
-    })
+    return offline.count(bidToQuery(props.bid))
   } catch {
     return null
   }
 })
+
+function bidToQuery(bid: CollectionBid): PunkQuery {
+  const c = bid.criteria
+  const query: PunkQuery = {}
+  if (
+    c.requiredTraitMask !== 0n ||
+    c.forbiddenTraitMask !== 0n ||
+    c.anyOfTraitMask !== 0n
+  ) {
+    query.attributes = {
+      requiredMask: c.requiredTraitMask,
+      forbiddenMask: c.forbiddenTraitMask,
+      anyOfMask: c.anyOfTraitMask,
+    }
+  }
+  if (
+    c.requiredColorMask !== 0n ||
+    c.forbiddenColorMask !== 0n ||
+    c.anyOfColorMask !== 0n
+  ) {
+    query.colors = {
+      requiredMask: c.requiredColorMask,
+      forbiddenMask: c.forbiddenColorMask,
+      anyOfMask: c.anyOfColorMask,
+    }
+  }
+  /// `max === 0` means "no constraint" in the on-chain `PunksFilter`.
+  if (c.maxPixelCount > 0) {
+    query.pixelCount = { min: c.minPixelCount, max: c.maxPixelCount }
+  }
+  if (c.maxColorCount > 0) {
+    query.colorCount = { min: c.minColorCount, max: c.maxColorCount }
+  }
+  if (bid.includeIds.length) query.ids = bid.includeIds
+  if (bid.excludeIds.length) query.excludeIds = bid.excludeIds
+  return query
+}
 
 const matchesLink = computed(() => `/?bid=${props.bid.id}`)
 </script>
