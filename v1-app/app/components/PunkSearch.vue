@@ -46,12 +46,19 @@ const offline = usePunksOffline()
 const route = useRoute()
 const router = useRouter()
 const { address } = useConnection()
+const LISTING_QUALIFIER =
+  /(^|[\s,])(?:listings?|listed|for\s+sale|on\s+sale)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing.
 const debouncedText = useDebounced(text, 80)
+const listingQualifier = computed(() =>
+  extractListingQualifier(debouncedText.value),
+)
+const listingsOnly = computed(() => listingQualifier.value.listingsOnly)
+const { ids: listingIds } = useListedPunks(() => listingsOnly.value)
 
 /// The input is the single source of truth — URL is a derived persistence
 /// layer. We remember the last value we wrote to (or saw in) the URL so the
@@ -87,9 +94,9 @@ watch(
 /// Search-text capabilities are surfaced in the placeholder so users discover
 /// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
 /// language: trait names, `<n> colors / attributes / pixels`, `<tone> skin`,
-/// `#<id>`, and `-<id>` all compile into the same filter.
+/// `#<id>`, `-<id>`, and the app-level `listings` qualifier.
 const placeholder = computed(
-  () => `Try hoodie, 2 colors, albino skin, #1234, 1001`,
+  () => `Try hoodie, listings, 2 colors, albino skin, #1234`,
 )
 
 /// `#rrggbb` (or `#rrggbbaa`) tokens in the search text translate into a
@@ -99,7 +106,7 @@ const placeholder = computed(
 /// through unchanged and gets treated as a normal text term.
 const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
 const parsedText = computed(() => {
-  const raw = debouncedText.value.trim()
+  const raw = listingQualifier.value.text.trim()
   if (!raw) return { text: undefined, colors: undefined }
   const colors = raw.match(HEX_COLOR_TOKEN)
   const remaining = raw
@@ -114,6 +121,9 @@ const parsedText = computed(() => {
 
 const query = computed<PunkQuery>(() => ({
   ...props.baseQuery,
+  ids: listingsOnly.value
+    ? intersectIds(props.baseQuery?.ids, listingIds.value)
+    : props.baseQuery?.ids,
   text: parsedText.value.text,
   colors: parsedText.value.colors
     ? { required: parsedText.value.colors }
@@ -143,6 +153,31 @@ function onEnter() {
   if (ids.value.length === 1) {
     router.push(`/punk/${ids.value[0]}`)
   }
+}
+
+function extractListingQualifier(input: string) {
+  let listingsOnly = false
+  const text = input
+    .replace(LISTING_QUALIFIER, (match, prefix: string) => {
+      listingsOnly = true
+      return prefix ? prefix : ''
+    })
+    .replace(/\s*,\s*,+/g, ', ')
+    .replace(/(^[\s,]+|[\s,]+$)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return { text, listingsOnly }
+}
+
+function intersectIds(
+  baseIds: Iterable<number> | undefined,
+  listingIds: readonly number[],
+) {
+  if (!baseIds) return listingIds
+
+  const listed = new Set(listingIds)
+  return Array.from(baseIds).filter((id) => listed.has(id))
 }
 </script>
 
