@@ -89,14 +89,6 @@ const EVENTS_QUERY = `
   }
 `
 
-const WRAPPED_QUERY = `
-  query WrappedStatus($ids: [BigInt!]!) {
-    punks(where: { punk_id_in: $ids }, limit: 1000) {
-      items { punk_id is_wrapped }
-    }
-  }
-`
-
 export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
@@ -146,23 +138,6 @@ export function useActivityFeed(
     })
 
     const mapped = data.events.items.map(mapEvent)
-
-    const distinctIds = [
-      ...new Set(
-        mapped.flatMap((e) => (e.punkId !== undefined ? [String(e.punkId)] : [])),
-      ),
-    ]
-    if (distinctIds.length) {
-      const wrap = await queryIndexer<{
-        punks: { items: { punk_id: string; is_wrapped: boolean }[] }
-      }>(WRAPPED_QUERY, { ids: distinctIds })
-      const wrappedById = new Map(
-        wrap.punks.items.map((p) => [Number(p.punk_id), p.is_wrapped]),
-      )
-      for (const e of mapped) {
-        if (e.punkId !== undefined) e.wrapped = wrappedById.get(e.punkId)
-      }
-    }
 
     return { mapped, pageInfo: data.events.pageInfo }
   }
@@ -224,6 +199,7 @@ function mapEvent(row: RawEvent): ActivityEvent {
     kind: row.type,
     source: row.source,
     punkId: row.punk_id != null ? Number(row.punk_id) : undefined,
+    wrapped: isWrappedEvent(row),
     from: pickFrom(row),
     to: pickTo(row),
     amountWei: pickAmount(row),
@@ -233,6 +209,14 @@ function mapEvent(row: RawEvent): ActivityEvent {
     logIndex: row.log_index,
     timestamp: Number(row.timestamp),
   }
+}
+
+/// Tag rows that operate on the wrapped ERC-721 — wrapper transfers and any
+/// PunksMarket activity. `wrap` / `unwrap` rows already say so in their kind
+/// label, so we leave the tag off there to avoid the dupe.
+function isWrappedEvent(row: RawEvent): boolean {
+  if (row.type === 'wrap' || row.type === 'unwrap') return false
+  return row.source === 'v1_wrapper' || row.source === 'punks_market'
 }
 
 function pickFrom(row: RawEvent): Address | undefined {
