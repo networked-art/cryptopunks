@@ -211,12 +211,12 @@ function mapEvent(row: RawEvent): ActivityEvent {
   }
 }
 
-/// Tag rows that operate on the wrapped ERC-721 — wrapper transfers and any
-/// PunksMarket activity. `wrap` / `unwrap` rows already say so in their kind
-/// label, so we leave the tag off there to avoid the dupe.
+/// Tag rows that operate on the wrapped ERC-721. `wrap` / `unwrap` rows
+/// already say so in their kind label, so we leave the tag off there to avoid
+/// the dupe.
 function isWrappedEvent(row: RawEvent): boolean {
   if (row.type === 'wrap' || row.type === 'unwrap') return false
-  return row.source === 'v1_wrapper' || row.source === 'punks_market'
+  return row.source === 'v1_wrapper'
 }
 
 function pickFrom(row: RawEvent): Address | undefined {
