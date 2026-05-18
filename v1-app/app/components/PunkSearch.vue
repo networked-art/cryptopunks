@@ -1,18 +1,22 @@
 <template>
   <section class="punk-search">
     <header class="search-bar">
-      <input
-        v-model="text"
-        type="search"
-        class="search-input"
-        :placeholder="placeholder"
-        @keydown.enter="onEnter"
-      />
+      <FormInputGroup class="search-group">
+        <input
+          v-model="text"
+          type="search"
+          class="search-input"
+          :placeholder="placeholder"
+          @keydown.enter="onEnter"
+        />
+        <ClientOnly>
+          <CollectionBidForm :query="query" />
+        </ClientOnly>
+      </FormInputGroup>
       <span class="muted result-count"
         >{{ counts.filtered.toLocaleString() }} /
         {{ counts.total.toLocaleString() }}</span
       >
-      <CollectionBidDialog :query="query" />
     </header>
 
     <PunkGrid
@@ -158,8 +162,13 @@ function onEnter() {
   background: var(--bg);
 }
 
-.search-input {
+.search-group {
   flex: 1 1 240px;
+  min-width: 0;
+}
+
+.search-input {
+  flex: 1 1 auto;
   min-width: 0;
   width: 100%;
 }

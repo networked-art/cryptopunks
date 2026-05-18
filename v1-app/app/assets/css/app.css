@@ -27,6 +27,18 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+
+  /* Layer form/border overrides — drive the styles from packages/styles
+     instead of re-defining input rules here. */
+  --input-background: var(--bg-elevated);
+  --input-background-highlight: var(--bg-elevated);
+  --border-color: var(--border-strong);
+  --border-color-highlight: var(--accent);
+  --border-radius: var(--radius-sm);
+  --border-radius-sm: var(--radius-sm);
+  --border-radius-lg: var(--radius);
+  --ui-padding-block: var(--space-2);
+  --ui-padding-inline: var(--space-3);
 }
 
 * {
@@ -78,20 +90,6 @@ button.primary:hover:not(:disabled) {
   background: #ff5773;
   border-color: #ff5773;
   color: var(--bg);
-}
-
-input[type='text'],
-input[type='number'],
-input[type='search'] {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: var(--size-2) var(--size-3);
-  outline: none;
-}
-
-input:focus {
-  border-color: var(--accent);
 }
 
 .muted {
