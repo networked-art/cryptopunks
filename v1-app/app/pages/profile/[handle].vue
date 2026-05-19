@@ -80,6 +80,7 @@
               :key="String(b.id)"
               :bid="b"
               @withdrawn="refreshBids"
+              @adjusted="refreshBids"
             />
           </div>
           <p

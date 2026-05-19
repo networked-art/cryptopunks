@@ -109,6 +109,7 @@
             :key="String(b.id)"
             :bid="b"
             @withdrawn="refreshAll"
+            @adjusted="refreshAll"
           />
         </div>
       </ClientOnly>

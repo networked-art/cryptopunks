@@ -41,6 +41,7 @@
           :key="String(bid.id)"
           :bid="bid"
           @withdrawn="refresh"
+          @adjusted="refresh"
         />
       </div>
     </ClientOnly>

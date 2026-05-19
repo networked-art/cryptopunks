@@ -45,10 +45,14 @@
       >
     </div>
 
-    <footer
+    <Actions
       v-if="isOwnBid"
-      class="card-footer"
+      class="left card-actions"
     >
+      <BidAdjustForm
+        :bid="bid"
+        @adjusted="onAdjusted"
+      />
       <EvmTransactionFlowDialog
         chain="mainnet"
         keep-open
@@ -59,14 +63,14 @@
       >
         <template #start="{ start }">
           <Button
-            class="small withdraw"
+            class="small"
             @click="start"
           >
             Withdraw
           </Button>
         </template>
       </EvmTransactionFlowDialog>
-    </footer>
+    </Actions>
   </article>
 </template>
 
@@ -80,7 +84,10 @@ import {
 } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
-const emit = defineEmits<{ withdrawn: [tx: Hash] }>()
+const emit = defineEmits<{
+  withdrawn: [tx: Hash]
+  adjusted: [tx: Hash]
+}>()
 
 const offline = usePunksOffline()
 const { address } = useConnection()
@@ -105,6 +112,10 @@ function withdraw(): Promise<Hash> {
 
 function onWithdrawn(receipt: { transactionHash: Hash }) {
   emit('withdrawn', receipt.transactionHash)
+}
+
+function onAdjusted(tx: Hash) {
+  emit('adjusted', tx)
 }
 
 const matchCount = computed(() => {
@@ -183,7 +194,9 @@ const matchesLink = computed(() => {
   color: var(--accent);
 }
 
-.withdraw {
-  align-self: flex-start;
+.card-actions {
+  border-top: 1px solid var(--border-color);
+  padding: var(--size-3);
+  margin: var(--size-1) calc(-1 * var(--size-3)) calc(-1 * var(--size-3));
 }
 </style>
