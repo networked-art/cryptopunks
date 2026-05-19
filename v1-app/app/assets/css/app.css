@@ -16,7 +16,7 @@
     /* Brand-driven overrides of the standard tokens layer components consume */
     --background: #f0f0f3;
     --color: #0a0a12;
-    --primary: #a69aff;
+    --primary: #ff04b4;
     --muted: #6a6a82;
 
     /* Light-theme gray ramp the layer's component tokens key off of */
@@ -44,8 +44,8 @@
     --button-primary-background: var(--primary);
     --button-primary-border-color: var(--primary);
     --button-primary-color: #fff;
-    --button-primary-background-highlight: #b8aeff;
-    --button-primary-border-color-highlight: #b8aeff;
+    --button-primary-background-highlight: #ff3dc7;
+    --button-primary-border-color-highlight: #ff3dc7;
     --button-primary-color-highlight: #fff;
     --button-primary-font-weight: 600;
 
@@ -54,8 +54,8 @@
 
     /* App-specific tokens (used directly throughout v1-app) */
     --accent: var(--primary);
-    --accent-strong: #5b46d8;
-    --accent-soft: #a69aff20;
+    --accent-strong: #cc0090;
+    --accent-soft: #ff04b420;
     --punk-bg: #648595;
 
     /* Convenience aliases — keep existing component CSS working */
