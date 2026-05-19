@@ -4,7 +4,7 @@ import type { PunksFilter } from './query'
 import { PunksDataSdkError, PunksDataValidationError } from './utils'
 import { PunksV1MarketClient } from './v1-market'
 
-// Bid as returned by the v1-punks-indexer Hono routes. All bigints are
+// Bid as returned by the indexer's V1 market Hono routes. All bigints are
 // strings on the wire; consumers should convert to `bigint` when needed
 // (or use `MarketBid`, which has bigints already coerced).
 export type IndexerMarketBidWire = {
@@ -83,7 +83,7 @@ export type PaginatedBidsResponse = {
 }
 
 export type PunksV1MarketIndexerConfig = {
-  /// Base URL of the v1-punks-indexer HTTP API. Bids routes are mounted at
+  /// Base URL of the indexer HTTP API. Bids routes are mounted at
   /// `${baseUrl}/bids`.
   baseUrl: string
   /// Optional fetch implementation override (e.g., for Node < 18 or tests).
