@@ -51,6 +51,9 @@ const props = withDefaults(
     seed?: number
     speed?: number
     strength?: number
+    /// Force the wrapped tint on or off. When omitted we consult the shared
+    /// wrapped set so any punk known to be wrapped picks up the tint.
+    wrapped?: boolean
   }>(),
   {
     size: 96,
@@ -63,6 +66,12 @@ const props = withDefaults(
 )
 
 const offline = usePunksOffline()
+const { isWrapped: isWrappedSet } = useWrappedPunks()
+
+const WRAPPED_BG = '#a69aff'
+const wrappedTint = computed(() =>
+  props.wrapped ?? isWrappedSet(props.punkId),
+)
 
 const dataUri = computed(() =>
   offline.render.svgDataUri(props.punkId, {
@@ -117,6 +126,7 @@ const rootStyle = computed(() => {
     '--g-b-freeze': `${p.freezeB.toFixed(3)}s`,
   }
   if (props.background === 'transparent') style.background = 'transparent'
+  if (wrappedTint.value) style.background = WRAPPED_BG
   return style
 })
 

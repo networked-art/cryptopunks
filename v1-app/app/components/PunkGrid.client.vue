@@ -40,6 +40,9 @@ const props = withDefaults(
 )
 
 const SPRITE_COLS = 100
+const WRAPPED_BG = '#a69aff'
+
+const { isWrapped } = useWrappedPunks()
 
 const containerRef = ref<HTMLElement | null>(null)
 /// Where the visible window starts/ends inside the grid, in content
@@ -109,7 +112,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteRow = Math.floor(c.id / SPRITE_COLS)
   const spriteCol = c.id % SPRITE_COLS
   const px = props.size
-  return {
+  const style: Record<string, string> = {
     top: `${c.row * rowStep.value}px`,
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
@@ -118,6 +121,8 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
   }
+  if (isWrapped(c.id)) style.backgroundColor = WRAPPED_BG
+  return style
 }
 
 let rafId = 0

@@ -95,13 +95,18 @@ const spriteStyle = computed(() => {
   if (id === undefined) return undefined
   const spriteRow = Math.floor(id / SPRITE_COLS)
   const spriteCol = id % SPRITE_COLS
-  return {
+  const style: Record<string, string> = {
     width: `${SPRITE_SIZE}px`,
     height: `${SPRITE_SIZE}px`,
     backgroundImage: "url('/punks-glitched.png')",
     backgroundSize: `${SPRITE_COLS * SPRITE_SIZE}px ${SPRITE_COLS * SPRITE_SIZE}px`,
     backgroundPosition: `-${spriteCol * SPRITE_SIZE}px -${spriteRow * SPRITE_SIZE}px`,
   }
+  /// `event.wrapped` reflects the punk's wrap state at the moment of the
+  /// event (false for `wrap`/`unwrap` rows and any native-V1 event), so the
+  /// tint only appears when the punk was wrapped at the time.
+  if (props.event.wrapped) style.backgroundColor = '#a69aff'
+  return style
 })
 
 const kindLabel = computed(() => {

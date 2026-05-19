@@ -1,0 +1,87 @@
+import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
+
+const WRAPPED_QUERY = `
+  query WrappedPunks($limit: Int!, $after: String) {
+    punks(where: { is_wrapped: true }, orderBy: "punk_id", orderDirection: "asc", limit: $limit, after: $after) {
+      items { punk_id }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+`
+
+const PAGE_SIZE = 1000
+
+type WrappedPage = {
+  punks: {
+    items: { punk_id: string }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
+  }
+}
+
+/// Module-scoped shared state — the wrapped set rarely changes, so any
+/// component that asks for it on mount reuses the in-flight or already-loaded
+/// result instead of re-paginating.
+const wrappedIds = ref<Set<number>>(new Set())
+const pending = ref(false)
+const error = ref<string | null>(null)
+const loaded = ref(false)
+let inflight: Promise<void> | null = null
+
+async function loadOnce(force = false): Promise<void> {
+  if (!force && (loaded.value || inflight)) return inflight ?? Promise.resolve()
+
+  pending.value = true
+  error.value = null
+
+  inflight = (async () => {
+    try {
+      const next = new Set<number>()
+      let after: string | null = null
+      let hasNextPage = true
+
+      while (hasNextPage) {
+        const data: WrappedPage = await queryIndexer<WrappedPage>(
+          WRAPPED_QUERY,
+          { limit: PAGE_SIZE, after },
+        )
+        for (const row of data.punks.items) next.add(Number(row.punk_id))
+        hasNextPage = data.punks.pageInfo.hasNextPage
+        after = data.punks.pageInfo.endCursor
+        if (hasNextPage && !after) throw new Error('Indexer pagination failed')
+      }
+
+      wrappedIds.value = next
+      loaded.value = true
+    } catch (e) {
+      if (e instanceof IndexerNotConfigured) {
+        error.value = 'No indexer configured.'
+      } else {
+        error.value = (e as Error).message
+      }
+      loaded.value = false
+    } finally {
+      pending.value = false
+      inflight = null
+    }
+  })()
+
+  return inflight
+}
+
+export function useWrappedPunks() {
+  if (import.meta.client && !loaded.value && !inflight) void loadOnce()
+
+  function isWrapped(id: number | undefined): boolean {
+    if (id === undefined) return false
+    return wrappedIds.value.has(id)
+  }
+
+  return {
+    wrappedIds,
+    isWrapped,
+    pending,
+    error,
+    loaded,
+    refresh: () => loadOnce(true),
+  }
+}
