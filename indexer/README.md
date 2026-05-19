@@ -1,41 +1,42 @@
 # indexer
 
-Ponder indexer that tracks canonical CryptoPunks provenance from launch
-through to today.
+Ponder indexer that tracks normal CryptoPunks, CryptoPunks V1, wrappers, and
+the repo's `PunksMarket.sol` in one process.
 
 ## Provenance model
 
-The CryptoPunks history has a hard cutoff at the original V2 deployment
-(block `3_914_495`):
+Normal CryptoPunks and V1 Punks are tracked as separate current-state
+collections:
 
-- Blocks `3_842_489 … 3_914_494` — the original (buggy) V1 contract at
-  `0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D` is canonical. All `Assign`,
-  `PunkTransfer`, `PunkOffered`, `PunkBidEntered`, `PunkBought`, etc. on V1
-  are indexed.
-- Blocks `3_914_495 …` — the V2 contract at
-  `0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB` is canonical and V1 is
-  abandoned. Only V2 events are indexed from this block onward; V1 events
-  emitted after the cutoff are ignored entirely (enforced by Ponder's
-  per-contract `endBlock`).
+- `punks` tracks the normal V2 collection plus the two normal ERC-721
+  wrappers.
+- `v1_punks` tracks the original V1 contract plus the V1 ERC-721 wrapper.
 
-Two V2 ERC-721 wrappers are also tracked over their full history:
+The combined indexer watches:
 
+- CryptoPunks V1 (`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`)
+- CryptoPunks V2 (`0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB`)
 - Wrapped CryptoPunks (`0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6`)
 - CryptoPunks721 (`0x000000000000003607fce1aC9E043a86675C5C2F`)
+- V1 wrapper (`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`)
+- PunksMarket, defaulting to
+  `0x64e507FEBF26521b73FbdfA533106B2042533218`
 
 While a Punk is wrapped, the user-facing `punks.owner` column reflects the
 ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
 `native_owner`. Unwrap restores the native owner via an on-chain call to
-V2's `punkIndexToAddress`.
+V2's `punkIndexToAddress`. `v1_punks` follows the same public-owner model for
+the V1 wrapper.
 
 ## Schema
 
 All user-facing activity flows into a single `events` table with a unified
 shape (one row per indexed log). `source` ∈ `{ cryptopunks_v1,
-cryptopunks_v2, wrapped_punks, cryptopunks_721 }` and `type` ∈ `{ assign,
-transfer, listing, listing_cancelled, bid, bid_cancelled, sale, wrap,
-unwrap }`. Per-Punk current state lives in `punks`; native V2 marketplace
-state lives in `listings` and `punk_bids`.
+cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }`.
+Per-Punk current state lives in `punks` and `v1_punks`; native marketplace
+state lives in `listings` / `punk_bids` for V2 and `v1_listings` /
+`v1_punk_bids` for V1. PunksMarket criteria bids live in `market_bids` with
+predicate side tables for SQL matching.
 
 ## USD pricing
 
@@ -87,6 +88,7 @@ event.usd_value_cents =
 
 API:
 
+- `GET /bids` and `GET /bids/matching/*` — PunksMarket criteria-bid routes.
 - `GET /sales` — recent sale events with `usd_value_cents` already on the
   row (no JOIN). Pagination via `?limit=`, `?offset=`.
 - The `eth_usd_prices` table is exposed via the standard GraphQL endpoint
@@ -99,6 +101,10 @@ Copy `.env.local.example` to `.env.local` and set:
 - `PONDER_RPC_URLS_1`: one or more mainnet HTTP RPC URLs separated by spaces.
 - `PONDER_RPC_FALLBACK_URLS_1`: optional fallback HTTP RPC URLs.
 - `PONDER_WS_URL_1`: optional mainnet WebSocket RPC URL.
+- `PUNKS_MARKET_ADDRESS`: optional deployed `PunksMarket.sol` address
+  override.
+- `PUNKS_MARKET_START_BLOCK`: optional deployment block override for
+  `PUNKS_MARKET_ADDRESS`.
 - `DATABASE_URL`: Postgres URL for ENS profile cache and Ponder.
 
 ## Local Postgres

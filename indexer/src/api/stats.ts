@@ -323,18 +323,16 @@ async function loadHistory(query: HistoryQuery): Promise<HistoryBucket[]> {
     if (query.order === 'desc') upperBounds.push(query.cursor)
     else lowerBounds.push(nextBucketStart(query.cursor, query.interval))
   }
-  const tsLower =
-    lowerBounds.length > 0 ? maxBigInt(lowerBounds) : null
-  const tsUpper =
-    upperBounds.length > 0 ? minBigInt(upperBounds) : null
+  const tsLower = lowerBounds.length > 0 ? maxBigInt(lowerBounds) : null
+  const tsUpper = upperBounds.length > 0 ? minBigInt(upperBounds) : null
 
   const conds = [sql`type = 'sale'`, sql`wei_amount IS NOT NULL`]
   if (tsLower !== null) conds.push(sql`timestamp >= ${tsLower}`)
   if (tsUpper !== null) conds.push(sql`timestamp < ${tsUpper}`)
   if (query.source !== null) conds.push(sql`source = ${query.source}`)
 
-  const whereClause = conds.reduce(
-    (acc, cond, i) => (i === 0 ? cond : sql`${acc} AND ${cond}`),
+  const whereClause = conds.reduce((acc, cond, i) =>
+    i === 0 ? cond : sql`${acc} AND ${cond}`,
   )
 
   const orderDir = sql.raw(query.order === 'asc' ? 'ASC' : 'DESC')

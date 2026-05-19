@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@1001-digital/ponder-ens": "^0.1.0",
+    "@networked-art/punks-sdk": "workspace:*",
     "@ponder/utils": "^0.2.18",
     "abitype": "^0.10.2",
     "drizzle-orm": "^0.41.0",

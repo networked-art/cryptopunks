@@ -15,11 +15,11 @@ proxy:
     - <%= ENV["INDEXER_HOST"] %>
   app_port: 42069
   healthcheck:
-    path: /health
+    path: /ready
     interval: 5
-    timeout: 300
+    timeout: 3600
 
-deploy_timeout: 300
+deploy_timeout: 3600
 
 registry:
   username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
@@ -41,12 +41,14 @@ env:
     - DATABASE_URL
     - DATABASE_SCHEMA
     - PONDER_VIEWS_SCHEMA
+    - PUNKS_MARKET_ADDRESS
+    - PUNKS_MARKET_START_BLOCK
 
 accessories:
   db:
     image: postgres:17-alpine
     host: <%= ENV["DEPLOY_HOST"] %>
-    port: '127.0.0.1:5467:5432'
+    port: '127.0.0.1:5469:5432'
     options:
       network: shared
     env:

@@ -15,6 +15,7 @@ import {
   seedPreChainlinkPricesFromCsv,
   usdValueCentsForBlock,
 } from './prices'
+import './v1'
 
 type Address = `0x${string}`
 
@@ -31,12 +32,10 @@ type PonderEvent = {
   log: { logIndex: number }
 }
 
-const SOURCE_V1 = 'cryptopunks_v1'
 const SOURCE_V2 = 'cryptopunks_v2'
 const SOURCE_WPUNKS = 'wrapped_punks'
 const SOURCE_C721 = 'cryptopunks_721'
 
-const NATIVE_V1 = 'v1'
 const NATIVE_V2 = 'v2'
 
 // One-time seed of daily ETH/USD prices for the pre-Chainlink window (V1
@@ -46,206 +45,6 @@ const NATIVE_V2 = 'v2'
 // handlers themselves via Chainlink's onchain `latestRoundData`.
 ponder.on('CryptoPunksV1:setup', async ({ context }) => {
   await seedPreChainlinkPricesFromCsv(context)
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// V1 — canonical only for blocks [start, 3_914_494]. Ponder's endBlock on the
-// contract config makes these handlers fire only in that window.
-// ─────────────────────────────────────────────────────────────────────────────
-
-ponder.on('CryptoPunksV1:Assign', async ({ event, context }) => {
-  const to = normalize(event.args.to)
-  const punkId = event.args.punkIndex
-  const meta = eventMeta(event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'Assign',
-    type: 'assign',
-    punk_id: punkId,
-    actor: to,
-    to,
-    ...meta,
-  })
-
-  await upsertPunk(context, {
-    punkId,
-    owner: to,
-    nativeOwner: to,
-    nativeStandard: NATIVE_V1,
-    isWrapped: false,
-    wrapper: null,
-    assignedTo: to,
-    lastTransferAt: event.block.timestamp,
-    block: event.block.number,
-    timestamp: event.block.timestamp,
-  })
-})
-
-ponder.on('CryptoPunksV1:PunkTransfer', async ({ event, context }) => {
-  const from = normalize(event.args.from)
-  const to = normalize(event.args.to)
-  const punkId = event.args.punkIndex
-  const meta = eventMeta(event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkTransfer',
-    type: 'transfer',
-    punk_id: punkId,
-    actor: from,
-    from,
-    to,
-    ...meta,
-  })
-
-  await upsertPunk(context, {
-    punkId,
-    owner: to,
-    nativeOwner: to,
-    nativeStandard: NATIVE_V1,
-    isWrapped: false,
-    wrapper: null,
-    lastTransferAt: event.block.timestamp,
-    block: event.block.number,
-    timestamp: event.block.timestamp,
-  })
-})
-
-ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
-  const punkId = event.args.punkIndex
-  // V1 listings are historical; resolve the seller via the punk's then-current
-  // V1 owner so the row carries a real address rather than a zero placeholder.
-  const ownerRow = await context.db.find(punk, { punk_id: punkId })
-  const seller = (ownerRow?.native_owner ?? ZERO_ADDRESS) as Address
-  const meta = eventMeta(event)
-  const onlySellTo = normalize(event.args.toAddress)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkOffered',
-    type: 'listing',
-    punk_id: punkId,
-    actor: seller,
-    seller,
-    listing_wei: event.args.minValue,
-    only_sell_to: onlySellTo === ZERO_ADDRESS ? null : onlySellTo,
-    ...meta,
-  })
-
-  await upsertListing(context, punkId, {
-    seller,
-    minValueWei: event.args.minValue,
-    onlySellTo: onlySellTo === ZERO_ADDRESS ? null : onlySellTo,
-    active: true,
-    meta,
-  })
-})
-
-ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
-  const meta = eventMeta(event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkNoLongerForSale',
-    type: 'listing_cancelled',
-    punk_id: event.args.punkIndex,
-    ...meta,
-  })
-
-  await clearListing(context, event.args.punkIndex, meta)
-})
-
-ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
-  const bidder = normalize(event.args.fromAddress)
-  const meta = eventMeta(event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkBidEntered',
-    type: 'bid',
-    punk_id: event.args.punkIndex,
-    actor: bidder,
-    bidder,
-    wei_amount: event.args.value,
-    ...meta,
-  })
-
-  await upsertPunkBid(context, event.args.punkIndex, {
-    bidder,
-    valueWei: event.args.value,
-    active: true,
-    meta,
-  })
-})
-
-ponder.on('CryptoPunksV1:PunkBidWithdrawn', async ({ event, context }) => {
-  const bidder = normalize(event.args.fromAddress)
-  const meta = eventMeta(event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkBidWithdrawn',
-    type: 'bid_cancelled',
-    punk_id: event.args.punkIndex,
-    actor: bidder,
-    bidder,
-    wei_amount: event.args.value,
-    ...meta,
-  })
-
-  await upsertPunkBid(context, event.args.punkIndex, {
-    bidder,
-    valueWei: event.args.value,
-    active: false,
-    meta,
-  })
-})
-
-ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
-  const to = normalize(event.args.toAddress)
-  const from = normalize(event.args.fromAddress)
-  const punkId = event.args.punkIndex
-  const meta = eventMeta(event)
-  const activeBid = await context.db.find(punkBid, { punk_id: punkId })
-  const saleWei =
-    event.args.value === 0n ? (activeBid?.value_wei ?? 0n) : event.args.value
-
-  await clearListingAndBid(context, punkId, meta)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkBought',
-    type: 'sale',
-    punk_id: punkId,
-    actor: to,
-    buyer: to,
-    seller: from,
-    from,
-    to,
-    wei_amount: saleWei,
-    ...meta,
-  })
-
-  await upsertPunk(context, {
-    punkId,
-    owner: to,
-    nativeOwner: to,
-    nativeStandard: NATIVE_V1,
-    isWrapped: false,
-    wrapper: null,
-    lastTransferAt: event.block.timestamp,
-    lastSaleWei: saleWei,
-    block: event.block.number,
-    timestamp: event.block.timestamp,
-  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -629,7 +428,7 @@ async function upsertPunk(
     punkId: bigint
     owner: Address
     nativeOwner?: Address
-    nativeStandard?: typeof NATIVE_V1 | typeof NATIVE_V2
+    nativeStandard?: typeof NATIVE_V2
     isWrapped: boolean
     wrapper: ReturnType<typeof wrapperKindFor>
     assignedTo?: Address

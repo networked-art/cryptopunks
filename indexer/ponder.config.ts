@@ -5,15 +5,20 @@ import { fallback, http } from 'viem'
 import { CryptoPunks721Abi } from './abis/CryptoPunks721Abi'
 import { CryptoPunksV1Abi } from './abis/CryptoPunksV1Abi'
 import { CryptoPunksV2Abi } from './abis/CryptoPunksV2Abi'
+import { PunksMarketAbi } from './abis/PunksMarketAbi'
+import { V1WrapperAbi } from './abis/V1WrapperAbi'
 import { WrappedPunksAbi } from './abis/WrappedPunksAbi'
 import {
   CRYPTOPUNKS_721_ADDRESS,
   CRYPTOPUNKS_721_START_BLOCK,
   CRYPTOPUNKS_V1_ADDRESS,
-  CRYPTOPUNKS_V1_END_BLOCK,
   CRYPTOPUNKS_V1_START_BLOCK,
   CRYPTOPUNKS_V2_ADDRESS,
   CRYPTOPUNKS_V2_START_BLOCK,
+  PUNKS_MARKET_ADDRESS,
+  PUNKS_MARKET_START_BLOCK,
+  V1_WRAPPER_ADDRESS,
+  V1_WRAPPER_START_BLOCK,
   WRAPPED_PUNKS_ADDRESS,
   WRAPPED_PUNKS_START_BLOCK,
 } from './utils/contracts'
@@ -43,15 +48,11 @@ export default createConfig({
     },
   },
   contracts: {
-    // V1 is indexed only for its short canonical window: from launch up to the
-    // block before V2 was deployed. From V2 deployment onward V1 is abandoned
-    // and we only track V2.
     CryptoPunksV1: {
       chain: 'mainnet',
       abi: CryptoPunksV1Abi,
       address: CRYPTOPUNKS_V1_ADDRESS,
       startBlock: CRYPTOPUNKS_V1_START_BLOCK,
-      endBlock: CRYPTOPUNKS_V1_END_BLOCK,
     },
     CryptoPunksV2: {
       chain: 'mainnet',
@@ -70,6 +71,18 @@ export default createConfig({
       abi: CryptoPunks721Abi,
       address: CRYPTOPUNKS_721_ADDRESS,
       startBlock: CRYPTOPUNKS_721_START_BLOCK,
+    },
+    V1Wrapper: {
+      chain: 'mainnet',
+      abi: V1WrapperAbi,
+      address: V1_WRAPPER_ADDRESS,
+      startBlock: V1_WRAPPER_START_BLOCK,
+    },
+    PunksMarket: {
+      chain: 'mainnet',
+      abi: PunksMarketAbi,
+      address: PUNKS_MARKET_ADDRESS,
+      startBlock: PUNKS_MARKET_START_BLOCK,
     },
   },
 })

@@ -7,13 +7,13 @@ import {
   bidIncludeId,
   bidTrait,
   event as activityEvent,
-  listing,
   marketBid,
-  punk,
-  punkBid,
   punkColor,
   punkTrait,
   punkVisual,
+  v1Listing,
+  v1Punk,
+  v1PunkBid,
 } from 'ponder:schema'
 import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
 import { getAddress } from 'viem'
@@ -25,6 +25,7 @@ import {
   V1_WRAPPER_ADDRESS,
   ZERO_ADDRESS,
 } from '../utils/contracts'
+import { dayUnix, usdValueCentsForBlock } from './prices'
 
 type Address = `0x${string}`
 
@@ -54,7 +55,7 @@ const DB_INSERT_CHUNK = 5000
 // Seed punk_traits / punk_colors / punk_visuals once at startup from the
 // SDK's bundled offline dataset (mirror of the sealed PunksData contract).
 // Side tables join against these to evaluate bid predicates in SQL.
-ponder.on('CryptoPunksV1:setup', async ({ context }) => {
+ponder.on('PunksMarket:setup', async ({ context }) => {
   const existing = await context.db.find(backfillMarker, {
     name: DATASET_BACKFILL_NAME,
   })
@@ -123,7 +124,9 @@ ponder.on('CryptoPunksV1:Assign', async ({ event, context }) => {
   await upsertPunk(context, {
     punkId,
     owner: to,
+    nativeOwner: to,
     isWrapped: false,
+    wrapper: null,
     assignedTo: to,
     lastTransferAt: event.block.timestamp,
     block: event.block.number,
@@ -149,17 +152,27 @@ ponder.on('CryptoPunksV1:PunkTransfer', async ({ event, context }) => {
     ...meta,
   })
 
-  const current = await context.db.find(punk, { punk_id: punkId })
-  if (!current?.is_wrapped) {
-    await upsertPunk(context, {
-      punkId,
-      owner: to,
-      isWrapped: false,
-      lastTransferAt: event.block.timestamp,
-      block: event.block.number,
-      timestamp: event.block.timestamp,
+  const current = await context.db.find(v1Punk, { punk_id: punkId })
+  if (current?.is_wrapped) {
+    await context.db.update(v1Punk, { punk_id: punkId }).set({
+      native_owner: to,
+      last_transfer_at: event.block.timestamp,
+      updated_at: event.block.timestamp,
+      block_number: event.block.number,
     })
+    return
   }
+
+  await upsertPunk(context, {
+    punkId,
+    owner: to,
+    nativeOwner: to,
+    isWrapped: false,
+    wrapper: null,
+    lastTransferAt: event.block.timestamp,
+    block: event.block.number,
+    timestamp: event.block.timestamp,
+  })
 })
 
 ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
@@ -185,7 +198,7 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
   })
 
   await context.db
-    .insert(listing)
+    .insert(v1Listing)
     .values({
       punk_id: punkId,
       seller,
@@ -207,7 +220,7 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
 
 ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const meta = eventMeta(event)
-  const existing = await context.db.find(listing, {
+  const existing = await context.db.find(v1Listing, {
     punk_id: event.args.punkIndex,
   })
   const seller =
@@ -253,7 +266,7 @@ ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
   })
 
   await context.db
-    .insert(punkBid)
+    .insert(v1PunkBid)
     .values({
       punk_id: event.args.punkIndex,
       bidder,
@@ -289,7 +302,7 @@ ponder.on('CryptoPunksV1:PunkBidWithdrawn', async ({ event, context }) => {
   })
 
   await context.db
-    .insert(punkBid)
+    .insert(v1PunkBid)
     .values({
       punk_id: event.args.punkIndex,
       bidder,
@@ -312,7 +325,7 @@ ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
-  const activeBid = await context.db.find(punkBid, { punk_id: punkId })
+  const activeBid = await context.db.find(v1PunkBid, { punk_id: punkId })
   const saleWei =
     event.args.value === 0n ? (activeBid?.value_wei ?? 0n) : event.args.value
 
@@ -340,7 +353,9 @@ ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
   await upsertPunk(context, {
     punkId,
     owner: to,
+    nativeOwner: to,
     isWrapped: false,
+    wrapper: null,
     lastTransferAt: event.block.timestamp,
     // A 0-wei `PunkBought` is the V1 transfer workaround, not a real sale —
     // don't overwrite the punk's last meaningful sale price with zero.
@@ -371,7 +386,9 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
     await upsertPunk(context, {
       punkId,
       owner: to,
+      nativeOwner: V1_WRAPPER_ADDRESS,
       isWrapped: true,
+      wrapper: 'v1_wrapper',
       lastTransferAt: event.block.timestamp,
       block: event.block.number,
       timestamp: event.block.timestamp,
@@ -402,7 +419,9 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
     await upsertPunk(context, {
       punkId,
       owner: nativeOwner,
+      nativeOwner,
       isWrapped: false,
+      wrapper: null,
       lastTransferAt: event.block.timestamp,
       block: event.block.number,
       timestamp: event.block.timestamp,
@@ -426,6 +445,7 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
     punkId,
     owner: to,
     isWrapped: true,
+    wrapper: 'v1_wrapper',
     lastTransferAt: event.block.timestamp,
     block: event.block.number,
     timestamp: event.block.timestamp,
@@ -694,7 +714,9 @@ async function upsertPunk(
   args: {
     punkId: bigint
     owner: Address
+    nativeOwner?: Address
     isWrapped: boolean
+    wrapper: 'v1_wrapper' | null
     assignedTo?: Address
     lastTransferAt?: bigint
     lastSaleWei?: bigint
@@ -703,11 +725,13 @@ async function upsertPunk(
   },
 ) {
   await context.db
-    .insert(punk)
+    .insert(v1Punk)
     .values({
       punk_id: args.punkId,
       owner: args.owner,
+      native_owner: args.nativeOwner ?? args.owner,
       is_wrapped: args.isWrapped,
+      wrapper: args.wrapper,
       assigned_to: args.assignedTo ?? null,
       last_transfer_at: args.lastTransferAt ?? null,
       last_sale_wei: args.lastSaleWei ?? null,
@@ -716,7 +740,9 @@ async function upsertPunk(
     })
     .onConflictDoUpdate((row) => ({
       owner: args.owner,
+      native_owner: args.nativeOwner ?? row.native_owner,
       is_wrapped: args.isWrapped,
+      wrapper: args.wrapper,
       assigned_to: args.assignedTo ?? row.assigned_to,
       last_transfer_at: args.lastTransferAt ?? row.last_transfer_at,
       last_sale_wei: args.lastSaleWei ?? row.last_sale_wei,
@@ -742,7 +768,7 @@ async function clearNativeListing(
   meta: EventMeta,
 ) {
   await context.db
-    .insert(listing)
+    .insert(v1Listing)
     .values({
       punk_id: punkId,
       seller: ZERO_ADDRESS,
@@ -768,7 +794,7 @@ async function clearNativeBid(
   meta: EventMeta,
 ) {
   await context.db
-    .insert(punkBid)
+    .insert(v1PunkBid)
     .values({
       punk_id: punkId,
       bidder: ZERO_ADDRESS,
@@ -829,11 +855,31 @@ async function readNativeOwner(
 
 async function insertActivity(
   context: Context,
-  values: typeof activityEvent.$inferInsert,
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
 ) {
   if (shouldSuppressActivity(values)) return
   const normalized = normalizeZeroEthSale(values)
-  await context.db.insert(activityEvent).values(normalized).onConflictDoNothing()
+
+  let usdValueCents: bigint | null = null
+  if (normalized.wei_amount !== null && normalized.wei_amount !== undefined) {
+    usdValueCents = await usdValueCentsForBlock(
+      context,
+      { number: normalized.block_number, timestamp: normalized.timestamp },
+      normalized.wei_amount,
+    )
+  }
+
+  await context.db
+    .insert(activityEvent)
+    .values({
+      ...normalized,
+      day_unix: dayUnix(normalized.timestamp),
+      usd_value_cents: usdValueCents,
+    })
+    .onConflictDoNothing()
 }
 
 // A 0-wei `sale` is the V1 contract's transfer workaround
@@ -841,8 +887,11 @@ async function insertActivity(
 // — reclassify so the Sales / Transfers split stays meaningful. `source` and
 // `source_event` are preserved so the audit trail still points at PunkBought.
 function normalizeZeroEthSale(
-  values: typeof activityEvent.$inferInsert,
-): typeof activityEvent.$inferInsert {
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
+): Omit<typeof activityEvent.$inferInsert, 'day_unix' | 'usd_value_cents'> {
   if (values.type !== 'sale') return values
   if (values.wei_amount && values.wei_amount > 0n) return values
   return {
@@ -861,7 +910,10 @@ function normalizeZeroEthSale(
 // delivery, emitting redundant V1 / wrapper logs alongside the market's own
 // sale event. Drop those so a single settlement is one activity row.
 function shouldSuppressActivity(
-  values: typeof activityEvent.$inferInsert,
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
 ): boolean {
   if (values.source !== SOURCE_V1 && values.source !== SOURCE_WRAPPER) {
     return false
