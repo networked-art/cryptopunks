@@ -88,6 +88,7 @@ export default defineConfig({
                 link: '/sdk/original-marketplace',
               },
               { text: 'V1 Market', link: '/sdk/v1-market' },
+              { text: 'V1 Wrapper', link: '/sdk/v1-wrapper' },
               { text: 'Punk Data Contracts', link: '/sdk/punk-data-contracts' },
               { text: 'Wrappers', link: '/sdk/wrappers' },
               { text: 'Stash', link: '/sdk/stash' },
