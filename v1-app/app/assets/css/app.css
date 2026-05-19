@@ -80,6 +80,12 @@
     color: var(--accent);
     border-color: var(--accent);
   }
+
+  input:not(.unstyled),
+  textarea:not(.unstyled),
+  select:not(.unstyled) {
+    --ui-color: #000;
+  }
 }
 
 @layer utilities {
