@@ -79,9 +79,9 @@
         </div>
       </div>
 
-      <div
-        class="actions"
+      <Actions
         v-if="address"
+        class="left panel-actions"
       >
         <template v-if="isOwner && isWrapped">
           <p class="warn">
@@ -173,7 +173,7 @@
         >
           Withdraw <EthAmount :wei="pendingWithdrawal" />
         </Button>
-      </div>
+      </Actions>
     </template>
 
     <EvmTransactionFlowDialog
@@ -435,12 +435,18 @@ function actUnwrap() {
   margin-top: 4px;
 }
 
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
+.panel-actions {
   border-top: var(--border);
   padding-top: var(--size-3);
+}
+
+.panel-actions :deep(.warn) {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.panel-actions :deep(.withdraw) {
+  flex-basis: 100%;
 }
 
 .action-group {
@@ -449,7 +455,7 @@ function actUnwrap() {
   flex-wrap: wrap;
 }
 
-.withdraw {
-  align-self: flex-start;
+.panel-actions :deep(button .eth-amount .unit) {
+  color: inherit;
 }
 </style>
