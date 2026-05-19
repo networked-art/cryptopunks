@@ -1,5 +1,3 @@
-import { getAddress, isAddress } from 'viem'
-
 // CryptoPunks V1 — the original buggy contract. Tracked independently from
 // V2 because live V1 wrapper/market activity still occurs after V2 launch.
 export const CRYPTOPUNKS_V1_ADDRESS =
@@ -27,19 +25,9 @@ export const V1_WRAPPER_ADDRESS =
   '0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D' as const
 export const V1_WRAPPER_START_BLOCK = 14_022_431
 
-export const DEPLOYED_PUNKS_MARKET_ADDRESS =
+export const PUNKS_MARKET_ADDRESS =
   '0x64e507FEBF26521b73FbdfA533106B2042533218' as const
-export const DEPLOYED_PUNKS_MARKET_START_BLOCK = 25_118_216
-
-export const PUNKS_MARKET_ADDRESS = readAddressEnv(
-  'PUNKS_MARKET_ADDRESS',
-  DEPLOYED_PUNKS_MARKET_ADDRESS,
-)
-
-export const PUNKS_MARKET_START_BLOCK = readIntEnv(
-  'PUNKS_MARKET_START_BLOCK',
-  DEPLOYED_PUNKS_MARKET_START_BLOCK,
-)
+export const PUNKS_MARKET_START_BLOCK = 25_118_216
 
 // Chainlink ETH/USD aggregator (OCR). Not indexed via Ponder — we read it
 // from API-context code with Viem and write the result into the offchain
@@ -65,24 +53,4 @@ export function wrapperKindFor(address: string): WrapperKind | null {
   if (lower === WRAPPED_PUNKS_ADDRESS.toLowerCase()) return 'wrapped_punks'
   if (lower === CRYPTOPUNKS_721_ADDRESS.toLowerCase()) return 'cryptopunks_721'
   return null
-}
-
-function readAddressEnv(name: string, fallback: `0x${string}`): `0x${string}` {
-  const value = process.env[name]
-  if (!value) return fallback
-  if (!isAddress(value)) {
-    throw new Error(`${name} must be a valid address`)
-  }
-  return getAddress(value)
-}
-
-function readIntEnv(name: string, fallback: number): number {
-  const value = process.env[name]
-  if (!value) return fallback
-
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`${name} must be a non-negative integer`)
-  }
-  return parsed
 }

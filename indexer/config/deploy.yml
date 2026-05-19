@@ -41,8 +41,6 @@ env:
     - DATABASE_URL
     - DATABASE_SCHEMA
     - PONDER_VIEWS_SCHEMA
-    - PUNKS_MARKET_ADDRESS
-    - PUNKS_MARKET_START_BLOCK
 
 accessories:
   db:
