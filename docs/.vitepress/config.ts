@@ -49,12 +49,15 @@ export default defineConfig({
                 link: '/contracts/punks-data/indexed-pixels',
               },
               {
+                text: 'Filter Library',
+                link: '/contracts/punks-data/filter-library',
+              },
+              {
                 text: 'Usage And Integration',
                 link: '/contracts/punks-data/usage',
               },
             ],
           },
-          { text: 'Punks Library', link: '/contracts/punks-library' },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
           { text: 'PunksMarket', link: '/contracts/punks-market' },
         ],

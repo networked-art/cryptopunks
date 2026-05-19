@@ -34,7 +34,14 @@ offchain read/search surface.
 
 The `Punks` library packages trait masks, color masks, and visual-metric
 ranges into one validated `Filter` type. Consumer contracts store the filter
-once and call `matches` per Punk during settlement:
+once and call `matches` per Punk during settlement.
+
+::: tip
+The full reference for the library — every mask builder, validator, and
+predicate, including the `using Punks for Punks.Filter` syntax — lives on the
+[Filter Library](/contracts/punks-data/filter-library) page. The snippet
+below is the minimum a consumer needs.
+:::
 
 ```solidity
 import {Punks} from "@networked-art/punks-contracts/contracts/lib/Punks.sol";

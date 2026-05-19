@@ -1,17 +1,17 @@
-# Punks Library
+# Filter Library
 
-`Punks` is the Solidity helper library that other onchain contracts use to
-build, validate, and evaluate composite filters against the sealed
-[`PunksData`](/contracts/punks-data) contract. It packages the
-trait/color/visual primitives that `PunksData` exposes individually into a
+`Punks` (`contracts/contracts/lib/Punks.sol`) is the Solidity helper library
+that other onchain contracts use to build, validate, and evaluate composite
+filters against the sealed `PunksData` contract. It packages the
+trait/color/visual primitives that the [Criteria](/contracts/punks-data/criteria)
+and [Visual](/contracts/punks-data/visual) APIs expose individually into a
 single `Filter` value, and mirrors `PunksData._requireCriteriaMasks` so a
 consumer can pre-flight a filter before paying for the predicate call.
 
-The library lives at `contracts/contracts/lib/Punks.sol`. It is a pure-logic
-library — no storage, no constructor — and is reused inside this repo by
-[`PunksMarket`](/contracts/punks-market) for criteria-bid matching. Any
-third-party contract that wants onchain trait or color filtering against the
-sealed dataset can use it directly.
+The library is pure logic — no storage, no constructor. It is reused inside
+this repo by [`PunksMarket`](/contracts/punks-market) for criteria-bid
+matching, and any third-party contract that wants onchain trait or color
+filtering against the sealed dataset can use it directly.
 
 ## Filter
 
