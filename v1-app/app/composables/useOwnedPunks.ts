@@ -3,7 +3,7 @@ import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 const OWNED_QUERY = `
   query Owned($owner: String!) {
-    punks(where: { owner: $owner }, orderBy: "punk_id", orderDirection: "asc", limit: 1000) {
+    v1Punks(where: { owner: $owner }, orderBy: "punk_id", orderDirection: "asc", limit: 1000) {
       items { punk_id }
     }
   }
@@ -26,9 +26,9 @@ export function useOwnedPunks(address: MaybeRefOrGetter<Address | undefined>) {
 
     try {
       const data = await queryIndexer<{
-        punks: { items: { punk_id: string }[] }
+        v1Punks: { items: { punk_id: string }[] }
       }>(OWNED_QUERY, { owner: addr.toLowerCase() })
-      ids.value = data.punks.items.map((row) => Number(row.punk_id))
+      ids.value = data.v1Punks.items.map((row) => Number(row.punk_id))
     } catch (e) {
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'

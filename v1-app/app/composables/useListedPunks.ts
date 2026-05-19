@@ -10,7 +10,7 @@ const ONLY_SELL_TO = PUNKS_MARKET_ADDRESS.toLowerCase()
 
 const ACTIVE_LISTINGS_QUERY = `
   query ActiveListings($onlySellTo: String!, $limit: Int!, $after: String) {
-    listings(where: { active: true, only_sell_to: $onlySellTo }, orderBy: "min_value_wei", orderDirection: "asc", limit: $limit, after: $after) {
+    v1Listings(where: { active: true, only_sell_to: $onlySellTo }, orderBy: "min_value_wei", orderDirection: "asc", limit: $limit, after: $after) {
       items {
         punk_id
         seller
@@ -26,7 +26,7 @@ const ACTIVE_LISTINGS_QUERY = `
 
 const OWNERS_QUERY = `
   query Owners($ids: [BigInt!]!) {
-    punks(where: { punk_id_in: $ids }, orderBy: "punk_id", orderDirection: "asc", limit: 1000) {
+    v1Punks(where: { punk_id_in: $ids }, orderBy: "punk_id", orderDirection: "asc", limit: 1000) {
       items {
         punk_id
         owner
@@ -38,14 +38,14 @@ const OWNERS_QUERY = `
 const PAGE_SIZE = 1000
 
 type ActiveListingsData = {
-  listings: {
+  v1Listings: {
     items: { punk_id: string; seller: string; min_value_wei: string }[]
     pageInfo: { hasNextPage: boolean; endCursor: string | null }
   }
 }
 
 type ListingOwnersData = {
-  punks: {
+  v1Punks: {
     items: { punk_id: string; owner: string | null }[]
   }
 }
@@ -74,10 +74,10 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
           ACTIVE_LISTINGS_QUERY,
           { onlySellTo: ONLY_SELL_TO, limit: PAGE_SIZE, after },
         )
-        nextListings.push(...(await liveListings(data.listings.items)))
+        nextListings.push(...(await liveListings(data.v1Listings.items)))
 
-        hasNextPage = data.listings.pageInfo.hasNextPage
-        after = data.listings.pageInfo.endCursor
+        hasNextPage = data.v1Listings.pageInfo.hasNextPage
+        after = data.v1Listings.pageInfo.endCursor
         if (hasNextPage && !after) throw new Error('Indexer pagination failed')
       }
 
@@ -120,7 +120,7 @@ type LiveListing = {
 }
 
 async function liveListings(
-  listings: ActiveListingsData['listings']['items'],
+  listings: ActiveListingsData['v1Listings']['items'],
 ) {
   if (!listings.length) return []
 
@@ -129,7 +129,7 @@ async function liveListings(
     { ids: listings.map((row) => row.punk_id) },
   )
   const ownerById = new Map<string, string>()
-  for (const row of data.punks.items) {
+  for (const row of data.v1Punks.items) {
     if (row.owner) ownerById.set(row.punk_id, row.owner)
   }
 

@@ -10,7 +10,7 @@ import { useConfig } from '@wagmi/vue'
  * Canonical owner of a V1 Punk. The indexer normalizes wrap state so a single
  * read returns the human holder regardless of wrap status (`owner` = native V1
  * owner when unwrapped, ERC-721 holder when wrapped — see
- * v1-punks-indexer/ponder.schema.ts).
+ * indexer/ponder.schema.ts).
  *
  * Falls back to onchain reads if the indexer is unreachable: V1
  * `punkIndexToAddress` first, then `wrapper.ownerOf` whenever the raw owner is
@@ -19,7 +19,7 @@ import { useConfig } from '@wagmi/vue'
 
 const PUNK_OWNER_QUERY = `
   query PunkOwner($id: BigInt!) {
-    punk(punk_id: $id) {
+    v1Punk(punk_id: $id) {
       owner
       is_wrapped
     }
@@ -27,7 +27,7 @@ const PUNK_OWNER_QUERY = `
 `
 
 type PunkOwnerRow = {
-  punk: { owner: Address | null; is_wrapped: boolean } | null
+  v1Punk: { owner: Address | null; is_wrapped: boolean } | null
 }
 
 export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
@@ -47,9 +47,9 @@ export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
         const data = await queryIndexer<PunkOwnerRow>(PUNK_OWNER_QUERY, {
           id: String(id),
         })
-        if (data.punk) {
-          owner.value = data.punk.owner
-          isWrapped.value = data.punk.is_wrapped
+        if (data.v1Punk) {
+          owner.value = data.v1Punk.owner
+          isWrapped.value = data.v1Punk.is_wrapped
           source.value = 'indexer'
           return
         }

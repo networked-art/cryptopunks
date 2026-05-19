@@ -4,7 +4,7 @@ export const WRAPPED_BG = '#a69aff'
 
 const WRAPPED_QUERY = `
   query WrappedPunks($limit: Int!, $after: String) {
-    punks(where: { is_wrapped: true }, orderBy: "punk_id", orderDirection: "asc", limit: $limit, after: $after) {
+    v1Punks(where: { is_wrapped: true }, orderBy: "punk_id", orderDirection: "asc", limit: $limit, after: $after) {
       items { punk_id }
       pageInfo { hasNextPage endCursor }
     }
@@ -14,7 +14,7 @@ const WRAPPED_QUERY = `
 const PAGE_SIZE = 1000
 
 type WrappedPage = {
-  punks: {
+  v1Punks: {
     items: { punk_id: string }[]
     pageInfo: { hasNextPage: boolean; endCursor: string | null }
   }
@@ -46,9 +46,9 @@ async function loadOnce(force = false): Promise<void> {
           WRAPPED_QUERY,
           { limit: PAGE_SIZE, after },
         )
-        for (const row of data.punks.items) next.add(Number(row.punk_id))
-        hasNextPage = data.punks.pageInfo.hasNextPage
-        after = data.punks.pageInfo.endCursor
+        for (const row of data.v1Punks.items) next.add(Number(row.punk_id))
+        hasNextPage = data.v1Punks.pageInfo.hasNextPage
+        after = data.v1Punks.pageInfo.endCursor
         if (hasNextPage && !after) throw new Error('Indexer pagination failed')
       }
 

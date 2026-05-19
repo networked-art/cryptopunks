@@ -21,6 +21,8 @@ export type ActivitySource =
   | 'punks_market'
   | string
 
+const V1_ACTIVITY_SOURCES = ['cryptopunks_v1', 'v1_wrapper', 'punks_market']
+
 export type ActivityEvent = {
   id: string
   kind: ActivityKind
@@ -106,7 +108,9 @@ export function useActivityFeed(
   let cursor: string | null = null
 
   function buildWhere() {
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = {
+      source_in: V1_ACTIVITY_SOURCES,
+    }
 
     const punkId = toValue(opts.punkId)
     if (punkId !== undefined) where.punk_id = String(punkId)
