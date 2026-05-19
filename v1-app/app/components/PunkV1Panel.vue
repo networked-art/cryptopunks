@@ -111,9 +111,9 @@
             </Button>
           </div>
           <Button
-            v-if="canAcceptTopBid"
+            v-if="canSettle"
             class="primary"
-            @click="actAcceptBid"
+            @click="actSettle"
           >
             Accept bid · <EthAmount :wei="topBid!.bidWei" />
           </Button>
@@ -151,6 +151,18 @@
           >
             Stale raw offer — seller no longer owns this punk.
           </p>
+
+          <Button
+            v-if="canSettle"
+            class="primary"
+            @click="actSettle"
+          >
+            Settle
+            <template v-if="isTopBidder"> · claim punk</template>
+            <template v-else-if="topBid!.settlementWei > 0n">
+              · earn <EthAmount :wei="topBid!.settlementWei" />
+            </template>
+          </Button>
 
           <div class="action-group">
             <PunkBidForm
@@ -256,8 +268,14 @@ const ownActiveBid = computed<CollectionBid | null>(() => {
   if (!me) return null
   return props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
 })
-const canAcceptTopBid = computed(
+const canSettle = computed(
   () => !!topBid.value && isDirectedToPunksMarket.value,
+)
+const isTopBidder = computed(
+  () =>
+    !!address.value &&
+    !!topBid.value &&
+    topBid.value.bidder.toLowerCase() === address.value.toLowerCase(),
 )
 const canBuy = computed(() => isDirectedToPunksMarket.value)
 
@@ -347,8 +365,8 @@ function actWithdrawBid() {
   run(sdk.value.v1Market.prepareCancelBid(existing.id))
 }
 
-function actAcceptBid() {
-  if (!canAcceptTopBid.value || !topBid.value || !listing.value) return
+function actSettle() {
+  if (!canSettle.value || !topBid.value || !listing.value) return
   run(
     sdk.value.v1Market.prepareAcceptBid({
       bidId: topBid.value.id,
