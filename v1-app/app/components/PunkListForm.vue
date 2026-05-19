@@ -118,13 +118,6 @@ function onComplete(receipt: { transactionHash: Hash }) {
   width: 100%;
 }
 
-.label {
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-}
-
 .warn {
   font-size: 10px;
   color: #b8761c;

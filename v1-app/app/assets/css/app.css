@@ -198,4 +198,11 @@
     padding: var(--size-3);
     border-top: var(--border);
   }
+
+  label > .label {
+    text-transform: uppercase;
+    font-size: var(--font-xs);
+    letter-spacing: var(--letter-spacing-md);
+    color: var(--text-dim);
+  }
 }
