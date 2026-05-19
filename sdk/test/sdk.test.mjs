@@ -235,6 +235,27 @@ describe('PunksSdk', () => {
       lot.request.args[0].map((item) => item.weightBps),
       [3334, 3333, 3333],
     )
+    // Default lot is public — onlySellTo falls back to the zero address.
+    assert.equal(
+      lot.request.args[2],
+      '0x0000000000000000000000000000000000000000',
+    )
+
+    const privateLot = punks.auctions.prepareCreateLot({
+      items: [{ punkId: 1 }],
+      reserveWei: 100n,
+      onlySellTo: BUYER,
+    })
+    assert.equal(privateLot.request.args[2], BUYER)
+    assert.match(privateLot.description, /one buyer/)
+
+    const updated = punks.auctions.prepareUpdateLot({
+      lotId: 7n,
+      reserveWei: 200n,
+      onlySellTo: BUYER,
+    })
+    assert.equal(updated.request.functionName, 'updateLot')
+    assert.deepEqual(updated.request.args, [7n, 200n, BUYER])
 
     const bid = punks.auctions.prepareBid({ auctionId: 7n, amountWei: 150n })
     assert.equal(bid.request.functionName, 'bid')

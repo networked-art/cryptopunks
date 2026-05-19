@@ -436,16 +436,21 @@ export class PunksAuctionClient {
   prepareCreateLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
+    onlySellTo?: Address
   }): ContractWritePlan {
     const items = normalizeLotItems(params.items)
     assertWei('reserveWei', params.reserveWei)
+    const onlySellTo = params.onlySellTo ?? ZERO_ADDRESS
+    const privateLot = onlySellTo !== ZERO_ADDRESS
     return {
-      description: 'Create CryptoPunks auction lot',
+      description: privateLot
+        ? 'Create CryptoPunks auction lot for one buyer'
+        : 'Create CryptoPunks auction lot',
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'createLot',
-        args: [items, params.reserveWei],
+        args: [items, params.reserveWei, onlySellTo],
       },
     }
   }
@@ -453,6 +458,7 @@ export class PunksAuctionClient {
   createLot(params: {
     items: readonly LotItemInput[]
     reserveWei: bigint
+    onlySellTo?: Address
   }): Promise<TransactionHash> {
     return this.write(this.prepareCreateLot(params))
   }
@@ -460,15 +466,17 @@ export class PunksAuctionClient {
   prepareUpdateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
+    onlySellTo?: Address
   }): ContractWritePlan {
     assertWei('reserveWei', params.reserveWei)
+    const onlySellTo = params.onlySellTo ?? ZERO_ADDRESS
     return {
       description: `Update CryptoPunks lot ${params.lotId.toString()}`,
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'updateLot',
-        args: [BigInt(params.lotId), params.reserveWei],
+        args: [BigInt(params.lotId), params.reserveWei, onlySellTo],
       },
     }
   }
@@ -476,6 +484,7 @@ export class PunksAuctionClient {
   updateLot(params: {
     lotId: bigint | number
     reserveWei: bigint
+    onlySellTo?: Address
   }): Promise<TransactionHash> {
     return this.write(this.prepareUpdateLot(params))
   }

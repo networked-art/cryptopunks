@@ -169,6 +169,26 @@ await punks.auctions.cancelLot(7n)
 await punks.auctions.clearStaleLot(7n)
 ```
 
+Pass `onlySellTo` to restrict the initial buyer to a single address. Only
+that address may call `openAuction`, or be the offerer for an offer accepted
+via `acceptOfferFromLot` / `startAuctionFromOffer`. Once the auction is
+live, normal bidding rules apply — anyone can outbid.
+
+```ts
+await punks.auctions.createLot({
+  items: [{ punkId: 4156, weightBps: 10_000 }],
+  reserveWei: 250n * 10n ** 18n,
+  onlySellTo: '0xBuyer…',
+})
+
+// Lift or change the restriction later.
+await punks.auctions.updateLot({
+  lotId: 7n,
+  reserveWei: 260n * 10n ** 18n,
+  onlySellTo: '0x0000000000000000000000000000000000000000',
+})
+```
+
 Lots do not expire. `clearStaleLot` only removes lots that became invalid
 because custody or vault approval changed.
 
