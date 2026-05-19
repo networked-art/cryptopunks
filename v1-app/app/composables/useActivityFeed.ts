@@ -114,16 +114,30 @@ export function useActivityFeed(
     const kinds = toValue(opts.kinds)
     if (kinds && kinds.length) where.type_in = kinds
 
+    // Hide 0-wei `listing` rows — the V1 contract's `offerPunkForSaleToAddress`
+    // with minValue=0 is how punks get gifted/privately transferred, not a real
+    // listing. Cancellations are kept (they carry no listing_wei).
+    const hideZeroListings = {
+      OR: [{ type_not_in: ['listing'] }, { listing_wei_gt: '0' }],
+    }
+
     const address = toValue(opts.address)?.toLowerCase()
     if (address) {
-      where.OR = [
-        { actor: address },
-        { from: address },
-        { to: address },
-        { buyer: address },
-        { seller: address },
-        { bidder: address },
+      where.AND = [
+        {
+          OR: [
+            { actor: address },
+            { from: address },
+            { to: address },
+            { buyer: address },
+            { seller: address },
+            { bidder: address },
+          ],
+        },
+        hideZeroListings,
       ]
+    } else {
+      where.OR = hideZeroListings.OR
     }
 
     return Object.keys(where).length ? where : undefined
