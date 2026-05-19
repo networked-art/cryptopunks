@@ -30,6 +30,7 @@ const display = computed(() => {
   const n = Number(value.value)
   if (!Number.isFinite(n)) return value.value
   if (n === 0) return '0'
+  if (n >= 1_000_000) return formatCompactEther(wei.value, props.precision)
   const decimals = n >= 1000 ? 0 : n >= 1 ? 2 : props.precision
   return formatETH(n, decimals)
 })
