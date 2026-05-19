@@ -3,6 +3,7 @@
     <header class="search-bar">
       <FormInputGroup class="search-group">
         <input
+          ref="searchInput"
           v-model="text"
           type="search"
           class="search-input"
@@ -40,7 +41,7 @@
 
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
-import { refDebounced } from '@vueuse/core'
+import { onKeyStroke, refDebounced } from '@vueuse/core'
 import { isAddress, type Address } from 'viem'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
@@ -61,6 +62,24 @@ const LISTING_QUALIFIER =
 const WRAPPED_QUALIFIER = /(^|[\s,])(unwrap[a-z]*|wrap[a-z]*)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
+const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
+
+/// `/` is a global shortcut for "focus the search". Skip when the user is
+/// already typing into an editable element so the slash lands as a character.
+onKeyStroke('/', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+  const target = e.target as HTMLElement | null
+  if (
+    target?.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  )
+    return
+  e.preventDefault()
+  searchInput.value?.focus()
+  searchInput.value?.select()
+})
 
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing.
