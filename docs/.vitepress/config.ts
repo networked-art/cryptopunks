@@ -59,7 +59,18 @@ export default defineConfig({
             ],
           },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
-          { text: 'PunksMarket', link: '/contracts/punks-market' },
+          {
+            text: 'PunksMarket',
+            link: '/contracts/punks-market',
+            collapsed: false,
+            items: [
+              { text: 'Reference', link: '/contracts/punks-market/reference' },
+              {
+                text: 'UnwrapV1Punks',
+                link: '/contracts/punks-market/unwrap-v1-punks',
+              },
+            ],
+          },
         ],
       },
       {

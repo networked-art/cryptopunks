@@ -13,6 +13,9 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
   marketplace backgrounds, and ERC721-style metadata.
 - [PunksMarket](/contracts/punks-market) covers the criteria-bid market
   that wraps the broken June 2017 CryptoPunks contract.
+- [UnwrapV1Punks](/contracts/punks-market/unwrap-v1-punks) covers the batch
+  helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their
+  underlying Punks.
 
 ## SDK
 

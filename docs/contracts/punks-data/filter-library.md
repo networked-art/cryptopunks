@@ -46,7 +46,7 @@ struct Filter {
 A filter with every field zero matches every Punk — `Punks.isEmpty(filter)`
 returns `true` in that case. Consumers that need a closed allowlist
 typically pair an empty `Filter` with an explicit id list (see
-[PunksMarket bid matching](/contracts/punks-market#bid-matching)).
+[PunksMarket bid matching](/contracts/punks-market/reference#bid-matching)).
 
 ## Constants
 
@@ -255,7 +255,7 @@ When designing a new consumer:
   re-validate beyond what `PunksData.hasTraits` enforces on the trait masks.
 - Combine `Punks.Filter` with explicit id lists when the user needs a
   closed allowlist; the empty-filter + id-list pattern is the canonical
-  shape (see [PunksMarket bid matching](/contracts/punks-market#bid-matching)).
+  shape (see [PunksMarket bid matching](/contracts/punks-market/reference#bid-matching)).
 - Pin the `PunksData` address and verify
   [`datasetHash()`](/contracts/punks-data#trust-model) at deployment time
   if your contract is configurable.
