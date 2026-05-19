@@ -204,9 +204,8 @@
 import { type Address, type Hash, type TransactionReceipt } from 'viem'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
-import { V1_WRAPPER_ADDRESS, PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
+import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import { isLiveListingOwner } from '~/utils/listings'
-import { v1WrapperAbi } from '~/utils/v1WrapperAbi'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{
@@ -387,15 +386,7 @@ function actWithdrawProceeds() {
 }
 
 function actUnwrap() {
-  run({
-    description: `Unwrap CryptoPunk ${props.punkId}`,
-    request: {
-      address: V1_WRAPPER_ADDRESS,
-      abi: v1WrapperAbi,
-      functionName: 'unwrap',
-      args: [BigInt(props.punkId)],
-    },
-  })
+  run(sdk.value.v1Wrapper.prepareUnwrap(props.punkId))
 }
 </script>
 

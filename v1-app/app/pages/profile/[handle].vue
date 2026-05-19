@@ -43,6 +43,11 @@
       >
         <section class="profile-section">
           <h2 class="section-title">Owned punks</h2>
+          <UnwrapAllPunks
+            v-if="viewerOwnedAddress"
+            :owner="viewerOwnedAddress"
+            :owned="owned"
+          />
           <p
             v-if="ownedLoading"
             class="muted"
@@ -117,7 +122,7 @@
 
 <script setup lang="ts">
 import { getPublicClient } from '@wagmi/core'
-import { useConfig } from '@wagmi/vue'
+import { useAccount, useConfig } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/components.evm'
@@ -180,6 +185,17 @@ const {
   loading: ownedLoading,
   error: ownedError,
 } = useOwnedPunks(() => resolvedAddress.value ?? undefined)
+
+const { address: connectedAddress } = useAccount()
+
+/// Resolved profile address only when the connected wallet matches — gates
+/// the bulk-unwrap component so it only shows on the viewer's own profile.
+const viewerOwnedAddress = computed<Address | null>(() => {
+  const a = connectedAddress.value?.toLowerCase()
+  const r = resolvedAddress.value?.toLowerCase()
+  if (!a || !r || a !== r) return null
+  return resolvedAddress.value
+})
 </script>
 
 <style scoped>
