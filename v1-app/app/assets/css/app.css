@@ -118,8 +118,12 @@
 }
 
 @layer components {
+  .dialog {
+    --background: #fff;
+    --dialog-header-background: #fff;
+  }
+
   .tag {
-    cursor: pointer;
     transition:
       color var(--speed),
       background-color var(--speed),
@@ -127,26 +131,27 @@
     color: var(--muted) !important;
     text-transform: uppercase;
 
-    &.active,
-    &:hover,
-    &:focus {
-      color: var(--accent) !important;
-      box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+    &:not(.small) {
+      cursor: pointer;
+      min-block-size: var(--form-item-height);
 
-      button {
+      &.active,
+      &:hover,
+      &:focus {
         color: var(--accent) !important;
         box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+
+        button {
+          color: var(--accent) !important;
+          box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+        }
       }
     }
 
-    &:not(.small) {
-      min-block-size: var(--form-item-height);
-    }
-
     &.small {
-      padding: var(--size-1);
+      padding: 0 var(--size-1);
       min-block-size: var(--size-4);
-      font-size: var(--font-sm) !important;
+      font-size: var(--font-xs) !important;
     }
   }
 
