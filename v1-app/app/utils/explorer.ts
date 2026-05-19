@@ -1,9 +1,5 @@
 function explorerBase(): string {
-  const config = useAppConfig() as {
-    evm?: { chains?: Record<string, { blockExplorer?: string }> }
-  }
-  const base = config.evm?.chains?.mainnet?.blockExplorer ?? 'https://evm.now'
-  return base.replace(/\/$/, '')
+  return useBlockExplorer().replace(/\/$/, '')
 }
 
 export function txUrl(hash: string): string {
