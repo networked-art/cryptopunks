@@ -155,7 +155,7 @@ const KIND_LABEL: Record<string, string> = {
   gap: var(--size-3);
   align-items: center;
   padding: var(--size-3) var(--size-3);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--border);
   list-style: none;
 }
 

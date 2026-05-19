@@ -108,6 +108,7 @@
             v-for="b in matchingBids"
             :key="String(b.id)"
             :bid="b"
+            @withdrawn="refreshAll"
           />
         </div>
       </ClientOnly>
@@ -316,7 +317,7 @@ function searchHref(text: string) {
   align-items: baseline;
   gap: var(--size-2);
   padding: 4px 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .trait-kind {
@@ -374,7 +375,7 @@ function searchHref(text: string) {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }

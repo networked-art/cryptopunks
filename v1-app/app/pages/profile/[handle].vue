@@ -79,6 +79,7 @@
               v-for="b in bids"
               :key="String(b.id)"
               :bid="b"
+              @withdrawn="refreshBids"
             />
           </div>
           <p
@@ -166,7 +167,7 @@ useSeoMeta({
   twitterTitle: () => `${titleLabel.value} · punksmarket.xyz`,
 })
 
-const { bids } = usePunksMarketBids({
+const { bids, refresh: refreshBids } = usePunksMarketBids({
   bidder: () => resolvedAddress.value ?? undefined,
 })
 const { events: activity } = useActivityFeed({
@@ -238,7 +239,7 @@ const {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }

@@ -44,16 +44,68 @@
         >{{ matchCount.toLocaleString() }} matching punks</span
       >
     </div>
+
+    <footer
+      v-if="isOwnBid"
+      class="card-footer"
+    >
+      <EvmTransactionFlowDialog
+        chain="mainnet"
+        keep-open
+        skip-confirmation
+        :request="withdraw"
+        :text="dialogText"
+        @complete="onWithdrawn"
+      >
+        <template #start="{ start }">
+          <Button
+            class="small withdraw"
+            @click="start"
+          >
+            Withdraw
+          </Button>
+        </template>
+      </EvmTransactionFlowDialog>
+    </footer>
   </article>
 </template>
 
 <script setup lang="ts">
-import { formatSearchText, type PunkQuery } from '@networked-art/punks-sdk'
-import type { CollectionBid } from '~/composables/usePunksMarketBids'
+import type { Hash } from 'viem'
+import { useConnection } from '@wagmi/vue'
+import { formatSearchText } from '@networked-art/punks-sdk'
+import {
+  bidToQuery,
+  type CollectionBid,
+} from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
+const emit = defineEmits<{ withdrawn: [tx: Hash] }>()
 
 const offline = usePunksOffline()
+const { address } = useConnection()
+const { sdk } = usePunksSdk()
+const { execute } = useWritePlan()
+
+const isOwnBid = computed(
+  () =>
+    !!address.value &&
+    address.value.toLowerCase() === props.bid.bidder.toLowerCase(),
+)
+
+const dialogText = {
+  title: { confirm: 'Withdraw bid', waiting: 'Withdrawing bid' },
+  lead: { confirm: 'Cancel this collection bid and reclaim the escrowed ETH.' },
+  action: { confirm: 'Withdraw' },
+}
+
+function withdraw(): Promise<Hash> {
+  return execute(sdk.value.v1Market.prepareCancelBid(props.bid.id))
+}
+
+function onWithdrawn(receipt: { transactionHash: Hash }) {
+  emit('withdrawn', receipt.transactionHash)
+}
 
 const matchCount = computed(() => {
   try {
@@ -62,43 +114,6 @@ const matchCount = computed(() => {
     return null
   }
 })
-
-function bidToQuery(bid: CollectionBid): PunkQuery {
-  const c = bid.criteria
-  const query: PunkQuery = {}
-  if (
-    c.requiredTraitMask !== 0n ||
-    c.forbiddenTraitMask !== 0n ||
-    c.anyOfTraitMask !== 0n
-  ) {
-    query.attributes = {
-      requiredMask: c.requiredTraitMask,
-      forbiddenMask: c.forbiddenTraitMask,
-      anyOfMask: c.anyOfTraitMask,
-    }
-  }
-  if (
-    c.requiredColorMask !== 0n ||
-    c.forbiddenColorMask !== 0n ||
-    c.anyOfColorMask !== 0n
-  ) {
-    query.colors = {
-      requiredMask: c.requiredColorMask,
-      forbiddenMask: c.forbiddenColorMask,
-      anyOfMask: c.anyOfColorMask,
-    }
-  }
-  /// `max === 0` means "no constraint" in the on-chain `PunksFilter`.
-  if (c.maxPixelCount > 0) {
-    query.pixelCount = { min: c.minPixelCount, max: c.maxPixelCount }
-  }
-  if (c.maxColorCount > 0) {
-    query.colorCount = { min: c.minColorCount, max: c.maxColorCount }
-  }
-  if (bid.includeIds.length) query.ids = bid.includeIds
-  if (bid.excludeIds.length) query.excludeIds = bid.excludeIds
-  return query
-}
 
 /// Rebuild the front-end search query string that selects the same punks
 /// this bid covers. An empty result means the bid imposes no filter — link
@@ -125,7 +140,7 @@ const matchesLink = computed(() => {
   flex-direction: column;
   gap: var(--size-2);
   padding: var(--size-3);
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
   transition: border-color 0.1s;
@@ -166,5 +181,9 @@ const matchesLink = computed(() => {
 
 .matches-link:hover {
   color: var(--accent);
+}
+
+.withdraw {
+  align-self: flex-start;
 }
 </style>

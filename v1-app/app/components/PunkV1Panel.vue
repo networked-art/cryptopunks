@@ -390,7 +390,7 @@ function actUnwrap() {
   flex-direction: column;
   gap: var(--size-3);
   padding: var(--size-3);
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }
@@ -439,7 +439,7 @@ function actUnwrap() {
   display: flex;
   flex-direction: column;
   gap: var(--size-2);
-  border-top: 1px solid var(--border);
+  border-top: var(--border);
   padding-top: var(--size-3);
 }
 

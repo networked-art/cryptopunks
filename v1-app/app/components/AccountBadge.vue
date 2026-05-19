@@ -47,7 +47,7 @@ const dotColor = computed(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--border) inset;
+  box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
 .label {

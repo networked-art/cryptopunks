@@ -1,6 +1,6 @@
 import type { Address } from 'viem'
-import type { PunksFilter } from '@networked-art/punks-sdk'
-import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
+import type { PunksFilter, PunkQuery } from '@networked-art/punks-sdk'
+import { getIndexerUrl, IndexerNotConfigured } from '~/utils/indexer'
 
 export type CollectionBid = {
   id: bigint
@@ -14,39 +14,38 @@ export type CollectionBid = {
   placedAtBlock: bigint
 }
 
-type RawMarketBid = {
-  bid_id: string
+/// Shape returned by the indexer's `/bids` + `/bids/matching/*` endpoints.
+export type IndexerBid = {
+  bidId: string
   bidder: string
-  bid_wei: string
-  settlement_wei: string
+  bidWei: string
+  settlementWei: string
   active: boolean
-  block_number: string
-  criteria_json: string
-  include_ids_json: string
-  exclude_ids_json: string
+  blockNumber: string
+  criteria: IndexerBidCriteria
+  includeIds: number[]
+  excludeIds: number[]
 }
 
-const BIDS_QUERY = `
-  query MarketBids($where: marketBidFilter, $limit: Int!) {
-    marketBids(where: $where, orderBy: "bid_wei", orderDirection: "desc", limit: $limit) {
-      items {
-        bid_id
-        bidder
-        bid_wei
-        settlement_wei
-        active
-        block_number
-        criteria_json
-        include_ids_json
-        exclude_ids_json
-      }
-    }
-  }
-`
+export type IndexerBidCriteria = {
+  requiredTraitMask: string
+  forbiddenTraitMask: string
+  anyOfTraitMask: string
+  requiredColorMask: string
+  forbiddenColorMask: string
+  anyOfColorMask: string
+  minPixelCount: number
+  maxPixelCount: number
+  minColorCount: number
+  maxColorCount: number
+}
+
+const DEFAULT_LIMIT = 200
 
 export function usePunksMarketBids(
   opts: {
     bidder?: MaybeRefOrGetter<Address | undefined>
+    /// Whether to include inactive bids. Defaults to active-only.
     activeOnly?: boolean
     limit?: number
   } = {},
@@ -56,24 +55,23 @@ export function usePunksMarketBids(
   const error = ref<string | null>(null)
 
   async function load() {
+    const url = getIndexerUrl()
     pending.value = true
     error.value = null
     try {
-      const where: Record<string, unknown> = {}
-      if (opts.activeOnly !== false) where.active = true
+      if (!url) throw new IndexerNotConfigured()
 
-      const bidder = toValue(opts.bidder)?.toLowerCase()
-      if (bidder) where.bidder = bidder
+      const params = new URLSearchParams()
+      params.set('limit', String(opts.limit ?? DEFAULT_LIMIT))
+      if (opts.activeOnly !== false) params.set('active', 'true')
 
-      const data = await queryIndexer<{ marketBids: { items: RawMarketBid[] } }>(
-        BIDS_QUERY,
-        {
-          where: Object.keys(where).length ? where : undefined,
-          limit: opts.limit ?? 200,
-        },
-      )
+      const bidder = toValue(opts.bidder)
+      if (bidder) params.set('bidder', bidder)
 
-      bids.value = data.marketBids.items.map(mapBid)
+      const res = await fetch(`${url}/bids?${params.toString()}`)
+      if (!res.ok) throw new Error(`Indexer ${res.status}`)
+      const json = (await res.json()) as { items: IndexerBid[] }
+      bids.value = json.items.map(mapIndexerBid)
     } catch (e) {
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'
@@ -94,81 +92,70 @@ export function usePunksMarketBids(
   return { bids, pending, error, refresh: load }
 }
 
-function mapBid(row: RawMarketBid): CollectionBid {
+export function mapIndexerBid(row: IndexerBid): CollectionBid {
   return {
-    id: BigInt(row.bid_id),
+    id: BigInt(row.bidId),
     bidder: row.bidder as Address,
-    bidWei: BigInt(row.bid_wei),
-    settlementWei: BigInt(row.settlement_wei),
-    criteria: parseCriteria(row.criteria_json),
-    includeIds: parseIds(row.include_ids_json),
-    excludeIds: parseIds(row.exclude_ids_json),
+    bidWei: BigInt(row.bidWei),
+    settlementWei: BigInt(row.settlementWei),
+    criteria: parseCriteria(row.criteria),
+    includeIds: row.includeIds.map(Number),
+    excludeIds: row.excludeIds.map(Number),
     active: row.active,
-    placedAtBlock: BigInt(row.block_number),
+    placedAtBlock: BigInt(row.blockNumber),
   }
 }
 
-function parseIds(raw: string | null | undefined): number[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.map((n) => Number(n)) : []
-  } catch {
-    return []
-  }
-}
-
-function parseCriteria(raw: string | null | undefined): PunksFilter {
-  const empty: PunksFilter = {
-    requiredTraitMask: 0n,
-    forbiddenTraitMask: 0n,
-    anyOfTraitMask: 0n,
-    requiredColorMask: 0n,
-    forbiddenColorMask: 0n,
-    anyOfColorMask: 0n,
-    minPixelCount: 0,
-    maxPixelCount: 0,
-    minColorCount: 0,
-    maxColorCount: 0,
-  }
-  if (!raw) return empty
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    return {
-      requiredTraitMask: toBig(parsed.requiredTraitMask),
-      forbiddenTraitMask: toBig(parsed.forbiddenTraitMask),
-      anyOfTraitMask: toBig(parsed.anyOfTraitMask),
-      requiredColorMask: toBig(parsed.requiredColorMask),
-      forbiddenColorMask: toBig(parsed.forbiddenColorMask),
-      anyOfColorMask: toBig(parsed.anyOfColorMask),
-      minPixelCount: toInt(parsed.minPixelCount),
-      maxPixelCount: toInt(parsed.maxPixelCount),
-      minColorCount: toInt(parsed.minColorCount),
-      maxColorCount: toInt(parsed.maxColorCount),
-    }
-  } catch {
-    return empty
-  }
-}
-
-function toBig(value: unknown): bigint {
-  if (typeof value === 'bigint') return value
-  if (typeof value === 'number') return BigInt(value)
-  if (typeof value === 'string' && value.length > 0) {
-    try {
-      return BigInt(value)
-    } catch {
-      return 0n
+/// Rebuild the offline `PunkQuery` for a bid so we can count matches or
+/// link to the corresponding search page.
+export function bidToQuery(bid: CollectionBid): PunkQuery {
+  const c = bid.criteria
+  const query: PunkQuery = {}
+  if (
+    c.requiredTraitMask !== 0n ||
+    c.forbiddenTraitMask !== 0n ||
+    c.anyOfTraitMask !== 0n
+  ) {
+    query.attributes = {
+      requiredMask: c.requiredTraitMask,
+      forbiddenMask: c.forbiddenTraitMask,
+      anyOfMask: c.anyOfTraitMask,
     }
   }
-  return 0n
+  if (
+    c.requiredColorMask !== 0n ||
+    c.forbiddenColorMask !== 0n ||
+    c.anyOfColorMask !== 0n
+  ) {
+    query.colors = {
+      requiredMask: c.requiredColorMask,
+      forbiddenMask: c.forbiddenColorMask,
+      anyOfMask: c.anyOfColorMask,
+    }
+  }
+  /// `max === 0` means "no constraint" in the on-chain `PunksFilter`.
+  if (c.maxPixelCount > 0) {
+    query.pixelCount = { min: c.minPixelCount, max: c.maxPixelCount }
+  }
+  if (c.maxColorCount > 0) {
+    query.colorCount = { min: c.minColorCount, max: c.maxColorCount }
+  }
+  if (bid.includeIds.length) query.ids = bid.includeIds
+  if (bid.excludeIds.length) query.excludeIds = bid.excludeIds
+  return query
 }
 
-function toInt(value: unknown): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string' && value.length > 0) {
-    const n = Number(value)
-    return Number.isFinite(n) ? n : 0
+function parseCriteria(raw: IndexerBidCriteria | undefined): PunksFilter {
+  return {
+    requiredTraitMask: BigInt(raw?.requiredTraitMask ?? '0'),
+    forbiddenTraitMask: BigInt(raw?.forbiddenTraitMask ?? '0'),
+    anyOfTraitMask: BigInt(raw?.anyOfTraitMask ?? '0'),
+    requiredColorMask: BigInt(raw?.requiredColorMask ?? '0'),
+    forbiddenColorMask: BigInt(raw?.forbiddenColorMask ?? '0'),
+    anyOfColorMask: BigInt(raw?.anyOfColorMask ?? '0'),
+    minPixelCount: raw?.minPixelCount ?? 0,
+    maxPixelCount: raw?.maxPixelCount ?? 0,
+    minColorCount: raw?.minColorCount ?? 0,
+    maxColorCount: raw?.maxColorCount ?? 0,
   }
-  return 0
 }

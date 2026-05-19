@@ -1,174 +1,169 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-:root {
-  color-scheme: light;
+/*
+ * v1-app styles
+ *
+ * Extends @1001-digital/styles (loaded via layers.evm → layers.base).
+ * The cascade order — variables, reset, base, components, utilities — is
+ * declared in layers.base, so our `@layer` blocks slot in cleanly regardless
+ * of import order.
+ */
 
-  --font-mono:
-    'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo,
-    Consolas, monospace;
+@layer variables {
+  :root {
+    color-scheme: light;
 
-  --bg: #f0f0f3;
-  --bg-elevated: #f7f7f8;
-  --bg-soft: #f0f0f344;
-  --border: #e5e5ec;
-  --border-strong: #d0d0dc;
-  --text: #0a0a12;
-  --text-muted: #6a6a82;
-  --text-dim: #9a9ab0;
-  --accent: #a69aff;
-  --accent-strong: #5b46d8;
-  --accent-soft: #a69aff20;
-  --punk-bg: #648595;
+    /* Brand-driven overrides of the standard tokens layer components consume */
+    --background: #f0f0f3;
+    --color: #0a0a12;
+    --primary: #a69aff;
+    --muted: #6a6a82;
 
-  --radius: 6px;
-  --radius-sm: 3px;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+    /* Light-theme gray ramp the layer's component tokens key off of */
+    --gray-z-0: #f7f7f8;
+    --gray-z-2: #e5e5ec;
+    --gray-z-3: #d0d0dc;
+    --gray-z-5: #9a9ab0;
 
-  /* Layer form/border overrides — drive the styles from packages/styles
-     instead of re-defining input rules here. */
-  --input-background: var(--bg-elevated);
-  --input-background-highlight: var(--bg-elevated);
-  --border-color: var(--border-strong);
-  --border-color-highlight: var(--accent);
-  --border-radius: var(--radius-sm);
-  --border-radius-sm: var(--radius-sm);
-  --border-radius-lg: var(--radius);
-  --ui-padding-block: var(--space-2);
-  --ui-padding-inline: var(--space-3);
+    --border-color: var(--gray-z-3);
+    --border-color-highlight: var(--primary);
 
-  --tag-background: var(--gray-z-0);
-  --tag-border-radius: var(--radius-sm);
+    --border-radius-sm: 3px;
+    --border-radius: 3px;
+    --border-radius-lg: 6px;
 
-  --button-primary-background: #a69aff;
-  --button-primary-border-color: #a69aff;
-  --button-primary-color: #fff;
-  --button-primary-background-highlight: #b8aeff;
-  --button-primary-border-color-highlight: #b8aeff;
-  --button-primary-color-highlight: #fff;
-  --button-primary-font-weight: 600;
+    --font-family:
+      'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, 'SF Mono',
+      Menlo, Consolas, monospace;
+    --font-base: 14px;
+
+    /* Keep input highlight identical to rest */
+    --input-background: var(--gray-z-0);
+    --input-background-highlight: var(--gray-z-0);
+
+    --button-primary-background: var(--primary);
+    --button-primary-border-color: var(--primary);
+    --button-primary-color: #fff;
+    --button-primary-background-highlight: #b8aeff;
+    --button-primary-border-color-highlight: #b8aeff;
+    --button-primary-color-highlight: #fff;
+    --button-primary-font-weight: 600;
+
+    --tag-background: var(--gray-z-0);
+    --tag-border-radius: var(--border-radius-sm);
+
+    /* App-specific tokens (used directly throughout v1-app) */
+    --accent: var(--primary);
+    --accent-strong: #5b46d8;
+    --accent-soft: #a69aff20;
+    --punk-bg: #648595;
+
+    /* Convenience aliases — keep existing component CSS working */
+    --bg: var(--background);
+    --bg-elevated: var(--gray-z-0);
+    --text: var(--color);
+    --text-muted: var(--muted);
+    --text-dim: var(--gray-z-5);
+    --border-strong: var(--gray-z-3);
+    --font-mono: var(--font-family);
+    --radius: var(--border-radius-lg);
+    --radius-sm: var(--border-radius-sm);
+  }
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  body {
+    line-height: 1.5;
+  }
+
+  a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+@layer utilities {
+  .dim {
+    color: var(--text-dim);
+  }
+
+  .accent {
+    color: var(--accent);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-3);
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--size-4);
+    width: 100%;
+  }
+
+  .divider {
+    border: 0;
+    border-top: var(--border);
+    margin: var(--size-4) 0;
+  }
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-  transition:
-    color 0.1s,
-    border-color 0.1s;
-}
+@layer components {
+  .tag {
+    cursor: pointer;
+    transition:
+      color var(--speed),
+      background-color var(--speed),
+      box-shadow var(--speed);
+    color: var(--muted) !important;
+    text-transform: uppercase;
 
-a:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-.muted {
-  color: var(--text-muted);
-}
-
-.dim {
-  color: var(--text-dim);
-}
-
-.accent {
-  color: var(--accent);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: var(--size-3);
-}
-
-.col {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--size-4);
-  width: 100%;
-}
-
-.divider {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: var(--size-4) 0;
-}
-
-.tag {
-  cursor: pointer;
-  transition:
-    color var(--speed),
-    background-color var(--speed),
-    box-shadow var(--speed);
-
-  color: var(--muted) !important;
-  text-transform: uppercase;
-
-  &.active,
-  &:hover,
-  &:focus {
-    color: var(--accent) !important;
-    box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
-
-    button {
+    &.active,
+    &:hover,
+    &:focus {
       color: var(--accent) !important;
       box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+
+      button {
+        color: var(--accent) !important;
+        box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+      }
+    }
+
+    &:not(.small) {
+      min-block-size: var(--form-item-height);
+    }
+
+    &.small {
+      padding: var(--size-1);
+      min-block-size: var(--size-4);
+      font-size: var(--font-sm) !important;
     }
   }
 
-  &:not(.small) {
-    min-block-size: var(--form-item-height);
+  /* Tag's container uses `align-items: stretch` (so the dismiss button fills
+     the full height); span the label in a flex box to keep its text centered. */
+  .tag > span {
+    display: flex;
+    align-items: center;
   }
 
-  &.small {
-    padding: var(--size-1);
-    min-block-size: var(--size-4);
-    font-size: var(--font-sm) !important;
+  button.small {
+    font-size: var(--font-xs);
   }
-}
 
-/* Tag's container uses `align-items: stretch` (so the dismiss button fills the
-   full height); make the label span a flex box so its text stays centered. */
-.tag > span {
-  display: flex;
-  align-items: center;
-}
-
-.tag:hover {
-  color: var(--accent);
-  box-shadow: var(--border-shadow-highlight);
+  .card-footer {
+    margin: 0 calc(-1 * var(--size-3)) calc(-1 * var(--size-3));
+    padding: var(--size-3);
+    border-top: var(--border);
+  }
 }

@@ -65,7 +65,7 @@ function stripHexPrefix(hex: string) {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: 2px;
 }
 

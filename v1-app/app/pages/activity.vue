@@ -192,7 +192,7 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }

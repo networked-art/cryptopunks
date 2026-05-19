@@ -78,7 +78,7 @@ const viewProfile = (id: string) => {
 
 <style scoped>
 .site-header {
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--border);
   background: var(--bg);
   position: sticky;
   top: 0;

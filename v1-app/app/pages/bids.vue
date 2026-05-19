@@ -27,7 +27,7 @@
         Failed to load bids: {{ error }}
       </div>
       <div
-        v-else-if="!bids.length"
+        v-else-if="!fillableBids.length"
         class="empty muted"
       >
         No active collection bids yet.
@@ -37,9 +37,10 @@
         class="bid-grid"
       >
         <BidCard
-          v-for="bid in bids"
+          v-for="bid in fillableBids"
           :key="String(bid.id)"
           :bid="bid"
+          @withdrawn="refresh"
         />
       </div>
     </ClientOnly>
@@ -47,6 +48,8 @@
 </template>
 
 <script setup lang="ts">
+import { bidToQuery } from '~/composables/usePunksMarketBids'
+
 useSeoMeta({
   title: 'Bids · punksmarket.xyz',
   ogTitle: 'Bids · punksmarket.xyz',
@@ -54,6 +57,20 @@ useSeoMeta({
 })
 
 const { bids, pending, error, refresh } = usePunksMarketBids()
+
+/// Hide unfillable bids — criteria that match zero punks, or criteria the
+/// offline counter can't express (treated as invalid). The bidder still
+/// sees them on their own profile so they can withdraw.
+const offline = usePunksOffline()
+const fillableBids = computed(() =>
+  bids.value.filter((bid) => {
+    try {
+      return offline.count(bidToQuery(bid)) > 0
+    } catch {
+      return false
+    }
+  }),
+)
 </script>
 
 <style scoped>
@@ -87,7 +104,7 @@ const { bids, pending, error, refresh } = usePunksMarketBids()
 .empty {
   padding: var(--size-8);
   text-align: center;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-color);
   border-radius: var(--radius);
 }
 
