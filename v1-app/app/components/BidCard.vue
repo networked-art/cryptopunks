@@ -36,12 +36,12 @@
         v-if="matchesLink"
         class="muted matches-link"
         :to="matchesLink"
-        >{{ matchCount.toLocaleString() }} matching punks</NuxtLink
+        >{{ matchingPunksLabel }}</NuxtLink
       >
       <span
         v-else
         class="muted matches-link"
-        >{{ matchCount.toLocaleString() }} matching punks</span
+        >{{ matchingPunksLabel }}</span
       >
     </div>
 
@@ -124,6 +124,12 @@ const matchCount = computed(() => {
   } catch {
     return null
   }
+})
+
+const matchingPunksLabel = computed(() => {
+  const count = matchCount.value
+  if (count === null) return ''
+  return `${count.toLocaleString()} matching punk${count === 1 ? '' : 's'}`
 })
 
 /// Rebuild the front-end search query string that selects the same punks
