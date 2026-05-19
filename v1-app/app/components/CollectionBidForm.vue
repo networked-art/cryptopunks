@@ -5,6 +5,7 @@
     :request="placeBid"
     :text="dialogText"
     @complete="onComplete"
+    v-if="address"
   >
     <template #start="{ start }">
       <Button
