@@ -200,6 +200,7 @@ export async function deployUnwrapV1PunksStack() {
     PUNKS_V1_WRAPPER,
   )
 
+  await etchReverseRegistrar(connection)
   const unwrapper = await viem.deployContract('UnwrapV1Punks')
 
   return {

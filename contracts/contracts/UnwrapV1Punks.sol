@@ -3,6 +3,7 @@ pragma solidity 0.8.34;
 
 import "./interfaces/ICryptoPunksMarket.sol";
 import "./interfaces/IPunksV1Wrapper.sol";
+import "./interfaces/IReverseRegistrar.sol";
 
 /// @title  UnwrapV1Punks
 ///
@@ -34,6 +35,14 @@ contract UnwrapV1Punks {
 
     error NoPunkIds();
     error NotPunkOwner();
+
+    // ────────────────────────────── Construction ───────────────────────────────
+
+    /// @notice Sets the contract's primary ENS name.
+    constructor() {
+        IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
+            .setName("unwrap.punksmarket.eth");
+    }
 
     // ─────────────────────────────── Unwrapping ────────────────────────────────
 

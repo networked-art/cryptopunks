@@ -5,6 +5,7 @@ import {
   deployUnwrapV1PunksStack,
   PUNKS_V1_MARKET,
   PUNKS_V1_WRAPPER,
+  REVERSE_REGISTRAR,
 } from './helpers/fixtures.js'
 
 type Ctx = Awaited<ReturnType<typeof deployUnwrapV1PunksStack>>
@@ -39,6 +40,19 @@ describe('UnwrapV1Punks', () => {
     assert.equal(
       ((await unwrapper.read.PUNKS_V1()) as string).toLowerCase(),
       PUNKS_V1_MARKET.toLowerCase(),
+    )
+  })
+
+  it('claims its ENS primary name at deploy time', async () => {
+    const ctx = await deployUnwrapV1PunksStack()
+    const registrar = await ctx.viem.getContractAt(
+      'ReverseRegistrarMock',
+      REVERSE_REGISTRAR,
+    )
+    assert.equal(await registrar.read.lastName(), 'unwrap.punksmarket.eth')
+    assert.equal(
+      ((await registrar.read.lastCaller()) as string).toLowerCase(),
+      ctx.unwrapper.address.toLowerCase(),
     )
   })
 
