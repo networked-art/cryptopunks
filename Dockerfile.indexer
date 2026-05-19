@@ -6,7 +6,7 @@ FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY sdk/package.json ./sdk/
 COPY indexer/package.json ./indexer/
-RUN pnpm install --frozen-lockfile --filter indexer...
+RUN pnpm install --frozen-lockfile --filter @networked-art/punks-indexer...
 
 FROM deps AS build
 COPY sdk ./sdk

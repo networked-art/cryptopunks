@@ -1,6 +1,13 @@
-# CryptoPunks
+# Networked Punks
 
-Documentation for the onchain CryptoPunks data and rendering contracts.
+Developer documentation for the CryptoPunks contracts and the TypeScript SDK
+that wraps them. The contracts cover onchain trait and pixel data, the
+renderer, and a criteria-bid market that fixes the broken June 2017
+CryptoPunks contract. The SDK is the matching client surface: local search
+and rendering, original-market reads and writes, Stash custody, criterion
+offers, and auctions.
+
+All contracts target Ethereum mainnet only.
 
 ## Contracts
 

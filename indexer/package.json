@@ -1,5 +1,5 @@
 {
-  "name": "indexer",
+  "name": "@networked-art/punks-indexer",
   "private": true,
   "version": "0.0.0",
   "type": "module",
