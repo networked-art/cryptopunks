@@ -52,9 +52,9 @@
 import { bidToQuery } from '~/composables/usePunksMarketBids'
 
 useSeoMeta({
-  title: 'Bids · punksmarket.xyz',
-  ogTitle: 'Bids · punksmarket.xyz',
-  twitterTitle: 'Bids · punksmarket.xyz',
+  title: 'Bids · punksmarket.app',
+  ogTitle: 'Bids · punksmarket.app',
+  twitterTitle: 'Bids · punksmarket.app',
 })
 
 const { bids, pending, error, refresh } = usePunksMarketBids()

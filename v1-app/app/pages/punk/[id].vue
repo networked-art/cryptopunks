@@ -160,9 +160,9 @@ const id = computed(() => Number(route.params.id))
 const { backToSearchHref } = useSearchNavigation()
 
 useSeoMeta({
-  title: () => `Punk #${id.value} · punksmarket.xyz`,
-  ogTitle: () => `Punk #${id.value} · punksmarket.xyz`,
-  twitterTitle: () => `Punk #${id.value} · punksmarket.xyz`,
+  title: () => `Punk #${id.value} · punksmarket.app`,
+  ogTitle: () => `Punk #${id.value} · punksmarket.app`,
+  twitterTitle: () => `Punk #${id.value} · punksmarket.app`,
 })
 
 const offline = usePunksOffline()

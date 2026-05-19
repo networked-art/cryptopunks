@@ -184,9 +184,9 @@
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
 useSeoMeta({
-  title: 'About · punksmarket.xyz',
-  ogTitle: 'About · punksmarket.xyz',
-  twitterTitle: 'About · punksmarket.xyz',
+  title: 'About · punksmarket.app',
+  ogTitle: 'About · punksmarket.app',
+  twitterTitle: 'About · punksmarket.app',
 })
 </script>
 

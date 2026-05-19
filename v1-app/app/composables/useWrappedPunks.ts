@@ -78,9 +78,22 @@ export function useWrappedPunks() {
     return wrappedIds.value.has(id)
   }
 
+  /// Optimistic local removal after an onchain unwrap — the indexer takes a
+  /// few seconds to catch up, and we don't want the affected punks to keep
+  /// rendering with the wrapped tint in the meantime. A background refresh
+  /// converges with indexer truth.
+  function markUnwrapped(ids: number[]) {
+    if (ids.length === 0) return
+    const next = new Set(wrappedIds.value)
+    for (const id of ids) next.delete(id)
+    wrappedIds.value = next
+    void loadOnce(true)
+  }
+
   return {
     wrappedIds,
     isWrapped,
+    markUnwrapped,
     pending,
     error,
     loaded,

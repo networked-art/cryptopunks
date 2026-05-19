@@ -1,6 +1,6 @@
 export default defineAppConfig({
   evm: {
-    title: 'punksmarket.xyz',
+    title: 'punksmarket.app',
     inAppWallet: { enabled: true },
   },
 })

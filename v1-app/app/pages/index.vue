@@ -12,11 +12,11 @@ const query = computed(() =>
 useSeoMeta({
   title: () =>
     query.value
-      ? `${query.value} · punksmarket.xyz`
-      : 'Search · punksmarket.xyz',
-  ogTitle: () => (query.value ? `${query.value} · punksmarket.xyz` : 'punksmarket.xyz'),
+      ? `${query.value} · punksmarket.app`
+      : 'Search · punksmarket.app',
+  ogTitle: () => (query.value ? `${query.value} · punksmarket.app` : 'punksmarket.app'),
   twitterTitle: () =>
-    query.value ? `${query.value} · punksmarket.xyz` : 'punksmarket.xyz',
+    query.value ? `${query.value} · punksmarket.app` : 'punksmarket.app',
 })
 </script>
 

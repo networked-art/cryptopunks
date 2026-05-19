@@ -163,9 +163,9 @@ const titleLabel = computed(
   () => ensProfile.data.value?.ens ?? shortAddr.value,
 )
 useSeoMeta({
-  title: () => `${titleLabel.value} · punksmarket.xyz`,
-  ogTitle: () => `${titleLabel.value} · punksmarket.xyz`,
-  twitterTitle: () => `${titleLabel.value} · punksmarket.xyz`,
+  title: () => `${titleLabel.value} · punksmarket.app`,
+  ogTitle: () => `${titleLabel.value} · punksmarket.app`,
+  twitterTitle: () => `${titleLabel.value} · punksmarket.app`,
 })
 
 const { bids, refresh: refreshBids } = usePunksMarketBids({

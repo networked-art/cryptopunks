@@ -81,9 +81,9 @@
 import type { ActivityKind } from '~/composables/useActivityFeed'
 
 useSeoMeta({
-  title: 'Activity · punksmarket.xyz',
-  ogTitle: 'Activity · punksmarket.xyz',
-  twitterTitle: 'Activity · punksmarket.xyz',
+  title: 'Activity · punksmarket.app',
+  ogTitle: 'Activity · punksmarket.app',
+  twitterTitle: 'Activity · punksmarket.app',
 })
 
 type FilterKey =
