@@ -1,9 +1,16 @@
 import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 import { isLiveListingOwner } from '~/utils/listings'
+import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
+
+/// Only listings whose `onlySellTo` is the punksmarket.eth contract can be
+/// executed through this site — anything else (zero address open listings or
+/// listings privately directed elsewhere) is unreachable from our UI, so we
+/// drop them at the source instead of showing dead rows in the grid.
+const ONLY_SELL_TO = PUNKS_MARKET_ADDRESS.toLowerCase()
 
 const ACTIVE_LISTINGS_QUERY = `
-  query ActiveListings($limit: Int!, $after: String) {
-    listings(where: { active: true }, orderBy: "min_value_wei", orderDirection: "asc", limit: $limit, after: $after) {
+  query ActiveListings($onlySellTo: String!, $limit: Int!, $after: String) {
+    listings(where: { active: true, only_sell_to: $onlySellTo }, orderBy: "min_value_wei", orderDirection: "asc", limit: $limit, after: $after) {
       items {
         punk_id
         seller
@@ -65,7 +72,7 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
       while (hasNextPage) {
         const data: ActiveListingsData = await queryIndexer<ActiveListingsData>(
           ACTIVE_LISTINGS_QUERY,
-          { limit: PAGE_SIZE, after },
+          { onlySellTo: ONLY_SELL_TO, limit: PAGE_SIZE, after },
         )
         nextListings.push(...(await liveListings(data.listings.items)))
 
