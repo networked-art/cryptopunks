@@ -42,12 +42,12 @@
         class="profile-cols"
       >
         <section class="profile-section">
-          <h2 class="section-title">Owned punks</h2>
           <UnwrapAllPunks
-            v-if="viewerOwnedAddress"
+            v-if="viewerOwnedAddress && owned?.length > 1"
             :owner="viewerOwnedAddress"
             :owned="owned"
           />
+          <h2 class="section-title">Owned punks</h2>
           <p
             v-if="ownedLoading"
             class="muted"
@@ -164,9 +164,7 @@ const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
 )
 
-const titleLabel = computed(
-  () => ensProfile.data.value?.ens ?? shortAddr.value,
-)
+const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
 useSeoMeta({
   title: () => `${titleLabel.value} · punksmarket.app`,
   ogTitle: () => `${titleLabel.value} · punksmarket.app`,
