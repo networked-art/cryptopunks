@@ -29,6 +29,8 @@
 </template>
 
 <script setup lang="ts">
+import { WRAPPED_BG } from '~/composables/useWrappedPunks'
+
 const props = withDefaults(
   defineProps<{
     ids: number[]
@@ -38,8 +40,6 @@ const props = withDefaults(
   }>(),
   { size: 56, gap: 2, overscan: 6 },
 )
-
-import { WRAPPED_BG } from '~/composables/useWrappedPunks'
 
 const SPRITE_COLS = 100
 
