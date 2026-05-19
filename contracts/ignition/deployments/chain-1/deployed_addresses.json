@@ -3,5 +3,6 @@
   "PunksRenderer#PunksRenderer": "0x0955B58e38fA8794723AC7B5Ac99d2Df67D55741",
   "PunksVaultFactory#PunksVaultFactory": "0xf3381B259B2FE142c0A87bffF463695d935D6F66",
   "PunksVaultFactory#PunksVault": "0x5d646850ad7E7bDa91d83A182529e050785CfDC3",
-  "PunksMarket#PunksMarket": "0x64e507FEBF26521b73FbdfA533106B2042533218"
+  "PunksMarket#PunksMarket": "0x64e507FEBF26521b73FbdfA533106B2042533218",
+  "UnwrapV1Punks#UnwrapV1Punks": "0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346"
 }

@@ -1,0 +1,59 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-0daec85b914219e65d74c097d477b7e38e81b741",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.4.5"
+  },
+  "userSourceNameMap": {
+    "contracts/UnwrapV1Punks.sol": "project/contracts/UnwrapV1Punks.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": [],
+      "viaIR": true
+    },
+    "sources": {
+      "project/contracts/interfaces/ICryptoPunksMarket.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.34;\n\n/// @title  ICryptoPunksMarket\n///\n/// @notice Minimal surface of the original CryptoPunksMarket contract used by\n///         vaults, auctions, and bid books in this repo.\ninterface ICryptoPunksMarket {\n    /// @notice Active sell offer tuple from the original CryptoPunksMarket.\n    struct Offer {\n        bool isForSale;\n        uint256 punkIndex;\n        address seller;\n        uint256 minValue;\n        address onlySellTo;\n    }\n\n    // ─────────────────────────────────── Sales ──────────────────────────────────\n\n    /// @notice Returns sale details for a Punk.\n    function punksOfferedForSale(uint256 punkIndex)\n        external\n        view\n        returns (\n            bool isForSale,\n            uint256 punkIndex_,\n            address seller,\n            uint256 minValue,\n            address onlySellTo\n        );\n\n    /// @notice Returns the owner of a Punk.\n    function punkIndexToAddress(uint256 punkIndex) external view returns (address);\n\n    /// @notice Offers a Punk for public sale.\n    function offerPunkForSale(uint256 punkIndex, uint256 minSalePriceInWei) external;\n\n    /// @notice Offers a Punk for sale to one address.\n    function offerPunkForSaleToAddress(\n        uint256 punkIndex,\n        uint256 minSalePriceInWei,\n        address toAddress\n    ) external;\n\n    /// @notice Removes a Punk sale offer.\n    function punkNoLongerForSale(uint256 punkIndex) external;\n\n    /// @notice Buys a Punk that is offered for sale.\n    function buyPunk(uint256 punkIndex) external payable;\n\n    /// @notice Transfers a Punk to another address.\n    function transferPunk(address to, uint256 punkIndex) external;\n\n    // ─────────────────────────────────── Bids ───────────────────────────────────\n\n    /// @notice Places a bid on a Punk. The market locks `msg.value` and\n    ///         refunds any previously outbid bidder via `pendingWithdrawals`.\n    function enterBidForPunk(uint256 punkIndex) external payable;\n\n    /// @notice Withdraws the caller's standing bid on a Punk, returning the\n    ///         locked ETH to the caller.\n    function withdrawBidForPunk(uint256 punkIndex) external;\n\n    /// @notice Accepts the standing bid for a Punk at >= minPrice.\n    function acceptBidForPunk(uint256 punkIndex, uint256 minPrice) external;\n\n    // ───────────────────────────────── Proceeds ─────────────────────────────────\n\n    /// @notice Withdraws pending ETH from the Punk market.\n    function withdraw() external;\n\n    /// @notice ETH owed to `claimant` and awaiting withdrawal.\n    function pendingWithdrawals(address claimant) external view returns (uint256);\n}\n"
+      },
+      "project/contracts/interfaces/IPunksV1Wrapper.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.34;\n\n/// @title  IPunksV1Wrapper\n///\n/// @notice Minimal surface of the third-party `PunksV1Wrapper` ERC-721 deployed\n///         at `0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`. Wraps each broken\n///         C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ Punk as an ERC-721 with the same token id; `unwrap`\n///         burns the wrapper token and returns the underlying Punk to the\n///         caller.\ninterface IPunksV1Wrapper {\n    /// @notice Returns the wrapper-token owner of `tokenId`.\n    function ownerOf(uint256 tokenId) external view returns (address);\n\n    /// @notice Returns the per-token approval set for `tokenId`.\n    function getApproved(uint256 tokenId) external view returns (address);\n\n    /// @notice Returns whether `operator` is approved for all of `owner`'s tokens.\n    function isApprovedForAll(address owner, address operator) external view returns (bool);\n\n    /// @notice Burns the wrapper token and transfers the underlying Punk to\n    ///         the caller. Reverts unless the caller owns or is approved for\n    ///         `tokenId`.\n    function unwrap(uint256 tokenId) external;\n}\n"
+      },
+      "project/contracts/interfaces/IReverseRegistrar.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.34;\n\n/// @title  IReverseRegistrar\n/// @notice Minimal ENS Reverse Registrar surface used to set a contract's\n///         primary name from its constructor.\ninterface IReverseRegistrar {\n    function setName(string memory name) external returns (bytes32);\n}\n"
+      },
+      "project/contracts/UnwrapV1Punks.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.34;\n\nimport \"./interfaces/ICryptoPunksMarket.sol\";\nimport \"./interfaces/IPunksV1Wrapper.sol\";\nimport \"./interfaces/IReverseRegistrar.sol\";\n\n/// @title  UnwrapV1Punks\n///\n/// @notice Batch-unwraps `PunksV1Wrapper` ERC-721 tokens back into their\n///         underlying C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ in a single transaction.\n///\n///         The wrapper's `unwrap` releases the Punk to whoever called it, so\n///         the wrapped token's owner must first approve this contract on the\n///         wrapper (a one-time `setApprovalForAll(this, true)`). The caller\n///         must own every id in the batch.\n///\n/// @author 1001\ncontract UnwrapV1Punks {\n    // ───────────────────────────────── Storage ─────────────────────────────────\n\n    /// @notice The third-party C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ wrapper that custodies the underlying Punks.\n    IPunksV1Wrapper public immutable WRAPPER =\n        IPunksV1Wrapper(0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D);\n    /// @notice The bugged C̪̬̖ͬ̓͒r͔̻͖͑̓̾y̷̪̦ͥ̒͆͠p̸ṯ̘̜̊o̷̥P̫̦̊̐ͩ̚uǹ̇kͨ_̜̦̓̆s̙̪̼͉̈́ͦ market.\n    ICryptoPunksMarket public immutable PUNKS_V1 =\n        ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);\n\n    // ───────────────────────────────── Events ──────────────────────────────────\n\n    event PunksUnwrapped(address indexed caller, uint16[] punkIds);\n\n    // ───────────────────────────────── Errors ──────────────────────────────────\n\n    error NoPunkIds();\n    error NotPunkOwner();\n\n    // ────────────────────────────── Construction ───────────────────────────────\n\n    /// @notice Sets the contract's primary ENS name.\n    constructor() {\n        IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)\n            .setName(\"unwrap.punksmarket.eth\");\n    }\n\n    // ─────────────────────────────── Unwrapping ────────────────────────────────\n\n    /// @notice Burns each wrapper token in `punkIds` and transfers the\n    ///         underlying C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ to their owner.\n    /// @dev    The caller must own every id in the batch and must have\n    ///         approved this contract on the wrapper. Ownership is checked\n    ///         before each `unwrap` so a wrapper operator approval alone\n    ///         cannot be used to drain a holder.\n    /// @param  punkIds  Punks ids to unwrap.\n    function unwrap(uint16[] calldata punkIds) external {\n        uint256 len = punkIds.length;\n        if (len == 0) revert NoPunkIds();\n\n        for (uint256 i; i < len;) {\n            uint16 punkId = punkIds[i];\n            if (WRAPPER.ownerOf(punkId) != msg.sender) revert NotPunkOwner();\n            WRAPPER.unwrap(punkId);\n            PUNKS_V1.transferPunk(msg.sender, punkId);\n            unchecked {\n                ++i;\n            }\n        }\n\n        emit PunksUnwrapped(msg.sender, punkIds);\n    }\n}\n"
+      }
+    }
+  }
+}
