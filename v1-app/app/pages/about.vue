@@ -30,7 +30,7 @@
       </p>
       <p>
         Still, these are the first CryptoPunks LarvaLabs ever deployed — the
-        official release, retired only once the bug surfaced. Like a misprinted
+        initial release, retired only once the bug surfaced. Like a misprinted
         first edition or an error coin pulled from circulation, their value to
         collectors is historical: the artifact behind everything that came
         after.
@@ -125,8 +125,8 @@
           rel="noopener"
           ><code>cancelBid</code></a
         >
-        outright and reclaim the locked ETH. Nothing leaves the contract until a matching listing actually
-        settles.
+        outright and reclaim the locked ETH. Nothing leaves the contract until a
+        matching listing actually settles.
       </p>
       <p>
         Bids settle against live listings, not holders directly. A holder who
