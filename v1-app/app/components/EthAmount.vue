@@ -26,10 +26,8 @@ const display = computed(() => {
   const n = Number(value.value)
   if (!Number.isFinite(n)) return value.value
   if (n === 0) return '0'
-  if (n >= 1000)
-    return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
-  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-  return n.toLocaleString(undefined, { maximumFractionDigits: props.precision })
+  const decimals = n >= 1000 ? 0 : n >= 1 ? 2 : props.precision
+  return formatETH(n, decimals)
 })
 </script>
 
