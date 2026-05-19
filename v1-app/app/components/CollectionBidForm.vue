@@ -159,13 +159,17 @@ const canStart = computed(
   () => !!address.value && !compileError.value && matchCount.value > 0,
 )
 
-const dialogText = {
+const matchingPunksText = computed(
+  () => `matching punk${matchCount.value === 1 ? '' : 's'}`,
+)
+
+const dialogText = computed(() => ({
   title: { confirm: 'Place collection bid' },
   lead: {
-    confirm: 'Enter the amount of ETH you want to bid for the matching punks.',
+    confirm: `Enter the amount of ETH you want to bid for the ${matchingPunksText.value}.`,
   },
   action: { confirm: 'Place bid' },
-}
+}))
 
 async function placeBid(): Promise<Hash> {
   const slot =
