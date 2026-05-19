@@ -89,10 +89,10 @@ useSeoMeta({
 type FilterKey =
   | 'sales'
   | 'listings'
-  | 'transfers'
   | 'bids'
-  | 'wraps'
+  | 'transfers'
   | 'unwraps'
+  | 'wraps'
 
 const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
   { key: 'sales', label: 'Sales', kinds: ['sale'] },
