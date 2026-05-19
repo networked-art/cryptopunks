@@ -9,6 +9,9 @@ export const REVERSE_REGISTRAR =
 export const PUNKS_V1_MARKET =
   '0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D' as const
 
+export const PUNKS_V1_WRAPPER =
+  '0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D' as const
+
 export const PUNKS_DATA = '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as const
 
 export async function etchReverseRegistrar(connection: any): Promise<void> {
@@ -168,6 +171,49 @@ export async function deployPunksMarketStack() {
     settler,
     other,
     attacker,
+  }
+}
+
+export async function deployUnwrapV1PunksStack() {
+  const connection: any = await network.create()
+  const { viem } = connection
+  const [deployer, alice, bob, settler, other] = await viem.getWalletClients()
+
+  const punksV1Mock = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
+  const publicClient = await viem.getPublicClient()
+  await connection.networkHelpers.setCode(
+    PUNKS_V1_MARKET,
+    await publicClient.getCode({ address: punksV1Mock.address }),
+  )
+  const punksV1 = await viem.getContractAt(
+    'MockCryptoPunksMarketV1Buggy',
+    PUNKS_V1_MARKET,
+  )
+
+  const wrapperMock = await viem.deployContract('MockPunksV1Wrapper')
+  await connection.networkHelpers.setCode(
+    PUNKS_V1_WRAPPER,
+    await publicClient.getCode({ address: wrapperMock.address }),
+  )
+  const wrapper = await viem.getContractAt(
+    'MockPunksV1Wrapper',
+    PUNKS_V1_WRAPPER,
+  )
+
+  const unwrapper = await viem.deployContract('UnwrapV1Punks')
+
+  return {
+    connection,
+    viem,
+    publicClient,
+    punksV1,
+    wrapper,
+    unwrapper,
+    deployer,
+    alice,
+    bob,
+    settler,
+    other,
   }
 }
 
