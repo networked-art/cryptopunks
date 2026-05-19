@@ -15,8 +15,7 @@ proxy:
     - <%= ENV["INDEXER_HOST"] %>
   app_port: 42069
   healthcheck:
-    path: /status
-    # path: /ready
+    path: /ready
     interval: 5
     timeout: 3600
 
