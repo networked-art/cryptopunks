@@ -5,6 +5,7 @@ export default defineConfig({
   description: 'CryptoPunks documentation',
   appearance: false,
   head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     [
       'link',
