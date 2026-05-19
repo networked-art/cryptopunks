@@ -6,6 +6,9 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
 
 - [PunksData](/contracts/punks-data) covers trait masks, visual metrics,
   palette colors, indexed pixels, and dataset commitments.
+- [Punks library](/contracts/punks-library) covers the composite `Filter`
+  struct, mask builders, validators, and per-Punk predicates that consumer
+  contracts use to query `PunksData`.
 - [PunksRenderer](/contracts/punks-renderer) covers SVG, PNG-8, RGBA output,
   marketplace backgrounds, and ERC721-style metadata.
 - [PunksMarket](/contracts/punks-market) covers the criteria-bid market
