@@ -36,6 +36,7 @@ export const PUNKS_MARKET_START_BLOCK = 25_118_216
 // round-by-round reads; the aggregator below does.
 export const CHAINLINK_ETH_USD_AGGREGATOR =
   '0x37bC7498f4FF12C19678ee8fE19d713b87F6a9e6' as const
+export const CHAINLINK_ETH_USD_AGGREGATOR_START_BLOCK = 12_382_429n
 
 export const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as const

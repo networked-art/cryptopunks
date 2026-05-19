@@ -5,7 +5,10 @@ import type { Context } from 'ponder:registry'
 import { backfillMarker, ethUsdPrice } from 'ponder:schema'
 
 import { ChainlinkAggregatorAbi } from '../abis/ChainlinkAggregatorAbi'
-import { CHAINLINK_ETH_USD_AGGREGATOR } from '../utils/contracts'
+import {
+  CHAINLINK_ETH_USD_AGGREGATOR,
+  CHAINLINK_ETH_USD_AGGREGATOR_START_BLOCK,
+} from '../utils/contracts'
 
 const SECONDS_PER_DAY = 86_400n
 const WEI_PER_ETH = 1_000_000_000_000_000_000n
@@ -99,6 +102,10 @@ async function fetchAndCacheChainlinkAt(
   eventDay: bigint,
   block: { number: bigint; timestamp: bigint },
 ): Promise<bigint | null> {
+  // Aggregator wasn't deployed before this block — skip the readContract so
+  // ponder doesn't waste retry budget on a guaranteed empty response.
+  if (block.number < CHAINLINK_ETH_USD_AGGREGATOR_START_BLOCK) return null
+
   let answer: bigint
   try {
     const result = await context.client.readContract({
@@ -109,8 +116,6 @@ async function fetchAndCacheChainlinkAt(
     })
     answer = result[1]
   } catch {
-    // Chainlink ETH/USD aggregator wasn't deployed before mid-2021 — the
-    // call reverts for older blocks. Leave the event's USD null.
     return null
   }
 
