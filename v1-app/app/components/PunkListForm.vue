@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 import { formatEther, parseEther, type Hash } from 'viem'
-import { useAccount } from '@wagmi/vue'
+import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
 const props = defineProps<{
@@ -59,7 +59,7 @@ const emit = defineEmits<{ listed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { address } = useAccount()
+const { address } = useConnection()
 
 const priceEth = ref('')
 const priceWei = computed(() => parseEthSafe(priceEth.value))

@@ -203,7 +203,7 @@
 <script setup lang="ts">
 import { type Address, type Hash, type TransactionReceipt } from 'viem'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
-import { useAccount } from '@wagmi/vue'
+import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import { isLiveListingOwner } from '~/utils/listings'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
@@ -216,7 +216,7 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { address } = useAccount()
+const { address } = useConnection()
 
 const {
   owner,

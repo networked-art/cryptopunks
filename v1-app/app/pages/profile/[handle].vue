@@ -122,7 +122,7 @@
 
 <script setup lang="ts">
 import { getPublicClient } from '@wagmi/core'
-import { useAccount, useConfig } from '@wagmi/vue'
+import { useConnection, useConfig } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/components.evm'
@@ -184,7 +184,7 @@ const {
   error: ownedError,
 } = useOwnedPunks(() => resolvedAddress.value ?? undefined)
 
-const { address: connectedAddress } = useAccount()
+const { address: connectedAddress } = useConnection()
 
 /// Resolved profile address only when the connected wallet matches — gates
 /// the bulk-unwrap component so it only shows on the viewer's own profile.

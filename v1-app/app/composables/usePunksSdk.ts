@@ -4,7 +4,7 @@ import {
   type PunksSdk,
 } from '@networked-art/punks-sdk'
 import { getPublicClient, getWalletClient } from '@wagmi/core'
-import { useAccount, useConfig } from '@wagmi/vue'
+import { useConnection, useConfig } from '@wagmi/vue'
 import type { PublicClient, WalletClient } from 'viem'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
@@ -26,7 +26,7 @@ export function usePunksSdk() {
       : never
     : never
   const config = useConfig()
-  const { address } = useAccount()
+  const { address } = useConnection()
 
   const publicClient = computed(
     () => getPublicClient(config) as PublicClient | undefined,

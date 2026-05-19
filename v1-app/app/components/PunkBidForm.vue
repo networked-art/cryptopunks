@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { formatEther, parseEther, type Hash } from 'viem'
 import { emptyPunksFilter } from '@networked-art/punks-sdk'
-import { useAccount } from '@wagmi/vue'
+import { useConnection } from '@wagmi/vue'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{
@@ -60,7 +60,7 @@ const emit = defineEmits<{ placed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { address } = useAccount()
+const { address } = useConnection()
 
 const bidEth = ref('')
 const bidWei = computed(() => parseEthSafe(bidEth.value))

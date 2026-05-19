@@ -43,14 +43,14 @@
 
 <script setup lang="ts">
 import { isAddress, type Address, type Hash } from 'viem'
-import { useAccount } from '@wagmi/vue'
+import { useConnection } from '@wagmi/vue'
 
 const props = defineProps<{ punkId: number }>()
 const emit = defineEmits<{ transferred: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { address } = useAccount()
+const { address } = useConnection()
 
 const to = ref('')
 
