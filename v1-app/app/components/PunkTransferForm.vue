@@ -105,13 +105,6 @@ function onComplete(receipt: { transactionHash: Hash }) {
   min-width: 0;
 }
 
-.label {
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-}
-
 /* The resolved address/ENS that EvmAddressInput renders below the field
    is a 40-char hex string — left to default styles it pushes the modal
    wider than the viewport. Shrink it and let it wrap. */
