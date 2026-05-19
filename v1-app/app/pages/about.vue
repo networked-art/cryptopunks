@@ -113,15 +113,32 @@
         >, which escrows ETH on the contract — <code>bidWei</code> plus an
         optional <code>settlementWei</code> tip (which is zero by default).
         While a bid is live the bidder can move the price up or down with
-        <code>adjustBidPrice</code>, or cancel outright and reclaim the locked
-        ETH. Nothing leaves the contract until a matching listing actually
+        <a
+          href="https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218/code#249:274"
+          target="_blank"
+          rel="noopener"
+          ><code>adjustBidPrice</code></a
+        >, or
+        <a
+          href="https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218/code#238:247"
+          target="_blank"
+          rel="noopener"
+          ><code>cancelBid</code></a
+        >
+        outright and reclaim the locked ETH. Nothing leaves the contract until a matching listing actually
         settles.
       </p>
       <p>
         Bids settle against live listings, not holders directly. A holder who
         wants to take a bid lists the punk to PunksMarket; anyone — the bidder,
-        the holder, or a third party — can then call <code>acceptBid</code> to
-        clear the trade in a single transaction. The caller pockets
+        the holder, or a third party — can then call
+        <a
+          href="https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218/code#160:192"
+          target="_blank"
+          rel="noopener"
+          ><code>acceptBid</code></a
+        >
+        to clear the trade in a single transaction. The caller pockets
         <code>settlementWei</code>, which is what makes it worth running a bot
         to settle for strangers; the bidder receives the punk and any spread
         between bid and listing price.
