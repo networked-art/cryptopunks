@@ -1,0 +1,33 @@
+service: docs
+
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/docs
+
+servers:
+  web:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+    options:
+      network: shared
+
+proxy:
+  ssl: true
+  hosts:
+    - <%= ENV.fetch("DOCS_HOST", "docs.punksmarket.app") %>
+  app_port: 80
+  healthcheck:
+    path: /
+    interval: 5
+    timeout: 30
+
+registry:
+  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: ../Dockerfile.docs
+
+ssh:
+  user: root

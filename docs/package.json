@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
-    "preview": "vitepress preview"
+    "preview": "vitepress preview",
+    "kamal:setup": "set -a && . ./.env.production && set +a && kamal setup",
+    "kamal:deploy": "set -a && . ./.env.production && set +a && kamal deploy",
+    "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
   },
   "devDependencies": {
     "vitepress": "^1.6.3",
