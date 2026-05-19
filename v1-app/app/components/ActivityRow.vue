@@ -41,11 +41,11 @@
           </NuxtLink>
         </span>
         <span
-          v-if="event.to"
+          v-if="event.to && !sameParties"
           class="arrow"
           >→</span
         >
-        <span v-if="event.to">
+        <span v-if="event.to && !sameParties">
           <NuxtLink :to="`/profile/${event.to}`">
             <AccountBadge :address="event.to" />
           </NuxtLink>
@@ -86,6 +86,13 @@ const props = defineProps<{ event: ActivityEvent }>()
 const punkId = computed(() => props.event.punkId)
 const isMarketSale = computed(
   () => props.event.kind === 'sale' && props.event.source === 'punks_market',
+)
+
+const sameParties = computed(
+  () =>
+    !!props.event.from &&
+    !!props.event.to &&
+    props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
 
 const SPRITE_COLS = 100
