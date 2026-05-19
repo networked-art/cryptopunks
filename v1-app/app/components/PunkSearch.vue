@@ -10,8 +10,14 @@
           @keydown.enter="onEnter"
         />
         <ClientOnly>
+          <Button
+            v-if="ownerHandle"
+            :to="`/profile/${ownerHandle}`"
+          >
+            View profile
+          </Button>
           <CollectionBidForm
-            v-if="address"
+            v-else-if="address"
             :query="query"
           />
         </ClientOnly>
@@ -19,7 +25,8 @@
       <span class="muted result-count">
         {{ counts.filtered.toLocaleString()
         }}<span class="result-total">
-          / {{ counts.total.toLocaleString() }}</span>
+          / {{ counts.total.toLocaleString() }}</span
+        >
       </span>
     </header>
 
@@ -33,6 +40,7 @@
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
 import { refDebounced } from '@vueuse/core'
+import { isAddress, type Address } from 'viem'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
 const props = withDefaults(
@@ -97,8 +105,47 @@ watch(
 /// the shorthand without reading docs. See `@networked-art/punks-sdk`'s text
 /// language: trait names, `<n> colors / attributes / pixels`, `<tone> skin`,
 /// `#<id>`, `-<id>`, and the app-level `listings` / `wrapped` qualifiers.
+/// A bare address or `*.eth` handle switches to owner-search mode.
 const placeholder = computed(
-  () => `Try hoodie, listings, wrapped, 2 colors, #1234`,
+  () => `Try hoodie, 2 colors, franknftvault.eth, listed, #1234`,
+)
+
+/// Owner-search mode: when the *entire* trimmed input parses as an address
+/// or an ENS-like name, we treat it as "show this owner's punks" instead of
+/// running a trait-text search. Free-text mentions that happen to contain a
+/// dot still pass through to the SDK normally — only a single bare handle
+/// flips modes, which keeps the heuristic predictable.
+const ENS_HANDLE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i
+function detectOwnerHandle(input: string): string | null {
+  const v = input.trim()
+  if (!v) return null
+  if (isAddress(v)) return v
+  if (ENS_HANDLE.test(v) && /\.eth$/i.test(v)) return v
+  return null
+}
+
+/// `ownerHandle` drives the *view* (debounced) — `onEnter` reads `text`
+/// directly so a fast typer who hits Enter before the debounce fires still
+/// gets navigated to the profile.
+const ownerHandle = computed(() => detectOwnerHandle(debouncedText.value))
+
+const ensIdentifier = computed(() => {
+  const h = ownerHandle.value
+  if (!h || isAddress(h)) return undefined
+  return h
+})
+const { data: ensData } = useEns(ensIdentifier)
+
+const ownerAddress = computed<Address | undefined>(() => {
+  const h = ownerHandle.value
+  if (!h) return undefined
+  if (isAddress(h)) return h as Address
+  const resolved = ensData.value?.address
+  return resolved && isAddress(resolved) ? (resolved as Address) : undefined
+})
+
+const { ids: ownedIds, loading: ownedLoading } = useOwnedPunks(
+  () => ownerAddress.value,
 )
 
 /// `#rrggbb` (or `#rrggbbaa`) tokens in the search text translate into a
@@ -122,7 +169,19 @@ const parsedText = computed(() => {
 })
 
 const query = computed<PunkQuery>(() => {
+  const ownerMode = !!ownerHandle.value
+
   let ids: Iterable<number> | undefined = props.baseQuery?.ids
+  if (ownerMode) {
+    /// Hold the grid empty while the handle is still resolving or the owned
+    /// list is in flight — otherwise we'd briefly show the whole collection
+    /// (no constraint yet) or the previous owner's grid.
+    if (!ownerAddress.value || ownedLoading.value) {
+      ids = []
+    } else {
+      ids = intersectIds(ids, ownedIds.value)
+    }
+  }
   if (listingsOnly.value) ids = intersectIds(ids, listingIds.value)
 
   let excludeIds: Iterable<number> | undefined = props.baseQuery?.excludeIds
@@ -144,10 +203,13 @@ const query = computed<PunkQuery>(() => {
     ...props.baseQuery,
     ids,
     excludeIds,
-    text: parsedText.value.text,
-    colors: parsedText.value.colors
-      ? { required: parsedText.value.colors }
-      : undefined,
+    /// In owner mode the input is a handle, not a trait term — don't feed it
+    /// to the text search where it would always match zero.
+    text: ownerMode ? undefined : parsedText.value.text,
+    colors:
+      ownerMode || !parsedText.value.colors
+        ? undefined
+        : { required: parsedText.value.colors },
     sort: 'id',
   }
 })
@@ -166,6 +228,11 @@ const counts = computed(() => ({
 }))
 
 function onEnter() {
+  const handle = detectOwnerHandle(text.value)
+  if (handle) {
+    router.push(`/profile/${handle}`)
+    return
+  }
   const id = Number(text.value.trim())
   if (Number.isInteger(id) && id >= 0 && id <= 9999) {
     router.push(`/punk/${id}`)
