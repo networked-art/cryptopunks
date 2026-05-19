@@ -103,10 +103,11 @@ const spriteStyle = computed(() => {
     backgroundSize: `${SPRITE_COLS * SPRITE_SIZE}px ${SPRITE_COLS * SPRITE_SIZE}px`,
     backgroundPosition: `-${spriteCol * SPRITE_SIZE}px -${spriteRow * SPRITE_SIZE}px`,
   }
-  /// `event.wrapped` reflects the punk's wrap state at the moment of the
-  /// event (false for `wrap`/`unwrap` rows and any native-V1 event), so the
-  /// tint only appears when the punk was wrapped at the time.
-  if (props.event.wrapped) style.backgroundColor = WRAPPED_BG
+  /// `event.wrapped` is false for `wrap`/`unwrap` rows (the kind label
+  /// already says so); tint `wrap` rows too since the punk is now wrapped.
+  if (props.event.wrapped || props.event.kind === 'wrap') {
+    style.backgroundColor = WRAPPED_BG
+  }
   return style
 })
 
