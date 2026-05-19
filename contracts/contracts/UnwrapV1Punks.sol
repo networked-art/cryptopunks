@@ -13,8 +13,7 @@ import "./interfaces/IReverseRegistrar.sol";
 ///         The wrapper's `unwrap` releases the Punk to whoever called it, so
 ///         the wrapped token's owner must first approve this contract on the
 ///         wrapper (a one-time `setApprovalForAll(this, true)`). The caller
-///         must own every id in the batch — wrapper approvals alone are not
-///         enough to trigger an unwrap on someone else's tokens.
+///         must own every id in the batch.
 ///
 /// @author 1001
 contract UnwrapV1Punks {
@@ -47,12 +46,12 @@ contract UnwrapV1Punks {
     // ─────────────────────────────── Unwrapping ────────────────────────────────
 
     /// @notice Burns each wrapper token in `punkIds` and transfers the
-    ///         underlying C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ to the caller.
+    ///         underlying C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ to their owner.
     /// @dev    The caller must own every id in the batch and must have
     ///         approved this contract on the wrapper. Ownership is checked
     ///         before each `unwrap` so a wrapper operator approval alone
     ///         cannot be used to drain a holder.
-    /// @param  punkIds  Wrapper token ids to release to the caller.
+    /// @param  punkIds  Punks ids to unwrap.
     function unwrap(uint16[] calldata punkIds) external {
         uint256 len = punkIds.length;
         if (len == 0) revert NoPunkIds();
