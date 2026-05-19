@@ -104,11 +104,18 @@
         specifically <NuxtLink to="/?q=6980+6981">#6980 and #6981</NuxtLink>.
       </p>
       <p>
-        Bids escrow ETH on the contract — <code>bidWei</code> plus an optional
-        <code>settlementWei</code> tip, zero by default. While a bid is live the
-        bidder can move the price up or down with <code>adjustBidPrice</code>,
-        or cancel outright and reclaim the locked ETH. Nothing leaves the
-        contract until a matching listing actually settles.
+        Bidders open a position with
+        <a
+          href="https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218/code#194:236"
+          target="_blank"
+          rel="noopener"
+          ><code>placeBid</code></a
+        >, which escrows ETH on the contract — <code>bidWei</code> plus an
+        optional <code>settlementWei</code> tip (which is zero by default).
+        While a bid is live the bidder can move the price up or down with
+        <code>adjustBidPrice</code>, or cancel outright and reclaim the locked
+        ETH. Nothing leaves the contract until a matching listing actually
+        settles.
       </p>
       <p>
         Bids settle against live listings, not holders directly. A holder who
