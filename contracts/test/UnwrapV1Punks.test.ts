@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { zeroAddress } from 'viem'
+import { parseEther, zeroAddress } from 'viem'
 import {
   deployUnwrapV1PunksStack,
   PUNKS_V1_MARKET,
@@ -234,5 +234,138 @@ describe('UnwrapV1Punks', () => {
       (await punksV1.read.punkIndexToAddress([701n])) as string,
       zeroAddress,
     )
+  })
+
+  describe('defensive', () => {
+    it('reverts on duplicate ids in the same batch without partial state changes', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { wrapper, punksV1, unwrapper, alice } = ctx
+
+      await seedWrapped(ctx, alice, 801n)
+      const wrapperForAlice = await wrapperAs(ctx, alice)
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
+
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      // First iteration burns the wrapper token; the second's ownerOf reverts.
+      await assert.rejects(unwrapperForAlice.write.unwrap([[801, 801]]))
+
+      assert.equal(
+        ((await wrapper.read.ownerOf([801n])) as string).toLowerCase(),
+        alice.account.address.toLowerCase(),
+      )
+      assert.equal(
+        (
+          (await punksV1.read.punkIndexToAddress([801n])) as string
+        ).toLowerCase(),
+        wrapper.address.toLowerCase(),
+      )
+    })
+
+    it('refuses direct ETH transfers (no receive/fallback)', async () => {
+      const { unwrapper, alice } = await deployUnwrapV1PunksStack()
+      await assert.rejects(
+        alice.sendTransaction({
+          to: unwrapper.address,
+          value: parseEther('1'),
+        }),
+      )
+    })
+
+    it('reverts cleanly when ownership shifts between approval and call', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { wrapper, unwrapper, alice, bob } = ctx
+
+      await seedWrapped(ctx, alice, 901n)
+      const wrapperForAlice = await wrapperAs(ctx, alice)
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
+      // Frontrun: alice transfers (or someone yanks) the wrapped token away.
+      await wrapperForAlice.write.transferFrom([
+        alice.account.address,
+        bob.account.address,
+        901n,
+      ])
+
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      await ctx.viem.assertions.revertWithCustomError(
+        unwrapperForAlice.write.unwrap([[901]]),
+        unwrapper,
+        'NotPunkOwner',
+      )
+    })
+
+    it('reverts when the caller revokes wrapper approval before calling', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { unwrapper, alice } = ctx
+
+      await seedWrapped(ctx, alice, 911n)
+      const wrapperForAlice = await wrapperAs(ctx, alice)
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, false])
+
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      // Ownership check passes (alice still owns it), but the wrapper's
+      // own auth check rejects this contract.
+      await assert.rejects(unwrapperForAlice.write.unwrap([[911]]))
+    })
+
+    it('reverts on an id that was never wrapped', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { unwrapper, alice } = ctx
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      // 1234 was never minted on the wrapper; ownerOf reverts before our check.
+      await assert.rejects(unwrapperForAlice.write.unwrap([[1234]]))
+    })
+
+    it('rolls back the entire batch if a later id fails the owner check', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { wrapper, punksV1, unwrapper, alice, bob } = ctx
+
+      await seedWrapped(ctx, alice, 921n)
+      await seedWrapped(ctx, bob, 922n)
+
+      const wrapperForAlice = await wrapperAs(ctx, alice)
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
+
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      // 921 is alice's, 922 is bob's. Whole batch must revert; alice's token
+      // must not be silently burned.
+      await ctx.viem.assertions.revertWithCustomError(
+        unwrapperForAlice.write.unwrap([[921, 922]]),
+        unwrapper,
+        'NotPunkOwner',
+      )
+
+      assert.equal(
+        ((await wrapper.read.ownerOf([921n])) as string).toLowerCase(),
+        alice.account.address.toLowerCase(),
+      )
+      assert.equal(
+        (
+          (await punksV1.read.punkIndexToAddress([921n])) as string
+        ).toLowerCase(),
+        wrapper.address.toLowerCase(),
+      )
+    })
+
+    it('handles a large batch without per-iteration state leakage', async () => {
+      const ctx = await deployUnwrapV1PunksStack()
+      const { wrapper, punksV1, unwrapper, alice } = ctx
+
+      const ids = Array.from({ length: 100 }, (_, i) => 1000 + i)
+      for (const id of ids) await seedWrapped(ctx, alice, BigInt(id))
+
+      const wrapperForAlice = await wrapperAs(ctx, alice)
+      await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
+
+      const unwrapperForAlice = await unwrapperAs(ctx, alice)
+      await unwrapperForAlice.write.unwrap([ids])
+
+      assert.equal(await punksV1.read.balanceOf([unwrapper.address]), 0n)
+      assert.equal(await punksV1.read.balanceOf([wrapper.address]), 0n)
+      assert.equal(
+        await punksV1.read.balanceOf([alice.account.address]),
+        BigInt(ids.length),
+      )
+    })
   })
 })
