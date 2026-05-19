@@ -94,21 +94,30 @@
         combinations.
       </p>
       <p>
-        Bids match against the sealed
+        Each bid declares a filter, matched at settle time against the sealed
         <a href="https://evm.now/address/punksdata.eth">PunksData contract</a>
-        — plus optional include and exclude id lists. Bid on any
+        — plus optional include and exclude id lists. For example, you can bid
+        on any
         <NuxtLink to="/?q=female+albino+wild+white"
           >wild white albino Female</NuxtLink
         >, every <NuxtLink to="/?q=alien+-635">Alien except #635</NuxtLink>, or
         specifically <NuxtLink to="/?q=6980+6981">#6980 and #6981</NuxtLink>.
       </p>
       <p>
-        Bids settle against live listings, not against holders directly. A
-        holder who wants to take a bid lists the punk to PunksMarket; anyone —
-        the bidder, the holder, or a third party — can then call
-        <code>acceptBid</code> to clear the trade. The caller earns
-        <code>settlementWei</code>, an optional settle incentive; the bidder
-        receives the punk and any spread between bid and listing price.
+        Bids escrow ETH on the contract — <code>bidWei</code> plus an optional
+        <code>settlementWei</code> tip, zero by default. While a bid is live the
+        bidder can move the price up or down with <code>adjustBidPrice</code>,
+        or cancel outright and reclaim the locked ETH. Nothing leaves the
+        contract until a matching listing actually settles.
+      </p>
+      <p>
+        Bids settle against live listings, not holders directly. A holder who
+        wants to take a bid lists the punk to PunksMarket; anyone — the bidder,
+        the holder, or a third party — can then call <code>acceptBid</code> to
+        clear the trade in a single transaction. The caller pockets
+        <code>settlementWei</code>, which is what makes it worth running a bot
+        to settle for strangers; the bidder receives the punk and any spread
+        between bid and listing price.
       </p>
     </section>
 
@@ -238,7 +247,7 @@ useSeoMeta({
 }
 
 .contract-meta a code {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .credit {
@@ -255,18 +264,18 @@ code {
 }
 
 a code {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .about-section p a,
 .about-section ol a {
-  color: var(--accent);
+  color: var(--accent-strong);
   border-bottom: 1px solid var(--accent-soft);
   text-decoration: none;
 }
 
 .about-section p a:hover,
 .about-section ol a:hover {
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--accent-strong);
 }
 </style>
