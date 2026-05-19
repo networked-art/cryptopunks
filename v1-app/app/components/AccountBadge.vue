@@ -1,32 +1,29 @@
 <template>
-  <span class="account-badge">
-    <span
-      class="dot"
-      :style="{ background: dotColor }"
-    />
-    <span class="label">{{ displayName }}</span>
-  </span>
+  <EvmAccount
+    :address="address"
+    resolve-ens
+  >
+    <template #default="{ display }">
+      <span class="account-badge">
+        <span
+          class="dot"
+          :style="{ background: dotColor }"
+        />
+        <span class="label">{{ display }}</span>
+      </span>
+    </template>
+  </EvmAccount>
 </template>
 
 <script setup lang="ts">
 import type { Address } from 'viem'
-import { shortAddress } from '@1001-digital/components.evm'
 
 const props = defineProps<{
   address: Address
 }>()
 
-const { data } = useEnsWithAvatar(() => props.address)
-
-const displayName = computed(
-  () => data.value?.ens || shortAddress(props.address),
-)
-
 // Cheap deterministic color from address for the dot.
-const dotColor = computed(() => {
-  const hex = props.address.slice(2, 8)
-  return `#${hex}`
-})
+const dotColor = computed(() => `#${props.address.slice(2, 8)}`)
 </script>
 
 <style scoped>
@@ -36,9 +33,9 @@ const dotColor = computed(() => {
   gap: 6px;
   font-size: 12px;
   padding: 2px 8px;
-  border: 1px solid var(--border-strong);
   border-radius: 99px;
-  background: var(--bg-elevated);
+  background: var(--tag-background);
+  box-shadow: var(--border-shadow);
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
