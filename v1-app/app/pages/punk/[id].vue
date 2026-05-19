@@ -1,7 +1,7 @@
 <template>
   <div class="container punk-page">
     <NuxtLink
-      to="/"
+      :to="backToSearchHref"
       class="back muted"
       >← back to search</NuxtLink
     >
@@ -148,8 +148,16 @@ import {
   type SkinToneName,
 } from '@networked-art/punks-sdk'
 
+definePageMeta({
+  middleware(_to, from) {
+    const { rememberSearchFrom } = useSearchNavigation()
+    rememberSearchFrom(from)
+  },
+})
+
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
+const { backToSearchHref } = useSearchNavigation()
 
 useSeoMeta({
   title: () => `Punk #${id.value} · punksmarket.xyz`,
