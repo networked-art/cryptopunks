@@ -90,6 +90,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (lot.reserveWei != expectedReserveWei) {
             revert ReserveMismatch(expectedReserveWei, lot.reserveWei);
         }
+        if (lot.onlySellTo != address(0) && lot.onlySellTo != msg.sender) {
+            revert BuyerNotAllowed(lot.onlySellTo);
+        }
 
         uint96 bidWei = _checkedUint96(msg.value);
         if (bidWei < lot.reserveWei) revert ReserveNotMet();
@@ -141,6 +144,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
         }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
+        if (lot.onlySellTo != address(0) && lot.onlySellTo != offer.offerer) {
+            revert BuyerNotAllowed(lot.onlySellTo);
+        }
 
         LotItem[] memory items = lotItems[lotId];
         if (offer.slots.length != items.length) revert SlotItemCountMismatch();
@@ -198,6 +204,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
         }
         if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
+        if (lot.onlySellTo != address(0) && lot.onlySellTo != offer.offerer) {
+            revert BuyerNotAllowed(lot.onlySellTo);
+        }
 
         LotItem[] memory items = lotItems[lotId];
         if (offer.slots.length != items.length) revert SlotItemCountMismatch();

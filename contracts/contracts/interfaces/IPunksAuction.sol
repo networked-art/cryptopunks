@@ -41,10 +41,12 @@ interface IPunksAuction {
 
     /// @notice Scalar fields for a seller lot.
     /// @dev    Dynamic item details are emitted as `LotItemDetail` and read
-    ///         through `getLotItems`.
+    ///         through `getLotItems`. `onlySellTo`, when non-zero, restricts
+    ///         which address may be the initial buyer of the lot.
     struct Lot {
         address seller;
         uint96 reserveWei;
+        address onlySellTo;
         uint8 itemCount;
         bytes32 itemHash;
     }
@@ -78,7 +80,8 @@ interface IPunksAuction {
         address indexed seller,
         bytes32 indexed itemHash,
         uint8 itemCount,
-        uint96 reserveWei
+        uint96 reserveWei,
+        address onlySellTo
     );
 
     /// @notice Emitted once for each Punk stored on a newly created lot.
@@ -96,8 +99,8 @@ interface IPunksAuction {
     /// @notice Emitted when anyone clears a lot that is no longer valid.
     event LotCleared(uint256 indexed lotId, address indexed cleaner);
 
-    /// @notice Emitted when a seller updates a lot reserve.
-    event LotUpdated(uint256 indexed lotId, uint96 reserveWei);
+    /// @notice Emitted when a seller updates a lot's reserve or `onlySellTo`.
+    event LotUpdated(uint256 indexed lotId, uint96 reserveWei, address onlySellTo);
 
     /// @notice Emitted when a lot becomes a live auction.
     event AuctionInitialised(
@@ -221,6 +224,7 @@ interface IPunksAuction {
     error ReserveMismatch(uint96 expectedReserveWei, uint96 actualReserveWei);
     error ReserveNotMet();
     error OfferAmountBelowMinimum(uint96 minAmountWei, uint96 actualAmountWei);
+    error BuyerNotAllowed(address allowed);
 
     error AuctionDoesNotExist();
     error AuctionNotActive();
@@ -231,13 +235,16 @@ interface IPunksAuction {
     // ─────────────────────────────────── Lots ───────────────────────────────────
 
     /// @notice Creates a lot of one or more Punks that can be opened as an auction.
+    /// @dev    Pass `address(0)` for `onlySellTo` to make the lot public; pass
+    ///         a non-zero address to restrict the initial buyer to that address.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei
+        uint96 reserveWei,
+        address onlySellTo
     ) external returns (uint256 lotId);
 
-    /// @notice Updates the reserve price for your lot.
-    function updateLot(uint256 lotId, uint96 reserveWei) external;
+    /// @notice Updates the reserve and the allowed initial buyer for your lot.
+    function updateLot(uint256 lotId, uint96 reserveWei, address onlySellTo) external;
 
     /// @notice Cancels your lot.
     function cancelLot(uint256 lotId) external;

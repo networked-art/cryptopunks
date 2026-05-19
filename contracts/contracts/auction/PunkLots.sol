@@ -37,7 +37,8 @@ abstract contract PunkLots is IPunksAuction {
     ///         this auction as operator, surfacing misconfiguration up front.
     function createLot(
         LotItem[] calldata items,
-        uint96 reserveWei
+        uint96 reserveWei,
+        address onlySellTo
     ) external returns (uint256 id) {
         if (reserveWei == 0) revert InvalidAmount();
         _requireAuctionApproved(msg.sender);
@@ -53,11 +54,12 @@ abstract contract PunkLots is IPunksAuction {
         lots[id] = Lot({
             seller: msg.sender,
             reserveWei: reserveWei,
+            onlySellTo: onlySellTo,
             itemCount: itemCount,
             itemHash: itemHash
         });
 
-        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei);
+        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, onlySellTo);
 
         LotItem[] storage storedItems = lotItems[id];
         for (uint256 i; i < itemCount;) {
@@ -73,15 +75,16 @@ abstract contract PunkLots is IPunksAuction {
     }
 
     /// @inheritdoc IPunksAuction
-    function updateLot(uint256 id, uint96 reserveWei) external {
+    function updateLot(uint256 id, uint96 reserveWei, address onlySellTo) external {
         Lot storage lot = lots[id];
         if (lot.seller == address(0)) revert LotNotFound();
         if (lot.seller != msg.sender) revert NotSeller();
         if (reserveWei == 0) revert InvalidAmount();
 
         lot.reserveWei = reserveWei;
+        lot.onlySellTo = onlySellTo;
 
-        emit LotUpdated(id, reserveWei);
+        emit LotUpdated(id, reserveWei, onlySellTo);
     }
 
     /// @inheritdoc IPunksAuction
