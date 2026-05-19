@@ -123,7 +123,7 @@ import {
 } from '@networked-art/punks-sdk'
 
 const indexer = new PunksV1MarketIndexerClient({
-  baseUrl: 'https://v1-punks-indexer.example/api',
+  baseUrl: 'https://indexer.example/api',
 })
 
 const facade = new PunksV1MarketFacade({

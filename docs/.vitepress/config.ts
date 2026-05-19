@@ -54,6 +54,7 @@ export default defineConfig({
             ],
           },
           { text: 'PunksRenderer', link: '/contracts/punks-renderer' },
+          { text: 'PunksMarket', link: '/contracts/punks-market' },
         ],
       },
       {

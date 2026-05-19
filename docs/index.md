@@ -8,6 +8,8 @@ Documentation for the onchain CryptoPunks data and rendering contracts.
   palette colors, indexed pixels, and dataset commitments.
 - [PunksRenderer](/contracts/punks-renderer) covers SVG, PNG-8, RGBA output,
   marketplace backgrounds, and ERC721-style metadata.
+- [PunksMarket](/contracts/punks-market) covers the criteria-bid market
+  that wraps the broken June 2017 CryptoPunks contract.
 
 ## SDK
 
