@@ -48,7 +48,7 @@
               v-if="!isDirectedToPunksMarket"
               class="warn"
             >
-              Not directed to PunksMarket — settlement uses raw V1.
+              Listing not directed to PunksMarket.sol.
             </div>
           </div>
           <div v-else-if="staleListing">
@@ -131,9 +131,8 @@
 
         <template v-else>
           <Button
-            v-if="liveListing"
+            v-if="liveListing && canBuy"
             class="primary"
-            :disabled="!canBuy"
             @click="actBuy"
           >
             Buy · <EthAmount :wei="liveListing.priceWei" />
@@ -142,7 +141,9 @@
             v-if="liveListing && !canBuy"
             class="warn"
           >
-            Listing not directed to PunksMarket — refusing to buy via raw V1.
+            General listings shouldn't be made for safety reasons so in the
+            spirit of education you can't process them through PunksMarket.sol.
+            <NuxtLink to="/about">Learn more</NuxtLink>.
           </p>
           <p
             v-else-if="staleListing"
@@ -188,11 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  type Address,
-  type Hash,
-  type TransactionReceipt,
-} from 'viem'
+import { type Address, type Hash, type TransactionReceipt } from 'viem'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useAccount } from '@wagmi/vue'
 import { V1_WRAPPER_ADDRESS, PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
@@ -433,6 +430,10 @@ function actUnwrap() {
   font-size: 10px;
   color: #b8761c;
   margin-top: 4px;
+
+  a {
+    color: var(--accent-strong);
+  }
 }
 
 .panel-actions {
