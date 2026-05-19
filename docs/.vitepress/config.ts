@@ -21,9 +21,7 @@ export default defineConfig({
   ],
   themeConfig: {
     aside: false,
-    nav: [
-      { text: 'punksdata.eth', link: 'https://evm.now/address/punksdata.eth' },
-    ],
+    nav: [{ text: 'punksmarket.app', link: 'https://punksmarket.app' }],
     outline: false,
     sidebar: [
       {
