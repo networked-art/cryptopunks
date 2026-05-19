@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'NETWORKED PUNKS',
-  description: 'Developer documentation for the CryptoPunks data, renderer, and market contracts, plus the TypeScript SDK that wraps them.',
+  title: 'PUNKS SDK',
+  description:
+    'Developer documentation for the CryptoPunks data, renderer, and market contracts, plus the TypeScript SDK that wraps them.',
   appearance: false,
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
@@ -21,7 +22,10 @@ export default defineConfig({
   ],
   themeConfig: {
     aside: false,
-    nav: [{ text: 'punksmarket.app', link: 'https://punksmarket.app' }],
+    nav: [
+      { text: 'github', link: 'https://github.com/networked-art/cryptopunks' },
+      { text: 'punksmarket.app', link: 'https://punksmarket.app' },
+    ],
     outline: false,
     sidebar: [
       {

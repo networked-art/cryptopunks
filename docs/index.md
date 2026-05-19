@@ -1,4 +1,4 @@
-# Networked Punks
+# Punks SDK
 
 Developer documentation for the CryptoPunks contracts and the TypeScript SDK
 that wraps them. The contracts cover onchain trait and pixel data, the
