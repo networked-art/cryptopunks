@@ -4,8 +4,9 @@
     class="bulk-unwrap"
   >
     <p class="lead">
-      You hold {{ wrappedOwned.length }} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎. Release them to the
-      Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟Market to list, transfer, or accept bids.
+      You hold {{ wrappedOwned.length }} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎. Unwrap them to
+      own the actual token (currently the token is owned by the wrapper), to
+      list, transfer, or accept bids.
     </p>
     <div class="cta-row">
       <Button
@@ -19,7 +20,12 @@
         v-if="!isApproved && !approvalPending"
         class="hint"
       >
-        First time? Two signatures: a one-time approval, then the batch.
+        First time? Two signatures: a one-time approval to
+        <a
+          href="https://evm.now/address/0x6d263b22d1b2feb93881af6ff57666efa5a8f346/code"
+          target="_blank"
+          >UnwrapV1Punks.sol</a
+        >, then the batch.
       </span>
     </div>
   </div>
@@ -46,9 +52,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { isWrapped, markUnwrapped } = useWrappedPunks()
 
-const wrappedOwned = computed(() =>
-  props.owned.filter((id) => isWrapped(id)),
-)
+const wrappedOwned = computed(() => props.owned.filter((id) => isWrapped(id)))
 
 const isApproved = ref(false)
 const approvalPending = ref(true)
