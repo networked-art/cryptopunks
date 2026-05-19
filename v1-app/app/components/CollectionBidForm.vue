@@ -98,8 +98,10 @@ function parseEthSafe(input: unknown): bigint | null {
 
 /// Strip pagination/sort before handing the query to `compileOfferSlot` —
 /// those fields are not part of the onchain filter and the SDK rejects them.
-const compileInput = computed<PunkQuery | null>(() => {
-  if (!props.query) return null
+/// No `query` prop means a collection-wide bid: an empty filter matching
+/// every punk.
+const compileInput = computed<PunkQuery>(() => {
+  if (!props.query) return {}
   const { sort: _s, offset: _o, limit: _l, ...rest } = props.query
   return rest
 })
