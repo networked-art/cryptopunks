@@ -19,10 +19,18 @@
         :key="cell.id"
         :to="`/punk/${cell.id}`"
         class="cell"
+        :class="{ 'has-price-row': hasPriceRow }"
         :style="cellStyle(cell)"
         :title="`Punk #${cell.id}`"
       >
         <span class="cell-id">{{ cell.id }}</span>
+        <EthAmount
+          v-if="cell.priceWei"
+          class="cell-price"
+          :wei="cell.priceWei"
+          :precision="2"
+          compact
+        />
       </NuxtLink>
     </div>
   </div>
@@ -37,13 +45,16 @@ const props = withDefaults(
     size?: number
     gap?: number
     overscan?: number
+    pricesById?: ReadonlyMap<number, string>
   }>(),
   { size: 56, gap: 2, overscan: 6 },
 )
 
 const SPRITE_COLS = 100
+const PRICE_LABEL_HEIGHT = 16
 
 const { isWrapped } = useWrappedPunks()
+const hasPriceRow = computed(() => !!props.pricesById)
 
 const containerRef = ref<HTMLElement | null>(null)
 /// Where the visible window starts/ends inside the grid, in content
@@ -69,7 +80,10 @@ const colStep = computed(() => {
   if (cols.value <= 1) return props.size
   return (containerWidth.value - props.size) / (cols.value - 1)
 })
-const rowStep = computed(() => props.size + props.gap)
+const priceRowHeight = computed(() =>
+  hasPriceRow.value ? PRICE_LABEL_HEIGHT : 0,
+)
+const rowStep = computed(() => props.size + priceRowHeight.value + props.gap)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() => rows.value * rowStep.value)
 
@@ -97,13 +111,20 @@ const end = computed(() =>
 )
 
 const visible = computed(() => {
-  const out: { id: number; row: number; col: number }[] = []
+  const out: { id: number; row: number; col: number; priceWei?: string }[] = []
   const colCount = cols.value
   for (let r = start.value; r < end.value; r++) {
     for (let c = 0; c < colCount; c++) {
       const i = r * colCount + c
       if (i >= props.ids.length) break
-      out.push({ id: props.ids[i]!, row: r, col: c })
+      const id = props.ids[i]!
+      const priceWei = props.pricesById?.get(id)
+      out.push({
+        id,
+        row: r,
+        col: c,
+        priceWei,
+      })
     }
   }
   return out
@@ -117,7 +138,8 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     top: `${c.row * rowStep.value}px`,
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
-    height: `${px}px`,
+    height: `${props.size + priceRowHeight.value}px`,
+    '--price-label-height': `${PRICE_LABEL_HEIGHT}px`,
     backgroundImage: "url('/punks-glitched.png')",
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
@@ -207,10 +229,14 @@ onBeforeUnmount(() => {
 
 .cell {
   position: absolute;
+  box-sizing: border-box;
   image-rendering: pixelated;
   border: 0;
   border-radius: 3px;
+  background-clip: content-box;
+  background-origin: content-box;
   background-repeat: no-repeat;
+  color: inherit;
   transition: transform 0.08s ease;
 }
 
@@ -220,6 +246,10 @@ onBeforeUnmount(() => {
   z-index: 5;
   outline: 2px solid #000;
   background-color: var(--background);
+}
+
+.cell.has-price-row {
+  padding-bottom: var(--price-label-height);
 }
 
 .cell-id {
@@ -236,9 +266,30 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.cell.has-price-row .cell-id {
+  bottom: var(--price-label-height);
+}
+
 .cell:hover .cell-id,
 .cell:focus-visible .cell-id {
   opacity: 1;
+}
+
+.cell-price {
+  position: absolute;
+  inset: auto 0 0;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--price-label-height);
+  overflow: hidden;
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--price-label-height);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .empty {
