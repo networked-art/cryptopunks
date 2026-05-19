@@ -28,6 +28,20 @@ export const STASH_FACTORY_ADDRESS =
 export const PUNKS_V1_MARKET_ENS = 'punksmarket.eth'
 export const PUNKS_V1_MARKET_ADDRESS =
   '0x0000000000000000000000000000000000000000' as Address
+/// Third-party ERC-721 wrapper that custodies the broken June 2017
+/// Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ one-to-one. Wrapping moves the underlying Punk into this
+/// contract and mints the matching token; unwrapping burns it and releases
+/// the Punk to the caller.
+export const PUNKS_V1_WRAPPER_ADDRESS =
+  '0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D' as Address
+/// Stateless `UnwrapV1Punks` batch helper at `unwrap.punksmarket.eth`. The
+/// wrapper has no native batch-unwrap, so this helper pulls each wrapper
+/// token from the caller, calls `unwrap`, and forwards the underlying Punk
+/// to the caller. Callers must first
+/// `setApprovalForAll(UNWRAP_V1_PUNKS_ADDRESS, true)` on the V1 wrapper.
+export const UNWRAP_V1_PUNKS_ENS = 'unwrap.punksmarket.eth'
+export const UNWRAP_V1_PUNKS_ADDRESS =
+  '0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346' as Address
 export const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as Address
 

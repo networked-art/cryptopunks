@@ -11,6 +11,8 @@ export {
   stashAbi,
   punksAuctionAbi,
   punksV1MarketAbi,
+  punksV1WrapperAbi,
+  unwrapV1PunksAbi,
   punkVaultAbi,
   punkVaultFactoryAbi,
 } from './abi'
@@ -46,6 +48,9 @@ export {
   STASH_FACTORY_ADDRESS,
   PUNKS_V1_MARKET_ADDRESS,
   PUNKS_V1_MARKET_ENS,
+  PUNKS_V1_WRAPPER_ADDRESS,
+  UNWRAP_V1_PUNKS_ADDRESS,
+  UNWRAP_V1_PUNKS_ENS,
   PUNKS_PER_BITMAP_WORD,
   PUNK_COUNT,
   PUNK_HEIGHT,
@@ -87,6 +92,11 @@ export type {
   PunksV1MarketConfig,
   V1MarketBid,
 } from './v1-market'
+export {
+  PunksV1WrapperClient,
+  createPunksV1WrapperClient,
+} from './v1-wrapper'
+export type { PunksV1WrapperConfig } from './v1-wrapper'
 export {
   PunksV1MarketFacade,
   PunksV1MarketIndexerClient,
