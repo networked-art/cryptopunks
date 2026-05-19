@@ -86,10 +86,21 @@ useSeoMeta({
   twitterTitle: 'Activity · punksmarket.xyz',
 })
 
-type FilterKey = 'sales' | 'transfers' | 'bids' | 'wraps' | 'unwraps'
+type FilterKey =
+  | 'sales'
+  | 'listings'
+  | 'transfers'
+  | 'bids'
+  | 'wraps'
+  | 'unwraps'
 
 const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
   { key: 'sales', label: 'Sales', kinds: ['sale'] },
+  {
+    key: 'listings',
+    label: 'Listings',
+    kinds: ['listing', 'listing_cancelled'],
+  },
   { key: 'transfers', label: 'Transfers', kinds: ['transfer'] },
   {
     key: 'bids',
