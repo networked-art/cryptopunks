@@ -33,6 +33,7 @@
     <PunkGrid
       :ids="ids"
       :size="size"
+      :prices-by-id="gridPricesById"
     />
   </section>
 </template>
@@ -67,7 +68,9 @@ const debouncedText = refDebounced(text, 80)
 const qualifiers = computed(() => extractQualifiers(debouncedText.value))
 const listingsOnly = computed(() => qualifiers.value.listingsOnly)
 const wrappedOnly = computed(() => qualifiers.value.wrappedOnly)
-const { ids: listingIds } = useListedPunks(() => listingsOnly.value)
+const { ids: listingIds, priceById: listingPriceById } = useListedPunks(
+  () => listingsOnly.value,
+)
 const { wrappedIds: wrappedSet, loaded: wrappedLoaded } = useWrappedPunks()
 
 /// The input is the single source of truth — URL is a derived persistence
@@ -216,11 +219,16 @@ const query = computed<PunkQuery>(() => {
 
 const ids = computed(() => {
   try {
-    return offline.search(query.value)
+    const matches = offline.search(query.value)
+    return listingsOnly.value ? matches.sort(compareListingPrice) : matches
   } catch {
     return []
   }
 })
+
+const gridPricesById = computed(() =>
+  listingsOnly.value ? listingPriceById.value : undefined,
+)
 
 const counts = computed(() => ({
   total: offline.dataset.count(props.baseQuery),
@@ -275,6 +283,16 @@ function intersectIds(
 
 function sortedFromSet(set: ReadonlySet<number>): readonly number[] {
   return Array.from(set).sort((a, b) => a - b)
+}
+
+function compareListingPrice(a: number, b: number) {
+  const priceA = listingPriceById.value.get(a)
+  const priceB = listingPriceById.value.get(b)
+  if (priceA === priceB) return a - b
+  if (priceA === undefined) return 1
+  if (priceB === undefined) return -1
+  const diff = BigInt(priceA) - BigInt(priceB)
+  return diff < 0n ? -1 : diff > 0n ? 1 : a - b
 }
 </script>
 

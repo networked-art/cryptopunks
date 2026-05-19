@@ -3,10 +3,11 @@ import { isLiveListingOwner } from '~/utils/listings'
 
 const ACTIVE_LISTINGS_QUERY = `
   query ActiveListings($limit: Int!, $after: String) {
-    listings(where: { active: true }, orderBy: "punk_id", orderDirection: "asc", limit: $limit, after: $after) {
+    listings(where: { active: true }, orderBy: "min_value_wei", orderDirection: "asc", limit: $limit, after: $after) {
       items {
         punk_id
         seller
+        min_value_wei
       }
       pageInfo {
         hasNextPage
@@ -31,7 +32,7 @@ const PAGE_SIZE = 1000
 
 type ActiveListingsData = {
   listings: {
-    items: { punk_id: string; seller: string }[]
+    items: { punk_id: string; seller: string; min_value_wei: string }[]
     pageInfo: { hasNextPage: boolean; endCursor: string | null }
   }
 }
@@ -44,6 +45,7 @@ type ListingOwnersData = {
 
 export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
   const ids = ref<number[]>([])
+  const priceById = ref(new Map<number, string>())
   const pending = ref(false)
   const error = ref<string | null>(null)
   const loaded = ref(false)
@@ -56,7 +58,7 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
     error.value = null
 
     try {
-      const nextIds: number[] = []
+      const nextListings: LiveListing[] = []
       let after: string | null = null
       let hasNextPage = true
 
@@ -65,14 +67,17 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
           ACTIVE_LISTINGS_QUERY,
           { limit: PAGE_SIZE, after },
         )
-        nextIds.push(...(await liveListingIds(data.listings.items)))
+        nextListings.push(...(await liveListings(data.listings.items)))
 
         hasNextPage = data.listings.pageInfo.hasNextPage
         after = data.listings.pageInfo.endCursor
         if (hasNextPage && !after) throw new Error('Indexer pagination failed')
       }
 
-      ids.value = nextIds
+      ids.value = nextListings.map((listing) => listing.id)
+      priceById.value = new Map(
+        nextListings.map((listing) => [listing.id, listing.priceWei]),
+      )
       loaded.value = true
     } catch (e) {
       if (e instanceof IndexerNotConfigured) {
@@ -81,6 +86,7 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
         error.value = (e as Error).message
       }
       ids.value = []
+      priceById.value = new Map()
       loaded.value = false
     } finally {
       pending.value = false
@@ -93,6 +99,7 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
 
   return {
     ids,
+    priceById,
     pending,
     error,
     loaded,
@@ -100,7 +107,12 @@ export function useListedPunks(enabled: MaybeRefOrGetter<boolean> = true) {
   }
 }
 
-async function liveListingIds(
+type LiveListing = {
+  id: number
+  priceWei: string
+}
+
+async function liveListings(
   listings: ActiveListingsData['listings']['items'],
 ) {
   if (!listings.length) return []
@@ -116,5 +128,8 @@ async function liveListingIds(
 
   return listings
     .filter((row) => isLiveListingOwner(row.seller, ownerById.get(row.punk_id)))
-    .map((row) => Number(row.punk_id))
+    .map((row) => ({
+      id: Number(row.punk_id),
+      priceWei: row.min_value_wei,
+    }))
 }
