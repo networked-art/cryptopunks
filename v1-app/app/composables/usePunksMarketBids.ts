@@ -54,19 +54,33 @@ export function usePunksMarketBids(
   const pending = ref(false)
   const error = ref<string | null>(null)
 
+  /// Callers that pass a `bidder` getter (e.g. the profile page) want
+  /// *only* that bidder's bids — never fall back to fetching the whole
+  /// book while the address resolves.
+  const bidderScoped = 'bidder' in opts
+
   async function load() {
     const url = getIndexerUrl()
+
+    const params = new URLSearchParams()
+    params.set('limit', String(opts.limit ?? DEFAULT_LIMIT))
+    if (opts.activeOnly !== false) params.set('active', 'true')
+
+    if (bidderScoped) {
+      const bidder = toValue(opts.bidder)
+      if (!bidder) {
+        bids.value = []
+        error.value = null
+        pending.value = false
+        return
+      }
+      params.set('bidder', bidder)
+    }
+
     pending.value = true
     error.value = null
     try {
       if (!url) throw new IndexerNotConfigured()
-
-      const params = new URLSearchParams()
-      params.set('limit', String(opts.limit ?? DEFAULT_LIMIT))
-      if (opts.activeOnly !== false) params.set('active', 'true')
-
-      const bidder = toValue(opts.bidder)
-      if (bidder) params.set('bidder', bidder)
 
       const res = await fetch(`${url}/bids?${params.toString()}`)
       if (!res.ok) throw new Error(`Indexer ${res.status}`)
