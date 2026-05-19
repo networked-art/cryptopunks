@@ -1,0 +1,18 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--size-4);
+  width: 100%;
+}

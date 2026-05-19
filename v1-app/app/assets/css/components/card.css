@@ -1,0 +1,5 @@
+.card-footer {
+  margin: 0 calc(-1 * var(--size-3)) calc(-1 * var(--size-3));
+  padding: var(--size-3);
+  border-top: var(--border);
+}

@@ -1,0 +1,8 @@
+body {
+  line-height: 1.5;
+}
+
+a:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
