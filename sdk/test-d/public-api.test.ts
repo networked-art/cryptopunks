@@ -214,3 +214,24 @@ punks.wrappers.legacy.transferOwnership
 punks.wrappers.legacy.prepareRenounceOwnership
 // @ts-expect-error Legacy wrapper ownership admin write is intentionally not public.
 punks.wrappers.legacy.renounceOwnership
+
+// V1 wrapper surface — third-party PunksV1Wrapper + UnwrapV1Punks batch helper.
+const v1WrapperOwner: Promise<Address> = punks.v1Wrapper.ownerOf(4156)
+const v1WrapperApproved: Promise<boolean> = punks.v1Wrapper.isApprovedForAll(
+  owner,
+  operator,
+)
+const v1WrapperBatchReady: Promise<boolean> =
+  punks.v1Wrapper.isBatchUnwrapApproved(owner)
+const v1WrapPlan: ContractWritePlan = punks.v1Wrapper.prepareWrap(4156)
+const v1UnwrapPlan: ContractWritePlan = punks.v1Wrapper.prepareUnwrap(4156)
+const v1UnwrapTx: Promise<TransactionHash> = punks.v1Wrapper.unwrap(4156)
+const v1BatchApprovePlan: ContractWritePlan =
+  punks.v1Wrapper.prepareApproveBatchUnwrap()
+const v1BatchUnwrapPlan: ContractWritePlan = punks.v1Wrapper.prepareUnwrapBatch([
+  4156, 7804,
+])
+const v1BatchFlow: Promise<ContractWritePlan[]> =
+  punks.v1Wrapper.prepareUnwrapBatchFlow({ owner, punkIds: [4156, 7804] })
+const v1BatchFlowTxs: Promise<TransactionHash[]> =
+  punks.v1Wrapper.unwrapBatchFlow({ owner, punkIds: [4156, 7804] })
