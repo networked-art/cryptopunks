@@ -48,7 +48,7 @@ const router = useRouter()
 const { address } = useConnection()
 const LISTING_QUALIFIER =
   /(^|[\s,])(?:for\s+sale|on\s+sale|lis[a-z]*|sale)(?=$|[\s,])/gi
-const WRAPPED_QUALIFIER = /(^|[\s,])(unwrapped|wrapped)(?=$|[\s,])/gi
+const WRAPPED_QUALIFIER = /(^|[\s,])(unwrap[a-z]*|wrap[a-z]*)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
@@ -184,7 +184,7 @@ function extractQualifiers(input: string) {
       return prefix ? prefix : ''
     })
     .replace(WRAPPED_QUALIFIER, (_match, prefix: string, kw: string) => {
-      wrappedOnly = kw.toLowerCase() === 'wrapped'
+      wrappedOnly = !/^un/i.test(kw)
       return prefix ? prefix : ''
     })
     .replace(/\s*,\s*,+/g, ', ')
