@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
+import { WRAPPED_BG } from '~/composables/useWrappedPunks'
 import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{ event: ActivityEvent }>()
@@ -105,7 +106,7 @@ const spriteStyle = computed(() => {
   /// `event.wrapped` reflects the punk's wrap state at the moment of the
   /// event (false for `wrap`/`unwrap` rows and any native-V1 event), so the
   /// tint only appears when the punk was wrapped at the time.
-  if (props.event.wrapped) style.backgroundColor = '#a69aff'
+  if (props.event.wrapped) style.backgroundColor = WRAPPED_BG
   return style
 })
 

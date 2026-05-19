@@ -41,6 +41,8 @@
 </template>
 
 <script setup lang="ts">
+import { WRAPPED_BG } from '~/composables/useWrappedPunks'
+
 const props = withDefaults(
   defineProps<{
     punkId: number
@@ -68,7 +70,6 @@ const props = withDefaults(
 const offline = usePunksOffline()
 const { isWrapped: isWrappedSet } = useWrappedPunks()
 
-const WRAPPED_BG = '#a69aff'
 const wrappedTint = computed(() =>
   props.wrapped ?? isWrappedSet(props.punkId),
 )

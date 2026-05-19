@@ -1,5 +1,7 @@
 import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
+export const WRAPPED_BG = '#a69aff'
+
 const WRAPPED_QUERY = `
   query WrappedPunks($limit: Int!, $after: String) {
     punks(where: { is_wrapped: true }, orderBy: "punk_id", orderDirection: "asc", limit: $limit, after: $after) {
