@@ -67,32 +67,45 @@ describe('UnwrapV1Punks', () => {
     }
   })
 
-  it('lets a third party settle a batch on behalf of the owner', async () => {
+  it('rejects callers who do not own every id in the batch', async () => {
     const ctx = await deployUnwrapV1PunksStack()
-    const { wrapper, punksV1, unwrapper, alice, settler } = ctx
+    const { wrapper, punksV1, unwrapper, alice, bob } = ctx
 
     await seedWrapped(ctx, alice, 101n)
     await seedWrapped(ctx, alice, 102n)
 
+    // Alice approves the unwrapper for all of her wrapped tokens — this is
+    // a wrapper-side approval and must NOT be enough for someone else to
+    // unwrap her Punks.
     const wrapperForAlice = await wrapperAs(ctx, alice)
     await wrapperForAlice.write.setApprovalForAll([unwrapper.address, true])
 
-    const unwrapperForSettler = await unwrapperAs(ctx, settler)
-    await unwrapperForSettler.write.unwrap([[101, 102]])
+    const unwrapperForBob = await unwrapperAs(ctx, bob)
+    await ctx.viem.assertions.revertWithCustomError(
+      unwrapperForBob.write.unwrap([[101, 102]]),
+      unwrapper,
+      'NotPunkOwner',
+    )
 
+    // Alice still holds the wrapped tokens; the wrapper still holds the
+    // underlying Punks.
     for (const id of [101n, 102n]) {
+      assert.equal(
+        ((await wrapper.read.ownerOf([id])) as string).toLowerCase(),
+        alice.account.address.toLowerCase(),
+      )
       assert.equal(
         (
           (await punksV1.read.punkIndexToAddress([id])) as string
         ).toLowerCase(),
-        alice.account.address.toLowerCase(),
+        wrapper.address.toLowerCase(),
       )
     }
   })
 
-  it('forwards each Punk to its own owner when ids span multiple holders', async () => {
+  it('reverts when the batch mixes ids owned by different holders', async () => {
     const ctx = await deployUnwrapV1PunksStack()
-    const { wrapper, punksV1, unwrapper, alice, bob, settler } = ctx
+    const { wrapper, unwrapper, alice, bob } = ctx
 
     await seedWrapped(ctx, alice, 201n)
     await seedWrapped(ctx, bob, 202n)
@@ -102,16 +115,11 @@ describe('UnwrapV1Punks', () => {
     const wrapperForBob = await wrapperAs(ctx, bob)
     await wrapperForBob.write.setApprovalForAll([unwrapper.address, true])
 
-    const unwrapperForSettler = await unwrapperAs(ctx, settler)
-    await unwrapperForSettler.write.unwrap([[201, 202]])
-
-    assert.equal(
-      ((await punksV1.read.punkIndexToAddress([201n])) as string).toLowerCase(),
-      alice.account.address.toLowerCase(),
-    )
-    assert.equal(
-      ((await punksV1.read.punkIndexToAddress([202n])) as string).toLowerCase(),
-      bob.account.address.toLowerCase(),
+    const unwrapperForAlice = await unwrapperAs(ctx, alice)
+    await ctx.viem.assertions.revertWithCustomError(
+      unwrapperForAlice.write.unwrap([[201, 202]]),
+      unwrapper,
+      'NotPunkOwner',
     )
   })
 

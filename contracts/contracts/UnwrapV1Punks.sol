@@ -11,10 +11,9 @@ import "./interfaces/IPunksV1Wrapper.sol";
 ///
 ///         The wrapper's `unwrap` releases the Punk to whoever called it, so
 ///         the wrapped token's owner must first approve this contract on the
-///         wrapper (a one-time `setApprovalForAll(this, true)`). Each id in
-///         the batch is unwrapped to this contract and immediately forwarded
-///         to the wrapped token's owner, so anyone may settle a batch on the
-///         owner's behalf without being able to redirect the Punk.
+///         wrapper (a one-time `setApprovalForAll(this, true)`). The caller
+///         must own every id in the batch — wrapper approvals alone are not
+///         enough to trigger an unwrap on someone else's tokens.
 ///
 /// @author 1001
 contract UnwrapV1Punks {
@@ -34,25 +33,26 @@ contract UnwrapV1Punks {
     // ───────────────────────────────── Errors ──────────────────────────────────
 
     error NoPunkIds();
+    error NotPunkOwner();
 
     // ─────────────────────────────── Unwrapping ────────────────────────────────
 
-    /// @notice Burns each wrapper token in `punkIds` and forwards the
-    ///         underlying C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ to the wrapper-token owner.
-    /// @dev    Each id reverts back through the wrapper unless this contract
-    ///         is approved on it. Snapshots `ownerOf` before `unwrap` so the
-    ///         Punk is always delivered to the wrapped token's owner rather
-    ///         than the caller.
-    /// @param  punkIds  Wrapper token ids to release.
+    /// @notice Burns each wrapper token in `punkIds` and transfers the
+    ///         underlying C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ to the caller.
+    /// @dev    The caller must own every id in the batch and must have
+    ///         approved this contract on the wrapper. Ownership is checked
+    ///         before each `unwrap` so a wrapper operator approval alone
+    ///         cannot be used to drain a holder.
+    /// @param  punkIds  Wrapper token ids to release to the caller.
     function unwrap(uint16[] calldata punkIds) external {
         uint256 len = punkIds.length;
         if (len == 0) revert NoPunkIds();
 
         for (uint256 i; i < len;) {
             uint16 punkId = punkIds[i];
-            address tokenOwner = WRAPPER.ownerOf(punkId);
+            if (WRAPPER.ownerOf(punkId) != msg.sender) revert NotPunkOwner();
             WRAPPER.unwrap(punkId);
-            PUNKS_V1.transferPunk(tokenOwner, punkId);
+            PUNKS_V1.transferPunk(msg.sender, punkId);
             unchecked {
                 ++i;
             }
