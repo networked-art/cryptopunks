@@ -32,6 +32,7 @@
 
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
+import { refDebounced } from '@vueuse/core'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
 const props = withDefaults(
@@ -54,7 +55,7 @@ const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing.
-const debouncedText = useDebounced(text, 80)
+const debouncedText = refDebounced(text, 80)
 const qualifiers = computed(() => extractQualifiers(debouncedText.value))
 const listingsOnly = computed(() => qualifiers.value.listingsOnly)
 const wrappedOnly = computed(() => qualifiers.value.wrappedOnly)
