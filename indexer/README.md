@@ -10,9 +10,9 @@ An example deployment runs at <https://indexer.punksmarket.app>.
 Normal CryptoPunks and V1 Punks are tracked as separate current-state
 collections:
 
-- `punks` tracks the normal V2 collection plus the two normal ERC-721
+- `punks` tracks the canonical collection plus the two normal ERC-721
   wrappers.
-- `v1_punks` tracks the original V1 contract plus the V1 ERC-721 wrapper.
+- `v1_punks` tracks the initial contract plus the V1 ERC-721 wrapper.
 
 The combined indexer watches:
 
