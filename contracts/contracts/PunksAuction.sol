@@ -22,6 +22,8 @@ import "./PunksAuctionEscrow.sol";
 ///
 /// @author VV × 1001
 contract PunksAuction is PunkLots, PunkPurchaseOffers {
+    // ──────────────────────────────── Constants ────────────────────────────────
+
     /// @notice Basis point denominator used for bid increments.
     uint256 internal constant BPS = 10_000;
     /// @notice Minimum increase over the previous bid.
@@ -30,6 +32,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     uint40 internal constant AUCTION_DURATION = 24 hours;
     /// @notice Minimum time remaining after a late bid.
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
+
+    // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice Returns the canonical CryptoPunks market.
     ICryptoPunksMarket public immutable PUNKS;
@@ -48,6 +52,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @dev Dynamic item arrays for live auctions, keyed by auction id.
     mapping(uint256 => LotItem[]) internal auctionItems;
+
+    // ────────────────────────────── Construction ───────────────────────────────
 
     /// @notice Creates the auction house wired to both Punk markets and the vault factory.
     constructor(address punks, address punksV1, address punksData, address vaultFactory)
