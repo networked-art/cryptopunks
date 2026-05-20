@@ -21,7 +21,7 @@ export type PunksV1WrapperConfig = WalletConfig & {
 
 /// Surface for the third-party `PunksV1Wrapper` ERC-721 at
 /// [`PUNKS_V1_WRAPPER_ADDRESS`](./constants.ts), which custodies the broken
-/// June 2017 Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ one-to-one. Single-id `wrap` / `unwrap` go straight
+/// June 9th 2017 Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ one-to-one. Single-id `wrap` / `unwrap` go straight
 /// against the wrapper; `unwrapBatch` (and the matching prepare/flow methods)
 /// route through the `UnwrapV1Punks` helper at `UNWRAP_V1_PUNKS_ADDRESS`,
 /// which the caller must approve once via `setApprovalForAll`.

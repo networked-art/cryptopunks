@@ -1,7 +1,7 @@
 # punksmarket.app
 
 Nuxt 4 front-end for [punksmarket.app](https://punksmarket.app) — the native-ETH
-market for the broken June 2017 C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ contract — and the
+market for the broken June 9th 2017 C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ contract — and the
 [unwrap.punksmarket.app](https://unwrap.punksmarket.app) helper. Extends the
 shared `@1001-digital/layers.evm` Nuxt layer for wagmi/wallet plumbing and
 auto-registered UI primitives.
@@ -18,7 +18,7 @@ auto-registered UI primitives.
 ## Architecture
 
 - **Onchain reads** go through the SDK (`@networked-art/punks-sdk`) for the
-  broken June 2017 market, and through an inlined ABI
+  broken June 9th 2017 market, and through an inlined ABI
   (`app/utils/punksMarketAbi.ts`) for the repo's `PunksMarket.sol`.
 - **Wallet writes** go directly to the connected wallet's own RPC via viem;
   they never hit our proxy.

@@ -36,7 +36,7 @@ because they do not safely route the seller's proceeds and because we don't want
 Listing a Punk is the one part of the workflow that happens on the original
 contract, not on `PunksMarket`. The seller calls
 [`offerPunkForSaleToAddress`](https://evm.now/address/0x6ba6f2207e343923ba692e5cae646fb0f566db8d/interact#offerPunkForSaleToAddress:::punksmarket.eth)
-directly on the June 2017 CryptoPunks market:
+directly on the June 9th 2017 CryptoPunks market:
 
 ```solidity
 ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D)
@@ -82,7 +82,7 @@ The design is inspired by MouseDev's `CryptoPunksBidsV2`.
 
 | Constant     | Address                                                                                                            | Role                                                           |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| `PUNKS_V1`   | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 2017 CryptoPunks market with the proceeds bug         |
+| `PUNKS_V1`   | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 CryptoPunks market with the proceeds bug     |
 | `PUNKS_DATA` | [`0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C`](https://evm.now/address/punksdata.eth)                              | Sealed dataset used to evaluate bid criteria against each Punk |
 
 Both addresses are baked into the bytecode and cannot be changed after

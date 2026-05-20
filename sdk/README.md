@@ -27,7 +27,7 @@ auction reads need a `publicClient`.
 | `punks.dataset`                               | Bundled trait, palette, bitmap, and optional pixel data          |
 | `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI output                 |
 | `punks.market`                                | Original CryptoPunks market reads/writes                         |
-| `punks.v1Market`                              | Criteria-bid market wrapping the broken June 2017 CryptoPunks contract |
+| `punks.v1Market`                              | Criteria-bid market wrapping the broken June 9th 2017 CryptoPunks contract |
 | `punks.v1Wrapper`                             | Third-party V1 ERC-721 wrapper with batch unwrap helper          |
 | `punks.data.contract`                         | `PunksData.sol` reads                                            |
 | `punks.data.legacy`                           | Original `CryptopunksData` SVG and attributes                    |

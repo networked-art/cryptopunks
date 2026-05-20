@@ -40,7 +40,7 @@ const slot = punks.offers.slot({
 ```
 
 The `standard` field accepts `'cryptopunks'` (default) or `'cryptopunks-v1'`
-for Punks held on the broken June 2017 contract.
+for Punks held on the broken June 9th 2017 contract.
 
 ## Offers
 

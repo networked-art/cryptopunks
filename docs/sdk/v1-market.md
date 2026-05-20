@@ -12,7 +12,7 @@ const punks = createPunksSdk({ publicClient, walletClient })
 ```
 
 Each bid carries a `Punks.Filter` plus optional include / exclude id lists.
-Sellers accept against any Punk they own on the original (June 2017) contract
+Sellers accept against any Punk they own on the original (June 9th 2017) contract
 that matches the bid.
 
 ## Reads
@@ -114,7 +114,7 @@ const criteria = compilePunksFilter(punks.dataset.source, {
 
 For richer queries (global lists, per-trait / per-color matching, sorted
 pagination) the SDK ships an HTTP client for the indexer that tracks bids on
-the original (June 2017) CryptoPunks contract:
+the original (June 9th 2017) CryptoPunks contract:
 
 ```ts
 import {

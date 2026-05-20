@@ -2,6 +2,7 @@
   "name": "@networked-art/punks-sdk",
   "version": "0.0.1-alpha.0",
   "description": "Collection-first TypeScript SDK for CryptoPunks search, rendering, market actions, and auctions",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/networked-art/cryptopunks.git",

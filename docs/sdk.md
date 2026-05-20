@@ -31,7 +31,7 @@ const ids = punks.search({
 | `punks.dataset`                               | Trait catalog, palette, summaries, optional indexed pixels, bitmaps        |
 | `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle |
 | `punks.market`                                | Original CryptoPunks market reads/writes                                   |
-| `punks.v1Market`                              | Criteria-bid market that wraps the broken June 2017 CryptoPunks contract |
+| `punks.v1Market`                              | Criteria-bid market that wraps the broken June 9th 2017 CryptoPunks contract |
 | `punks.v1Wrapper`                             | Third-party V1 wrapper reads, approvals, and single + batch unwrap flows |
 | `punks.data.contract`                         | Exact reads for `PunksData.sol`                                            |
 | `punks.data.legacy`                           | Original `CryptopunksData` SVG and attribute reads                         |
@@ -63,7 +63,7 @@ Labs `CryptopunksData` SVG or attribute strings.
 | [Data And Search](/sdk/data-search)               | Query filtering, facets, dataset reads, and offer-slot compilation                       |
 | [Rendering And Metadata](/sdk/rendering)          | Local images, metadata, token URI generation, and exact onchain renderer reads           |
 | [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes                                             |
-| [V1 Market](/sdk/v1-market)                       | Criteria-bid market for the broken June 2017 CryptoPunks contract, plus indexer composition |
+| [V1 Market](/sdk/v1-market)                       | Criteria-bid market for the broken June 9th 2017 CryptoPunks contract, plus indexer composition |
 | [V1 Wrapper](/sdk/v1-wrapper)                     | Third-party V1 wrapper reads, approvals, and the `UnwrapV1Punks` batch helper           |
 | [Punk Data Contracts](/sdk/punk-data-contracts)   | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData`                             |
 | [Wrappers](/sdk/wrappers)                         | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers                   |

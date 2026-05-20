@@ -2,7 +2,7 @@
 
 `punks.v1Wrapper` wraps the third-party `PunksV1Wrapper` ERC-721 at
 [`0x282BDD42…`](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D),
-which custodies the broken June 2017 CryptoPunks one-to-one. The wrapper has
+which custodies the broken June 9th 2017 CryptoPunks one-to-one. The wrapper has
 no native batch unwrap, so `punks.v1Wrapper` also routes batch calls through
 the [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) helper at
 [`unwrap.punksmarket.eth`](https://evm.now/address/0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346)

@@ -28,7 +28,7 @@ export const STASH_FACTORY_ADDRESS =
 export const PUNKS_V1_MARKET_ENS = 'punksmarket.eth'
 export const PUNKS_V1_MARKET_ADDRESS =
   '0x0000000000000000000000000000000000000000' as Address
-/// Third-party ERC-721 wrapper that custodies the broken June 2017
+/// Third-party ERC-721 wrapper that custodies the broken June 9th 2017
 /// Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs̸̢̼̋͟ one-to-one. Wrapping moves the underlying Punk into this
 /// contract and mints the matching token; unwrapping burns it and releases
 /// the Punk to the caller.
