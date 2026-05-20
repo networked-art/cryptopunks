@@ -1,6 +1,6 @@
-service: punksmarket-app
+service: v1-app
 
-image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punksmarket-app
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/v1-app
 
 servers:
   web:
