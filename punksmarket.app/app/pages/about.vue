@@ -174,6 +174,15 @@
             ><code>punksmarket.eth</code></a
           >
         </dd>
+        <dt>Docs</dt>
+        <dd>
+          <a
+            href="https://docs.punksmarket.app/"
+            target="_blank"
+            rel="noopener"
+            >docs.punksmarket.app</a
+          >
+        </dd>
       </dl>
       <p class="muted credit">
         Ownerless immutable deployment. Inspired by MouseDev's
@@ -275,11 +284,8 @@ useSeoMeta({
 }
 
 .contract-meta a {
-  border: 0;
-}
-
-.contract-meta a code {
   color: var(--accent-strong);
+  border: 0;
 }
 
 .credit {
