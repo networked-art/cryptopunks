@@ -24,7 +24,7 @@ export default defineConfig({
     aside: false,
     nav: [
       { text: 'github', link: 'https://github.com/networked-art/cryptopunks' },
-      { text: 'punksmarket.app', link: 'https://punksmarket.app' },
+      { text: 'punksmarket.app (v1)', link: 'https://punksmarket.app' },
     ],
     outline: false,
     sidebar: [
