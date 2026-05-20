@@ -27,12 +27,15 @@ auction reads need a `publicClient`.
 | `punks.dataset`                               | Bundled trait, palette, bitmap, and optional pixel data          |
 | `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI output                 |
 | `punks.market`                                | Original CryptoPunks market reads/writes                         |
+| `punks.v1Market`                              | Criteria-bid market wrapping the broken June 2017 CryptoPunks contract |
+| `punks.v1Wrapper`                             | Third-party V1 ERC-721 wrapper with batch unwrap helper          |
 | `punks.data.contract`                         | `PunksData.sol` reads                                            |
 | `punks.data.legacy`                           | Original `CryptopunksData` SVG and attributes                    |
 | `punks.wrappers.modern`                       | CryptoPunks721 and Stash wrapping flows                          |
 | `punks.wrappers.legacy`                       | Legacy Wrapped Punks proxy wrapping flows                        |
 | `punks.stash.factory`                         | StashFactory deployment, lookup, implementation status, upgrades |
 | `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals           |
+| `punks.stashBids`                             | Node Foundation offchain bids orderbook (prepare, sign, submit, accept) |
 | `punks.offers`                                | Networked Art criterion offers                                   |
 | `punks.auctions`                              | Vaults, lots, bidding, settlement                                |
 
@@ -207,7 +210,6 @@ const lot = punks.auctions.prepareCreateLot({
     { punkId: 4156, standard: 'cryptopunks', weightBps: 9500 },
   ],
   reserveWei: 250n * 10n ** 18n,
-  expiresAt: 1_800_000_000,
 })
 
 await punks.auctions.bid({
@@ -236,13 +238,6 @@ The package still exports:
 - bitmap utilities and validation helpers
 - `@networked-art/punks-sdk/offline` for direct offline dataset access
 
-## Stash Bid Migration
-
-Stash Punk bid signing is mainnet-only. Replace
-`signPunkBid({ chainId, bid })` and `typedDataForPunkBid({ chainId, bid })`
-with `signPunkBid({ bid })` and `typedDataForPunkBid({ bid })`; the SDK always
-uses Ethereum mainnet `chainId: 1`.
-
 ## Development
 
 ```sh
@@ -258,8 +253,11 @@ pnpm --filter @networked-art/punks-sdk build
 - [Data And Search](../docs/sdk/data-search.md)
 - [Rendering And Metadata](../docs/sdk/rendering.md)
 - [Original Marketplace](../docs/sdk/original-marketplace.md)
+- [V1 Market](../docs/sdk/v1-market.md)
+- [V1 Wrapper](../docs/sdk/v1-wrapper.md)
 - [Punk Data Contracts](../docs/sdk/punk-data-contracts.md)
 - [Wrappers](../docs/sdk/wrappers.md)
 - [Stash](../docs/sdk/stash.md)
+- [Stash Bids](../docs/sdk/stash-bids.md)
 - [Offers And Auctions](../docs/sdk/offers-and-auctions.md)
 - [Utilities And Caching](../docs/sdk/utilities.md)
