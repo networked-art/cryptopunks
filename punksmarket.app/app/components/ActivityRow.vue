@@ -201,6 +201,7 @@ const KIND_LABEL: Record<string, string> = {
   display: flex;
   flex-direction: column;
   gap: var(--size-2);
+  min-width: 0;
 }
 
 .row-line {
@@ -253,5 +254,13 @@ const KIND_LABEL: Record<string, string> = {
 .time-ago {
   font-size: 11px;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .row-meta {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--size-1);
+  }
 }
 </style>
