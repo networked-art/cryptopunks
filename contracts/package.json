@@ -1,6 +1,7 @@
 {
   "name": "@networked-art/punks-contracts",
   "version": "0.0.1",
+  "private": true,
   "type": "module",
   "scripts": {
     "generate:punks-data": "hardhat run scripts/generate-punks-data.ts",
