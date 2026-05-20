@@ -4,3 +4,14 @@ packages:
   - indexer
   - sdk
   - punksmarket.app
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@reown/appkit'
+  - esbuild
+  - iso-constants
+  - keccak
+  - node-datachannel
+  - protobufjs
+  - secp256k1
+  - vue-demi
