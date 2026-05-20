@@ -1,4 +1,4 @@
-# indexer
+# @networked-art/punks-indexer
 
 Ponder indexer that tracks normal CryptoPunks, CryptoPunks V1, wrappers, and
 the repo's `PunksMarket.sol` in one process.
