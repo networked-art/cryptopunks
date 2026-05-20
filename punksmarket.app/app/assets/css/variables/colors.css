@@ -4,7 +4,7 @@
   /* Brand-driven overrides of the standard tokens layer components consume. */
   --background: #f0f0f3;
   --color: #0a0a12;
-  --primary: #ff04b4;
+  --primary: #a79aff;
   --muted: #6a6a82;
 
   /* Light-theme gray ramp the layer's component tokens key off of. */
@@ -15,7 +15,7 @@
 
   /* App-specific tokens used directly throughout punksmarket.app. */
   --accent: var(--primary);
-  --accent-strong: #cc0090;
-  --accent-soft: #ff04b420;
+  --accent-strong: #6552d9;
+  --accent-soft: #a79aff20;
   --punk-bg: #648595;
 }

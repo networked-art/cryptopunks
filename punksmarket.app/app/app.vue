@@ -1,6 +1,6 @@
 <template>
   <div class="shell">
-    <NuxtLoadingIndicator color="#e94560" />
+    <NuxtLoadingIndicator color="var(--primary)" />
     <SiteHeader />
     <main class="shell-main">
       <NuxtPage />
