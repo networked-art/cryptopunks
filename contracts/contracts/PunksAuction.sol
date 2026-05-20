@@ -121,23 +121,23 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @inheritdoc IPunksAuction
     function bid(uint256 auctionId) external payable nonReentrant {
-        Auction memory snap = auctions[auctionId];
-        if (snap.endTimestamp == 0) revert AuctionDoesNotExist();
-        if (snap.settled) revert AuctionAlreadySettled();
-        if (block.timestamp > snap.endTimestamp) revert AuctionNotActive();
+        Auction memory snapshot = auctions[auctionId];
+        if (snapshot.endTimestamp == 0) revert AuctionDoesNotExist();
+        if (snapshot.settled) revert AuctionAlreadySettled();
+        if (block.timestamp > snapshot.endTimestamp) revert AuctionNotActive();
 
         uint96 bidWei = _checkedUint96(msg.value);
-        uint96 minBid = _currentMinBidWei(snap.latestBidWei);
+        uint96 minBid = _currentMinBidWei(snapshot.latestBidWei);
         if (bidWei < minBid) revert MinimumBidNotMet(minBid, bidWei);
 
         Auction storage auction = auctions[auctionId];
         auction.latestBidder = msg.sender;
         auction.latestBidWei = bidWei;
 
-        _maybeExtend(auctionId, auction, snap.endTimestamp);
+        _maybeExtend(auctionId, auction, snapshot.endTimestamp);
 
-        if (snap.latestBidWei > 0) {
-            _pushOrCredit(snap.latestBidder, snap.latestBidWei);
+        if (snapshot.latestBidWei > 0) {
+            _pushOrCredit(snapshot.latestBidder, snapshot.latestBidWei);
         }
 
         emit Bid(auctionId, msg.sender, bidWei);
@@ -224,16 +224,16 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @inheritdoc IPunksAuction
     function settle(uint256 auctionId) external nonReentrant {
-        Auction memory snap = auctions[auctionId];
-        if (snap.endTimestamp == 0) revert AuctionDoesNotExist();
-        if (snap.settled) revert AuctionAlreadySettled();
-        if (block.timestamp <= snap.endTimestamp) revert AuctionNotComplete();
+        Auction memory snapshot = auctions[auctionId];
+        if (snapshot.endTimestamp == 0) revert AuctionDoesNotExist();
+        if (snapshot.settled) revert AuctionAlreadySettled();
+        if (block.timestamp <= snapshot.endTimestamp) revert AuctionNotComplete();
 
         auctions[auctionId].settled = true;
 
         LotItem[] memory items = auctionItems[auctionId];
         uint96[] memory itemWei =
-            _settleBundleDelivery(items, snap.latestBidWei, snap.latestBidder);
+            _settleBundleDelivery(items, snapshot.latestBidWei, snapshot.latestBidder);
 
         uint256 itemCount = items.length;
         for (uint256 i; i < itemCount;) {
@@ -242,7 +242,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
                 uint8(i),
                 items[i].standard,
                 items[i].punkId,
-                snap.latestBidder,
+                snapshot.latestBidder,
                 itemWei[i]
             );
             unchecked {
@@ -250,9 +250,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             }
         }
 
-        _pushOrCredit(snap.seller, snap.latestBidWei);
+        _pushOrCredit(snapshot.seller, snapshot.latestBidWei);
 
-        emit AuctionSettled(auctionId, snap.latestBidder, snap.seller, uint256(snap.latestBidWei));
+        emit AuctionSettled(auctionId, snapshot.latestBidder, snapshot.seller, uint256(snapshot.latestBidWei));
     }
 
     // ──────────────────────────────── Internals ────────────────────────────────
