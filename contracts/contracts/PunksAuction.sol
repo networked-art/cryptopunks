@@ -23,6 +23,7 @@ import "./PunksAuctionEscrow.sol";
 ///
 /// @author VV × 1001
 contract PunksAuction is PunkLots, PunkPurchaseOffers {
+
     // ──────────────────────────────── Constants ────────────────────────────────
 
     /// @notice Basis point denominator used for bid increments.
