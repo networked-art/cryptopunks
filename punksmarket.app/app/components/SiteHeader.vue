@@ -16,6 +16,11 @@
           >Search</NuxtLink
         >
         <NuxtLink
+          to="/listings"
+          active-class="nav-active"
+          >Listings</NuxtLink
+        >
+        <NuxtLink
           to="/bids"
           active-class="nav-active"
           >Bids</NuxtLink
