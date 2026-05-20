@@ -17,6 +17,17 @@
           :strength="0.4"
           :wrapped="isWrapped"
         />
+        <ClientOnly>
+          <Button
+            class="download-btn small"
+            :disabled="downloading"
+            title="Download PNG"
+            aria-label="Download PNG"
+            @click="downloadImage"
+          >
+            <Icon :name="downloading ? 'lucide:loader' : 'lucide:download'" />
+          </Button>
+        </ClientOnly>
       </div>
 
       <div class="hero-info">
@@ -147,6 +158,7 @@ import {
   type HeadVariantName,
   type SkinToneName,
 } from '@networked-art/punks-sdk'
+import { downloadPunkPng } from '~/utils/punkSnapshot'
 
 definePageMeta({
   middleware(_to, from) {
@@ -240,6 +252,21 @@ function quoteIfMultiword(text: string) {
 
 const { isWrapped } = usePunkOwner(() => id.value)
 
+const downloading = ref(false)
+async function downloadImage() {
+  if (downloading.value) return
+  downloading.value = true
+  try {
+    await downloadPunkPng(offline, id.value, {
+      size: 2048,
+      strength: 0.4,
+      background: isWrapped.value ? 'wrapped' : '#f0f0f3',
+    })
+  } finally {
+    downloading.value = false
+  }
+}
+
 const { events: history, refresh: refreshHistory } = useActivityFeed({
   punkId: () => id.value,
 })
@@ -279,6 +306,26 @@ function searchHref(text: string) {
   grid-template-columns: 320px 1fr;
   gap: var(--size-6);
   align-items: start;
+}
+
+.hero-image {
+  position: relative;
+  align-self: start;
+  aspect-ratio: 1/1;
+}
+
+.download-btn {
+  position: absolute;
+  top: var(--size-3);
+  right: var(--size-3);
+  opacity: 0.2;
+  transition: opacity var(--speed) ease;
+}
+
+.hero-image:hover .download-btn,
+.download-btn:focus-visible,
+.download-btn:hover {
+  opacity: 1;
 }
 
 @media (max-width: 720px) {
