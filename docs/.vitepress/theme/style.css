@@ -181,6 +181,10 @@ body {
   text-transform: uppercase;
 }
 
+.vp-doc h2 .header-anchor {
+  top: 18px;
+}
+
 .vp-doc p,
 .vp-doc li {
   color: var(--vp-c-text-2);
