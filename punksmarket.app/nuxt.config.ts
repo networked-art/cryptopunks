@@ -42,7 +42,7 @@ export default defineNuxtConfig({
       // Public origin used to build absolute URLs (e.g. the in-app RPC
       // proxy). Override with NUXT_PUBLIC_PUBLIC_URL in production.
       publicUrl: 'http://localhost:3000',
-      indexerUrl: 'https://indexer-v1.punksmarket.app',
+      indexerUrl: 'https://indexer.punksmarket.app',
       evm: {
         walletConnectProjectId: '',
         chains: {
