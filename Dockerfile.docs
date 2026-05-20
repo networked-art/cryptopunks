@@ -5,7 +5,7 @@ WORKDIR /app
 FROM base AS build
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY docs/package.json ./docs/
-RUN pnpm install --frozen-lockfile --filter @cryptopunks/docs...
+RUN pnpm install --frozen-lockfile --filter @networked-art/punks-docs...
 
 COPY docs ./docs
 
