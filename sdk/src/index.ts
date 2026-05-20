@@ -84,6 +84,7 @@ export {
   createPunksSdk,
 } from './sdk'
 export { PunksDataset, createPunksDataset } from './dataset'
+export { PunkSimilarityIndex, createPunksSimilarity } from './similarity'
 export { PunkImageRenderer, createPunkImageRenderer } from './render'
 export { PunksAuctionClient, PunksMarketClient } from './actions'
 export { PunksV1MarketClient } from './v1-market'
@@ -92,10 +93,7 @@ export type {
   PunksV1MarketConfig,
   V1MarketBid,
 } from './v1-market'
-export {
-  PunksV1WrapperClient,
-  createPunksV1WrapperClient,
-} from './v1-wrapper'
+export { PunksV1WrapperClient, createPunksV1WrapperClient } from './v1-wrapper'
 export type { PunksV1WrapperConfig } from './v1-wrapper'
 export {
   PunksV1MarketFacade,
@@ -157,10 +155,7 @@ export {
   stashPunkBidTypedData,
   stashPunkBidTypedDataTypes,
 } from './stash'
-export {
-  PunksStashBidsFacade,
-  StashBidsApiClient,
-} from './stash-bids'
+export { PunksStashBidsFacade, StashBidsApiClient } from './stash-bids'
 export type {
   AcceptStashBidInput,
   PlaceStashBidInput,
@@ -248,6 +243,7 @@ export type {
   LotItemInput,
   OfferSlotInput,
   PlaceOfferInput,
+  PunkMarketBid,
   PunkListing,
   PunksAuctionConfig,
   PunksMarketConfig,
@@ -289,6 +285,17 @@ export type {
   PunksFilter,
   PunkStandardRef,
 } from './query'
+export type {
+  PunkSimilarityComponents,
+  PunkSimilarityExplanation,
+  PunkSimilarityOptions,
+  PunkSimilarityProfile,
+  PunkSimilarityRecommendOptions,
+  PunkSimilarityResult,
+  PunkSimilarityScalarDelta,
+  PunkSimilarityWeights,
+  PunksSimilarityConfig,
+} from './similarity'
 export type {
   PunkRenderBackground,
   PunkRenderOptions,

@@ -10,6 +10,14 @@ import { createPunksSimilarity } from '@networked-art/punks-sdk/similarity'
 
 The first version should avoid ANN/vector dependencies such as `usearch`. CryptoPunks is a fixed 10,000-item collection, and the SDK already has compact local trait, color, scalar, bitmap, and optional pixel data. Exact scoring should be fast enough, deterministic, explainable, browser-friendly, and easier to tune.
 
+## Implementation Status
+
+Implemented in `sdk/src/similarity.ts` and exported as
+`@networked-art/punks-sdk/similarity`. The first pass includes exact pair
+scoring, structured explanations, filtered similar-Punk scans,
+recommendations with disliked penalties, optional diversification, profile
+weights, and visual scoring when the pixel bundle is supplied.
+
 ## Public API
 
 Expose these primary methods:

@@ -1,15 +1,23 @@
 import type { Address, Hex, WalletClient } from 'viem'
 import {
+  createPunksSimilarity,
   createPunksDataClient,
   createPunksSdk,
   createStashClient,
   createStashFactoryClient,
   stashPunkBidTypedData,
   type ContractWritePlan,
+  type PunkMarketBid,
+  type PunkSimilarityExplanation,
+  type PunkSimilarityResult,
   type StashOwnerStatus,
   type StashPunkBid,
   type TransactionHash,
 } from '../src/index.ts'
+import {
+  createPunksSimilarity as createPunksSimilaritySubpath,
+  type PunkSimilarityOptions,
+} from '../src/similarity.ts'
 
 declare const owner: Address
 declare const receiver: Address
@@ -131,6 +139,39 @@ const offerPlan: ContractWritePlan = punks.offers.preparePlace({
   amountWei: 10n,
   includeIds: [8348],
 })
+const marketBid: Promise<PunkMarketBid> = punks.market.bid(8348)
+const marketBidPlan: ContractWritePlan = punks.market.prepareEnterBid({
+  punkId: 8348,
+  amountWei: 10n,
+})
+const marketAcceptBidPlan: ContractWritePlan = punks.market.prepareAcceptBid({
+  punkId: 8348,
+  minPriceWei: 10n,
+})
+const marketWithdrawBidPlan: ContractWritePlan =
+  punks.market.prepareWithdrawBid(8348)
+
+const similarity = createPunksSimilarity()
+const similarityScore: number = similarity.score(8348, 7804)
+const similarityExplanation: PunkSimilarityExplanation = similarity.explain(
+  8348,
+  7804,
+)
+const similarityResults: PunkSimilarityResult[] = similarity.similar(8348, {
+  limit: 12,
+})
+const similarityRecommendations: PunkSimilarityResult[] = similarity.recommend({
+  liked: [8348, 7804],
+  disliked: [1234],
+  limit: 20,
+})
+const similarityOptions: PunkSimilarityOptions = {
+  profile: 'colors',
+  weights: { colors: 0.7 },
+  filter: { type: 'Zombie' },
+}
+const similarityFromSubpath = createPunksSimilaritySubpath()
+const subpathSimilarityScore: number = similarityFromSubpath.score(8348, 7804)
 
 // @ts-expect-error Offers always deliver to the offerer; custom receivers are not supported.
 punks.offers.preparePlace({ amountWei: 10n, receiver, includeIds: [8348] })
@@ -228,9 +269,9 @@ const v1UnwrapPlan: ContractWritePlan = punks.v1Wrapper.prepareUnwrap(4156)
 const v1UnwrapTx: Promise<TransactionHash> = punks.v1Wrapper.unwrap(4156)
 const v1BatchApprovePlan: ContractWritePlan =
   punks.v1Wrapper.prepareApproveBatchUnwrap()
-const v1BatchUnwrapPlan: ContractWritePlan = punks.v1Wrapper.prepareUnwrapBatch([
-  4156, 7804,
-])
+const v1BatchUnwrapPlan: ContractWritePlan = punks.v1Wrapper.prepareUnwrapBatch(
+  [4156, 7804],
+)
 const v1BatchFlow: Promise<ContractWritePlan[]> =
   punks.v1Wrapper.prepareUnwrapBatchFlow({ owner, punkIds: [4156, 7804] })
 const v1BatchFlowTxs: Promise<TransactionHash[]> =

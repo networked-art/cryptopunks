@@ -84,6 +84,7 @@ export default defineConfig({
             collapsed: false,
             items: [
               { text: 'Data And Search', link: '/sdk/data-search' },
+              { text: 'Similarity', link: '/sdk/similarity' },
               { text: 'Rendering And Metadata', link: '/sdk/rendering' },
               {
                 text: 'Original Marketplace',

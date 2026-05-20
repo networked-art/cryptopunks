@@ -55,6 +55,13 @@ export type PunkListing = {
   onlySellTo: Address
 }
 
+export type PunkMarketBid = {
+  punkId: number
+  hasBid: boolean
+  bidder: Address
+  valueWei: bigint
+}
+
 export type PunksMarketConfig = WalletConfig & {
   address?: Address
 }
@@ -123,6 +130,19 @@ export class PunksMarketClient {
 
   async pendingWithdrawal(owner: Address): Promise<bigint> {
     return this.read<bigint>('pendingWithdrawals', [owner])
+  }
+
+  async bid(punkId: number): Promise<PunkMarketBid> {
+    validatePunkId(punkId)
+    const [hasBid, bidPunkId, bidder, valueWei] = await this.read<
+      readonly [boolean, bigint, Address, bigint]
+    >('punkBids', [BigInt(punkId)])
+    return {
+      punkId: Number(bidPunkId),
+      hasBid,
+      bidder,
+      valueWei,
+    }
   }
 
   prepareList(params: {
@@ -242,6 +262,72 @@ export class PunksMarketClient {
 
   withdraw(): Promise<TransactionHash> {
     return this.write(this.prepareWithdraw())
+  }
+
+  prepareEnterBid(params: {
+    punkId: number
+    amountWei: bigint
+  }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    assertWei('amountWei', params.amountWei)
+    return {
+      description: `Bid on CryptoPunk ${params.punkId}`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'enterBidForPunk',
+        args: [BigInt(params.punkId)],
+        value: params.amountWei,
+      },
+    }
+  }
+
+  enterBid(params: {
+    punkId: number
+    amountWei: bigint
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareEnterBid(params))
+  }
+
+  prepareAcceptBid(params: {
+    punkId: number
+    minPriceWei: bigint
+  }): ContractWritePlan {
+    validatePunkId(params.punkId)
+    assertWei('minPriceWei', params.minPriceWei)
+    return {
+      description: `Accept CryptoPunk ${params.punkId} bid`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'acceptBidForPunk',
+        args: [BigInt(params.punkId), params.minPriceWei],
+      },
+    }
+  }
+
+  acceptBid(params: {
+    punkId: number
+    minPriceWei: bigint
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareAcceptBid(params))
+  }
+
+  prepareWithdrawBid(punkId: number): ContractWritePlan {
+    validatePunkId(punkId)
+    return {
+      description: `Withdraw CryptoPunk ${punkId} bid`,
+      request: {
+        address: this.address,
+        abi: cryptoPunksMarketAbi,
+        functionName: 'withdrawBidForPunk',
+        args: [BigInt(punkId)],
+      },
+    }
+  }
+
+  withdrawBid(punkId: number): Promise<TransactionHash> {
+    return this.write(this.prepareWithdrawBid(punkId))
   }
 
   private async read<T>(

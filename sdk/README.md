@@ -46,7 +46,10 @@ Use `punks.dataset` and `punks.search` for local app UI. They are
 deterministic and do not need RPC. Use `punks.render` with the optional pixel
 bundle when you need local images.
 
-Use `punks.data.contract` for live `PunksData.sol` reads. Use
+Use `@networked-art/punks-sdk/similarity` when you need exact local similarity
+or recommendations without adding a vector index dependency.
+
+Use `punks.data.contract` for live `PunksData` reads. Use
 `punks.data.legacy` only when you need compatibility with the original Larva
 Labs `CryptopunksData` strings.
 
