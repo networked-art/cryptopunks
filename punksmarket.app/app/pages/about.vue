@@ -33,15 +33,23 @@
         initial release, retired only once the bug surfaced. Like a misprinted
         first edition or an error coin pulled from circulation, their value to
         collectors is historical: the artifact behind everything that came
-        after.
+        after. LarvaLabs treated the working marketplace as an essential part of
+        the artwork, redeploying the collection with the fixed
+        <a
+          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
+          >CryptoPunksMarket.sol</a
+        >
+        contract once the bug surfaced.
       </p>
       <p>
-        Wrappers became the workaround. A wrapper mints a new ERC-721 backed by
-        an underlying punk and lets collectors trade that derivative on standard
-        marketplaces. The tradeoff is that the original contract is bypassed
-        entirely: every sale moves the wrapper, not the original token, and
-        LarvaLabs' marketplace stays silent — no transfers or sales are written
-        onto the artifact itself.
+        The broken collectibles were left largely untouched for years, but
+        remained in circulation and eventually sparked interest. Wrappers became
+        the workaround. A wrapper mints a new ERC-721 backed by an underlying
+        punk and lets collectors trade that derivative on standard marketplaces.
+        The tradeoff is that the original contract is bypassed entirely: every
+        sale moves the wrapper, not the original token, and LarvaLabs'
+        marketplace stays silent — no transfers or sales are written onto the
+        artifact itself.
       </p>
       <p>
         Most of the trading since early 2022 has happened on
