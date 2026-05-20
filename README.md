@@ -11,7 +11,7 @@ contracts target Ethereum mainnet only.
 | [`contracts/`](contracts/README.md) | `@networked-art/punks-contracts` | Hardhat 3 sources for `PunksData`, `PunksRenderer`, `PunksMarket`, the auction/vault system, and the batch unwrap helper for the broken June 2017 CryptoPunks contract. |
 | [`sdk/`](sdk/README.md)             | `@networked-art/punks-sdk`       | Collection-first TypeScript SDK: local search and rendering, original-market and broken June 2017 market reads/writes, Stash, criterion offers, and auctions.           |
 | [`indexer/`](indexer/README.md)     | `@networked-art/punks-indexer`   | Ponder indexer that tracks the two CryptoPunks collections, their ERC-721 wrappers, and `PunksMarket`, with USD-cent prices stamped per event.                          |
-| [`v1-app/`](v1-app/package.json)    | `@networked-art/v1-app`          | Nuxt front-end for [punksmarket.app](https://punksmarket.app) and the [unwrap.punksmarket.app](https://unwrap.punksmarket.app) helper.                                  |
+| [`punksmarket.app/`](punksmarket.app/package.json) | `@networked-art/punksmarket.app` | Nuxt front-end for [punksmarket.app](https://punksmarket.app) and the [unwrap.punksmarket.app](https://unwrap.punksmarket.app) helper.                                  |
 | [`docs/`](docs/index.md)            | `@cryptopunks/docs`              | VitePress documentation site for the contracts and SDK.                                                                                                                 |
 
 ## Documentation

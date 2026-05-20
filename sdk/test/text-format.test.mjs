@@ -10,7 +10,7 @@ import { createOfflinePunksDataClient } from '../dist/offline.js'
 
 const data = createOfflinePunksDataClient()
 
-/// Mirrors v1-app/PunkSearch.vue — hex color tokens in the URL are stripped
+/// Mirrors punksmarket.app/PunkSearch.vue — hex color tokens in the URL are stripped
 /// out of `text` and routed into `colors.required` before the search runs.
 /// The bid card's link is consumed by that page, so the round-trip must
 /// honour the same preprocessing.

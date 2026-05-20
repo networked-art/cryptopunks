@@ -13,7 +13,7 @@
   --gray-z-3: #d0d0dc;
   --gray-z-5: #9a9ab0;
 
-  /* App-specific tokens used directly throughout v1-app. */
+  /* App-specific tokens used directly throughout punksmarket.app. */
   --accent: var(--primary);
   --accent-strong: #cc0090;
   --accent-soft: #ff04b420;

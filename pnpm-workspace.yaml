@@ -3,4 +3,4 @@ packages:
   - docs
   - indexer
   - sdk
-  - v1-app
+  - punksmarket.app

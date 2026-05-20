@@ -6,21 +6,21 @@ WORKDIR /app
 FROM base AS build
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY sdk/package.json ./sdk/
-COPY v1-app/package.json ./v1-app/
-RUN pnpm install --frozen-lockfile --filter @networked-art/v1-app...
+COPY punksmarket.app/package.json ./punksmarket.app/
+RUN pnpm install --frozen-lockfile --filter @networked-art/punksmarket.app...
 
 COPY sdk ./sdk
-COPY v1-app ./v1-app
+COPY punksmarket.app ./punksmarket.app
 
 WORKDIR /app/sdk
 RUN pnpm build
 
-WORKDIR /app/v1-app
+WORKDIR /app/punksmarket.app
 RUN pnpm build
 
 FROM node:24-alpine AS production
 WORKDIR /app
-COPY --from=build /app/v1-app/.output/ ./
+COPY --from=build /app/punksmarket.app/.output/ ./
 
 ENV HOST=0.0.0.0
 EXPOSE 3000

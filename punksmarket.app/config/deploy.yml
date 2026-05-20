@@ -1,6 +1,6 @@
-service: v1-app
+service: punksmarket-app
 
-image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/v1-app
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punksmarket-app
 
 servers:
   web:
@@ -27,7 +27,7 @@ registry:
 builder:
   arch: amd64
   context: ..
-  dockerfile: ../Dockerfile.v1-app
+  dockerfile: ../Dockerfile.punksmarket.app
 
 env:
   clear:

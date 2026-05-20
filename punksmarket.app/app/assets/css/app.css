@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /*
- * v1-app styles
+ * punksmarket.app styles
  *
  * Extends @1001-digital/styles (loaded via layers.evm -> layers.base).
  * The cascade order is declared by layers.base; local overrides target those
