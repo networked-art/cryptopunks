@@ -197,7 +197,7 @@ const matchesLink = computed(() => {
 }
 
 .matches-link:hover {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .card-actions {
