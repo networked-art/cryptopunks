@@ -55,7 +55,7 @@ cp punksmarket.app/.env.example punksmarket.app/.env
 pnpm --filter @networked-art/punksmarket.app dev
 ```
 
-## Development
+### Other commands
 
 ```sh
 pnpm test           # contracts + SDK
