@@ -267,9 +267,12 @@ const ownActiveBid = computed<CollectionBid | null>(() => {
   if (!me) return null
   return props.matchingBids.find((b) => b.bidder.toLowerCase() === me) ?? null
 })
-const canSettle = computed(
-  () => !!topBid.value && isDirectedToPunksMarket.value,
-)
+const canSettle = computed(() => {
+  const bid = topBid.value
+  const listing = liveListing.value
+  if (!bid || !listing || !isDirectedToPunksMarket.value) return false
+  return bid.bidWei >= listing.priceWei
+})
 const isTopBidder = computed(
   () =>
     !!address.value &&
