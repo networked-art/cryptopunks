@@ -18,8 +18,8 @@ auto-registered UI primitives.
 ## Architecture
 
 - **Onchain reads** go through the SDK (`@networked-art/punks-sdk`) for the
-  broken June 9th 2017 market, and through an inlined ABI
-  (`app/utils/punksMarketAbi.ts`) for the repo's `PunksMarket.sol`.
+  broken `CryptoPunks` market, and through an inlined ABI
+  (`app/utils/punksMarketAbi.ts`) for the repo's `PunksMarket`.
 - **Wallet writes** go directly to the connected wallet's own RPC via viem;
   they never hit our proxy.
 - **RPC proxy** at `server/api/rpc.post.ts` keeps the upstream URL (and its API

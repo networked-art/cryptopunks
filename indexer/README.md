@@ -1,7 +1,7 @@
 # @networked-art/punks-indexer
 
-Ponder indexer that tracks normal CryptoPunks, CryptoPunks V1, wrappers, and
-the repo's `PunksMarket.sol` in one process.
+Ponder indexer that tracks `CryptoPunks`, `CryptoPunksMarket`, wrappers, and
+the repo's `PunksMarket` in one process.
 
 An example deployment runs at <https://indexer.punksmarket.app>.
 
@@ -26,8 +26,8 @@ The combined indexer watches:
 While a Punk is wrapped, the user-facing `punks.owner` column reflects the
 ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
 `native_owner`. Unwrap restores the native owner via an on-chain call to
-V2's `punkIndexToAddress`. `v1_punks` follows the same public-owner model for
-the V1 wrapper.
+`CryptoPunksMarket.punkIndexToAddress`. `v1_punks` follows the same public-owner model for
+`PunksV1Wrapper`.
 
 ## Schema
 
@@ -36,7 +36,7 @@ shape (one row per indexed log). `source` ∈ `{ cryptopunks_v1,
 cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }`.
 Per-Punk current state lives in `punks` and `v1_punks`; native marketplace
 state lives in `listings` / `punk_bids` for V2 and `v1_listings` /
-`v1_punk_bids` for V1. PunksMarket criteria bids live in `market_bids` with
+`v1_punk_bids` for V1. `PunksMarket` criteria bids live in `market_bids` with
 predicate side tables for SQL matching.
 
 ## USD pricing
@@ -89,7 +89,7 @@ event.usd_value_cents =
 
 API:
 
-- `GET /bids` and `GET /bids/matching/*` — PunksMarket criteria-bid routes.
+- `GET /bids` and `GET /bids/matching/*` — `PunksMarket` criteria-bid routes.
 - `GET /sales` — recent sale events with `usd_value_cents` already on the
   row (no JOIN). Pagination via `?limit=`, `?offset=`.
 - The `eth_usd_prices` table is exposed via the standard GraphQL endpoint

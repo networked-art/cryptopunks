@@ -4,13 +4,13 @@ Wrapper clients live under `punks.wrappers`.
 
 | Surface                 | Contract                      |
 | ----------------------- | ----------------------------- |
-| `punks.wrappers.modern` | CryptoPunks721 modern wrapper |
-| `punks.wrappers.c721`   | Alias for `modern`            |
-| `punks.wrappers.legacy` | Legacy Wrapped Punks          |
+| `punks.wrappers.modern` | `CryptoPunks721` modern wrapper |
+| `punks.wrappers.c721`   | Alias for `modern`              |
+| `punks.wrappers.legacy` | `WrappedPunk` (legacy wrapper)  |
 
 Reads require a `publicClient`; executable writes require a `walletClient`.
 
-## CryptoPunks721
+## `CryptoPunks721`
 
 The wrapper built by Yuga Labs uses the owner's Stash as the deposit target. A full wrap is
 two user-visible steps: transfer the original Punk to the expected Stash, then
@@ -70,7 +70,7 @@ await punks.wrappers.modern.migrateLegacyWrappedPunks([8348])
 await punks.wrappers.modern.rescuePunk(1234)
 ```
 
-## Legacy Wrapped Punks
+## `WrappedPunk`
 
 The legacy wrapper uses a per-user proxy. Register the proxy once, transfer
 the original Punk to that proxy, then call `mint`.

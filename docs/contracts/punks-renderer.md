@@ -18,7 +18,7 @@ not store art bytes. Every output is derived at call time from:
   `paletteRgbaBytes()`.
 - `PunksData` trait names, trait masks, attribute counts, color counts, and
   pixel counts.
-- Optional CryptoPunks market and wrapper addresses for marketplace-aware
+- Optional `CryptoPunksMarket` and wrapper addresses for marketplace-aware
   backgrounds.
 
 This contract currently combines the per-format renderer roles that the
@@ -44,8 +44,8 @@ Parameters:
 | Parameter          | Meaning                                                         |
 | ------------------ | --------------------------------------------------------------- |
 | `punksData`        | Data contract used for all pixels, palette, traits, and metrics |
-| `punksMarket`      | Optional CryptoPunks market used by `backgroundOf`              |
-| `wrapper`          | Optional wrapped CryptoPunks owner address                      |
+| `punksMarket`      | Optional `CryptoPunksMarket` used by `backgroundOf`             |
+| `wrapper`          | Optional `WrappedPunk` owner address                            |
 | `c721Wrapper`      | Optional C721 wrapper owner address                             |
 | `reverseRegistrar` | Optional ENS reverse registrar                                  |
 | `reverseName`      | Optional reverse name to set during construction                |
@@ -58,9 +58,9 @@ The mainnet Ignition module defaults are:
 
 | Dependency            | Address                                      |
 | --------------------- | -------------------------------------------- |
-| CryptoPunks market    | `0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb` |
-| Wrapped CryptoPunks   | `0xb7f7f6c52f2e2fdb1963eab30438024864c313f6` |
-| C721 wrapper          | `0x000000000000003607fce1ac9e043a86675c5c2f` |
+| `CryptoPunksMarket`   | `0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb` |
+| `WrappedPunk`         | `0xb7f7f6c52f2e2fdb1963eab30438024864c313f6` |
+| `CryptoPunks721`      | `0x000000000000003607fce1ac9e043a86675c5c2f` |
 | ENS reverse registrar | `0xa58e81fe9b61b5c3fe2afd33cf304c454abfc7cb` |
 | Reverse name          | `renderer.punksdata.eth`                     |
 
@@ -181,13 +181,13 @@ contract exposes the primitives needed for that separate encoder milestone, but
 
 ## Marketplace Backgrounds
 
-`backgroundOf(punkId)` reads the optional CryptoPunks market and wrapper
+`backgroundOf(punkId)` reads the optional `CryptoPunksMarket` and wrapper
 addresses. Resolution order is:
 
 1. Offered for sale.
 2. Has an active bid.
 3. Owned by the C721 wrapper.
-4. Owned by the wrapped CryptoPunks contract.
+4. Owned by the `WrappedPunk` contract.
 5. Default.
 
 Colors are RGBA bytes:

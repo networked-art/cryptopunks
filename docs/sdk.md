@@ -25,24 +25,25 @@ const ids = punks.search({
 
 ## Main Surfaces
 
-| Surface                                       | Use it for                                                                 |
-| --------------------------------------------- | -------------------------------------------------------------------------- |
-| `punks.search`, `punks.count`, `punks.facets` | Fast local search/filtering over the canonical collection                  |
-| `punks.dataset`                               | Trait catalog, palette, summaries, optional indexed pixels, bitmaps        |
-| `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle |
-| `punks.market`                                | Original CryptoPunks market reads/writes                                   |
-| `punks.v1Market`                              | Criteria-bid market that wraps the broken June 9th 2017 CryptoPunks contract |
-| `punks.v1Wrapper`                             | Third-party V1 wrapper reads, approvals, and single + batch unwrap flows |
-| `punks.data.contract`                         | Exact reads for `PunksData.sol`                                            |
-| `punks.data.legacy`                           | Original `CryptopunksData` SVG and attribute reads                         |
-| `punks.wrappers.modern`                       | CryptoPunks721 reads, approvals, and Stash wrapping flows                  |
-| `punks.wrappers.legacy`                       | Legacy Wrapped Punks reads, approvals, proxy wrapping flows                |
-| `punks.stash.factory`                         | StashFactory lookup, deployment, implementation status, and Stash upgrades |
-| `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals, and orders         |
-| `punks.stashBids`                             | Node Foundation offchain Stash Punk bids orderbook                         |
-| `punks.offers`                                | Criterion offers through the Networked Art auction contract                |
-| `punks.auctions`                              | Vault deposits, lots, bids, settlement, reclaim                            |
-| `punks.contracts`                             | Low-level `PunksData` and `PunksRenderer` viem wrappers                    |
+| Surface                                       | Use it for                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------ |
+| `punks.search`, `punks.count`, `punks.facets` | Fast local search/filtering over the canonical collection                      |
+| `punks.dataset`                               | Trait catalog, palette, summaries, optional indexed pixels, bitmaps            |
+| `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI generation with the pixel bundle     |
+| `@networked-art/punks-sdk/similarity`         | Exact local similarity, explanations, and recommendations                      |
+| `punks.market`                                | `CryptoPunksMarket` reads/writes                                               |
+| `punks.v1Market`                              | Criteria-bid market that wraps the broken June 9th 2017 `CryptoPunks` contract |
+| `punks.v1Wrapper`                             | `PunksV1Wrapper` reads, approvals, and single + batch unwrap flows             |
+| `punks.data.contract`                         | Exact reads for `PunksData`                                                    |
+| `punks.data.legacy`                           | Original `CryptopunksData` SVG and attribute reads                             |
+| `punks.wrappers.modern`                       | `CryptoPunks721` reads, approvals, and Stash wrapping flows                    |
+| `punks.wrappers.legacy`                       | `WrappedPunk` reads, approvals, proxy wrapping flows                           |
+| `punks.stash.factory`                         | StashFactory lookup, deployment, implementation status, and Stash upgrades     |
+| `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals, and orders             |
+| `punks.stashBids`                             | Node Foundation offchain Stash Punk bids orderbook                             |
+| `punks.offers`                                | Criterion offers through the Networked Art auction contract                    |
+| `punks.auctions`                              | Vault deposits, lots, bids, settlement, reclaim                                |
+| `punks.contracts`                             | Low-level `PunksData` and `PunksRenderer` viem wrappers                        |
 
 ## Choosing The Right Surface
 
@@ -50,7 +51,7 @@ Use the local SDK surfaces first for app UI: `punks.search` and
 `punks.dataset` are fast, deterministic, and do not require RPC. Add the
 pixel bundle when `punks.render` or indexed pixels are needed.
 
-Use `punks.data.contract` when you need live reads from `PunksData.sol`, such
+Use `punks.data.contract` when you need live reads from `PunksData`, such
 as validating a deployment or reading at a block.
 
 Use `punks.data.legacy` only when compatibility requires the original Larva
@@ -58,19 +59,20 @@ Labs `CryptopunksData` SVG or attribute strings.
 
 ## Sections
 
-| Section                                           | Use it for                                                                               |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Data And Search](/sdk/data-search)               | Query filtering, facets, dataset reads, and offer-slot compilation                       |
-| [Rendering And Metadata](/sdk/rendering)          | Local images, metadata, token URI generation, and exact onchain renderer reads           |
-| [Original Marketplace](/sdk/original-marketplace) | Original CryptoPunks market reads and writes                                             |
-| [V1 Market](/sdk/v1-market)                       | Criteria-bid market for the broken June 9th 2017 CryptoPunks contract, plus indexer composition |
-| [V1 Wrapper](/sdk/v1-wrapper)                     | Third-party V1 wrapper reads, approvals, and the `UnwrapV1Punks` batch helper           |
-| [Punk Data Contracts](/sdk/punk-data-contracts)   | Local dataset vs `PunksData.sol` vs legacy `CryptopunksData`                             |
-| [Wrappers](/sdk/wrappers)                         | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers                   |
-| [Stash](/sdk/stash)                               | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and orders               |
-| [Stash Bids](/sdk/stash-bids)                     | Node Foundation offchain bids orderbook, signing, submission, and settlement             |
-| [Offers And Auctions](/sdk/offers-and-auctions)   | Criterion offers, vaults, lots, bids, settlement                                         |
-| [Utilities And Caching](/sdk/utilities)           | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior |
+| Section                                           | Use it for                                                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [Data And Search](/sdk/data-search)               | Query filtering, facets, dataset reads, and offer-slot compilation                                |
+| [Similarity](/sdk/similarity)                     | Exact local similarity scoring, explanations, and recommendations                                 |
+| [Rendering And Metadata](/sdk/rendering)          | Local images, metadata, token URI generation, and exact onchain renderer reads                    |
+| [Original Marketplace](/sdk/original-marketplace) | `CryptoPunksMarket` reads and writes                                                              |
+| [V1 Market](/sdk/v1-market)                       | Criteria-bid market for the broken June 9th 2017 `CryptoPunks` contract, plus indexer composition |
+| [V1 Wrapper](/sdk/v1-wrapper)                     | `PunksV1Wrapper` reads, approvals, and the `UnwrapV1Punks` batch helper                           |
+| [Punk Data Contracts](/sdk/punk-data-contracts)   | Local dataset vs `PunksData` vs legacy `CryptopunksData`                                          |
+| [Wrappers](/sdk/wrappers)                         | Modern Stash wrapping, legacy proxy wrapping, approvals, and transfers                            |
+| [Stash](/sdk/stash)                               | StashFactory, Stash funding, liquidity, Punk bids, withdrawals, and orders                        |
+| [Stash Bids](/sdk/stash-bids)                     | Node Foundation offchain bids orderbook, signing, submission, and settlement                      |
+| [Offers And Auctions](/sdk/offers-and-auctions)   | Criterion offers, vaults, lots, bids, settlement                                                  |
+| [Utilities And Caching](/sdk/utilities)           | Constants, ABIs, bitmap helpers, validation, block options, and low-level cache behavior          |
 
 ## Viem Configuration
 

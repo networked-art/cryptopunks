@@ -31,7 +31,7 @@ name to `punksmarket.eth`.
 receive() external payable
 ```
 
-Only the original CryptoPunks market may send ETH directly to the contract,
+Only `CryptoPunks` (the original market) may send ETH directly to the contract,
 which happens during the internal `PUNKS_V1.withdraw()` call inside a
 settlement. Any other sender reverts with `UnexpectedEtherSender`.
 

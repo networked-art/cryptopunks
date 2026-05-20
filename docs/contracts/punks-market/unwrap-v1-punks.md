@@ -2,7 +2,7 @@
 
 `UnwrapV1Punks` is a tiny utility contract that unwraps a batch of
 `PunksV1Wrapper` ERC-721 tokens back into their underlying June 9th 2017
-CryptoPunks in a single transaction. It exists so holders with multiple
+`CryptoPunks` in a single transaction. It exists so holders with multiple
 wrapped Punks do not have to send one `unwrap` per token.
 
 The contract lives at `contracts/contracts/UnwrapV1Punks.sol`. It is
@@ -36,7 +36,7 @@ the call, even if it is approved for other holders.
 | Constant   | Address                                                                                                            | Role                                                                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | `WRAPPER`  | [`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) | Third-party `PunksV1Wrapper` ERC-721 that custodies the wrapped Punks |
-| `PUNKS_V1` | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 CryptoPunks market the underlying Punks live on    |
+| `PUNKS_V1` | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 `CryptoPunks` market the underlying Punks live on  |
 
 Both addresses are baked into the bytecode and cannot be changed after
 deployment.
@@ -94,7 +94,7 @@ unwrapV1Punks.unwrap(punkIds);
 ```
 
 After the call, the underlying Punks are owned by the caller on the
-original CryptoPunks market and the wrapper tokens are burned.
+`CryptoPunks` market and the wrapper tokens are burned.
 
 ## Events
 

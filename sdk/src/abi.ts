@@ -1462,8 +1462,6 @@ export const punksAuctionAbi = [
       { name: 'seller', type: 'address' },
       { name: 'reserveWei', type: 'uint96' },
       { name: 'onlySellTo', type: 'address' },
-      { name: 'itemCount', type: 'uint8' },
-      { name: 'itemHash', type: 'bytes32' },
     ],
     stateMutability: 'view',
   },

@@ -144,7 +144,7 @@ await stash.cancelAllPunkBids()
 ## Wrap A Punk Held By Stash
 
 When the Stash already holds an original CryptoPunk, the owner can wrap it
-into the modern CryptoPunks721 token without first withdrawing:
+into the modern `CryptoPunks721` token without first withdrawing:
 
 ```ts
 await stash.wrapPunk(8348)

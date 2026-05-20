@@ -3,7 +3,7 @@
 Collection-first TypeScript SDK for CryptoPunks.
 
 The default API is built for application code: fast local search and
-inspectable transaction plans for the original CryptoPunks market plus the
+inspectable transaction plans for `CryptoPunksMarket` plus the
 Networked Art auction/offer system. The low-level contract clients are still
 exported for exact onchain reads, and local rendering is available by opting
 into the bundled pixel data.
@@ -21,23 +21,24 @@ auction reads need a `publicClient`.
 
 ## Root API
 
-| Surface                                       | Use it for                                                       |
-| --------------------------------------------- | ---------------------------------------------------------------- |
-| `punks.search`, `punks.count`, `punks.facets` | Local collection filtering                                       |
-| `punks.dataset`                               | Bundled trait, palette, bitmap, and optional pixel data          |
-| `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI output                 |
-| `punks.market`                                | Original CryptoPunks market reads/writes                         |
-| `punks.v1Market`                              | Criteria-bid market wrapping the broken June 9th 2017 CryptoPunks contract |
-| `punks.v1Wrapper`                             | Third-party V1 ERC-721 wrapper with batch unwrap helper          |
-| `punks.data.contract`                         | `PunksData.sol` reads                                            |
-| `punks.data.legacy`                           | Original `CryptopunksData` SVG and attributes                    |
-| `punks.wrappers.modern`                       | CryptoPunks721 and Stash wrapping flows                          |
-| `punks.wrappers.legacy`                       | Legacy Wrapped Punks proxy wrapping flows                        |
-| `punks.stash.factory`                         | StashFactory deployment, lookup, implementation status, upgrades |
-| `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals           |
-| `punks.stashBids`                             | Node Foundation offchain bids orderbook (prepare, sign, submit, accept) |
-| `punks.offers`                                | Networked Art criterion offers                                   |
-| `punks.auctions`                              | Vaults, lots, bidding, settlement                                |
+| Surface                                       | Use it for                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| `punks.search`, `punks.count`, `punks.facets` | Local collection filtering                                                   |
+| `punks.dataset`                               | Bundled trait, palette, bitmap, and optional pixel data                      |
+| `punks.render`                                | Local SVG, PNG, RGBA, metadata, token URI output                             |
+| `@networked-art/punks-sdk/similarity`         | Exact local similarity, explanations, and recommendations                    |
+| `punks.market`                                | `CryptoPunksMarket` reads/writes                                             |
+| `punks.v1Market`                              | Criteria-bid market wrapping the broken June 9th 2017 `CryptoPunks` contract |
+| `punks.v1Wrapper`                             | `PunksV1Wrapper` ERC-721 with batch unwrap helper                            |
+| `punks.data.contract`                         | `PunksData` reads                                                            |
+| `punks.data.legacy`                           | Original `CryptopunksData` SVG and attributes                                |
+| `punks.wrappers.modern`                       | `CryptoPunks721` and Stash wrapping flows                                    |
+| `punks.wrappers.legacy`                       | `WrappedPunk` proxy wrapping flows                                           |
+| `punks.stash.factory`                         | StashFactory deployment, lookup, implementation status, upgrades             |
+| `punks.stash.at(address)`                     | Individual Stash funding, liquidity, bids, withdrawals                       |
+| `punks.stashBids`                             | Node Foundation offchain bids orderbook (prepare, sign, submit, accept)      |
+| `punks.offers`                                | Networked Art criterion offers                                               |
+| `punks.auctions`                              | Vaults, lots, bidding, settlement                                            |
 
 ## Choosing The Right Surface
 
@@ -90,14 +91,14 @@ punks.facets({ text: 'mohawk' })
 `query.text` is parsed into the same shape as the structured fields above and
 compiles 1:1 to an onchain `Punks.Filter`. Recognized phrases:
 
-| Phrase                                                  | Maps to                                  |
-| ------------------------------------------------------- | ---------------------------------------- |
-| `2 colors`, `3 attributes`, `220 pixels`                | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
-| `<=4 colors`, `>= 3 attributes`, `2-4 colors`           | numeric range on the same axis           |
-| `dark skin`, `albino skin`, `skin fair`, `albino`       | `skinTone` (expands to Female + Male slot) |
-| `#1234`, bare `1234`                                    | offer-slot `includeIds[]`                |
-| `-1234`, `-#1234`                                       | offer-slot `excludeIds[]`                |
-| Anything else                                           | case-insensitive trait name match        |
+| Phrase                                            | Maps to                                               |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| `2 colors`, `3 attributes`, `220 pixels`          | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
+| `<=4 colors`, `>= 3 attributes`, `2-4 colors`     | numeric range on the same axis                        |
+| `dark skin`, `albino skin`, `skin fair`, `albino` | `skinTone` (expands to Female + Male slot)            |
+| `#1234`, bare `1234`                              | offer-slot `includeIds[]`                             |
+| `-1234`, `-#1234`                                 | offer-slot `excludeIds[]`                             |
+| Anything else                                     | case-insensitive trait name match                     |
 
 Skin tones map to the four human head-variant slots: `Dark → 1`, `Brown → 2`,
 `Fair → 3`, `Albino → 4`. Aliens, Apes, and Zombies are never selected by a
@@ -233,8 +234,8 @@ const deposit = await punks.auctions.prepareDeposit({
 The package still exports:
 
 - `createPunksDataClient` and `createPunksRendererClient`
-- clients for the original market, the V1 market, the V1 wrapper, the V1 market indexer, wrappers, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
-- ABIs for `PunksData`, `PunksRenderer`, the original market, the V1 market, the V1 wrapper, the V1 unwrap helper, wrappers, Stash, auctions, and the auction vault
+- clients for `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, the `PunksMarket` indexer, wrappers, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
+- ABIs for `PunksData`, `PunksRenderer`, `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, `UnwrapV1Punks`, wrappers, Stash, auctions, and the auction vault
 - bitmap utilities and validation helpers
 - `@networked-art/punks-sdk/offline` for direct offline dataset access
 

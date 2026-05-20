@@ -1,6 +1,6 @@
 # PunksMarket
 
-`PunksMarket` is a native-ETH market that gives the broken CryptoPunks
+`PunksMarket` is a native-ETH market that gives the broken `CryptoPunks`
 contract deployed by LarvaLabs on June 9th 2017 a working secondary market.
 It acts as a directed-listing intermediary and as a criteria-bid book, with
 all settlement routed through itself to work around the original contract's
@@ -13,7 +13,7 @@ page for the full API.
 
 ## Purpose
 
-The June 9th 2017 CryptoPunks contract miscredits sale proceeds. Selling
+The June 9th 2017 `CryptoPunks` contract miscredits sale proceeds. Selling
 directly through it is unsafe: the seller's `withdraw()` balance can be
 clobbered by subsequent sales before they pull it.
 
@@ -36,7 +36,7 @@ because they do not safely route the seller's proceeds and because we don't want
 Listing a Punk is the one part of the workflow that happens on the original
 contract, not on `PunksMarket`. The seller calls
 [`offerPunkForSaleToAddress`](https://evm.now/address/0x6ba6f2207e343923ba692e5cae646fb0f566db8d/interact#offerPunkForSaleToAddress:::punksmarket.eth)
-directly on the June 9th 2017 CryptoPunks market:
+directly on the June 9th 2017 `CryptoPunks` market:
 
 ```solidity
 ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D)
@@ -82,7 +82,7 @@ The design is inspired by MouseDev's `CryptoPunksBidsV2`.
 
 | Constant     | Address                                                                                                            | Role                                                           |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| `PUNKS_V1`   | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 CryptoPunks market with the proceeds bug     |
+| `PUNKS_V1`   | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 `CryptoPunks` market with the proceeds bug   |
 | `PUNKS_DATA` | [`0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C`](https://evm.now/address/punksdata.eth)                              | Sealed dataset used to evaluate bid criteria against each Punk |
 
 Both addresses are baked into the bytecode and cannot be changed after
@@ -104,6 +104,6 @@ The contract is deployed only on Ethereum mainnet.
 | Section                                                  | Use it for                                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [Reference](/contracts/punks-market/reference)           | Full API: constants, bid model and matching, purchase API, bid lifecycle, read API, ETH flow, events, errors, integration notes |
-| [UnwrapV1Punks](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks                                      |
+| [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks                                    |
 
 For TypeScript usage, see [V1 Market](/sdk/v1-market).

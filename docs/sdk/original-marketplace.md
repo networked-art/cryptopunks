@@ -1,6 +1,6 @@
 # Original Marketplace
 
-The original CryptoPunks market is available at `punks.market`. Reads require
+`CryptoPunksMarket` is available at `punks.market`. Reads require
 a `publicClient`; writes require a `walletClient`.
 
 ```ts
@@ -10,14 +10,13 @@ const punks = createPunksSdk({
 })
 ```
 
-Bid flows on the original market are not surfaced as helpers on this client.
+The original market's direct Punk bid flow is surfaced for compatibility.
 Use [Offers And Auctions](/sdk/offers-and-auctions) for the Networked Art
-auction/offer system, [Stash](/sdk/stash) for offchain Stash Punk bids, or the
-exported `cryptoPunksMarketAbi` for direct viem calls.
+auction/offer system, or [Stash](/sdk/stash) for offchain Stash Punk bids.
 
 ## Reads
 
-Read collection metadata, ownership, listings, and withdrawable ETH:
+Read collection metadata, ownership, listings, bids, and withdrawable ETH:
 
 ```ts
 const name = await punks.market.name()
@@ -30,6 +29,7 @@ const nextIndex = await punks.market.nextPunkIndexToAssign()
 const owner = await punks.market.ownerOf(8348)
 const balance = await punks.market.balanceOf(owner)
 const listing = await punks.market.listing(8348)
+const bid = await punks.market.bid(8348)
 const escrowed = await punks.market.pendingWithdrawal(owner)
 ```
 
@@ -71,6 +71,18 @@ await punks.market.buy({
   punkId: 8348,
   maxPriceWei: 100n * 10n ** 18n,
 })
+
+await punks.market.enterBid({
+  punkId: 8348,
+  amountWei: 90n * 10n ** 18n,
+})
+
+await punks.market.acceptBid({
+  punkId: 8348,
+  minPriceWei: 90n * 10n ** 18n,
+})
+
+await punks.market.withdrawBid(8348)
 
 await punks.market.transfer({
   punkId: 8348,

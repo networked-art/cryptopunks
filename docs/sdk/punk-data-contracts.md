@@ -10,7 +10,7 @@ bundled with the package and does not require RPC. Rendering previews and
 indexed pixels use the separate optional pixel bundle.
 
 Use `punks.data.contract` or `punks.data.onchain` when you need exact reads
-from this repo's `PunksData.sol` deployment.
+from this repo's `PunksData` deployment.
 
 Use `punks.data.legacy` when you need the original Larva Labs
 `CryptopunksData` SVG or CSV strings.
@@ -37,7 +37,7 @@ const punks = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
 const indexedPixels = punks.dataset.indexedPixels(8348)
 ```
 
-## PunksData.sol
+## `PunksData`
 
 `punks.data.contract` and `punks.data.onchain` are aliases for the same
 `PunksDataClient`.
@@ -47,7 +47,7 @@ const hash = await punks.data.contract.datasetHash()
 const trait = await punks.data.contract.traitName(62)
 const pixels = await punks.data.contract.indexedPixelsOf(8348)
 
-// Raw mask-based predicate that mirrors `PunksData.sol`:
+// Raw mask-based predicate that mirrors `PunksData`:
 const matches = await punks.data.contract.hasTraits(
   8348,
   requiredMask,
@@ -71,4 +71,4 @@ const csv = await punks.data.legacy.punkAttributes(8348)
 
 The legacy contract is useful for compatibility with older integrations. For
 new filtering, rendering, and trait work, prefer the local dataset or
-`PunksData.sol`.
+`PunksData`.
