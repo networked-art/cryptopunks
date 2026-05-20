@@ -64,6 +64,4 @@ pnpm format         # prettier
 pnpm docs:dev       # local VitePress preview
 ```
 
-The workspace is pinned to `pnpm@10` and uses a `viem@2.48.4` override (see
-`package.json`). Per-package scripts (Hardhat tasks, Ponder dev, Nuxt dev,
-Kamal deploys) are documented in each package's README.
+Per-package scripts (Hardhat tasks, Ponder dev, Nuxt dev, Kamal deploys) are documented in each package's README.
