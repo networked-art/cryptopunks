@@ -14,12 +14,12 @@ collections:
 
 The combined indexer watches:
 
-- CryptoPunks V1 (`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`)
-- CryptoPunks V2 (`0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB`)
-- Wrapped CryptoPunks (`0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6`)
-- CryptoPunks721 (`0x000000000000003607fce1aC9E043a86675C5C2F`)
-- V1 wrapper (`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`)
-- PunksMarket (`0x64e507FEBF26521b73FbdfA533106B2042533218`)
+- [CryptoPunks V1](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) (`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`)
+- [CryptoPunks V2](https://evm.now/address/0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB) (`0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB`)
+- [Wrapped CryptoPunks](https://evm.now/address/0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6) (`0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6`)
+- [CryptoPunks721](https://evm.now/address/0x000000000000003607fce1aC9E043a86675C5C2F) (`0x000000000000003607fce1aC9E043a86675C5C2F`)
+- [V1 wrapper](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) (`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`)
+- [PunksMarket](https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218) (`0x64e507FEBF26521b73FbdfA533106B2042533218`)
 
 While a Punk is wrapped, the user-facing `punks.owner` column reflects the
 ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
