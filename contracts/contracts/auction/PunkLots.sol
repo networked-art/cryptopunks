@@ -215,7 +215,7 @@ abstract contract PunkLots is IPunksAuction {
 
     /// @dev Checks vault custody at open/accept/start time. The lot's existence
     ///      already implies its slot reservations are intact (first-wins).
-    function _requireLotItemsValidForOpen(address seller, LotItem[] memory items) internal view {
+    function _requireLotItemsValidForOpeningAuction(address seller, LotItem[] memory items) internal view {
         uint256 n = items.length;
         for (uint256 i; i < n;) {
             LotItem memory item = items[i];

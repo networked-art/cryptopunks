@@ -111,7 +111,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (bidWei < lot.reserveWei) revert ReserveNotMet(lot.reserveWei, bidWei);
 
         LotItem[] memory items = lotItems[lotId];
-        _requireLotItemsValidForOpen(lot.seller, items);
+        _requireLotItemsValidForOpeningAuction(lot.seller, items);
 
         delete lots[lotId];
         delete lotItems[lotId];
