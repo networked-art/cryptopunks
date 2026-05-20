@@ -60,7 +60,6 @@ const CHANNELS = [
 ]
 
 const SHAKE = { dx: 3, dy: -2 }
-const SLICE = { top: 28, height: 6 }
 
 function hash32(n: number) {
   let h = n | 0
@@ -144,31 +143,26 @@ export function buildGlitchedPunkSvg(
   const shakeTx = SHAKE.dx * strength * PX_TO_UNIT
   const shakeTy = SHAKE.dy * strength * PX_TO_UNIT
 
-  const sliceY = (SLICE.top / 100) * PUNK_UNIT
-  const sliceH = (SLICE.height / 100) * PUNK_UNIT
-  const sliceClipId = 'pnk-slice'
   const frameClipId = 'pnk-frame'
 
+  /// The CSS `.is-glitching` slice clip is an animation that briefly hides
+  /// a horizontal band each cycle. Baking it into a still leaves a
+  /// permanent gap, so we skip it here — the channel layers carry enough
+  /// glitch character on their own.
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PUNK_UNIT} ${PUNK_UNIT}" shape-rendering="crispEdges">` +
     `<defs>` +
     pixelGroup +
     filters.join('') +
     clips.join('') +
-    `<clipPath id="${sliceClipId}">` +
-    `<rect x="0" y="0" width="${PUNK_UNIT}" height="${sliceY.toFixed(4)}"/>` +
-    `<rect x="0" y="${(sliceY + sliceH).toFixed(4)}" width="${PUNK_UNIT}" height="${(PUNK_UNIT - sliceY - sliceH).toFixed(4)}"/>` +
-    `</clipPath>` +
     `<clipPath id="${frameClipId}"><rect x="0" y="0" width="${PUNK_UNIT}" height="${PUNK_UNIT}"/></clipPath>` +
     `</defs>` +
     (bg ? `<rect width="${PUNK_UNIT}" height="${PUNK_UNIT}" fill="${bg}"/>` : '') +
     `<g clip-path="url(#${frameClipId})">` +
-    `<g clip-path="url(#${sliceClipId})">` +
     `<g transform="translate(${shakeTx.toFixed(4)} ${shakeTy.toFixed(4)})">` +
     pixelRef +
     `</g>` +
     layers.join('') +
-    `</g>` +
     `</g>` +
     `</svg>`
   )
