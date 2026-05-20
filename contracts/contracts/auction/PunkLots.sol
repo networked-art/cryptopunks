@@ -45,7 +45,6 @@ abstract contract PunkLots is IPunksAuction {
         _validateLotItems(items);
 
         uint8 itemCount = uint8(items.length);
-        bytes32 itemHash = keccak256(abi.encode(items));
 
         unchecked {
             id = ++lastLotId;
@@ -54,12 +53,17 @@ abstract contract PunkLots is IPunksAuction {
         lots[id] = Lot({
             seller: msg.sender,
             reserveWei: reserveWei,
-            onlySellTo: onlySellTo,
-            itemCount: itemCount,
-            itemHash: itemHash
+            onlySellTo: onlySellTo
         });
 
-        emit LotCreated(id, msg.sender, itemHash, itemCount, reserveWei, onlySellTo);
+        emit LotCreated(
+            id,
+            msg.sender,
+            keccak256(abi.encode(items)),
+            itemCount,
+            reserveWei,
+            onlySellTo
+        );
 
         LotItem[] storage storedItems = lotItems[id];
         for (uint256 i; i < itemCount;) {
@@ -237,6 +241,20 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
+    /// @dev Releases per-Punk lot reservations and pulls each Punk from the
+    ///      seller's vault into custody.
+    function _pullLotItems(address seller, LotItem[] memory items) internal {
+        uint256 n = items.length;
+        for (uint256 i; i < n;) {
+            LotItem memory item = items[i];
+            delete lotForPunk[_tokenKey(seller, _tokenContractFor(item.standard), item.punkId)];
+            _pullPunk(item.standard, seller, item.punkId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @dev Builds the key that identifies a seller's holding of one Punk
     ///      across the `lotForPunk` reservation mapping.
     function _tokenKey(
@@ -264,6 +282,12 @@ abstract contract PunkLots is IPunksAuction {
         address seller,
         uint256 punkIndex
     ) internal view virtual returns (bool);
+
+    function _pullPunk(
+        TokenStandard standard,
+        address seller,
+        uint256 punkIndex
+    ) internal virtual;
 
     function _tokenContractFor(TokenStandard standard) internal view virtual returns (address);
 }

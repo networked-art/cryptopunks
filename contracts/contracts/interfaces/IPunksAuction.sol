@@ -47,8 +47,6 @@ interface IPunksAuction {
         address seller;
         uint96 reserveWei;
         address onlySellTo;
-        uint8 itemCount;
-        bytes32 itemHash;
     }
 
     /// @notice Scalar fields for a live auction.
@@ -103,8 +101,8 @@ interface IPunksAuction {
     /// @notice Emitted when a lot becomes a live auction.
     event AuctionInitialised(
         uint256 indexed auctionId,
+        uint256 indexed lotId,
         address indexed seller,
-        bytes32 indexed itemHash,
         uint8 itemCount,
         uint40 endTimestamp
     );
@@ -218,7 +216,7 @@ interface IPunksAuction {
     error NotSeller();
     error PunkAlreadyInLot(uint256 lotId);
     error ReserveMismatch(uint96 expectedReserveWei, uint96 actualReserveWei);
-    error ReserveNotMet();
+    error ReserveNotMet(uint96 reserveWei, uint96 actualWei);
     error OfferAmountBelowMinimum(uint96 minAmountWei, uint96 actualAmountWei);
     error BuyerNotAllowed(address allowed);
 
@@ -226,7 +224,7 @@ interface IPunksAuction {
     error AuctionNotActive();
     error AuctionAlreadySettled();
     error AuctionNotComplete();
-    error MinimumBidNotMet();
+    error MinimumBidNotMet(uint96 minBidWei, uint96 actualBidWei);
 
     // ─────────────────────────────────── Lots ───────────────────────────────────
 

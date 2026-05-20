@@ -2207,7 +2207,7 @@ describe('PunksAuction', () => {
       )
 
       const lot = await auctions.read.lots([1n])
-      // (seller, reserveWei, onlySellTo, itemCount, itemHash)
+      // (seller, reserveWei, onlySellTo)
       assert.equal(
         (lot[2] as string).toLowerCase(),
         bidder1.account.address.toLowerCase(),

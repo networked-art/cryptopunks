@@ -223,6 +223,20 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         }
     }
 
+    /// @dev Reverts unless `slots` and `items` are pairwise compatible.
+    function _requireSlotsMatchItems(
+        OfferSlot[] memory slots,
+        LotItem[] memory items
+    ) internal view {
+        if (slots.length != items.length) revert SlotItemCountMismatch();
+        uint256 n = items.length;
+        for (uint256 i; i < n;) {
+            LotItem memory item = items[i];
+            _requireSlotMatchesPunk(slots[i], item.standard, item.punkId);
+            unchecked { ++i; }
+        }
+    }
+
     /// @dev Reverts unless the slot matches `(standard, punkId)`.
     function _requireSlotMatchesPunk(
         OfferSlot memory slot,
