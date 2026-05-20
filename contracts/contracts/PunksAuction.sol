@@ -14,7 +14,7 @@ import "./PunksAuctionEscrow.sol";
 /// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
 ///
 /// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
-///         `PunksVaultFactory`) and approve this contract as operator. The
+///         `PunksVaultFactory`) and approve this contract as an operator. The
 ///         auction pulls Punks straight from the vault at sale start into a
 ///         dedicated `PunksAuctionEscrow` and performs settlement from there,
 ///         so the canonical marketplace records the escrow as the seller and
