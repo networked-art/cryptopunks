@@ -1,5 +1,10 @@
 # TypeScript SDK
 
+::: warning Alpha — pre public release
+`@networked-art/punks-sdk` is in alpha and has not yet been publicly released.
+APIs, package name, and exports may change without notice.
+:::
+
 `@networked-art/punks-sdk` is the application SDK for CryptoPunks data,
 rendering, marketplace actions, and Networked Art auction/offer flows.
 
