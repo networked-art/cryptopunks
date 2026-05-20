@@ -14,11 +14,11 @@
     &:hover,
     &:focus {
       color: var(--accent) !important;
-      box-shadow: 0 0 0 var(--border-width) #a79aff !important;
+      box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
 
       button {
         color: var(--accent) !important;
-        box-shadow: 0 0 0 var(--border-width) #a79aff !important;
+        box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
       }
     }
   }
@@ -48,7 +48,7 @@ a:focus > .tag {
 a:hover > .tag,
 a:focus > .tag {
   color: var(--accent) !important;
-  box-shadow: 0 0 0 var(--border-width) #a79aff !important;
+  box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
 }
 
 /* Tag's container uses align-items: stretch so the dismiss button fills the

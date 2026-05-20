@@ -150,7 +150,7 @@ const viewProfile = (id: string) => {
 }
 
 .nav-active {
-  box-shadow: inset 0 -2px 0 var(--lavender);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .connect {

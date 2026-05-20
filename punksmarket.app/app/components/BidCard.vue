@@ -164,7 +164,7 @@ const matchesLink = computed(() => {
 }
 
 .bid-card:hover {
-  border-color: #A79AFF;
+  border-color: var(--accent-soft);
 }
 
 .bid-head {

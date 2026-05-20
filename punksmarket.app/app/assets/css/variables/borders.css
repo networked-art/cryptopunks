@@ -1,6 +1,6 @@
 :root {
   --border-color: var(--gray-z-3);
-  --border-color-highlight: var(--lavender);
+  --border-color-highlight: var(--primary);
 
   --border-radius-sm: 3px;
   --border-radius: 3px;
