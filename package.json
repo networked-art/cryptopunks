@@ -9,9 +9,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "changeset": "changeset",
-    "docs:dev": "pnpm --filter @cryptopunks/docs dev",
-    "docs:build": "pnpm --filter @cryptopunks/docs build",
-    "docs:preview": "pnpm --filter @cryptopunks/docs preview"
+    "docs:dev": "pnpm --filter @networked-art/punks-docs dev",
+    "docs:build": "pnpm --filter @networked-art/punks-docs build",
+    "docs:preview": "pnpm --filter @networked-art/punks-docs preview"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
