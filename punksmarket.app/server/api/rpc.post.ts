@@ -44,13 +44,19 @@ export default defineEventHandler(async (event) => {
   }
   for (const call of calls) {
     if (!isAllowedCall(call)) {
-      throw createError({ statusCode: 403, statusMessage: 'Method not allowed' })
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Method not allowed',
+      })
     }
   }
 
   const upstream = useRuntimeConfig(event).rpcUrl
   if (!upstream) {
-    throw createError({ statusCode: 500, statusMessage: 'RPC upstream not configured' })
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'RPC upstream not configured',
+    })
   }
 
   return await $fetch(upstream, {

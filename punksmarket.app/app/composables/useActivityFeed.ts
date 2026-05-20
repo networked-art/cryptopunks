@@ -213,7 +213,15 @@ export function useActivityFeed(
     load()
   })
 
-  return { events, pending, loadingMore, error, hasMore, refresh: load, loadMore }
+  return {
+    events,
+    pending,
+    loadingMore,
+    error,
+    hasMore,
+    refresh: load,
+    loadMore,
+  }
 }
 
 function mapEvent(row: RawEvent): ActivityEvent {
@@ -245,8 +253,13 @@ function isWrappedEvent(row: RawEvent): boolean {
 function pickFrom(row: RawEvent): Address | undefined {
   // Sales: prefer the explicit seller field; otherwise fall back to the
   // generic from / actor.
-  if (row.type === 'sale') return (row.seller ?? row.from) as Address | undefined
-  if (row.type === 'bid' || row.type === 'bid_adjusted' || row.type === 'bid_cancelled') {
+  if (row.type === 'sale')
+    return (row.seller ?? row.from) as Address | undefined
+  if (
+    row.type === 'bid' ||
+    row.type === 'bid_adjusted' ||
+    row.type === 'bid_cancelled'
+  ) {
     return (row.bidder ?? row.actor) as Address | undefined
   }
   if (row.type === 'listing' || row.type === 'listing_cancelled') {

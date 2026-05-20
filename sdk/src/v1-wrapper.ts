@@ -1,9 +1,6 @@
 import type { Abi, Address, PublicClient, WalletClient } from 'viem'
 import { punksV1WrapperAbi, unwrapV1PunksAbi } from './abi'
-import {
-  PUNKS_V1_WRAPPER_ADDRESS,
-  UNWRAP_V1_PUNKS_ADDRESS,
-} from './constants'
+import { PUNKS_V1_WRAPPER_ADDRESS, UNWRAP_V1_PUNKS_ADDRESS } from './constants'
 import type {
   ContractWritePlan,
   ContractWriteRequest,
@@ -129,10 +126,7 @@ export class PunksV1WrapperClient {
     return this.write(this.prepareSetApprovalForAll(params))
   }
 
-  prepareApprove(params: {
-    to: Address
-    punkId: number
-  }): ContractWritePlan {
+  prepareApprove(params: { to: Address; punkId: number }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
       `Approve V1 wrapped CryptoPunk ${params.punkId}`,
@@ -208,7 +202,9 @@ export class PunksV1WrapperClient {
     const ids = normalizeBatchIds(input.punkIds)
     const approved = await this.isBatchUnwrapApproved(input.owner)
     const unwrapPlan = this.prepareUnwrapBatch(ids)
-    return approved ? [unwrapPlan] : [this.prepareApproveBatchUnwrap(), unwrapPlan]
+    return approved
+      ? [unwrapPlan]
+      : [this.prepareApproveBatchUnwrap(), unwrapPlan]
   }
 
   /// Writes the composed batch flow against the configured wallet.
@@ -294,9 +290,7 @@ function normalizeBatchIds(punkIds: readonly number[]): number[] {
   for (const raw of punkIds) {
     validatePunkId(raw)
     if (raw > 0xffff) {
-      throw new PunksDataValidationError(
-        `punkId ${raw} does not fit in uint16`,
-      )
+      throw new PunksDataValidationError(`punkId ${raw} does not fit in uint16`)
     }
     if (seen.has(raw)) continue
     seen.add(raw)

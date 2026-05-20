@@ -101,9 +101,9 @@ The contract is deployed only on Ethereum mainnet.
 
 ## Documentation Sections
 
-| Section                                                  | Use it for                                                                                                                      |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| [Reference](/contracts/punks-market/reference)           | Full API: constants, bid model and matching, purchase API, bid lifecycle, read API, ETH flow, events, errors, integration notes |
-| [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks                                    |
+| Section                                                    | Use it for                                                                                                                      |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| [Reference](/contracts/punks-market/reference)             | Full API: constants, bid model and matching, purchase API, bid lifecycle, read API, ETH flow, events, errors, integration notes |
+| [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks                                      |
 
 For TypeScript usage, see [V1 Market](/sdk/v1-market).

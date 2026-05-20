@@ -1527,9 +1527,7 @@ export class OfflinePunksDataClient {
     return matches.length === 0 ? emptyPunkBitmap() : unionPunkBitmaps(matches)
   }
 
-  private bitmapForSkinTones(
-    tones: readonly SkinToneValue[],
-  ): PunkBitmap {
+  private bitmapForSkinTones(tones: readonly SkinToneValue[]): PunkBitmap {
     const headVariantIds = new Set<HeadVariantValue>()
     for (const tone of tones) {
       const pair = skinToneHeadVariants[tone]

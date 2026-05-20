@@ -2,8 +2,8 @@
 
 Wrapper clients live under `punks.wrappers`.
 
-| Surface                 | Contract                      |
-| ----------------------- | ----------------------------- |
+| Surface                 | Contract                        |
+| ----------------------- | ------------------------------- |
 | `punks.wrappers.modern` | `CryptoPunks721` modern wrapper |
 | `punks.wrappers.c721`   | Alias for `modern`              |
 | `punks.wrappers.legacy` | `WrappedPunk` (legacy wrapper)  |

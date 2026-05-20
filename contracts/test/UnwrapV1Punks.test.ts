@@ -72,9 +72,7 @@ describe('UnwrapV1Punks', () => {
 
     for (const id of [11n, 22n, 33n]) {
       assert.equal(
-        (
-          (await punksV1.read.punkIndexToAddress([id])) as string
-        ).toLowerCase(),
+        ((await punksV1.read.punkIndexToAddress([id])) as string).toLowerCase(),
         alice.account.address.toLowerCase(),
       )
       assert.equal(await wrapper.read.exists?.([id]).catch(() => false), false)
@@ -109,9 +107,7 @@ describe('UnwrapV1Punks', () => {
         alice.account.address.toLowerCase(),
       )
       assert.equal(
-        (
-          (await punksV1.read.punkIndexToAddress([id])) as string
-        ).toLowerCase(),
+        ((await punksV1.read.punkIndexToAddress([id])) as string).toLowerCase(),
         wrapper.address.toLowerCase(),
       )
     }
@@ -220,10 +216,13 @@ describe('UnwrapV1Punks', () => {
     const hash = await unwrapperForAlice.write.unwrap([[601, 602]])
     const receipt = await publicClient.waitForTransactionReceipt({ hash })
 
-    const events = await unwrapper.getEvents.PunksUnwrapped({}, {
-      fromBlock: receipt.blockNumber,
-      toBlock: receipt.blockNumber,
-    })
+    const events = await unwrapper.getEvents.PunksUnwrapped(
+      {},
+      {
+        fromBlock: receipt.blockNumber,
+        toBlock: receipt.blockNumber,
+      },
+    )
     assert.equal(events.length, 1)
     assert.equal(
       events[0].args.caller!.toLowerCase(),

@@ -86,9 +86,7 @@ async function transfer(): Promise<Hash> {
   if (!to) {
     throw new Error('Enter a valid recipient address or ENS name.')
   }
-  return execute(
-    sdk.value.market.prepareTransfer({ punkId: props.punkId, to }),
-  )
+  return execute(sdk.value.market.prepareTransfer({ punkId: props.punkId, to }))
 }
 
 function onComplete(receipt: { transactionHash: Hash }) {

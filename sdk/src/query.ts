@@ -104,9 +104,16 @@ export function toOfflineSearchQuery(
   }
 
   const normalizedType = type ?? punkType
-  const mergedHead = mergeHeadVariantsWithSkinTone(head ?? headVariant, skinTone)
+  const mergedHead = mergeHeadVariantsWithSkinTone(
+    head ?? headVariant,
+    skinTone,
+  )
   if (normalizedType !== undefined) normalized.punkType = normalizedType
-  if (skinTone !== undefined || head !== undefined || headVariant !== undefined) {
+  if (
+    skinTone !== undefined ||
+    head !== undefined ||
+    headVariant !== undefined
+  ) {
     normalized.headVariant = mergedHead
   }
   return normalized
@@ -218,7 +225,9 @@ function buildFilter(
     addAnyOfTraitGroup(freeTermAnyOfGroups[i], `text term #${i + 1}`)
   }
 
-  const typeIds = normalizePunkTypeRefs(foldedQuery.type ?? foldedQuery.punkType)
+  const typeIds = normalizePunkTypeRefs(
+    foldedQuery.type ?? foldedQuery.punkType,
+  )
   if (typeIds.length === 1) addRequiredTrait(typeIds[0])
   else addAnyOfTraitGroup(typeIds, 'type')
 
@@ -475,16 +484,18 @@ function mergeQueryNumeric(
     }
     return { eq: existing.eq }
   }
-  const min = next.min !== undefined
-    ? existing.min !== undefined
-      ? Math.max(existing.min, next.min)
-      : next.min
-    : existing.min
-  const max = next.max !== undefined
-    ? existing.max !== undefined
-      ? Math.min(existing.max, next.max)
-      : next.max
-    : existing.max
+  const min =
+    next.min !== undefined
+      ? existing.min !== undefined
+        ? Math.max(existing.min, next.min)
+        : next.min
+      : existing.min
+  const max =
+    next.max !== undefined
+      ? existing.max !== undefined
+        ? Math.min(existing.max, next.max)
+        : next.max
+      : existing.max
   if (min !== undefined && max !== undefined && min > max) {
     throw new PunksDataValidationError(
       `${label} from text yields empty range [${min}, ${max}]`,
@@ -518,11 +529,7 @@ export function compileOfferSlot(
   const folded = foldTextIntoQuery(data, query)
 
   const includeIds = uniqueIds(
-    [
-      ...(query.ids ?? []),
-      ...(input.includeIds ?? []),
-      ...folded.includeIds,
-    ],
+    [...(query.ids ?? []), ...(input.includeIds ?? []), ...folded.includeIds],
     'includeIds',
   )
   const excludeIds = uniqueIds(

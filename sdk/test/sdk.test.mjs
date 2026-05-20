@@ -75,10 +75,7 @@ describe('PunksSdk', () => {
     const textSlot = punks.offers.slot({
       query: { text: 'zombie hoodie' },
     })
-    assert.equal(
-      textSlot.criteria.requiredTraitMask,
-      (1n << 4n) | (1n << 62n),
-    )
+    assert.equal(textSlot.criteria.requiredTraitMask, (1n << 4n) | (1n << 62n))
 
     // Skin tones expand to the four human head-variant slots
     // (Female 1..4 / Male 1..4). `albino skin` → head variants 5 + 9
@@ -86,10 +83,7 @@ describe('PunksSdk', () => {
     const albinoSlot = punks.offers.slot({
       query: { text: 'albino skin' },
     })
-    assert.equal(
-      albinoSlot.criteria.anyOfTraitMask,
-      (1n << 10n) | (1n << 14n),
-    )
+    assert.equal(albinoSlot.criteria.anyOfTraitMask, (1n << 10n) | (1n << 14n))
 
     // `2 colors` → colorCount eq 2 → onchain filter min=max=2.
     const twoColorSlot = punks.offers.slot({ query: { text: '2 colors' } })

@@ -126,8 +126,7 @@ export function buildGlitchedPunkSvg(
       `<clipPath id="${clipId}"><rect x="0" y="${y.toFixed(4)}" width="${PUNK_UNIT}" height="${h.toFixed(4)}"/></clipPath>`,
     )
 
-    const skewFn =
-      c.axis === 'x' ? `skewX(${c.skew})` : `skewY(${c.skew})`
+    const skewFn = c.axis === 'x' ? `skewX(${c.skew})` : `skewY(${c.skew})`
     const tx = dx1 * 0.4
     const ty = dy * 0.4
 
@@ -157,7 +156,9 @@ export function buildGlitchedPunkSvg(
     clips.join('') +
     `<clipPath id="${frameClipId}"><rect x="0" y="0" width="${PUNK_UNIT}" height="${PUNK_UNIT}"/></clipPath>` +
     `</defs>` +
-    (bg ? `<rect width="${PUNK_UNIT}" height="${PUNK_UNIT}" fill="${bg}"/>` : '') +
+    (bg
+      ? `<rect width="${PUNK_UNIT}" height="${PUNK_UNIT}" fill="${bg}"/>`
+      : '') +
     `<g clip-path="url(#${frameClipId})">` +
     `<g transform="translate(${shakeTx.toFixed(4)} ${shakeTy.toFixed(4)})">` +
     pixelRef +

@@ -71,9 +71,7 @@ const containerWidth = ref(0)
 const cols = computed(() =>
   Math.max(
     1,
-    Math.floor(
-      (containerWidth.value + props.gap) / (props.size + props.gap),
-    ),
+    Math.floor((containerWidth.value + props.gap) / (props.size + props.gap)),
   ),
 )
 const colStep = computed(() => {

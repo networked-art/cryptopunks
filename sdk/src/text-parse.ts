@@ -334,8 +334,10 @@ function mergeConstraints(
       `conflicting numeric constraints in text: ${a.eq} and ${b.eq}`,
     )
   }
-  if ('eq' in a) return mergeEqWithRange(a.eq, b as { min?: number; max?: number })
-  if ('eq' in b) return mergeEqWithRange(b.eq, a as { min?: number; max?: number })
+  if ('eq' in a)
+    return mergeEqWithRange(a.eq, b as { min?: number; max?: number })
+  if ('eq' in b)
+    return mergeEqWithRange(b.eq, a as { min?: number; max?: number })
   return {
     min: Math.max(a.min ?? -Infinity, b.min ?? -Infinity) || undefined,
     max: Math.min(a.max ?? Infinity, b.max ?? Infinity) || undefined,
@@ -359,10 +361,7 @@ function mergeEqWithRange(
   return { eq }
 }
 
-function addSkinTone(
-  group: ParsedSearchTextGroup,
-  tone: SkinToneValue,
-): void {
+function addSkinTone(group: ParsedSearchTextGroup, tone: SkinToneValue): void {
   if (group.skinTones === undefined) group.skinTones = []
   if (!group.skinTones.includes(tone)) group.skinTones.push(tone)
 }

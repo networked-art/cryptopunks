@@ -77,9 +77,7 @@ function formatRoundedEther(wei: bigint, precision: number) {
   const whole = scaled / scale
   if (digits === 0) return `${whole}`
 
-  const fraction = `${scaled % scale}`
-    .padStart(digits, '0')
-    .replace(/0+$/, '')
+  const fraction = `${scaled % scale}`.padStart(digits, '0').replace(/0+$/, '')
   return fraction ? `${whole}.${fraction}` : `${whole}`
 }
 

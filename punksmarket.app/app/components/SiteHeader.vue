@@ -117,7 +117,13 @@ const viewProfile = (id: string) => {
 }
 
 .brand-word {
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   letter-spacing: -0.02em;
 }
 

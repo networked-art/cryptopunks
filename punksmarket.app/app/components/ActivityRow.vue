@@ -152,7 +152,6 @@ const KIND_LABEL: Record<string, string> = {
   escrow_credit: 'Escrow credit',
   escrow_withdrawal: 'Escrow withdrawal',
 }
-
 </script>
 
 <style scoped>

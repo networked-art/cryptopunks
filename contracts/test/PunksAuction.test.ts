@@ -2328,7 +2328,9 @@ describe('PunksAuction', () => {
       ])
 
       assert.equal(
-        ((await punks.read.punkIndexToAddress([5004n])) as string).toLowerCase(),
+        (
+          (await punks.read.punkIndexToAddress([5004n])) as string
+        ).toLowerCase(),
         bidder1.account.address.toLowerCase(),
       )
     })

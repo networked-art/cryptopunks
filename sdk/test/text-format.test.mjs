@@ -72,7 +72,11 @@ function assertMatchesRoundTrip(bid) {
   const text = formatSearchText(data, bid)
   const fromBid = data.searchSync(bidToQuery(bid))
   const fromText = data.searchSync(searchTextToQuery(text))
-  assert.deepEqual(fromText, fromBid, `mismatch for text: ${JSON.stringify(text)}`)
+  assert.deepEqual(
+    fromText,
+    fromBid,
+    `mismatch for text: ${JSON.stringify(text)}`,
+  )
   assert.ok(fromBid.length > 0, 'expected the bid to match at least one punk')
 }
 

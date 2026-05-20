@@ -1,4 +1,8 @@
-import { mapIndexerBid, type CollectionBid, type IndexerBid } from './usePunksMarketBids'
+import {
+  mapIndexerBid,
+  type CollectionBid,
+  type IndexerBid,
+} from './usePunksMarketBids'
 import { getIndexerUrl, IndexerNotConfigured } from '~/utils/indexer'
 
 type IndexerResponse = {

@@ -30,18 +30,18 @@ struct Filter {
 }
 ```
 
-| Field                | Meaning                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `requiredTraitMask`  | Every set bit must be present in the Punk's trait mask.                                                          |
-| `forbiddenTraitMask` | No set bit may be present in the Punk's trait mask.                                                              |
-| `anyOfTraitMask`     | At least one set bit must be present in the Punk's trait mask. Zero disables the constraint.                     |
-| `requiredColorMask`  | Every set bit must be present in the Punk's color mask.                                                          |
-| `forbiddenColorMask` | No set bit may be present in the Punk's color mask.                                                              |
-| `anyOfColorMask`     | At least one set bit must be present in the Punk's color mask. Zero disables the constraint.                     |
-| `minPixelCount`      | Minimum visible-pixel count. Used only when `maxPixelCount != 0`.                                                |
-| `maxPixelCount`      | Maximum visible-pixel count. `0` disables the range.                                                             |
-| `minColorCount`      | Minimum unique-color count. Used only when `maxColorCount != 0`.                                                 |
-| `maxColorCount`      | Maximum unique-color count. `0` disables the range.                                                              |
+| Field                | Meaning                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `requiredTraitMask`  | Every set bit must be present in the Punk's trait mask.                                      |
+| `forbiddenTraitMask` | No set bit may be present in the Punk's trait mask.                                          |
+| `anyOfTraitMask`     | At least one set bit must be present in the Punk's trait mask. Zero disables the constraint. |
+| `requiredColorMask`  | Every set bit must be present in the Punk's color mask.                                      |
+| `forbiddenColorMask` | No set bit may be present in the Punk's color mask.                                          |
+| `anyOfColorMask`     | At least one set bit must be present in the Punk's color mask. Zero disables the constraint. |
+| `minPixelCount`      | Minimum visible-pixel count. Used only when `maxPixelCount != 0`.                            |
+| `maxPixelCount`      | Maximum visible-pixel count. `0` disables the range.                                         |
+| `minColorCount`      | Minimum unique-color count. Used only when `maxColorCount != 0`.                             |
+| `maxColorCount`      | Maximum unique-color count. `0` disables the range.                                          |
 
 A filter with every field zero matches every Punk — `Punks.isEmpty(filter)`
 returns `true` in that case. Consumers that need a closed allowlist
@@ -50,17 +50,17 @@ typically pair an empty `Filter` with an explicit id list (see
 
 ## Constants
 
-| Name                   | Value                          | Meaning                                                                  |
-| ---------------------- | ------------------------------ | ------------------------------------------------------------------------ |
-| `TRAIT_COUNT`          | `111`                          | Number of canonical traits in the sealed dataset                         |
-| `PALETTE_SIZE`         | `222`                          | Palette size, including reserved index 0 (transparency)                  |
-| `PIXEL_COUNT_MIN`      | `148`                          | Smallest visible-pixel count any Punk has                                |
-| `PIXEL_COUNT_MAX`      | `332`                          | Largest visible-pixel count any Punk has                                 |
-| `COLOR_COUNT_MIN`      | `2`                            | Smallest unique-color count any Punk has                                 |
-| `COLOR_COUNT_MAX`      | `14`                           | Largest unique-color count any Punk has                                  |
-| `CANONICAL_TRAIT_MASK` | `(1 << TRAIT_COUNT) - 1`       | Bit set covering every valid trait id                                    |
-| `CANONICAL_COLOR_MASK` | `(1 << PALETTE_SIZE) - 1`      | Bit set covering every valid color id                                    |
-| `RESERVED_COLOR_BIT`   | `1`                            | Bit 0 of any color mask — reserved for transparency, never set on a Punk |
+| Name                   | Value                     | Meaning                                                                  |
+| ---------------------- | ------------------------- | ------------------------------------------------------------------------ |
+| `TRAIT_COUNT`          | `111`                     | Number of canonical traits in the sealed dataset                         |
+| `PALETTE_SIZE`         | `222`                     | Palette size, including reserved index 0 (transparency)                  |
+| `PIXEL_COUNT_MIN`      | `148`                     | Smallest visible-pixel count any Punk has                                |
+| `PIXEL_COUNT_MAX`      | `332`                     | Largest visible-pixel count any Punk has                                 |
+| `COLOR_COUNT_MIN`      | `2`                       | Smallest unique-color count any Punk has                                 |
+| `COLOR_COUNT_MAX`      | `14`                      | Largest unique-color count any Punk has                                  |
+| `CANONICAL_TRAIT_MASK` | `(1 << TRAIT_COUNT) - 1`  | Bit set covering every valid trait id                                    |
+| `CANONICAL_COLOR_MASK` | `(1 << PALETTE_SIZE) - 1` | Bit set covering every valid color id                                    |
+| `RESERVED_COLOR_BIT`   | `1`                       | Bit 0 of any color mask — reserved for transparency, never set on a Punk |
 
 The pixel-count and color-count ranges match the dataset's actual extrema;
 asking for `maxPixelCount = 500` will fail validation because no Punk has

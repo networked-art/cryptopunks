@@ -33,7 +33,7 @@ env:
   clear:
     NUXT_PUBLIC_INDEXER_URL: <%= ENV["NUXT_PUBLIC_INDEXER_URL"] %>
     # Cap Nitro's node-cluster preset at 4 workers (default = one per CPU).
-    NITRO_CLUSTER_WORKERS: "4"
+    NITRO_CLUSTER_WORKERS: '4'
   secret:
     - NUXT_RPC_URL
     - NUXT_PUBLIC_EVM_WALLET_CONNECT_PROJECT_ID

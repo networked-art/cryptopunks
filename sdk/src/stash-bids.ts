@@ -427,9 +427,7 @@ export class PunksStashBidsFacade {
     const auction = input.auction ?? CRYPTOPUNKS_MARKET_ADDRESS
     const root =
       input.root ??
-      (punkIds.length === 0
-        ? ZERO_BYTES32
-        : await this.api.merkleRoot(punkIds))
+      (punkIds.length === 0 ? ZERO_BYTES32 : await this.api.merkleRoot(punkIds))
     const bid: StashPunkBid = {
       order: {
         numberOfUnits,
@@ -448,9 +446,7 @@ export class PunksStashBidsFacade {
   /// Sign a prepared bid with the configured wallet client.
   async sign(prepared: PreparedStashBid): Promise<Hex> {
     if (!this.walletClient)
-      throw new PunksDataValidationError(
-        'walletClient is required for signing',
-      )
+      throw new PunksDataValidationError('walletClient is required for signing')
     const resolvedAccount = this.account ?? this.walletClient.account?.address
     if (!resolvedAccount)
       throw new PunksDataValidationError('account is required for signing')
@@ -513,10 +509,7 @@ export class PunksStashBidsFacade {
   byId(id: string): Promise<StashBid | null> {
     return this.api.byId(id)
   }
-  forPunk(
-    punkId: number,
-    query?: StashBidsForPunkQuery,
-  ): Promise<StashBid[]> {
+  forPunk(punkId: number, query?: StashBidsForPunkQuery): Promise<StashBid[]> {
     return this.api.forPunk(punkId, query)
   }
   proofs(id: string): Promise<Record<number, Hex[]>> {
@@ -584,11 +577,8 @@ function parseStashBid(wire: StashBidWire): StashBid {
     bidAmountEth: wire.bid_amount_eth,
     merkleRoot: wire.merkle_root as Hex,
     accountNonce:
-      wire.account_nonce === undefined
-        ? undefined
-        : BigInt(wire.account_nonce),
-    bidNonce:
-      wire.bid_nonce === undefined ? undefined : BigInt(wire.bid_nonce),
+      wire.account_nonce === undefined ? undefined : BigInt(wire.account_nonce),
+    bidNonce: wire.bid_nonce === undefined ? undefined : BigInt(wire.bid_nonce),
     status: wire.status as StashBidStatus,
     signature: wire.signature ? (wire.signature as Hex) : undefined,
     createdAt: wire.created_at,
@@ -598,9 +588,7 @@ function parseStashBid(wire: StashBidWire): StashBid {
   }
 }
 
-function parseProofs(
-  proofs: Record<string, string[]>,
-): Record<number, Hex[]> {
+function parseProofs(proofs: Record<string, string[]>): Record<number, Hex[]> {
   const out: Record<number, Hex[]> = {}
   for (const [key, value] of Object.entries(proofs)) {
     out[Number(key)] = value.map((hash) => hash as Hex)

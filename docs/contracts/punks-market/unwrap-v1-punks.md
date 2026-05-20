@@ -28,7 +28,7 @@ it, but only handles one id at a time.
 
 The per-id ownership check is deliberate: a wrapper operator approval alone
 (`setApprovalForAll(unwrap, true)`) is not enough to drain a holder.
-`UnwrapV1Punks` will only unwrap tokens the *caller* owns at the moment of
+`UnwrapV1Punks` will only unwrap tokens the _caller_ owns at the moment of
 the call, even if it is approved for other holders.
 
 ## Immutable Dependencies
@@ -36,7 +36,7 @@ the call, even if it is approved for other holders.
 | Constant   | Address                                                                                                            | Role                                                                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | `WRAPPER`  | [`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) | Third-party `PunksV1Wrapper` ERC-721 that custodies the wrapped Punks |
-| `PUNKS_V1` | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 `CryptoPunks` market the underlying Punks live on  |
+| `PUNKS_V1` | [`0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D`](https://evm.now/address/0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D) | The June 9th 2017 `CryptoPunks` market the underlying Punks live on   |
 
 Both addresses are baked into the bytecode and cannot be changed after
 deployment.
@@ -108,10 +108,10 @@ Indexers that need per-Punk records should also watch the wrapper's own
 
 ## Errors
 
-| Error          | When                                                                                |
-| -------------- | ----------------------------------------------------------------------------------- |
-| `NoPunkIds`    | `unwrap` called with an empty `punkIds` array                                       |
-| `NotPunkOwner` | `msg.sender` is not the wrapper-token owner of one of the supplied ids             |
+| Error          | When                                                                   |
+| -------------- | ---------------------------------------------------------------------- |
+| `NoPunkIds`    | `unwrap` called with an empty `punkIds` array                          |
+| `NotPunkOwner` | `msg.sender` is not the wrapper-token owner of one of the supplied ids |
 
 The wrapper itself can also revert (e.g. missing approval, non-existent
 token). Those reverts surface as raw `PunksV1Wrapper` errors and abort the
@@ -122,8 +122,8 @@ whole batch.
 The Ignition module at `contracts/ignition/modules/UnwrapV1Punks.ts`
 deploys the contract with no parameters.
 
-| Contract        | Address                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------- |
+| Contract        | Address                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------- |
 | `UnwrapV1Punks` | [`0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346`](https://evm.now/address/unwrap.punksmarket.eth) |
 
 The contract is deployed only on Ethereum mainnet.

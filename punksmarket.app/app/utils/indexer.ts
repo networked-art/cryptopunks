@@ -25,7 +25,10 @@ export async function queryIndexer<T>(
   })
   if (!res.ok) throw new Error(`Indexer ${res.status}`)
 
-  const json = (await res.json()) as { data?: T; errors?: { message: string }[] }
+  const json = (await res.json()) as {
+    data?: T
+    errors?: { message: string }[]
+  }
   if (json.errors?.length) {
     throw new Error(json.errors.map((e) => e.message).join('; '))
   }

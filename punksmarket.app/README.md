@@ -50,14 +50,14 @@ Mainnet-only — the wagmi config does not declare any other chain.
 
 ## Scripts
 
-| Script | Purpose |
-| ------ | ------- |
-| `pnpm dev`            | Nuxt dev server on `:3000`. |
-| `pnpm build`          | Production Nitro build (node-cluster preset). |
-| `pnpm generate`       | Static prerender (where applicable). |
-| `pnpm preview`        | Preview the built app. |
-| `pnpm typecheck`      | `nuxt typecheck` (vue-tsc). |
-| `pnpm bake:glitch`    | Regenerate `public/punks-glitched.png` from `punks.png` using the deterministic per-tile glitch (`scripts/bake-glitch.mjs`). Run after the source sprite sheet changes. |
+| Script             | Purpose                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`         | Nuxt dev server on `:3000`.                                                                                                                                             |
+| `pnpm build`       | Production Nitro build (node-cluster preset).                                                                                                                           |
+| `pnpm generate`    | Static prerender (where applicable).                                                                                                                                    |
+| `pnpm preview`     | Preview the built app.                                                                                                                                                  |
+| `pnpm typecheck`   | `nuxt typecheck` (vue-tsc).                                                                                                                                             |
+| `pnpm bake:glitch` | Regenerate `public/punks-glitched.png` from `punks.png` using the deterministic per-tile glitch (`scripts/bake-glitch.mjs`). Run after the source sprite sheet changes. |
 
 ## Deployment (Kamal)
 

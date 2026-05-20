@@ -12,11 +12,7 @@ import {
 } from './constants'
 import type { OfflinePunksDataClient } from './offline'
 import type { PunksFilter } from './query'
-import {
-  PunksDataValidationError,
-  idsFromMask,
-  validatePunkId,
-} from './utils'
+import { PunksDataValidationError, idsFromMask, validatePunkId } from './utils'
 
 /// Inputs to {@link formatSearchText}. Mirrors the shape of a placed bid:
 /// the onchain criteria plus the include / exclude id overlays.
@@ -67,7 +63,10 @@ export function formatSearchText(
       )
     }
 
-    for (const traitId of idsFromMask(criteria.requiredTraitMask, TRAIT_COUNT)) {
+    for (const traitId of idsFromMask(
+      criteria.requiredTraitMask,
+      TRAIT_COUNT,
+    )) {
       tokens.push(quoteTerm(data.getTraitNameSync(traitId)))
     }
 
@@ -75,7 +74,10 @@ export function formatSearchText(
       tokens.push(describeAnyOfTraits(criteria.anyOfTraitMask))
     }
 
-    for (const colorId of idsFromMask(criteria.requiredColorMask, PALETTE_SIZE)) {
+    for (const colorId of idsFromMask(
+      criteria.requiredColorMask,
+      PALETTE_SIZE,
+    )) {
       tokens.push(hexColorToken(data.getColorSync(colorId).rgba))
     }
 
@@ -128,7 +130,12 @@ export function formatSearchText(
 function describeAnyOfTraits(mask: bigint): string {
   const ids = idsFromMask(mask, TRAIT_COUNT)
 
-  if (ids.every((id) => id >= ATTRIBUTE_COUNT_TRAIT_OFFSET && id <= ATTRIBUTE_COUNT_TRAIT_MAX)) {
+  if (
+    ids.every(
+      (id) =>
+        id >= ATTRIBUTE_COUNT_TRAIT_OFFSET && id <= ATTRIBUTE_COUNT_TRAIT_MAX,
+    )
+  ) {
     const counts = ids.map((id) => id - ATTRIBUTE_COUNT_TRAIT_OFFSET)
     const min = counts[0]
     const max = counts[counts.length - 1]
@@ -141,7 +148,11 @@ function describeAnyOfTraits(mask: bigint): string {
     return `${min}-${max} attributes`
   }
 
-  if (ids.every((id) => id >= HEAD_VARIANT_TRAIT_OFFSET && id <= HEAD_VARIANT_TRAIT_MAX)) {
+  if (
+    ids.every(
+      (id) => id >= HEAD_VARIANT_TRAIT_OFFSET && id <= HEAD_VARIANT_TRAIT_MAX,
+    )
+  ) {
     const variants = ids.map((id) => id - HEAD_VARIANT_TRAIT_OFFSET)
 
     if (variants.length === 2) {
@@ -191,9 +202,7 @@ function formatCountConstraint(
 
 function hexColorToken(rgba: string): string {
   if (!rgba.startsWith('0x')) {
-    throw new PunksDataValidationError(
-      `color rgba must start with 0x: ${rgba}`,
-    )
+    throw new PunksDataValidationError(`color rgba must start with 0x: ${rgba}`)
   }
   return `#${rgba.slice(2)}`
 }

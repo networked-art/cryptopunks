@@ -14,7 +14,8 @@ useSeoMeta({
     query.value
       ? `${query.value} · punksmarket.app`
       : 'Search · punksmarket.app',
-  ogTitle: () => (query.value ? `${query.value} · punksmarket.app` : 'punksmarket.app'),
+  ogTitle: () =>
+    query.value ? `${query.value} · punksmarket.app` : 'punksmarket.app',
   twitterTitle: () =>
     query.value ? `${query.value} · punksmarket.app` : 'punksmarket.app',
 })

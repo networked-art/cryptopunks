@@ -22,8 +22,7 @@ export default defineNuxtPlugin({
       chains: Record<string, { rpcs?: string }>
       ens?: { indexers?: string }
     }
-    const publicUrl = (runtimeConfig.public as { publicUrl?: string })
-      .publicUrl
+    const publicUrl = (runtimeConfig.public as { publicUrl?: string }).publicUrl
     const clientRpcPath = publicEvm.chains.mainnet?.rpcs ?? ''
     const clientRpcUrl = publicUrl
       ? new URL(clientRpcPath, publicUrl).toString()
@@ -47,8 +46,7 @@ export default defineNuxtPlugin({
           },
         }
 
-    const indexers =
-      publicEvm.ens?.indexers?.split(/\s+/).filter(Boolean) || []
+    const indexers = publicEvm.ens?.indexers?.split(/\s+/).filter(Boolean) || []
 
     const { wagmiConfig, evmConfig } = createWagmiConfig({
       title: appConfig.evm?.title || 'EVM Layer',
