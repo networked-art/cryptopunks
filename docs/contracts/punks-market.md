@@ -13,7 +13,7 @@ page for the full API.
 
 ## Purpose
 
-The June 2017 CryptoPunks contract miscredits sale proceeds. Selling
+The June 9th 2017 CryptoPunks contract miscredits sale proceeds. Selling
 directly through it is unsafe: the seller's `withdraw()` balance can be
 clobbered by subsequent sales before they pull it.
 
@@ -48,7 +48,7 @@ ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D)
 ```
 
 The third argument must be the `PunksMarket` address (`punksmarket.eth`).
-That is what makes the listing a *directed* listing and what allows
+That is what makes the listing a _directed_ listing and what allows
 [`buyPunk`](/contracts/punks-market/reference#buypunk) /
 [`acceptBid`](/contracts/punks-market/reference#acceptbid) to settle it
 safely. The
@@ -101,9 +101,9 @@ The contract is deployed only on Ethereum mainnet.
 
 ## Documentation Sections
 
-| Section                                                  | Use it for                                                                                       |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Section                                                  | Use it for                                                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [Reference](/contracts/punks-market/reference)           | Full API: constants, bid model and matching, purchase API, bid lifecycle, read API, ETH flow, events, errors, integration notes |
-| [UnwrapV1Punks](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks       |
+| [UnwrapV1Punks](/contracts/punks-market/unwrap-v1-punks) | Batch helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their underlying Punks                                      |
 
 For TypeScript usage, see [V1 Market](/sdk/v1-market).
