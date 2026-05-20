@@ -12,7 +12,7 @@ import "./PunksAuctionEscrow.sol";
 
 /// @title  PunksAuction
 ///
-/// @notice Zero-fee auction house for CryptoPunks with N-item lots and N-slot offers.
+/// @notice Zero-fee auction house for CryptoPunks with multi-item lots and offers.
 ///
 /// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
 ///         `PunksVaultFactory`) and approve this contract as an operator. The
