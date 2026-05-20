@@ -94,7 +94,7 @@ compiles 1:1 to an onchain `Punks.Filter`. Recognized phrases:
 | ------------------------------------------------------- | ---------------------------------------- |
 | `2 colors`, `3 attributes`, `220 pixels`                | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
 | `<=4 colors`, `>= 3 attributes`, `2-4 colors`           | numeric range on the same axis           |
-| `dark skin`, `albino skin`, `skin: fair`, `albino`      | `skinTone` (expands to Female + Male slot) |
+| `dark skin`, `albino skin`, `skin fair`, `albino`       | `skinTone` (expands to Female + Male slot) |
 | `#1234`, bare `1234`                                    | offer-slot `includeIds[]`                |
 | `-1234`, `-#1234`                                       | offer-slot `excludeIds[]`                |
 | Anything else                                           | case-insensitive trait name match        |
@@ -233,8 +233,8 @@ const deposit = await punks.auctions.prepareDeposit({
 The package still exports:
 
 - `createPunksDataClient` and `createPunksRendererClient`
-- clients for the original market, wrappers, StashFactory, Stash, auctions, and offers
-- ABIs for `PunksData`, `PunksRenderer`, the original market, wrappers, Stash, auctions, and escrow
+- clients for the original market, the V1 market, the V1 wrapper, the V1 market indexer, wrappers, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
+- ABIs for `PunksData`, `PunksRenderer`, the original market, the V1 market, the V1 wrapper, the V1 unwrap helper, wrappers, Stash, auctions, and the auction vault
 - bitmap utilities and validation helpers
 - `@networked-art/punks-sdk/offline` for direct offline dataset access
 
