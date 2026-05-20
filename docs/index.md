@@ -34,7 +34,7 @@ All contracts target Ethereum mainnet only.
   metadata, token URI generation, and exact onchain renderer reads.
 - [Original Marketplace](/sdk/original-marketplace) covers original-market
   reads and writes.
-- [V1 Market](/sdk/v1-market) covers the criteria-bid market that wraps the
+- [V1 Market](/sdk/v1-market) covers the criteria-bid market that enables trading through the
   broken June 9th 2017 CryptoPunks contract.
 - [Punk Data Contracts](/sdk/punk-data-contracts) explains local dataset
   usage, `PunksData.sol`, and legacy `CryptopunksData`.
