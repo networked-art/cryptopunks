@@ -343,8 +343,6 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             latestBidder: initialBidder,
             latestBidWei: bidWei,
             endTimestamp: endTimestamp,
-            itemCount: itemCount,
-            itemHash: itemHash,
             settled: false
         });
         LotItem[] storage storedItems = auctionItems[auctionId];

@@ -59,8 +59,6 @@ interface IPunksAuction {
         address latestBidder;
         uint96 latestBidWei;
         uint40 endTimestamp;
-        uint8 itemCount;
-        bytes32 itemHash;
         bool settled;
     }
 

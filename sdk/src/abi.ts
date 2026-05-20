@@ -1476,8 +1476,6 @@ export const punksAuctionAbi = [
       { name: 'latestBidder', type: 'address' },
       { name: 'latestBidWei', type: 'uint96' },
       { name: 'endTimestamp', type: 'uint40' },
-      { name: 'itemCount', type: 'uint8' },
-      { name: 'itemHash', type: 'bytes32' },
       { name: 'settled', type: 'bool' },
     ],
     stateMutability: 'view',
