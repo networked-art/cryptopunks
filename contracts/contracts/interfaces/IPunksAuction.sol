@@ -130,9 +130,7 @@ interface IPunksAuction {
         uint256 indexed auctionId,
         address indexed winner,
         address indexed seller,
-        uint256 finalWei,
-        uint256 sellerWei,
-        uint256 protocolWei
+        uint256 finalWei
     );
 
     /// @notice Emitted when an offerer locks ETH for a new purchase offer.
@@ -294,6 +292,18 @@ interface IPunksAuction {
         returns (uint256 auctionId);
 
     // ─────────────────────────────────── Views ──────────────────────────────────
+
+    /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
+    function auctions(uint256 auctionId)
+        external
+        view
+        returns (
+            address seller,
+            address latestBidder,
+            uint96 latestBidWei,
+            uint40 endTimestamp,
+            bool settled
+        );
 
     /// @notice Returns the items stored on a lot.
     function getLotItems(uint256 lotId) external view returns (LotItem[] memory);

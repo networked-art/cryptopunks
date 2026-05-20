@@ -47,8 +47,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
 
-    /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
-    mapping(uint256 => Auction) public auctions;
+    mapping(uint256 => Auction) internal _auctions;
 
     /// @dev Dynamic item arrays for live auctions, keyed by auction id.
     mapping(uint256 => LotItem[]) internal auctionItems;
@@ -71,9 +70,14 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     // ─────────────────────────────────── ETH ────────────────────────────────────
 
-    /// @notice Receives ETH from the two Punk markets during settlement
-    ///         `withdraw()` calls and from the escrow when it forwards
-    ///         the canonical-market proceeds. Nothing else.
+    /// @notice Accepts ETH only from settlement: the two Punk markets via
+    ///         `withdraw()` and the escrow when it forwards canonical-market
+    ///         proceeds.
+    /// @dev    For canonical-market settlement the escrow is the recorded
+    ///         seller, so its proceeds round-trip through
+    ///         `ESCROW.sweepProceeds()`. For the bugged C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ market, sale
+    ///         proceeds are credited to the buyer (this contract) and arrive
+    ///         via `PUNKS_V1.withdraw()`.
     receive() external payable {
         if (
             msg.sender != address(PUNKS)
@@ -114,7 +118,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @inheritdoc IPunksAuction
     function bid(uint256 auctionId) external payable nonReentrant {
-        Auction storage auction = auctions[auctionId];
+        Auction storage auction = _auctions[auctionId];
         if (auction.endTimestamp == 0) revert AuctionDoesNotExist();
         if (auction.settled) revert AuctionAlreadySettled();
         if (block.timestamp > auction.endTimestamp) revert AuctionNotActive();
@@ -143,44 +147,11 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 lotId,
         uint96 minAmountWei
     ) external nonReentrant {
-        Offer memory offer = _activeOffer(offerId);
-        Lot memory lot = lots[lotId];
-        if (lot.seller == address(0)) revert LotNotFound();
-        if (offer.amountWei < minAmountWei) {
-            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
-        }
-        if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
-        if (lot.onlySellTo != address(0) && lot.onlySellTo != offer.offerer) {
-            revert BuyerNotAllowed(lot.onlySellTo);
-        }
+        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
+            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
 
-        LotItem[] memory items = lotItems[lotId];
-        if (offer.slots.length != items.length) revert SlotItemCountMismatch();
-
-        uint256 itemCount = items.length;
-        for (uint256 i; i < itemCount;) {
-            LotItem memory item = items[i];
-            _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
-            _requirePunkInVault(item.standard, lot.seller, item.punkId);
-            unchecked {
-                ++i;
-            }
-        }
-
-        delete offers[offerId];
-        delete lots[lotId];
-        delete lotItems[lotId];
-
-        for (uint256 i; i < itemCount;) {
-            LotItem memory item = items[i];
-            delete lotForPunk[_tokenKey(lot.seller, _tokenContractFor(item.standard), item.punkId)];
-            _pullPunk(item.standard, lot.seller, item.punkId);
-            unchecked {
-                ++i;
-            }
-        }
-
-        _settleBundleDelivery(items, offer.amountWei, offer.offerer);
+        _pullLotItems(lot.seller, items);
+        _settleBundleDelivery(0, items, offer.amountWei, offer.offerer);
 
         _pushOrCredit(lot.seller, offer.amountWei);
 
@@ -203,33 +174,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         nonReentrant
         returns (uint256 auctionId)
     {
-        Offer memory offer = _activeOffer(offerId);
-        Lot memory lot = lots[lotId];
-        if (lot.seller == address(0)) revert LotNotFound();
-        if (offer.amountWei < minAmountWei) {
-            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
-        }
-        if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
-        if (lot.onlySellTo != address(0) && lot.onlySellTo != offer.offerer) {
-            revert BuyerNotAllowed(lot.onlySellTo);
-        }
-
-        LotItem[] memory items = lotItems[lotId];
-        if (offer.slots.length != items.length) revert SlotItemCountMismatch();
-
-        uint256 itemCount = items.length;
-        for (uint256 i; i < itemCount;) {
-            LotItem memory item = items[i];
-            _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
-            _requirePunkInVault(item.standard, lot.seller, item.punkId);
-            unchecked {
-                ++i;
-            }
-        }
-
-        delete offers[offerId];
-        delete lots[lotId];
-        delete lotItems[lotId];
+        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
+            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
 
         auctionId = _createAuctionFromItems(
             lot.seller,
@@ -251,19 +197,41 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     // ─────────────────────────────────── Views ──────────────────────────────────
 
     /// @inheritdoc IPunksAuction
+    function auctions(uint256 auctionId)
+        external
+        view
+        returns (
+            address seller,
+            address latestBidder,
+            uint96 latestBidWei,
+            uint40 endTimestamp,
+            bool settled
+        )
+    {
+        Auction storage auction = _auctions[auctionId];
+        return (
+            auction.seller,
+            auction.latestBidder,
+            auction.latestBidWei,
+            auction.endTimestamp,
+            auction.settled
+        );
+    }
+
+    /// @inheritdoc IPunksAuction
     function currentMinBidWei(uint256 auctionId) external view returns (uint96) {
-        return _currentMinBidWei(auctions[auctionId].latestBidWei);
+        return _currentMinBidWei(_auctions[auctionId].latestBidWei);
     }
 
     /// @inheritdoc IPunksAuction
     function auctionActive(uint256 auctionId) external view returns (bool) {
-        Auction storage auction = auctions[auctionId];
+        Auction storage auction = _auctions[auctionId];
         return auction.endTimestamp != 0 && block.timestamp <= auction.endTimestamp;
     }
 
     /// @inheritdoc IPunksAuction
     function endTimestampOf(uint256 auctionId) external view returns (uint40) {
-        return auctions[auctionId].endTimestamp;
+        return _auctions[auctionId].endTimestamp;
     }
 
     /// @inheritdoc IPunksAuction
@@ -275,53 +243,64 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     /// @inheritdoc IPunksAuction
     function settle(uint256 auctionId) external nonReentrant {
-        Auction storage storedAuction = auctions[auctionId];
-        Auction memory auction = storedAuction;
+        Auction storage auction = _auctions[auctionId];
         if (auction.endTimestamp == 0) revert AuctionDoesNotExist();
         if (auction.settled) revert AuctionAlreadySettled();
         if (block.timestamp <= auction.endTimestamp) revert AuctionNotComplete();
 
-        storedAuction.settled = true;
+        auction.settled = true;
 
-        LotItem[] memory items = auctionItems[auctionId];
+        address seller = auction.seller;
+        address winner = auction.latestBidder;
         uint96 totalWei = auction.latestBidWei;
-        address recipient = auction.latestBidder;
+
+        _settleBundleDelivery(auctionId, auctionItems[auctionId], totalWei, winner);
+        _pushOrCredit(seller, totalWei);
+
+        emit AuctionSettled(auctionId, winner, seller, uint256(totalWei));
+    }
+
+    // ──────────────────────────────── Internals ────────────────────────────────
+
+    /// @dev Validates an offer/lot pair, deletes both, and returns the items
+    ///      array. The caller is responsible for releasing per-Punk lot slots,
+    ///      pulling the Punks into custody, and settling proceeds.
+    function _consumeOfferAgainstLot(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    )
+        private
+        returns (Offer memory offer, Lot memory lot, LotItem[] memory items)
+    {
+        offer = _activeOffer(offerId);
+        lot = lots[lotId];
+        if (lot.seller == address(0)) revert LotNotFound();
+        if (offer.amountWei < minAmountWei) {
+            revert OfferAmountBelowMinimum(minAmountWei, offer.amountWei);
+        }
+        if (offer.amountWei < lot.reserveWei) revert ReserveNotMet();
+        if (lot.onlySellTo != address(0) && lot.onlySellTo != offer.offerer) {
+            revert BuyerNotAllowed(lot.onlySellTo);
+        }
+
+        items = lotItems[lotId];
+        if (offer.slots.length != items.length) revert SlotItemCountMismatch();
 
         uint256 itemCount = items.length;
-        uint256 allocated;
         for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
-            uint96 itemWei = i == itemCount - 1
-                ? totalWei - uint96(allocated)
-                : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
-            allocated += itemWei;
-            _deliverPunk(item.standard, item.punkId, recipient, itemWei);
-            emit AuctionItemDelivered(
-                auctionId,
-                uint8(i),
-                item.standard,
-                item.punkId,
-                recipient,
-                itemWei
-            );
+            _requireSlotMatchesPunk(offer.slots[i], item.standard, item.punkId);
+            _requirePunkInVault(item.standard, lot.seller, item.punkId);
             unchecked {
                 ++i;
             }
         }
 
-        _pushOrCredit(auction.seller, totalWei);
-
-        emit AuctionSettled(
-            auctionId,
-            auction.latestBidder,
-            auction.seller,
-            uint256(totalWei),
-            uint256(totalWei),
-            0
-        );
+        delete offers[offerId];
+        delete lots[lotId];
+        delete lotItems[lotId];
     }
-
-    // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev Creates auction storage, pulls the items into custody, and emits the first bid.
     function _createAuctionFromItems(
@@ -336,9 +315,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
         uint40 endTimestamp = uint40(block.timestamp) + AUCTION_DURATION;
         uint8 itemCount = uint8(items.length);
-        bytes32 itemHash = keccak256(abi.encode(items));
 
-        auctions[auctionId] = Auction({
+        _auctions[auctionId] = Auction({
             seller: seller,
             latestBidder: initialBidder,
             latestBidWei: bidWei,
@@ -347,21 +325,43 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         });
         LotItem[] storage storedItems = auctionItems[auctionId];
         for (uint256 i; i < itemCount;) {
+            storedItems.push(items[i]);
+            unchecked {
+                ++i;
+            }
+        }
+        _pullLotItems(seller, items);
+
+        emit AuctionInitialised(
+            auctionId,
+            seller,
+            keccak256(abi.encode(items)),
+            itemCount,
+            endTimestamp
+        );
+        emit Bid(auctionId, initialBidder, bidWei);
+    }
+
+    /// @dev Releases per-Punk lot reservations and pulls each Punk from the
+    ///      seller's vault into the escrow.
+    function _pullLotItems(address seller, LotItem[] memory items) private {
+        uint256 itemCount = items.length;
+        for (uint256 i; i < itemCount;) {
             LotItem memory item = items[i];
-            storedItems.push(item);
             delete lotForPunk[_tokenKey(seller, _tokenContractFor(item.standard), item.punkId)];
             _pullPunk(item.standard, seller, item.punkId);
             unchecked {
                 ++i;
             }
         }
-
-        emit AuctionInitialised(auctionId, seller, itemHash, itemCount, endTimestamp);
-        emit Bid(auctionId, initialBidder, bidWei);
     }
 
-    /// @dev Delivers each bundled Punk with its weighted ETH allocation.
+    /// @dev Delivers each bundled Punk with its weighted ETH allocation. When
+    ///      `auctionId != 0`, emits `AuctionItemDelivered` per item; a zero
+    ///      id is used by the direct offer-from-lot path, which delivers the
+    ///      bundle without a backing auction.
     function _settleBundleDelivery(
+        uint256 auctionId,
         LotItem[] memory items,
         uint96 totalWei,
         address recipient
@@ -375,6 +375,16 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
                 : uint96(uint256(totalWei) * item.weightBps / TOTAL_WEIGHT_BPS);
             allocated += itemWei;
             _deliverPunk(item.standard, item.punkId, recipient, itemWei);
+            if (auctionId != 0) {
+                emit AuctionItemDelivered(
+                    auctionId,
+                    uint8(i),
+                    item.standard,
+                    item.punkId,
+                    recipient,
+                    itemWei
+                );
+            }
             unchecked {
                 ++i;
             }
@@ -506,9 +516,10 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     ///      lists the punk to this contract at the hammer price and this
     ///      contract buys it, so the canonical market records the escrow
     ///      as the seller and the auction as the buyer in `PunkBought`.
-    ///      Net ETH movement is zero — V2 proceeds come back via the
-    ///      escrow's `sweepProceeds`; C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ proceeds (credited to the buyer
-    ///      by its storage-reference bug) come back via `market.withdraw()`.
+    ///      Net ETH movement is zero — canonical-market proceeds come back
+    ///      via the escrow's `sweepProceeds`; C̑͗r̯ẏp̩toP̼͋ȗn͗ͬͅks̺̾͟ proceeds (credited to
+    ///      the buyer by its storage-reference bug) come back via
+    ///      `market.withdraw()`.
     function _deliverPunk(
         TokenStandard standard,
         uint256 punkIndex,

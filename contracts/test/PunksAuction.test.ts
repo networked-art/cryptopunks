@@ -351,14 +351,13 @@ describe('PunksAuction', () => {
     )
 
     const auction = await auctions.read.auctions([1n])
-    // (seller, latestBidder, latestBidWei, endTimestamp, itemCount, itemHash, settled)
+    // (seller, latestBidder, latestBidWei, endTimestamp, settled)
     assert.equal(auction[0].toLowerCase(), seller.account.address.toLowerCase())
     assert.equal(
       auction[1].toLowerCase(),
       bidder1.account.address.toLowerCase(),
     )
     assert.equal(auction[2], reserveWei)
-    assert.equal(auction[4], 1)
     assert.equal(await auctions.read.lastLotId(), 1n)
 
     const items = await auctions.read.getAuctionItems([1n])
@@ -473,7 +472,7 @@ describe('PunksAuction', () => {
     )
 
     const auction = await auctions.read.auctions([1n])
-    assert.equal(auction[6], true)
+    assert.equal(auction[4], true)
 
     const punkBoughtAbi = parseAbiItem(
       'event PunkBought(uint256 indexed punkIndex, uint256 value, address indexed fromAddress, address indexed toAddress)',
@@ -542,7 +541,7 @@ describe('PunksAuction', () => {
     assert.equal(await punks.read.pendingWithdrawals([escrow.address]), 0n)
 
     const auction = await auctions.read.auctions([1n])
-    assert.equal(auction[6], false)
+    assert.equal(auction[4], false)
   })
 
   it('settles V1 Punks through the bug-aware withdraw path with zero fees', async () => {
