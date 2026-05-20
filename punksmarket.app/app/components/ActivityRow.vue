@@ -171,7 +171,7 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 .activity-row.is-market-sale {
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 2px 0 0 var(--lavender);
 }
 
 .thumb {

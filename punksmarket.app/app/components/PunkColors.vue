@@ -70,6 +70,6 @@ function stripHexPrefix(hex: string) {
 }
 
 .swatch:hover {
-  border-color: var(--accent);
+  border-color: var(--lavender);
 }
 </style>
