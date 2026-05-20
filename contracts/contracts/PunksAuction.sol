@@ -3,6 +3,7 @@ pragma solidity 0.8.34;
 
 import "./interfaces/IPunksAuction.sol";
 import "./interfaces/ICryptoPunksMarket.sol";
+import "./interfaces/IReverseRegistrar.sol";
 import "./interfaces/IPunksVault.sol";
 import "./interfaces/IPunksVaultFactory.sol";
 import "./auction/PunkLots.sol";
@@ -69,6 +70,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         PUNKS_V1 = ICryptoPunksMarket(punksV1);
         VAULTS = IPunksVaultFactory(vaultFactory);
         ESCROW = new PunksAuctionEscrow(punks, punksV1);
+
+        IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
+            .setName("punksauction.eth");
     }
 
     // ─────────────────────────────────── ETH ────────────────────────────────────
