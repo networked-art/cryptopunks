@@ -216,13 +216,6 @@ useSeoMeta({
   max-width: 720px;
 }
 
-.page-head h1 {
-  margin: 0 0 var(--size-1);
-  font-weight: 500;
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-
 .about-section {
   display: flex;
   flex-direction: column;

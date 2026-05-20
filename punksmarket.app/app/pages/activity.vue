@@ -173,13 +173,6 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   gap: var(--size-4);
 }
 
-.page-head h1 {
-  margin: 0 0 var(--size-1);
-  font-weight: 500;
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-
 .filters {
   align-items: center;
 }
