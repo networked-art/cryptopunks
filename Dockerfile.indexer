@@ -25,4 +25,9 @@ COPY --from=build /app/indexer ./indexer
 WORKDIR /app/indexer
 
 EXPOSE 42069
-CMD pnpm start --schema=${DATABASE_SCHEMA:-ponder} --views-schema=${PONDER_VIEWS_SCHEMA:-punks}
+# Ponder binds a schema to the indexing build, so changing indexing logic needs
+# a fresh schema. Derive it per-deploy from KAMAL_VERSION (stable across
+# restarts of one deploy, unique across deploys); hashed to fit Postgres'
+# 63-char identifier limit. --views-schema stays fixed so Ponder repoints it to
+# the live schema once the new build catches up — a zero-downtime swap.
+CMD pnpm start --schema=${DATABASE_SCHEMA:-ponder_$(printf %s "${KAMAL_VERSION:-local}" | sha1sum | cut -c1-16)} --views-schema=${PONDER_VIEWS_SCHEMA:-punks}
