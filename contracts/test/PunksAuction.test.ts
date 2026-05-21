@@ -1168,6 +1168,97 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('frees every Punk slot in a multi-item lot on cancelLot so the seller can regroup them', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      for (const id of [110n, 111n, 112n]) {
+        await assignPunk(ctx, seller, id)
+        await depositPunk(ctx, seller, id)
+      }
+
+      // A three-Punk bundle reserves all three slots at once.
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(110, 3_000), lotItem(111, 3_000), lotItem(112, 4_000)],
+        parseEther('5'),
+      )
+      for (const id of [110, 111, 112]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          1n,
+        )
+      }
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      // While bundled, an item in the middle of the lot cannot be re-listed.
+      await ctx.viem.assertions.revertWithCustomErrorWithArgs(
+        auctionsAsSeller.write.createLot([
+          [lotItem(111)],
+          parseEther('1'),
+          zeroAddress,
+        ]),
+        auctions,
+        'PunkAlreadyInLot',
+        [1n],
+      )
+
+      // Cancelling the bundle frees every one of its slots.
+      await auctionsAsSeller.write.cancelLot([1n])
+      for (const id of [110, 111, 112]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          0n,
+        )
+      }
+
+      // Every freed Punk can be re-listed in a fresh grouping: one on its
+      // own, the other two together as a new bundle.
+      await createSinglePunkLot(ctx, seller, 110n, parseEther('2'))
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(111, 5_000), lotItem(112, 5_000)],
+        parseEther('3'),
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          110,
+        ]),
+        2n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          111,
+        ]),
+        3n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          112,
+        ]),
+        3n,
+      )
+    })
+
     it('does not make a valid lot stale just because time passes', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
@@ -1275,6 +1366,133 @@ describe('PunksAuction', () => {
         auctions.write.clearStaleLot([1n]),
         auctions,
         'LotNotStale',
+      )
+    })
+
+    it('clearStaleLots clears a batch of stale lots so the seller can re-list every Punk', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      for (const id of [100n, 101n, 102n]) {
+        await assignPunk(ctx, seller, id)
+        await depositPunk(ctx, seller, id)
+      }
+
+      // Lot 1 bundles two Punks; lot 2 holds a third on its own.
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(100, 5_000), lotItem(101, 5_000)],
+        parseEther('2'),
+      )
+      await createSinglePunkLot(ctx, seller, 102n, parseEther('1'))
+
+      // Revoking the auction operator turns every lot on the vault stale.
+      const vaultAddress = (await ctx.vaultFactory.read.predictVault([
+        seller.account.address,
+      ])) as `0x${string}`
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.setOperator([auctions.address, false])
+
+      // One batch call clears both lots — every item of the bundle included.
+      await auctions.write.clearStaleLots([[1n, 2n]])
+      for (const id of [100, 101, 102]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          0n,
+        )
+      }
+
+      // With every slot freed, the seller can re-list all three Punks.
+      await vaultAsSeller.write.setOperator([auctions.address, true])
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(100, 3_000), lotItem(101, 3_000), lotItem(102, 4_000)],
+        parseEther('4'),
+      )
+      for (const id of [100, 101, 102]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          3n,
+        )
+      }
+    })
+
+    it('clearStaleLots reverts atomically when any lot in the batch is still valid', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, punks, seller } = ctx
+      await assignPunk(ctx, seller, 103n)
+      const vaultAddress = await depositPunk(ctx, seller, 103n)
+      await assignPunk(ctx, seller, 104n)
+      await depositPunk(ctx, seller, 104n)
+      await createSinglePunkLot(ctx, seller, 103n, parseEther('1'))
+      await createSinglePunkLot(ctx, seller, 104n, parseEther('1'))
+
+      // Only lot 1 goes stale: the seller pulls Punk 103 back out of the vault.
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.transferPunk([
+        punks.address,
+        103n,
+        seller.account.address,
+      ])
+
+      // Batching the still-valid lot 2 reverts the whole call: the stale lot 1
+      // is left intact rather than half-cleared.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.clearStaleLots([[1n, 2n]]),
+        auctions,
+        'LotNotStale',
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          103,
+        ]),
+        1n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          104,
+        ]),
+        2n,
+      )
+
+      // Retrying with only the stale lot clears it and leaves lot 2 alone.
+      await auctions.write.clearStaleLots([[1n]])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          103,
+        ]),
+        0n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          104,
+        ]),
+        2n,
       )
     })
 
