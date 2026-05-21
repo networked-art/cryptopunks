@@ -35,6 +35,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     uint40 internal constant AUCTION_DURATION = 24 hours;
     /// @notice Minimum time remaining after a late bid.
     uint40 internal constant BIDDING_GRACE_PERIOD = 15 minutes;
+    /// @notice Maximum lot size for the non auction instant settlement paths.
+    uint8 internal constant MAX_INSTANT_ITEMS = 40;
 
     // ───────────────────────────────── Storage ─────────────────────────────────
 
@@ -147,6 +149,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         address seller = lots[lotId].seller;
         if (seller == address(0)) revert LotNotFound();
         if (seller != msg.sender) revert NotSeller();
+        if (lotItems[lotId].length > MAX_INSTANT_ITEMS) {
+            revert LotTooLargeForInstantAccept();
+        }
 
         _acceptOfferFromLot(offerId, lotId, minAmountWei);
     }
@@ -170,6 +175,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 offerId,
         uint96 minAmountWei
     ) external nonReentrant returns (uint256 lotId) {
+        if (items.length > MAX_INSTANT_ITEMS) {
+            revert LotTooLargeForInstantAccept();
+        }
         lotId = _createLot(items, _activeOfferAmount(offerId), address(0));
         _acceptOfferFromLot(offerId, lotId, minAmountWei);
     }

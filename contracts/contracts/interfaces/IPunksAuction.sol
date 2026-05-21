@@ -202,6 +202,7 @@ interface IPunksAuction {
     error PunkNotMatched();
 
     error InvalidItemCount();
+    error LotTooLargeForInstantAccept();
     error DuplicateLotItem();
     error InvalidWeights();
     error InvalidSlotCount();
@@ -281,6 +282,10 @@ interface IPunksAuction {
     /// @notice Accepts an offer against your stored lot, settling it instantly
     ///         without a 24h auction. Only the lot's seller may call this;
     ///         `minAmountWei` is the seller's floor for the offer.
+    /// @dev    Capped at `MAX_INSTANT_ITEMS` Punks: this pulls and delivers the
+    ///         whole lot in one transaction, which must stay under the EIP-7825
+    ///         per-transaction gas cap. Larger lots settle through the auction
+    ///         path (`openAuction` then `settle`), which splits the work.
     function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;
 
     /// @notice Starts an auction from an offer when it still meets the
@@ -295,6 +300,7 @@ interface IPunksAuction {
     ///         and cannot be sniped by an `openAuction` in between. The
     ///         transient lot's reserve is the offer amount; `minAmountWei` is
     ///         the seller's floor for the offer.
+    /// @dev    Capped at `MAX_INSTANT_ITEMS` Punks. See `acceptOfferFromLot`.
     function createLotAndAcceptOffer(
         LotItem[] calldata items,
         uint256 offerId,

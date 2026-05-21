@@ -3031,6 +3031,76 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('createLotAndAcceptOffer rejects a lot above MAX_INSTANT_ITEMS', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+
+      // 41 > MAX_INSTANT_ITEMS (40). The size guard reverts before any lot,
+      // offer, or vault work, so no Punks need to be set up first.
+      const items: LotItemInput[] = []
+      for (let i = 0; i < 41; i++) items.push(lotItem(8_000 + i, 1))
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([items, 1n, 0n]),
+        auctions,
+        'LotTooLargeForInstantAccept',
+      )
+    })
+
+    it('createLotAndAcceptOffer admits exactly MAX_INSTANT_ITEMS', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+
+      // 40 == MAX_INSTANT_ITEMS: the size guard lets it through, so the call
+      // fails later on the missing offer — not LotTooLargeForInstantAccept.
+      const items: LotItemInput[] = []
+      for (let i = 0; i < 40; i++) items.push(lotItem(8_100 + i, 250))
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([items, 1n, 0n]),
+        auctions,
+        'OfferNotActive',
+      )
+    })
+
+    it('acceptOfferFromLot rejects a lot above MAX_INSTANT_ITEMS', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+
+      // A valid 41-item lot: one item carries the bulk of the weight, the
+      // rest one bps each, so the weights still sum to 10_000.
+      const items: LotItemInput[] = []
+      for (let i = 0; i < 41; i++) {
+        const punkId = 8_200 + i
+        await assignPunk(ctx, seller, BigInt(punkId))
+        await depositPunk(ctx, seller, BigInt(punkId))
+        items.push(lotItem(punkId, i === 0 ? 9_960 : 1))
+      }
+      await createLotWith(ctx, seller, items, parseEther('1'))
+
+      // The size guard reverts before the offer is ever looked up.
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.acceptOfferFromLot([1n, 1n, parseEther('1')]),
+        auctions,
+        'LotTooLargeForInstantAccept',
+      )
+    })
+
     it('createLotAndStartAuction opens a live auction seeded by the offer in one transaction', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, escrow, punks, seller, bidder1, bidder2 } = ctx
