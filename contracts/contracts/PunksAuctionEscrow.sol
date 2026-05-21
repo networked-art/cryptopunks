@@ -5,7 +5,7 @@ import "./interfaces/ICryptoPunksMarket.sol";
 
 /// @title  PunksAuctionEscrow
 ///
-/// @notice Per-auction-house Punk custody. The escrow holds every Punk
+/// @notice Punk custody for our auction house. The escrow holds every Punk
 ///         that is live in an auction so settlement on the original
 ///         marketplace emits `PunkBought` with a real seller (the
 ///         escrow) and a real buyer (the auction house).
