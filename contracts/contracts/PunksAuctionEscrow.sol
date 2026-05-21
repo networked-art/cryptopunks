@@ -18,7 +18,6 @@ import "./interfaces/ICryptoPunksMarket.sol";
 /// @author VV × 1001
 contract PunksAuctionEscrow {
     error NotAuction();
-    error UnsupportedMarket();
     error UnexpectedEtherSender();
     error ProceedsForwardFailed();
 
@@ -50,7 +49,6 @@ contract PunksAuctionEscrow {
         uint96 hammerWei
     ) external {
         if (msg.sender != AUCTION) revert NotAuction();
-        _requireKnownMarket(market);
         ICryptoPunksMarket(market).offerPunkForSaleToAddress(punkIndex, hammerWei, AUCTION);
     }
 
@@ -58,17 +56,10 @@ contract PunksAuctionEscrow {
     ///         it to the auction.
     function sweepProceeds(address market) external {
         if (msg.sender != AUCTION) revert NotAuction();
-        _requireKnownMarket(market);
         ICryptoPunksMarket(market).withdraw();
         uint256 bal = address(this).balance;
         if (bal == 0) return;
         (bool ok,) = payable(AUCTION).call{value: bal}("");
         if (!ok) revert ProceedsForwardFailed();
-    }
-
-    function _requireKnownMarket(address market) private view {
-        if (market != address(PUNKS) && market != address(PUNKS_V1)) {
-            revert UnsupportedMarket();
-        }
     }
 }
