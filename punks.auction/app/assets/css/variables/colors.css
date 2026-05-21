@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+
+  /* Brand-driven overrides of the standard tokens layer components consume. */
+  --background: #f0f0f3;
+  --color: #0a0a12;
+  --primary: #ff5fa8;
+  --muted: #6a6a82;
+
+  /* Light-theme gray ramp the layer's component tokens key off of. */
+  --gray-z-0: #f7f7f8;
+  --gray-z-2: #e5e5ec;
+  --gray-z-3: #d0d0dc;
+  --gray-z-5: #9a9ab0;
+
+  /* App-specific tokens used directly throughout punks.auction. */
+  --accent: var(--primary);
+  --accent-strong: #d11f72;
+  --accent-soft: #ff5fa820;
+}

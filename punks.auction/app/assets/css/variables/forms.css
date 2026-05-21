@@ -1,0 +1,5 @@
+:root {
+  /* Keep input highlight identical to rest. */
+  --input-background: var(--gray-z-0);
+  --input-background-highlight: var(--gray-z-0);
+}

@@ -1,0 +1,12 @@
+:root {
+  /* Convenience aliases keep existing component CSS working. */
+  --bg: var(--background);
+  --bg-elevated: var(--gray-z-0);
+  --text: var(--color);
+  --text-muted: var(--muted);
+  --text-dim: var(--gray-z-5);
+  --border-strong: var(--gray-z-3);
+  --font-mono: var(--font-family);
+  --radius: var(--border-radius-lg);
+  --radius-sm: var(--border-radius-sm);
+}

@@ -1,0 +1,5 @@
+input:not(.unstyled),
+textarea:not(.unstyled),
+select:not(.unstyled) {
+  --ui-color: #000;
+}

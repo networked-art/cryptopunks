@@ -1,0 +1,53 @@
+import {
+  offerSlotToQuery,
+  type LotItem,
+  type TokenStandardValue,
+} from '~/utils/auction'
+
+/**
+ * Every auction, lot, and offer on `PunksAuction` that involves a given Punk.
+ * Auctions and lots match by exact item; offers match when the Punk satisfies
+ * a slot's criteria (evaluated against the offline dataset).
+ */
+export function usePunkAuctionContext(
+  punkId: MaybeRefOrGetter<number>,
+  standard: MaybeRefOrGetter<TokenStandardValue>,
+) {
+  const { auctions, pending: auctionsPending, deployed } = useAuctions()
+  const { lots, pending: lotsPending } = useLots()
+  const { offers, pending: offersPending } = useOffers()
+  const offline = usePunksOffline()
+
+  function matchesItem(item: LotItem): boolean {
+    return (
+      item.punkId === toValue(punkId) && item.standard === toValue(standard)
+    )
+  }
+
+  const punkAuctions = computed(() =>
+    auctions.value.filter((a) => a.items.some(matchesItem)),
+  )
+
+  const punkLots = computed(() =>
+    lots.value.filter((l) => l.items.some(matchesItem)),
+  )
+
+  const punkOffers = computed(() =>
+    offers.value.filter((offer) =>
+      offer.slots.some((slot) => {
+        if (slot.standard !== toValue(standard)) return false
+        try {
+          return offline.search(offerSlotToQuery(slot)).includes(toValue(punkId))
+        } catch {
+          return false
+        }
+      }),
+    ),
+  )
+
+  const pending = computed(
+    () => auctionsPending.value || lotsPending.value || offersPending.value,
+  )
+
+  return { punkAuctions, punkLots, punkOffers, pending, deployed }
+}

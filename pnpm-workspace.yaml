@@ -5,6 +5,7 @@ packages:
   - indexer
   - sdk
   - punksmarket.app
+  - punks.auction
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
