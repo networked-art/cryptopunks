@@ -154,7 +154,7 @@ abstract contract PunkLots is IPunksAuction {
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        bool stale = !_auctionStillApproved(lot.seller);
+        bool stale = !_auctionIsApproved(lot.seller);
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
@@ -287,7 +287,7 @@ abstract contract PunkLots is IPunksAuction {
 
     function _requireAuctionApproved(address seller) internal view virtual;
 
-    function _auctionStillApproved(address seller) internal view virtual returns (bool);
+    function _auctionIsApproved(address seller) internal view virtual returns (bool);
 
     function _punkInSellerVault(
         TokenStandard standard,

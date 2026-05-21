@@ -473,8 +473,8 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         }
     }
 
-    /// @dev Approval check used by stale-lot cleanup.
-    function _auctionStillApproved(address seller) internal view override returns (bool) {
+    /// @dev Returns true when this contract is an approved operator on the seller's vault.
+    function _auctionIsApproved(address seller) internal view override returns (bool) {
         address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) return false;
         return IPunksVault(vault).isOperator(address(this));
