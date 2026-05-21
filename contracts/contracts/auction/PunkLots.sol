@@ -222,9 +222,7 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
-    /// @dev Checks vault custody when a lot is consumed into an auction. A
-    ///      surviving lot already implies its slot reservations are intact
-    ///      (first-wins), so only custody can have changed.
+    /// @dev Checks vault custody when a lot is consumed into an auction.
     function _requireLotItemsInVault(address seller, LotItem[] memory items) internal view {
         uint256 n = items.length;
         for (uint256 i; i < n;) {
