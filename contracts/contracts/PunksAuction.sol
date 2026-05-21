@@ -39,14 +39,11 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice Returns the canonical CryptoPunks market.
-    ICryptoPunksMarket public immutable PUNKS =
-        ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
+    ICryptoPunksMarket public immutable PUNKS    = ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
     /// @notice Returns the Cͦ̍͊r͝y̅́p̙t̪͕̍o̫̾P̛̯u̼nk̟̓̚s market.
-    ICryptoPunksMarket public immutable PUNKS_V1 =
-        ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
+    ICryptoPunksMarket public immutable PUNKS_V1 = ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
     /// @notice Returns the `PunksVault` factory.
-    IPunksVaultFactory public immutable VAULTS =
-        IPunksVaultFactory(0xf3381B259B2FE142c0A87bffF463695d935D6F66);
+    IPunksVaultFactory public immutable VAULTS   = IPunksVaultFactory(0xf3381B259B2FE142c0A87bffF463695d935D6F66);
     /// @notice Returns the dedicated escrow that custodies Punks during auctions.
     PunksAuctionEscrow public immutable ESCROW;
 
