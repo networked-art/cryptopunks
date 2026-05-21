@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { WRAPPED_BG } from '~/composables/useWrappedPunks'
+import { WRAPPED_BG, UNWRAPPED_BG } from '~/composables/useWrappedPunks'
 
 const props = withDefaults(
   defineProps<{
@@ -142,7 +142,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
   }
-  if (isWrapped(c.id)) style.backgroundColor = WRAPPED_BG
+  style.backgroundColor = isWrapped(c.id) ? WRAPPED_BG : UNWRAPPED_BG
   return style
 }
 
@@ -243,7 +243,6 @@ onBeforeUnmount(() => {
   transform: scale(1.18);
   z-index: 5;
   outline: 2px solid #000;
-  background-color: var(--background);
 }
 
 .cell.has-price-row {

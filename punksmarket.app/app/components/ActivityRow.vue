@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
-import { WRAPPED_BG } from '~/composables/useWrappedPunks'
+import { WRAPPED_BG, UNWRAPPED_BG } from '~/composables/useWrappedPunks'
 import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{ event: ActivityEvent }>()
@@ -112,9 +112,10 @@ const spriteStyle = computed(() => {
   }
   /// `event.wrapped` is false for `wrap`/`unwrap` rows (the kind label
   /// already says so); tint `wrap` rows too since the punk is now wrapped.
-  if (props.event.wrapped || props.event.kind === 'wrap') {
-    style.backgroundColor = WRAPPED_BG
-  }
+  style.backgroundColor =
+    props.event.wrapped || props.event.kind === 'wrap'
+      ? WRAPPED_BG
+      : UNWRAPPED_BG
   return style
 })
 

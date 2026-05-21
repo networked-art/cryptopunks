@@ -159,6 +159,7 @@ import {
   type SkinToneName,
 } from '@networked-art/punks-sdk'
 import { downloadPunkPng } from '~/utils/punkSnapshot'
+import { UNWRAPPED_BG } from '~/composables/useWrappedPunks'
 
 definePageMeta({
   middleware(_to, from) {
@@ -260,7 +261,7 @@ async function downloadImage() {
     await downloadPunkPng(offline, id.value, {
       size: 2048,
       strength: 0.4,
-      background: isWrapped.value ? 'wrapped' : '#f0f0f3',
+      background: isWrapped.value ? 'wrapped' : UNWRAPPED_BG,
     })
   } finally {
     downloading.value = false

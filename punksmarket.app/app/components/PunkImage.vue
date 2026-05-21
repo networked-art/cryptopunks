@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { WRAPPED_BG } from '~/composables/useWrappedPunks'
+import { WRAPPED_BG, UNWRAPPED_BG } from '~/composables/useWrappedPunks'
 
 const props = withDefaults(
   defineProps<{
@@ -59,7 +59,7 @@ const props = withDefaults(
   }>(),
   {
     size: 96,
-    background: 'classic',
+    background: UNWRAPPED_BG,
     glitch: 'hover',
     showId: false,
     speed: 1,
@@ -124,8 +124,7 @@ const rootStyle = computed(() => {
     '--g-g-freeze': `${p.freezeG.toFixed(3)}s`,
     '--g-b-freeze': `${p.freezeB.toFixed(3)}s`,
   }
-  if (props.background === 'transparent') style.background = 'transparent'
-  if (wrappedTint.value) style.background = WRAPPED_BG
+  style.background = wrappedTint.value ? WRAPPED_BG : UNWRAPPED_BG
   return style
 })
 
@@ -192,7 +191,6 @@ function scheduleBurst() {
 .punk-image {
   position: relative;
   display: inline-block;
-  background: var(--punk-bg);
   overflow: hidden;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
