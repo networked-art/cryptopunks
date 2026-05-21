@@ -14,8 +14,7 @@ import {
 
 /**
  * Large-lot gas, measured against the real CryptoPunks market on a mainnet
- * fork and judged against the EIP-7825 per-transaction gas cap. The lot size
- * under test is `N` below.
+ * fork and judged against the EIP-7825 per-transaction gas cap.
  *
  * Since the Fusaka upgrade no single Ethereum transaction may use more than
  * 16,777,216 gas (EIP-7825), regardless of the block gas limit. That cap is
@@ -24,8 +23,14 @@ import {
  * The auction path splits work across two transactions: `openAuction` pulls
  * the punks into escrow, `settle` delivers them. The instant-accept paths do
  * not — `acceptOfferFromLot` pulls *and* delivers in one transaction, and
- * `createLotAndAcceptOffer` also creates the lot in that transaction. This
- * file measures all of them at N items and asserts each clears the cap.
+ * `createLotAndAcceptOffer` also creates the lot in that transaction.
+ *
+ * Each path is measured at its own maximum lot size: the auction path at
+ * `MAX_LOT_ITEMS` (80) and the instant-accept paths at `MAX_INSTANT_ITEMS`
+ * (40) — the lower cap exists precisely because the single-transaction
+ * instant paths would otherwise blow the gas cap. Measuring an instant path
+ * above 40 is not a real flow: the contract reverts it with
+ * `LotTooLargeForInstantAccept`.
  *
  * The fork runs at the `prague` hardfork: that matches mainnet's current gas
  * schedule (including the EIP-7623 calldata pricing) but omits EIP-7825, so a
@@ -38,13 +43,14 @@ import {
  *   npx hardhat test test/PunksAuction.gas.test.ts
  */
 
-const N = 64 // Lot size under test. MAX_LOT_ITEMS caps a lot at 80.
+const N_AUCTION = 80 // Auction-path lot size — capped by MAX_LOT_ITEMS.
+const N_INSTANT = 40 // Instant-accept lot size — capped by MAX_INSTANT_ITEMS.
 const FIRST_PUNK = 1000 // First of N consecutive real punk indices used.
 const TOTAL_WEIGHT_BPS = 10_000 // Lot item weights must sum to exactly this.
 
 // EIP-7825 per-transaction gas cap, live on mainnet since Fusaka. A
 // transaction that does not clear this cannot be mined at all — no matter the
-// block gas limit — so any path that exceeds it is unusable at N items.
+// block gas limit — so any path that exceeds it is unusable at that size.
 const TX_GAS_CAP = 16_777_216n
 // Within this margin of a fixed, non-raisable cap a transaction is fragile:
 // any future gas-cost increase tips it over.
@@ -61,11 +67,11 @@ const describeIfMainnetRpc = process.env.MAINNET_RPC_URL
 
 const summary: Array<{ label: string; gas: bigint }> = []
 
-// Per-item weights that sum to exactly TOTAL_WEIGHT_BPS for any N: the first
+// Per-item weights that sum to exactly TOTAL_WEIGHT_BPS for any n: the first
 // `remainder` items each carry one extra bps.
-function itemWeight(i: number): number {
-  const base = Math.floor(TOTAL_WEIGHT_BPS / N)
-  return i < TOTAL_WEIGHT_BPS - base * N ? base + 1 : base
+function itemWeight(i: number, n: number): number {
+  const base = Math.floor(TOTAL_WEIGHT_BPS / n)
+  return i < TOTAL_WEIGHT_BPS - base * n ? base + 1 : base
 }
 
 function asPercent(gas: bigint): string {
@@ -141,10 +147,10 @@ async function setupFork(): Promise<any> {
   return { connection, viem, publicClient, seller, offerer, bidder, auctions, escrow }
 }
 
-// Deploys the seller's vault (auction pre-approved as operator) and moves N
+// Deploys the seller's vault (auction pre-approved as operator) and moves `n`
 // consecutive real punks into it by impersonating each current owner. This is
 // the slow part of every scenario.
-async function fundedSellerVault(ctx: any): Promise<`0x${string}`> {
+async function fundedSellerVault(ctx: any, n: number): Promise<`0x${string}`> {
   const { connection, viem, auctions, seller } = ctx
 
   const factoryAsSeller = await viem.getContractAt(
@@ -158,7 +164,7 @@ async function fundedSellerVault(ctx: any): Promise<`0x${string}`> {
   ])) as `0x${string}`
 
   const punks = await viem.getContractAt('MockCryptoPunksMarket', PUNKS_MARKET)
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < n; i++) {
     const punkId = BigInt(FIRST_PUNK + i)
     const owner = getAddress(
       (await punks.read.punkIndexToAddress([punkId])) as string,
@@ -177,26 +183,28 @@ async function fundedSellerVault(ctx: any): Promise<`0x${string}`> {
   return vault
 }
 
-const lotItems = (): LotItemInput[] =>
-  Array.from({ length: N }, (_, i) => lotItem(FIRST_PUNK + i, itemWeight(i)))
+const lotItems = (n: number): LotItemInput[] =>
+  Array.from({ length: n }, (_, i) => lotItem(FIRST_PUNK + i, itemWeight(i, n)))
 
-const offerSlots = (): OfferSlotInput[] =>
-  Array.from({ length: N }, (_, i) => punkSlot(FIRST_PUNK + i))
+const offerSlots = (n: number): OfferSlotInput[] =>
+  Array.from({ length: n }, (_, i) => punkSlot(FIRST_PUNK + i))
 
 const withWallet = (viem: any, auctions: any, wallet: any) =>
   viem.getContractAt('PunksAuction', auctions.address, {
     client: { wallet },
   })
 
-describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainnet fork)`, () => {
+describeIfMainnetRpc('PunksAuction — large-lot gas vs the EIP-7825 cap (mainnet fork)', () => {
   it(
-    `auction path — createLot, openAuction, settle (${N} canonical punks)`,
+    `auction path — createLot, openAuction, settle (${N_AUCTION} canonical punks)`,
     { timeout: 1_200_000 },
     async () => {
-      console.log(`\n  auction path: funding a vault with ${N} real punks…`)
+      console.log(
+        `\n  auction path: funding a vault with ${N_AUCTION} real punks…`,
+      )
       const ctx = await setupFork()
       const { viem, publicClient, auctions, escrow, seller, bidder } = ctx
-      await fundedSellerVault(ctx)
+      await fundedSellerVault(ctx, N_AUCTION)
 
       const reserve = parseEther('10')
       const auctionsAsSeller = await withWallet(viem, auctions, seller)
@@ -204,15 +212,15 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
 
       await gasOf(
         publicClient,
-        `createLot(${N})`,
+        `createLot(${N_AUCTION})`,
         await auctionsAsSeller.write.createLot(
-          [lotItems(), reserve, zeroAddress],
+          [lotItems(N_AUCTION), reserve, zeroAddress],
           { gas: MEASURE_GAS },
         ),
       )
       await gasOf(
         publicClient,
-        `openAuction(${N})`,
+        `openAuction(${N_AUCTION})`,
         await auctionsAsBidder.write.openAuction([1n, reserve], {
           value: reserve,
           gas: MEASURE_GAS,
@@ -223,7 +231,7 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
 
       const settleGas = await gasOf(
         publicClient,
-        `settle(${N})`,
+        `settle(${N_AUCTION})`,
         await auctions.write.settle([1n], { gas: MEASURE_GAS }),
       )
 
@@ -246,31 +254,32 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
 
       assert.ok(
         settleGas < TX_GAS_CAP,
-        `settle(${N}) uses ${settleGas} gas — over the 16,777,216 per-tx gas ` +
-          `cap (EIP-7825); a ${N}-item auction could never be settled`,
+        `settle(${N_AUCTION}) uses ${settleGas} gas — over the 16,777,216 ` +
+          `per-tx gas cap (EIP-7825); an ${N_AUCTION}-item auction could ` +
+          `never be settled`,
       )
     },
   )
 
   it(
-    `instant accept — acceptOfferFromLot pulls and delivers ${N} punks in one tx`,
+    `instant accept — acceptOfferFromLot pulls and delivers ${N_INSTANT} punks in one tx`,
     { timeout: 1_200_000 },
     async () => {
       console.log(
-        `\n  acceptOfferFromLot: funding a vault with ${N} real punks…`,
+        `\n  acceptOfferFromLot: funding a vault with ${N_INSTANT} real punks…`,
       )
       const ctx = await setupFork()
       const { viem, publicClient, auctions, escrow, seller, offerer } = ctx
-      await fundedSellerVault(ctx)
+      await fundedSellerVault(ctx, N_INSTANT)
 
       const auctionsAsSeller = await withWallet(viem, auctions, seller)
       const auctionsAsOfferer = await withWallet(viem, auctions, offerer)
 
       await gasOf(
         publicClient,
-        `createLot(${N})`,
+        `createLot(${N_INSTANT})`,
         await auctionsAsSeller.write.createLot(
-          [lotItems(), parseEther('1'), zeroAddress],
+          [lotItems(N_INSTANT), parseEther('1'), zeroAddress],
           { gas: MEASURE_GAS },
         ),
       )
@@ -278,16 +287,16 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
       const offerAmount = parseEther('80')
       await gasOf(
         publicClient,
-        `placeOffer(${N} slots)`,
-        await auctionsAsOfferer.write.placeOffer([offerAmount, offerSlots()], {
-          value: offerAmount,
-          gas: MEASURE_GAS,
-        }),
+        `placeOffer(${N_INSTANT} slots)`,
+        await auctionsAsOfferer.write.placeOffer(
+          [offerAmount, offerSlots(N_INSTANT)],
+          { value: offerAmount, gas: MEASURE_GAS },
+        ),
       )
 
       const acceptGas = await gasOf(
         publicClient,
-        `acceptOfferFromLot(${N})`,
+        `acceptOfferFromLot(${N_INSTANT})`,
         await auctionsAsSeller.write.acceptOfferFromLot(
           [1n, 1n, parseEther('1')],
           { gas: MEASURE_GAS },
@@ -312,22 +321,22 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
 
       assert.ok(
         acceptGas < TX_GAS_CAP,
-        `acceptOfferFromLot(${N}) uses ${acceptGas} gas — over the 16,777,216 ` +
-          `per-tx gas cap (EIP-7825); unusable at ${N} items`,
+        `acceptOfferFromLot(${N_INSTANT}) uses ${acceptGas} gas — over the ` +
+          `16,777,216 per-tx gas cap (EIP-7825); unusable at ${N_INSTANT} items`,
       )
     },
   )
 
   it(
-    `instant accept — createLotAndAcceptOffer creates, pulls and delivers ${N} punks in one tx`,
+    `instant accept — createLotAndAcceptOffer creates, pulls and delivers ${N_INSTANT} punks in one tx`,
     { timeout: 1_200_000 },
     async () => {
       console.log(
-        `\n  createLotAndAcceptOffer: funding a vault with ${N} real punks…`,
+        `\n  createLotAndAcceptOffer: funding a vault with ${N_INSTANT} real punks…`,
       )
       const ctx = await setupFork()
       const { viem, publicClient, auctions, escrow, seller, offerer } = ctx
-      await fundedSellerVault(ctx)
+      await fundedSellerVault(ctx, N_INSTANT)
 
       const auctionsAsSeller = await withWallet(viem, auctions, seller)
       const auctionsAsOfferer = await withWallet(viem, auctions, offerer)
@@ -335,18 +344,18 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
       const offerAmount = parseEther('80')
       await gasOf(
         publicClient,
-        `placeOffer(${N} slots)`,
-        await auctionsAsOfferer.write.placeOffer([offerAmount, offerSlots()], {
-          value: offerAmount,
-          gas: MEASURE_GAS,
-        }),
+        `placeOffer(${N_INSTANT} slots)`,
+        await auctionsAsOfferer.write.placeOffer(
+          [offerAmount, offerSlots(N_INSTANT)],
+          { value: offerAmount, gas: MEASURE_GAS },
+        ),
       )
 
       const combinedGas = await gasOf(
         publicClient,
-        `createLotAndAcceptOffer(${N})`,
+        `createLotAndAcceptOffer(${N_INSTANT})`,
         await auctionsAsSeller.write.createLotAndAcceptOffer(
-          [lotItems(), 1n, parseEther('1')],
+          [lotItems(N_INSTANT), 1n, parseEther('1')],
           { gas: MEASURE_GAS },
         ),
       )
@@ -369,8 +378,8 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
 
       assert.ok(
         combinedGas < TX_GAS_CAP,
-        `createLotAndAcceptOffer(${N}) uses ${combinedGas} gas — over the ` +
-          `16,777,216 per-tx gas cap (EIP-7825); unusable at ${N} items`,
+        `createLotAndAcceptOffer(${N_INSTANT}) uses ${combinedGas} gas — over ` +
+          `the 16,777,216 per-tx gas cap (EIP-7825); unusable at ${N_INSTANT} items`,
       )
     },
   )
@@ -380,7 +389,7 @@ describeIfMainnetRpc(`PunksAuction — ${N}-item gas vs the EIP-7825 cap (mainne
     const byLabel = new Map<string, bigint>()
     for (const { label, gas } of summary) byLabel.set(label, gas)
     console.log(
-      `\n  ── ${N}-item gas vs the 16,777,216 per-tx cap (EIP-7825) — real CryptoPunks, fork ──`,
+      '\n  ── large-lot gas vs the 16,777,216 per-tx cap (EIP-7825) — real CryptoPunks, fork ──',
     )
     for (const [label, gas] of byLabel) {
       const verdict = gas >= TX_GAS_CAP ? 'UNMINEABLE' : 'fits'

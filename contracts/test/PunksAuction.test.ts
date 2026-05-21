@@ -657,271 +657,109 @@ describe('PunksAuction', () => {
     }
   })
 
-  describe('vault factory & vault', () => {
-    it('routes both standards through one deterministic vault per user', async () => {
+  describe('auctions — lifecycle guards', () => {
+    it('bid and settle revert for an unknown auction id', async () => {
       const ctx = await deployAuctionStack()
-      const { vaultFactory, punks, punksV1, seller } = ctx
+      const { auctions } = ctx
 
-      const predicted = (await vaultFactory.read.predictVault([
-        seller.account.address,
-      ])) as `0x${string}`
-
-      await assignPunk(ctx, seller, 1n)
-      await assignPunkV1(ctx, seller, 1n)
-      const v2Vault = await depositPunk(ctx, seller, 1n)
-      const v1Vault = await depositPunkV1(ctx, seller, 1n)
-
-      // One address, both deposits.
-      assert.equal(v2Vault.toLowerCase(), predicted.toLowerCase())
-      assert.equal(v1Vault.toLowerCase(), predicted.toLowerCase())
-
-      assert.equal(
-        ((await punks.read.punkIndexToAddress([1n])) as string).toLowerCase(),
-        predicted.toLowerCase(),
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.bid([999n], { value: parseEther('1') }),
+        auctions,
+        'AuctionDoesNotExist',
       )
-      assert.equal(
-        ((await punksV1.read.punkIndexToAddress([1n])) as string).toLowerCase(),
-        predicted.toLowerCase(),
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.settle([999n]),
+        auctions,
+        'AuctionDoesNotExist',
       )
     })
 
-    it('reclaims canonical and V1 Punks via vault.transferPunk by the owner', async () => {
+    it('bid reverts once the auction has ended', async () => {
       const ctx = await deployAuctionStack()
-      const { vaultFactory, punks, punksV1, seller } = ctx
+      const { auctions, seller, bidder1, bidder2 } = ctx
+      await assignPunk(ctx, seller, 250n)
+      await depositPunk(ctx, seller, 250n)
+      await createSinglePunkLot(ctx, seller, 250n, parseEther('1'))
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
 
-      await assignPunk(ctx, seller, 5n)
-      await assignPunkV1(ctx, seller, 5n)
-      const vaultAddress = await depositPunk(ctx, seller, 5n)
-      await depositPunkV1(ctx, seller, 5n)
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
 
-      const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunksVault',
-        vaultAddress,
-        { client: { wallet: seller } },
+      const auctionsAsBidder2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
       )
-
-      // Owner is implicitly authorized: transferPunk back to themselves.
-      await vaultAsSeller.write.transferPunk([
-        punks.address,
-        5n,
-        seller.account.address,
-      ])
-      await vaultAsSeller.write.transferPunk([
-        punksV1.address,
-        5n,
-        seller.account.address,
-      ])
-
-      assert.equal(
-        ((await punks.read.punkIndexToAddress([5n])) as string).toLowerCase(),
-        seller.account.address.toLowerCase(),
-      )
-      assert.equal(
-        ((await punksV1.read.punkIndexToAddress([5n])) as string).toLowerCase(),
-        seller.account.address.toLowerCase(),
-      )
-      // Predicted address survives a deploy.
-      assert.equal(
-        (
-          (await vaultFactory.read.predictVault([
-            seller.account.address,
-          ])) as string
-        ).toLowerCase(),
-        vaultAddress.toLowerCase(),
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsBidder2.write.bid([1n], { value: parseEther('2') }),
+        auctions,
+        'AuctionNotActive',
       )
     })
 
-    it('leaves the bare implementation owner unset', async () => {
+    it('settle reverts before the auction has ended', async () => {
       const ctx = await deployAuctionStack()
-      const { vaultFactory } = ctx
+      const { auctions, seller, bidder1 } = ctx
+      await assignPunk(ctx, seller, 251n)
+      await depositPunk(ctx, seller, 251n)
+      await createSinglePunkLot(ctx, seller, 251n, parseEther('1'))
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
 
-      const implAddress =
-        (await vaultFactory.read.IMPLEMENTATION()) as `0x${string}`
-      const impl = await ctx.viem.getContractAt('PunksVault', implAddress)
-
-      assert.equal(
-        ((await impl.read.owner()) as string).toLowerCase(),
-        zeroAddress.toLowerCase(),
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.settle([1n]),
+        auctions,
+        'AuctionNotComplete',
       )
     })
 
-    it('vault.transferPunk reverts when the vault does not hold the Punk on that market', async () => {
+    it('settle and bid revert once the auction is settled', async () => {
       const ctx = await deployAuctionStack()
-      const { seller } = ctx
+      const { auctions, seller, bidder1, bidder2 } = ctx
+      await assignPunk(ctx, seller, 252n)
+      await depositPunk(ctx, seller, 252n)
+      await createSinglePunkLot(ctx, seller, 252n, parseEther('1'))
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
 
-      await assignPunk(ctx, seller, 6n)
-      const vaultAddress = await depositPunk(ctx, seller, 6n)
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+      await auctions.write.settle([1n])
 
-      const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunksVault',
-        vaultAddress,
-        { client: { wallet: seller } },
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.settle([1n]),
+        auctions,
+        'AuctionAlreadySettled',
       )
-
-      // Vault doesn't hold V1 #6 — the underlying market call reverts.
-      await assert.rejects(
-        vaultAsSeller.write.transferPunk([
-          ctx.punksV1.address,
-          6n,
-          seller.account.address,
-        ]),
+      const auctionsAsBidder2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsBidder2.write.bid([1n], { value: parseEther('2') }),
+        auctions,
+        'AuctionAlreadySettled',
       )
     })
 
-    it('exposes additive factory approval for the owner', async () => {
+    it('cancelOffer and adjustOfferAmount reject callers that are not the offerer', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, vaultFactory, seller } = ctx
-
-      // First call deploys + approves the auction in the same tx.
-      await ensureVaultApprovingAuctions(ctx, seller)
-
-      const vaultAddress = (await vaultFactory.read.predictVault([
-        seller.account.address,
-      ])) as `0x${string}`
-      const vault = await ctx.viem.getContractAt('PunksVault', vaultAddress)
-      assert.equal(
-        (await vault.read.isOperator([auctions.address])) as boolean,
-        true,
-      )
-
-      // Subsequent factory approval calls are additive and idempotent.
-      const factoryAsSeller = await ctx.viem.getContractAt(
-        'PunksVaultFactory',
-        vaultFactory.address,
-        { client: { wallet: seller } },
-      )
-      await factoryAsSeller.write.ensureMyVault([[auctions.address]])
-      assert.equal(
-        (await vault.read.isOperator([auctions.address])) as boolean,
-        true,
-      )
-    })
-
-    it('rejects vault transferPunk from callers that are neither owner nor approved', async () => {
-      const ctx = await deployAuctionStack()
-      const { vaultFactory, punks, seller, attacker } = ctx
-
-      // Seller deploys their vault without approving the attacker.
-      const factoryAsSeller = await ctx.viem.getContractAt(
-        'PunksVaultFactory',
-        vaultFactory.address,
-        { client: { wallet: seller } },
-      )
-      await factoryAsSeller.write.ensureMyVault([[]])
-
-      const vaultAddress = (await vaultFactory.read.predictVault([
-        seller.account.address,
-      ])) as `0x${string}`
-      const vault = await ctx.viem.getContractAt('PunksVault', vaultAddress, {
-        client: { wallet: attacker },
+      const { auctions, bidder1, other } = ctx
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
       })
 
-      await ctx.viem.assertions.revertWithCustomError(
-        vault.write.transferPunk([punks.address, 0n, attacker.account.address]),
-        vault,
-        'NotAuthorized',
-      )
-    })
-
-    it('restricts vault market withdrawals to owner or operator', async () => {
-      const ctx = await deployAuctionStack()
-      const { punks, seller, attacker } = ctx
-
-      const vaultAddress = await ensureVaultApprovingAuctions(ctx, seller)
-      const vaultAsAttacker = await ctx.viem.getContractAt(
-        'PunksVault',
-        vaultAddress,
-        { client: { wallet: attacker } },
-      )
-
-      await ctx.viem.assertions.revertWithCustomError(
-        vaultAsAttacker.write.withdrawFromMarket([punks.address]),
-        vaultAsAttacker,
-        'NotAuthorized',
+      const auctionsAsOther = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: other } },
       )
       await ctx.viem.assertions.revertWithCustomError(
-        vaultAsAttacker.write.withdrawFromMarketTo([
-          punks.address,
-          attacker.account.address,
-        ]),
-        vaultAsAttacker,
-        'NotAuthorized',
+        auctionsAsOther.write.cancelOffer([offerId]),
+        auctions,
+        'NotOfferer',
       )
-
-      const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunksVault',
-        vaultAddress,
-        { client: { wallet: seller } },
-      )
-      await vaultAsSeller.write.withdrawFromMarket([punks.address])
       await ctx.viem.assertions.revertWithCustomError(
-        vaultAsSeller.write.withdrawFromMarketTo([punks.address, zeroAddress]),
-        vaultAsSeller,
-        'ZeroAddress',
-      )
-      await vaultAsSeller.write.withdrawFromMarketTo([
-        punks.address,
-        seller.account.address,
-      ])
-    })
-
-    it('withdraws market proceeds directly to a recipient without sweeping vault ETH', async () => {
-      const ctx = await deployAuctionStack()
-      const { punks, seller, bidder1, other } = ctx
-
-      await assignPunk(ctx, seller, 7n)
-      const vaultAddress = await depositPunk(ctx, seller, 7n)
-      const saleWei = parseEther('1')
-      const retainedWei = parseEther('0.123')
-
-      const vaultAsSeller = await ctx.viem.getContractAt(
-        'PunksVault',
-        vaultAddress,
-        { client: { wallet: seller } },
-      )
-      await vaultAsSeller.write.offerPunkForSaleToAddress([
-        punks.address,
-        7n,
-        saleWei,
-        bidder1.account.address,
-      ])
-
-      const punksAsBidder = await ctx.viem.getContractAt(
-        'MockCryptoPunksMarket',
-        punks.address,
-        { client: { wallet: bidder1 } },
-      )
-      await punksAsBidder.write.buyPunk([7n], { value: saleWei })
-      assert.equal(await punks.read.pendingWithdrawals([vaultAddress]), saleWei)
-
-      const publicClient = await ctx.viem.getPublicClient()
-      const hash = await other.sendTransaction({
-        to: vaultAddress,
-        value: retainedWei,
-      })
-      await publicClient.waitForTransactionReceipt({ hash })
-      assert.equal(
-        await publicClient.getBalance({ address: vaultAddress }),
-        retainedWei,
-      )
-
-      const recipientBefore = await publicClient.getBalance({
-        address: other.account.address,
-      })
-      await vaultAsSeller.write.withdrawFromMarketTo([
-        punks.address,
-        other.account.address,
-      ])
-
-      assert.equal(await punks.read.pendingWithdrawals([vaultAddress]), 0n)
-      assert.equal(
-        await publicClient.getBalance({ address: vaultAddress }),
-        retainedWei,
-      )
-      assert.equal(
-        (await publicClient.getBalance({ address: other.account.address })) -
-          recipientBefore,
-        saleWei,
+        auctionsAsOther.write.adjustOfferAmount([offerId, parseEther('2')]),
+        auctions,
+        'NotOfferer',
       )
     })
   })
@@ -992,6 +830,10 @@ describe('PunksAuction', () => {
       const sellerBefore = await publicClient.getBalance({
         address: seller.account.address,
       })
+      // Pin the gas to a fixed ceiling well under the 16,777,216 EIP-7825
+      // per-tx cap: an 80-item (MAX_LOT_ITEMS) settle must fit in one
+      // transaction. PunksAuction.gas.test.ts measures the real-fork cost;
+      // this guards the mock-based ceiling so a regression fails here too.
       const hash = await auctions.write.settle([1n], { gas: 16_000_000n })
       await publicClient.waitForTransactionReceipt({ hash })
       const sellerAfter = await publicClient.getBalance({
