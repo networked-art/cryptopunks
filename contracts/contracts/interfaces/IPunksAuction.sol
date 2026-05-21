@@ -188,7 +188,6 @@ interface IPunksAuction {
     error ZeroAddress();
     error UnexpectedEtherSender();
     error InvalidAmount();
-    error TooManyTokens();
     error PunkNotInVault();
     error VaultNotDeployed();
     error AuctionNotApproved();

@@ -111,7 +111,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             revert BuyerNotAllowed(lot.onlySellTo);
         }
 
-        uint96 bidWei = _checkedUint96(msg.value);
+        uint96 bidWei = uint96(msg.value);
         if (bidWei < lot.reserveWei) revert ReserveNotMet(lot.reserveWei, bidWei);
 
         LotItem[] memory items = lotItems[lotId];
@@ -130,7 +130,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (snapshot.settled) revert AuctionAlreadySettled();
         if (block.timestamp > snapshot.endTimestamp) revert AuctionNotActive();
 
-        uint96 bidWei = _checkedUint96(msg.value);
+        uint96 bidWei = uint96(msg.value);
         uint96 minBid = _currentMinBidWei(snapshot.latestBidWei);
         if (bidWei < minBid) revert MinimumBidNotMet(minBid, bidWei);
 
@@ -449,12 +449,6 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     function _currentMinBidWei(uint96 prevWei) internal pure returns (uint96) {
         uint256 next = (uint256(prevWei) * (BPS + BID_INCREASE_BPS) + BPS - 1) / BPS;
         return next > type(uint96).max ? type(uint96).max : uint96(next);
-    }
-
-    /// @dev Casts an ETH amount to uint96 after checking the upper bound.
-    function _checkedUint96(uint256 value) internal pure returns (uint96) {
-        if (value > type(uint96).max) revert TooManyTokens();
-        return uint96(value);
     }
 
     // ─────────────────────────── Vault interactions ─────────────────────────────
