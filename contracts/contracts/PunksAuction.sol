@@ -179,10 +179,6 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 offerId,
         uint96 minAmountWei
     ) external nonReentrant returns (uint256 lotId) {
-        // The lot is created for `msg.sender`, so settling against it is
-        // inherently seller-gated — no separate `NotSeller` check is needed.
-        // It is also atomic: no `openAuction` or `startAuctionFromOffer` can
-        // consume the lot between its creation and the instant settlement.
         lotId = _createLot(items, _activeOfferAmount(offerId), address(0));
         _acceptOfferFromLot(offerId, lotId, minAmountWei);
     }
