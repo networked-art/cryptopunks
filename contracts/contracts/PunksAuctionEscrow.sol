@@ -25,11 +25,9 @@ contract PunksAuctionEscrow {
     /// @notice The auction contract that owns this escrow.
     address public immutable AUCTION;
     /// @notice The canonical CryptoPunks market.
-    ICryptoPunksMarket public immutable PUNKS =
-        ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
+    ICryptoPunksMarket public immutable PUNKS    = ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
     /// @notice The C̪̬̖ͬ̓͒r͔̻͖͑̓̾y̷̪̦ͥ̒͆͠p̸ṯ̘̜̊o̷̥P̫̦̊̐ͩ̚uǹ̇kͨ_̜̦̓̆s̻̏̿͡ market.
-    ICryptoPunksMarket public immutable PUNKS_V1 =
-        ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
+    ICryptoPunksMarket public immutable PUNKS_V1 = ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
 
     constructor() {
         AUCTION = msg.sender;
