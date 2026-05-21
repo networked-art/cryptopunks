@@ -107,6 +107,11 @@ export function useActivityFeed(
   const hasMore = ref(false)
   let cursor: string | null = null
 
+  // Bumped on every `load()`. Each in-flight fetch checks its token before
+  // writing back, so a slow earlier request (e.g. the unscoped feed kicked
+  // off before an ENS handle resolves) can't clobber a newer scoped one.
+  let requestToken = 0
+
   function buildWhere() {
     const where: Record<string, unknown> = {
       source_in: V1_ACTIVITY_SOURCES,
@@ -165,15 +170,18 @@ export function useActivityFeed(
   }
 
   async function load() {
+    const token = ++requestToken
     pending.value = true
     error.value = null
     cursor = null
     try {
       const { mapped, pageInfo } = await fetchPage(null)
+      if (token !== requestToken) return
       events.value = mapped
       cursor = pageInfo.endCursor
       hasMore.value = pageInfo.hasNextPage
     } catch (e) {
+      if (token !== requestToken) return
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'
       } else {
@@ -182,20 +190,23 @@ export function useActivityFeed(
       events.value = []
       hasMore.value = false
     } finally {
-      pending.value = false
+      if (token === requestToken) pending.value = false
     }
   }
 
   async function loadMore() {
     if (loadingMore.value || !hasMore.value || !cursor) return
+    const token = requestToken
     loadingMore.value = true
     error.value = null
     try {
       const { mapped, pageInfo } = await fetchPage(cursor)
+      if (token !== requestToken) return
       events.value = [...events.value, ...mapped]
       cursor = pageInfo.endCursor
       hasMore.value = pageInfo.hasNextPage
     } catch (e) {
+      if (token !== requestToken) return
       if (e instanceof IndexerNotConfigured) {
         error.value = 'No indexer configured.'
       } else {
