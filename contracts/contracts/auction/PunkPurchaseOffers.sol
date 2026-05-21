@@ -10,7 +10,7 @@ import "../lib/PushPullEscrow.sol";
 /// @title  PunkPurchaseOffers
 ///
 /// @notice Native ETH offers for CryptoPunks with trait filters and punk bundles.
-///         Inspired by MouseDev's CryptoPunksBids.
+///         Bidding inspired by MouseDev's CryptoPunksBids.
 ///
 /// @dev    The concrete auction contract supplies the market-specific purchase
 ///         path used when an offer is accepted.
