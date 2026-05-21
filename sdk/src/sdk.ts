@@ -206,16 +206,14 @@ export class PunksOffersFacade {
 
   prepareAdjustAmount(params: {
     offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): ContractWritePlan {
+    newAmountWei: bigint
+  }): Promise<ContractWritePlan> {
     return this.auctions.prepareAdjustOfferAmount(params)
   }
 
   adjustAmount(params: {
     offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
+    newAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.auctions.adjustOfferAmount(params)
   }
@@ -266,6 +264,22 @@ export class PunksOffersFacade {
     minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.auctions.createLotAndAcceptOffer(params)
+  }
+
+  prepareCreateLotAndStartAuction(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): ContractWritePlan {
+    return this.auctions.prepareCreateLotAndStartAuction(params)
+  }
+
+  createLotAndStartAuction(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): Promise<TransactionHash> {
+    return this.auctions.createLotAndStartAuction(params)
   }
 }
 

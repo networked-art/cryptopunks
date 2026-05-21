@@ -397,7 +397,11 @@ export class PunksAuctionClient {
   }
 
   async vaultFactoryAddress(): Promise<Address> {
-    return this.read<Address>('PUNK_VAULTS')
+    return this.read<Address>('VAULTS')
+  }
+
+  async escrowAddress(): Promise<Address> {
+    return this.read<Address>('ESCROW')
   }
 
   async canonicalMarketAddress(): Promise<Address> {
@@ -601,6 +605,28 @@ export class PunksAuctionClient {
     return this.write(this.prepareClearStaleLot(lotId))
   }
 
+  prepareClearStaleLots(
+    lotIds: readonly (bigint | number)[],
+  ): ContractWritePlan {
+    if (lotIds.length === 0) {
+      throw new PunksDataValidationError(
+        'clearStaleLots requires at least one lot id',
+      )
+    }
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Clear stale CryptoPunks lots',
+      'clearStaleLots',
+      [lotIds.map((id) => BigInt(id))],
+    )
+  }
+
+  clearStaleLots(
+    lotIds: readonly (bigint | number)[],
+  ): Promise<TransactionHash> {
+    return this.write(this.prepareClearStaleLots(lotIds))
+  }
+
   prepareOpenAuction(params: {
     lotId: bigint | number
     reserveWei: bigint
@@ -694,30 +720,40 @@ export class PunksAuctionClient {
     return this.write(this.prepareCancelOffer(offerId))
   }
 
-  prepareAdjustOfferAmount(params: {
+  /// Sets the offer to an absolute new amount. The contract requires
+  /// `msg.value` to equal the increase, or zero for a decrease, so the
+  /// current offer amount is read on-chain to size the payment.
+  async prepareAdjustOfferAmount(params: {
     offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
-  }): ContractWritePlan {
-    assertWei('amountWei', params.amountWei)
+    newAmountWei: bigint
+  }): Promise<ContractWritePlan> {
+    assertWei('newAmountWei', params.newAmountWei)
+    const offerId = BigInt(params.offerId)
+    const [currentAmountWei] = await this.read<readonly [bigint, Address]>(
+      'offers',
+      [offerId],
+    )
+    const value =
+      params.newAmountWei > currentAmountWei
+        ? params.newAmountWei - currentAmountWei
+        : 0n
     return {
       description: 'Adjust CryptoPunks offer amount',
       request: {
         address: this.requireAddress(),
         abi: punksAuctionAbi,
         functionName: 'adjustOfferAmount',
-        args: [BigInt(params.offerId), params.amountWei, params.increase],
-        value: params.increase ? params.amountWei : 0n,
+        args: [offerId, params.newAmountWei],
+        value,
       },
     }
   }
 
-  adjustOfferAmount(params: {
+  async adjustOfferAmount(params: {
     offerId: bigint | number
-    amountWei: bigint
-    increase: boolean
+    newAmountWei: bigint
   }): Promise<TransactionHash> {
-    return this.write(this.prepareAdjustOfferAmount(params))
+    return this.write(await this.prepareAdjustOfferAmount(params))
   }
 
   prepareAcceptOffer(params: {
@@ -852,6 +888,25 @@ export class PunksAuctionClient {
 
   async isActive(auctionId: bigint | number): Promise<boolean> {
     return this.read<boolean>('auctionActive', [BigInt(auctionId)])
+  }
+
+  /// Returns ETH credited to `account` after a failed direct payout
+  /// (outbid refund, sale proceeds), claimable via `withdraw`.
+  async balanceOf(account: Address): Promise<bigint> {
+    return this.read<bigint>('balances', [account])
+  }
+
+  prepareWithdraw(): ContractWritePlan {
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Withdraw credited ETH from CryptoPunks auction',
+      'withdraw',
+      [],
+    )
+  }
+
+  withdraw(): Promise<TransactionHash> {
+    return this.write(this.prepareWithdraw())
   }
 
   private async marketAddressFor(
