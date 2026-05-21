@@ -21,10 +21,8 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
 
     /// @notice Maximum slots per offer.
     uint8 internal constant MAX_OFFER_SLOTS = 80;
-    /// @notice Maximum number of punks to specifically include per slot.
-    uint8 internal constant MAX_INCLUDE_IDS = 64;
-    /// @notice Maximum number of punks to specifically exclude per slot.
-    uint8 internal constant MAX_EXCLUDE_IDS = 64;
+    /// @notice Maximum number of punks to specifically include or exclude per slot.
+    uint8 internal constant MAX_SLOT_IDS = 64;
 
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
@@ -180,8 +178,8 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     function _requireValidSlot(OfferSlot calldata slot) private pure {
         Punks.validate(slot.criteria);
 
-        if (slot.includeIds.length > MAX_INCLUDE_IDS) revert TooManyIds();
-        if (slot.excludeIds.length > MAX_EXCLUDE_IDS) revert TooManyIds();
+        if (slot.includeIds.length > MAX_SLOT_IDS) revert TooManyIds();
+        if (slot.excludeIds.length > MAX_SLOT_IDS) revert TooManyIds();
     }
 
     /// @dev Copies offer slots from calldata into storage.
