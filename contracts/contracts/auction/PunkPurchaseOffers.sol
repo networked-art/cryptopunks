@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
-import "../interfaces/IPunksData.sol";
+import "../interfaces/IPunksDataMatcher.sol";
 import "../lib/Punks.sol";
 import "../lib/PushPullEscrow.sol";
 
@@ -33,17 +33,9 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     /// @dev    Dynamic `slots` are read via `getOfferSlots`.
     mapping(uint256 => Offer) public offers;
 
-    /// @notice Returns the trait predicate contract used for offer matching.
-    IPunksDataCriteria public immutable PUNKS_CRITERIA;
-    /// @notice Returns the visual predicate contract used for offer matching.
-    IPunksDataVisual public immutable PUNKS_VISUAL;
-
-    /// @notice Creates the offer module bound to a `PunksData` deployment.
-    constructor(address punksData) {
-        if (punksData == address(0)) revert ZeroAddress();
-        PUNKS_CRITERIA = IPunksDataCriteria(punksData);
-        PUNKS_VISUAL = IPunksDataVisual(punksData);
-    }
+    /// @notice Returns the sealed PunksData contract used for offer matching.
+    IPunksDataMatcher public immutable PUNKS_DATA =
+        IPunksDataMatcher(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
     // ────────────────────────────────── Offers ─────────────────────────────────
 
@@ -266,7 +258,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         }
         if (includeLen > 0 && slot.criteria.isEmpty()) revert PunkNotMatched();
 
-        if (!slot.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
+        if (!slot.criteria.matches(PUNKS_DATA, punkId)) {
             revert PunkNotMatched();
         }
     }

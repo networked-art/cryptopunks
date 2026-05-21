@@ -39,11 +39,14 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice Returns the canonical CryptoPunks market.
-    ICryptoPunksMarket public immutable PUNKS;
+    ICryptoPunksMarket public immutable PUNKS =
+        ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
     /// @notice Returns the Cͦ̍͊r͝y̅́p̙t̪͕̍o̫̾P̛̯u̼nk̟̓̚s market.
-    ICryptoPunksMarket public immutable PUNKS_V1;
+    ICryptoPunksMarket public immutable PUNKS_V1 =
+        ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
     /// @notice Returns the `PunksVault` factory.
-    IPunksVaultFactory public immutable VAULTS;
+    IPunksVaultFactory public immutable VAULTS =
+        IPunksVaultFactory(0xf3381B259B2FE142c0A87bffF463695d935D6F66);
     /// @notice Returns the dedicated escrow that custodies Punks during auctions.
     PunksAuctionEscrow public immutable ESCROW;
 
@@ -58,18 +61,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     // ────────────────────────────── Construction ───────────────────────────────
 
-    /// @notice Creates the auction house wired to both Punk markets and the vault factory.
-    constructor(address punks, address punksV1, address punksData, address vaultFactory)
-        PunkPurchaseOffers(punksData)
-    {
-        if (punks == address(0) || punksV1 == address(0) || vaultFactory == address(0)) {
-            revert ZeroAddress();
-        }
-        if (punks == punksV1) revert ZeroAddress();
-        PUNKS = ICryptoPunksMarket(punks);
-        PUNKS_V1 = ICryptoPunksMarket(punksV1);
-        VAULTS = IPunksVaultFactory(vaultFactory);
-        ESCROW = new PunksAuctionEscrow(punks, punksV1);
+    /// @notice Creates the auction house and its dedicated Punk escrow.
+    constructor() {
+        ESCROW = new PunksAuctionEscrow();
 
         IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
             .setName("punksauction.eth");
