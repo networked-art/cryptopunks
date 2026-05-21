@@ -2031,7 +2031,7 @@ describe('PunksAuction', () => {
 
     it('accepts a V1+V2 pair offer against a stored lot and pays seller the offer amount', async () => {
       const ctx = await deployAuctionStack()
-      const { auctions, punks, punksV1, seller, bidder1, attacker } = ctx
+      const { auctions, punks, punksV1, seller, bidder1 } = ctx
 
       await assignPunkV1(ctx, seller, 1000n)
       await depositPunkV1(ctx, seller, 1000n)
@@ -2059,32 +2059,26 @@ describe('PunksAuction', () => {
       const sellerBefore = await publicClient.getBalance({
         address: seller.account.address,
       })
-      const settlerBefore = await publicClient.getBalance({
-        address: attacker.account.address,
-      })
 
-      const auctionsAsSettler = await ctx.viem.getContractAt(
+      const auctionsAsSeller = await ctx.viem.getContractAt(
         'PunksAuction',
         auctions.address,
-        { client: { wallet: attacker } },
+        { client: { wallet: seller } },
       )
-      const hash = await auctionsAsSettler.write.acceptOfferFromLot([
+      const hash = await auctionsAsSeller.write.acceptOfferFromLot([
         offerId,
         1n,
         parseEther('5'),
       ])
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
 
+      const gas = receipt.gasUsed * receipt.effectiveGasPrice
       assert.equal(
         (await publicClient.getBalance({ address: seller.account.address })) -
-          sellerBefore,
+          sellerBefore +
+          gas,
         parseEther('5'),
       )
-      const settlerAfter = await publicClient.getBalance({
-        address: attacker.account.address,
-      })
-      const gas = receipt.gasUsed * receipt.effectiveGasPrice
-      assert.equal(settlerAfter - settlerBefore + gas, 0n)
 
       assert.equal(
         (
@@ -2113,14 +2107,23 @@ describe('PunksAuction', () => {
         slots: [punkSlot(1001)],
       })
 
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOfferFromLot([offerId, 1n, parseEther('1')]),
+        auctionsAsSeller.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('1'),
+        ]),
         auctions,
         'ReserveNotMet',
       )
     })
 
-    it('rejects accepting a lot offer that was lowered below the caller minimum', async () => {
+    it('rejects accepting a lot offer that was lowered below the seller minimum', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller, bidder1 } = ctx
 
@@ -2143,8 +2146,17 @@ describe('PunksAuction', () => {
         parseEther('1'),
       ])
 
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOfferFromLot([offerId, 1n, parseEther('5')]),
+        auctionsAsSeller.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('5'),
+        ]),
         auctions,
         'OfferAmountBelowMinimum',
       )
@@ -2163,8 +2175,17 @@ describe('PunksAuction', () => {
         slots: [punkSlot(1100), punkSlot(1101)],
       })
 
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOfferFromLot([offerId, 1n, parseEther('1')]),
+        auctionsAsSeller.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('1'),
+        ]),
         auctions,
         'SlotItemCountMismatch',
       )
@@ -2183,10 +2204,65 @@ describe('PunksAuction', () => {
         slots: [punkSlot(1200, Standard.CRYPTOPUNKS_V1)],
       })
 
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOfferFromLot([offerId, 1n, parseEther('1')]),
+        auctionsAsSeller.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('1'),
+        ]),
         auctions,
         'OfferStandardMismatch',
+      )
+    })
+
+    it('rejects acceptOfferFromLot when the caller is not the lot seller', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1, other } = ctx
+
+      await assignPunk(ctx, seller, 1300n)
+      await depositPunk(ctx, seller, 1300n)
+      await createSinglePunkLot(ctx, seller, 1300n, parseEther('1'))
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(1300)],
+      })
+
+      // The offerer must not be able to self-execute the instant sale and
+      // skip the 24h auction.
+      const auctionsAsOfferer = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('1'),
+        ]),
+        auctions,
+        'NotSeller',
+      )
+
+      const auctionsAsOther = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: other } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOther.write.acceptOfferFromLot([
+          offerId,
+          1n,
+          parseEther('1'),
+        ]),
+        auctions,
+        'NotSeller',
       )
     })
   })
@@ -2307,12 +2383,22 @@ describe('PunksAuction', () => {
         bidder1.account.address,
       )
 
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+
       const otherOfferId = await placeOffer(ctx, other, {
         amountWei: parseEther('1'),
         slots: [punkSlot(5004)],
       })
       await ctx.viem.assertions.revertWithCustomError(
-        auctions.write.acceptOfferFromLot([otherOfferId, 1n, parseEther('1')]),
+        auctionsAsSeller.write.acceptOfferFromLot([
+          otherOfferId,
+          1n,
+          parseEther('1'),
+        ]),
         auctions,
         'BuyerNotAllowed',
       )
@@ -2321,7 +2407,7 @@ describe('PunksAuction', () => {
         amountWei: parseEther('1'),
         slots: [punkSlot(5004)],
       })
-      await auctions.write.acceptOfferFromLot([
+      await auctionsAsSeller.write.acceptOfferFromLot([
         goodOfferId,
         1n,
         parseEther('1'),

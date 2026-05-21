@@ -153,7 +153,11 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 lotId,
         uint96 minAmountWei
     ) external nonReentrant {
-        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
+        Lot memory lot = lots[lotId];
+        if (lot.seller == address(0)) revert LotNotFound();
+        if (lot.seller != msg.sender) revert NotSeller();
+
+        (Offer memory offer, , LotItem[] memory items) =
             _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
 
         _pullLotItems(lot.seller, items);

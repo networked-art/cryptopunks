@@ -110,6 +110,11 @@ pass the listing price you displayed to the user, or `0n` when no listing is
 expected. `minAmountWei` is the lowest auction-clearing price the seller is
 willing to accept when redirecting an offer through a lot.
 
+`acceptFromLot` is seller-only: it settles the lot instantly at the offer
+amount and skips the 24-hour auction, so only the lot's seller may call it.
+To let an offer kick off the auction instead, use `startAuctionFromOffer`
+(below), which anyone may call.
+
 Each offer helper has a `prepare*` equivalent.
 
 ## Auction Vaults

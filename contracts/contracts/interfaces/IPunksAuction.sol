@@ -279,8 +279,9 @@ interface IPunksAuction {
     ///         listing price.
     function acceptOffer(uint256 offerId, uint16 punkId, uint96 expectedListingWei) external;
 
-    /// @notice Accepts an offer against a stored lot when it still meets the
-    ///         caller's minimum.
+    /// @notice Accepts an offer against your stored lot, settling it instantly
+    ///         without a 24h auction. Only the lot's seller may call this;
+    ///         `minAmountWei` is the seller's floor for the offer.
     function acceptOfferFromLot(uint256 offerId, uint256 lotId, uint96 minAmountWei) external;
 
     /// @notice Starts an auction from an offer when it still meets the
