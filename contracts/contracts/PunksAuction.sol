@@ -464,7 +464,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     }
 
     /// @dev Pre-check at lot create time: the seller's vault must be
-    ///      deployed and the auction must be approved as operator on it.
+    ///      deployed and this contract must be approved as operator on it.
     function _requireAuctionApproved(address seller) internal view override {
         address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) revert VaultNotDeployed();
