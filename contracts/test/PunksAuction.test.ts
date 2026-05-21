@@ -442,6 +442,53 @@ describe('PunksAuction', () => {
     assert.ok((after[3] as bigint) > originalEnd)
   })
 
+  it('credits the previous bidder when their refund receiver rejects ETH', async () => {
+    const ctx = await deployAuctionStack()
+    const { auctions, seller, bidder2 } = ctx
+
+    await assignPunk(ctx, seller, 151n)
+    await depositPunk(ctx, seller, 151n)
+
+    const reserveWei = parseEther('1')
+    await createSinglePunkLot(ctx, seller, 151n, reserveWei)
+
+    const rejectingBidder = await ctx.viem.deployContract(
+      'ToggleEtherReceiver',
+    )
+    await rejectingBidder.write.openAuction(
+      [auctions.address, 1n, reserveWei],
+      { value: reserveWei },
+    )
+    await rejectingBidder.write.setRejectEther([true])
+
+    const auctionsAsBidder2 = await ctx.viem.getContractAt(
+      'PunksAuction',
+      auctions.address,
+      { client: { wallet: bidder2 } },
+    )
+    await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+
+    assert.equal(
+      await auctions.read.balances([rejectingBidder.address]),
+      reserveWei,
+    )
+
+    const publicClient = await ctx.viem.getPublicClient()
+    assert.equal(
+      await publicClient.getBalance({ address: rejectingBidder.address }),
+      0n,
+    )
+
+    await rejectingBidder.write.setRejectEther([false])
+    await rejectingBidder.write.withdrawCredit([auctions.address])
+
+    assert.equal(await auctions.read.balances([rejectingBidder.address]), 0n)
+    assert.equal(
+      await publicClient.getBalance({ address: rejectingBidder.address }),
+      reserveWei,
+    )
+  })
+
   it('settles canonical Punks with a PunkBought round-trip and zero fees', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, escrow, punks, seller, bidder1 } = ctx
@@ -914,6 +961,52 @@ describe('PunksAuction', () => {
       assert.equal(storedItems.length, 80)
     })
 
+    it('settles an 80-item canonical lot without retaining ETH or Punks', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, punks, seller, bidder1 } = ctx
+      const items: LotItemInput[] = []
+
+      for (let i = 0; i < 80; i++) {
+        const punkId = 3_000 + i
+        await assignPunk(ctx, seller, BigInt(punkId))
+        await depositPunk(ctx, seller, BigInt(punkId))
+        items.push(lotItem(punkId, 125))
+      }
+
+      const bidWei = parseEther('10')
+      await createLotWith(ctx, seller, items, bidWei)
+      await openAuction(ctx, bidder1, 1n, bidWei)
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+
+      const publicClient = await ctx.viem.getPublicClient()
+      const sellerBefore = await publicClient.getBalance({
+        address: seller.account.address,
+      })
+      const hash = await auctions.write.settle([1n], { gas: 16_000_000n })
+      await publicClient.waitForTransactionReceipt({ hash })
+      const sellerAfter = await publicClient.getBalance({
+        address: seller.account.address,
+      })
+
+      assert.equal(sellerAfter - sellerBefore, bidWei)
+      for (let i = 0; i < 80; i++) {
+        assert.equal(
+          (
+            (await punks.read.punkIndexToAddress([BigInt(3_000 + i)])) as string
+          ).toLowerCase(),
+          bidder1.account.address.toLowerCase(),
+        )
+      }
+      assert.equal(
+        await publicClient.getBalance({ address: auctions.address }),
+        0n,
+      )
+      assert.equal(
+        await publicClient.getBalance({ address: escrow.address }),
+        0n,
+      )
+    })
+
     it('rejects weights that do not sum to 10_000 or include a zero weight', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
@@ -1168,6 +1261,97 @@ describe('PunksAuction', () => {
       )
     })
 
+    it('frees every Punk slot in a multi-item lot on cancelLot so the seller can regroup them', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      for (const id of [110n, 111n, 112n]) {
+        await assignPunk(ctx, seller, id)
+        await depositPunk(ctx, seller, id)
+      }
+
+      // A three-Punk bundle reserves all three slots at once.
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(110, 3_000), lotItem(111, 3_000), lotItem(112, 4_000)],
+        parseEther('5'),
+      )
+      for (const id of [110, 111, 112]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          1n,
+        )
+      }
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      // While bundled, an item in the middle of the lot cannot be re-listed.
+      await ctx.viem.assertions.revertWithCustomErrorWithArgs(
+        auctionsAsSeller.write.createLot([
+          [lotItem(111)],
+          parseEther('1'),
+          zeroAddress,
+        ]),
+        auctions,
+        'PunkAlreadyInLot',
+        [1n],
+      )
+
+      // Cancelling the bundle frees every one of its slots.
+      await auctionsAsSeller.write.cancelLot([1n])
+      for (const id of [110, 111, 112]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          0n,
+        )
+      }
+
+      // Every freed Punk can be re-listed in a fresh grouping: one on its
+      // own, the other two together as a new bundle.
+      await createSinglePunkLot(ctx, seller, 110n, parseEther('2'))
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(111, 5_000), lotItem(112, 5_000)],
+        parseEther('3'),
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          110,
+        ]),
+        2n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          111,
+        ]),
+        3n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          112,
+        ]),
+        3n,
+      )
+    })
+
     it('does not make a valid lot stale just because time passes', async () => {
       const ctx = await deployAuctionStack()
       const { auctions, seller } = ctx
@@ -1275,6 +1459,133 @@ describe('PunksAuction', () => {
         auctions.write.clearStaleLot([1n]),
         auctions,
         'LotNotStale',
+      )
+    })
+
+    it('clearStaleLots clears a batch of stale lots so the seller can re-list every Punk', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+      for (const id of [100n, 101n, 102n]) {
+        await assignPunk(ctx, seller, id)
+        await depositPunk(ctx, seller, id)
+      }
+
+      // Lot 1 bundles two Punks; lot 2 holds a third on its own.
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(100, 5_000), lotItem(101, 5_000)],
+        parseEther('2'),
+      )
+      await createSinglePunkLot(ctx, seller, 102n, parseEther('1'))
+
+      // Revoking the auction operator turns every lot on the vault stale.
+      const vaultAddress = (await ctx.vaultFactory.read.predictVault([
+        seller.account.address,
+      ])) as `0x${string}`
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.setOperator([auctions.address, false])
+
+      // One batch call clears both lots — every item of the bundle included.
+      await auctions.write.clearStaleLots([[1n, 2n]])
+      for (const id of [100, 101, 102]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          0n,
+        )
+      }
+
+      // With every slot freed, the seller can re-list all three Punks.
+      await vaultAsSeller.write.setOperator([auctions.address, true])
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(100, 3_000), lotItem(101, 3_000), lotItem(102, 4_000)],
+        parseEther('4'),
+      )
+      for (const id of [100, 101, 102]) {
+        assert.equal(
+          await auctions.read.activeLotFor([
+            seller.account.address,
+            Standard.CRYPTOPUNKS,
+            id,
+          ]),
+          3n,
+        )
+      }
+    })
+
+    it('clearStaleLots reverts atomically when any lot in the batch is still valid', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, punks, seller } = ctx
+      await assignPunk(ctx, seller, 103n)
+      const vaultAddress = await depositPunk(ctx, seller, 103n)
+      await assignPunk(ctx, seller, 104n)
+      await depositPunk(ctx, seller, 104n)
+      await createSinglePunkLot(ctx, seller, 103n, parseEther('1'))
+      await createSinglePunkLot(ctx, seller, 104n, parseEther('1'))
+
+      // Only lot 1 goes stale: the seller pulls Punk 103 back out of the vault.
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.transferPunk([
+        punks.address,
+        103n,
+        seller.account.address,
+      ])
+
+      // Batching the still-valid lot 2 reverts the whole call: the stale lot 1
+      // is left intact rather than half-cleared.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.clearStaleLots([[1n, 2n]]),
+        auctions,
+        'LotNotStale',
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          103,
+        ]),
+        1n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          104,
+        ]),
+        2n,
+      )
+
+      // Retrying with only the stale lot clears it and leaves lot 2 alone.
+      await auctions.write.clearStaleLots([[1n]])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          103,
+        ]),
+        0n,
+      )
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          104,
+        ]),
+        2n,
       )
     })
 
@@ -2825,6 +3136,413 @@ describe('PunksAuction', () => {
         ]),
         auctions,
         'OfferNotActive',
+      )
+    })
+  })
+
+  describe('security review — adversarial coverage', () => {
+    it('conserves ETH across a multi-actor lifecycle of offers, auctions, bids, and settlements', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, seller, bidder1, bidder2, other } = ctx
+      const publicClient = await ctx.viem.getPublicClient()
+
+      const auctionBalance = () =>
+        publicClient.getBalance({ address: auctions.address })
+      const escrowBalance = () =>
+        publicClient.getBalance({ address: escrow.address })
+
+      // Seller deposits four Punks and lists three lots.
+      for (const id of [10n, 11n, 12n, 13n]) {
+        await assignPunk(ctx, seller, id)
+        await depositPunk(ctx, seller, id)
+      }
+      await createSinglePunkLot(ctx, seller, 10n, parseEther('1'))
+      await createSinglePunkLot(ctx, seller, 11n, parseEther('1'))
+      await createLotWith(
+        ctx,
+        seller,
+        [lotItem(12, 5_000), lotItem(13, 5_000)],
+        parseEther('2'),
+      )
+
+      // Two standing offers lock ETH in the auction house.
+      const o1 = await placeOffer(ctx, bidder1, { amountWei: parseEther('0.5') })
+      const o2 = await placeOffer(ctx, bidder2, { amountWei: parseEther('3') })
+      assert.equal(await auctionBalance(), parseEther('3.5'))
+
+      const auctionsAsB1 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      const auctionsAsB2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
+      )
+
+      // Open lot 1, then outbid it: the house always holds exactly the
+      // live bid for an auction, never both the old and new bid.
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
+      assert.equal(await auctionBalance(), parseEther('4.5'))
+      await auctionsAsB2.write.bid([1n], { value: parseEther('1.1') })
+      assert.equal(await auctionBalance(), parseEther('4.6'))
+
+      await openAuction(ctx, bidder1, 2n, parseEther('1'))
+      assert.equal(await auctionBalance(), parseEther('5.6'))
+
+      // Adjusting an offer down and cancelling another refund immediately.
+      await auctionsAsB2.write.adjustOfferAmount([o2, parseEther('2')])
+      await auctionsAsB1.write.cancelOffer([o1])
+      assert.equal(await auctionBalance(), parseEther('4.1'))
+
+      // Settle both auctions; only offer 2's locked ETH should remain.
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+      await auctions.write.settle([1n])
+      await auctions.write.settle([2n])
+      assert.equal(await auctionBalance(), parseEther('2'))
+      assert.equal(await escrowBalance(), 0n)
+
+      // Cancelling the final offer and lot drains the house to zero.
+      await auctionsAsB2.write.cancelOffer([o2])
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await auctionsAsSeller.write.cancelLot([3n])
+      assert.equal(await auctionBalance(), 0n)
+      assert.equal(await escrowBalance(), 0n)
+
+      // No stranded pull-credit for any participant.
+      for (const who of [seller, bidder1, bidder2, other]) {
+        assert.equal(await auctions.read.balances([who.account.address]), 0n)
+      }
+    })
+
+    it('prevents an offer from being consumed twice once it seeds an auction', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 20n)
+      await depositPunk(ctx, seller, 20n)
+      await createSinglePunkLot(ctx, seller, 20n, parseEther('1'))
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(20)],
+      })
+
+      // The offer + lot become a live auction.
+      await auctions.write.startAuctionFromOffer([offerId, 1n, parseEther('1')])
+      assert.equal(await auctions.read.lastAuctionId(), 1n)
+
+      // The offer is gone — it cannot be cancelled, accepted, or reused.
+      const auctionsAsOfferer = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.cancelOffer([offerId]),
+        auctions,
+        'OfferNotActive',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.acceptOffer([offerId, 20, parseEther('1')]),
+        auctions,
+        'OfferNotActive',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.startAuctionFromOffer([offerId, 1n, parseEther('1')]),
+        auctions,
+        'OfferNotActive',
+      )
+      // The lot is gone too.
+      await ctx.viem.assertions.revertWithCustomError(
+        auctions.write.openAuction([1n, parseEther('1')], {
+          value: parseEther('1'),
+        }),
+        auctions,
+        'LotNotFound',
+      )
+    })
+
+    it('prevents reusing an offer already settled through acceptOffer', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 21n)
+      await offerPunkToAuctions(ctx, seller, 21n, parseEther('0.9'))
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+      })
+
+      await auctions.write.acceptOffer([offerId, 21, parseEther('0.9')])
+
+      const auctionsAsOfferer = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.cancelOffer([offerId]),
+        auctions,
+        'OfferNotActive',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsOfferer.write.adjustOfferAmount([offerId, parseEther('2')], {
+          value: parseEther('1'),
+        }),
+        auctions,
+        'OfferNotActive',
+      )
+    })
+
+    it('locks the escrow down to the auction and the two Punk markets', async () => {
+      const ctx = await deployAuctionStack()
+      const { escrow, punks, other } = ctx
+
+      const escrowAsOther = await ctx.viem.getContractAt(
+        'PunksAuctionEscrow',
+        escrow.address,
+        { client: { wallet: other } },
+      )
+
+      // Only the auction may route Punks through the escrow.
+      await ctx.viem.assertions.revertWithCustomError(
+        escrowAsOther.write.listForSettlement([punks.address, 0n, 1n]),
+        escrow,
+        'NotAuction',
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        escrowAsOther.write.sweepProceeds([punks.address]),
+        escrow,
+        'NotAuction',
+      )
+
+      // Only the two markets may fund the escrow.
+      await assert.rejects(
+        other.sendTransaction({ to: escrow.address, value: 1n }),
+      )
+    })
+
+    it('credits a contract seller that rejects ETH on settlement and still delivers the Punk', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, punks, vaultFactory, bidder1 } = ctx
+      const publicClient = await ctx.viem.getPublicClient()
+
+      const sellerBot = await ctx.viem.deployContract('AuctionBot', [
+        auctions.address,
+      ])
+
+      // The bot deploys its own vault and approves the auction.
+      await sellerBot.write.ensureVault([
+        vaultFactory.address,
+        [auctions.address],
+      ])
+      const botVault = (await vaultFactory.read.predictVault([
+        sellerBot.address,
+      ])) as `0x${string}`
+
+      // Put a Punk straight into the bot's vault and list it.
+      await punks.write.setInitialOwner([botVault, 400n])
+      await sellerBot.write.createLot([
+        [lotItem(400)],
+        parseEther('1'),
+        zeroAddress,
+      ])
+
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+
+      // The seller refuses the direct payout — settlement must still succeed.
+      await sellerBot.write.setRejectEther([true])
+      await auctions.write.settle([1n])
+
+      // Punk delivered, auction settled, proceeds parked as pull-credit.
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([400n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+      assert.equal((await auctions.read.auctions([1n]))[4], true)
+      assert.equal(
+        await auctions.read.balances([sellerBot.address]),
+        parseEther('1'),
+      )
+      assert.equal(
+        await publicClient.getBalance({ address: sellerBot.address }),
+        0n,
+      )
+      assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
+
+      // The seller can later pull the credited proceeds in full.
+      await sellerBot.write.setRejectEther([false])
+      await sellerBot.write.withdrawCredit()
+      assert.equal(await auctions.read.balances([sellerBot.address]), 0n)
+      assert.equal(
+        await publicClient.getBalance({ address: sellerBot.address }),
+        parseEther('1'),
+      )
+    })
+
+    it('blocks reentrancy into bid during the outbid refund', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder2 } = ctx
+      const publicClient = await ctx.viem.getPublicClient()
+
+      await assignPunk(ctx, seller, 410n)
+      await depositPunk(ctx, seller, 410n)
+      await createSinglePunkLot(ctx, seller, 410n, parseEther('1'))
+
+      // A bot opens the auction, then arms a reentry that calls `bid`
+      // again from inside its refund hook.
+      const botBidder = await ctx.viem.deployContract('AuctionBot', [
+        auctions.address,
+      ])
+      await botBidder.write.openAuction([1n, parseEther('1')], {
+        value: parseEther('1'),
+      })
+      await botBidder.write.armReentry([2, 1n])
+
+      // An honest bidder outbids — the bot is refunded and its reentry fires.
+      const auctionsAsBidder2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
+      )
+      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+
+      // The reentry was attempted and rejected by the guard.
+      assert.equal(await botBidder.read.reentryObserved(), true)
+      assert.equal(await botBidder.read.reentryReverted(), true)
+
+      // The honest bidder is the sole live bidder; the bot got its ETH back.
+      const auction = await auctions.read.auctions([1n])
+      assert.equal(auction[1].toLowerCase(), bidder2.account.address.toLowerCase())
+      assert.equal(auction[2], parseEther('1.1'))
+      assert.equal(
+        await publicClient.getBalance({ address: botBidder.address }),
+        parseEther('1'),
+      )
+      assert.equal(await auctions.read.balances([botBidder.address]), 0n)
+
+      // Conservation: the house holds exactly the live bid.
+      assert.equal(
+        await publicClient.getBalance({ address: auctions.address }),
+        parseEther('1.1'),
+      )
+    })
+
+    it('blocks reentrancy into settle during the seller payout', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, punks, vaultFactory, bidder1 } = ctx
+      const publicClient = await ctx.viem.getPublicClient()
+
+      const sellerBot = await ctx.viem.deployContract('AuctionBot', [
+        auctions.address,
+      ])
+      await sellerBot.write.ensureVault([
+        vaultFactory.address,
+        [auctions.address],
+      ])
+      const botVault = (await vaultFactory.read.predictVault([
+        sellerBot.address,
+      ])) as `0x${string}`
+
+      await punks.write.setInitialOwner([botVault, 420n])
+      await sellerBot.write.createLot([
+        [lotItem(420)],
+        parseEther('1'),
+        zeroAddress,
+      ])
+      await openAuction(ctx, bidder1, 1n, parseEther('1'))
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+
+      // The seller bot tries to reenter settle from inside its payout hook.
+      await sellerBot.write.armReentry([1, 1n])
+      await auctions.write.settle([1n])
+
+      // The reentry fired and was rejected; settlement completed cleanly.
+      assert.equal(await sellerBot.read.reentryObserved(), true)
+      assert.equal(await sellerBot.read.reentryReverted(), true)
+      assert.equal((await auctions.read.auctions([1n]))[4], true)
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([420n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+
+      // The seller is paid exactly once; nothing is stranded.
+      assert.equal(
+        await publicClient.getBalance({ address: sellerBot.address }),
+        parseEther('1'),
+      )
+      assert.equal(await auctions.read.balances([sellerBot.address]), 0n)
+      assert.equal(
+        await publicClient.getBalance({ address: auctions.address }),
+        0n,
+      )
+      assert.equal(await publicClient.getBalance({ address: escrow.address }), 0n)
+    })
+
+    it('refunds the opener and preserves the lot when the seller revoked auction approval', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+      const publicClient = await ctx.viem.getPublicClient()
+
+      await assignPunk(ctx, seller, 430n)
+      const vaultAddress = await depositPunk(ctx, seller, 430n)
+      await createSinglePunkLot(ctx, seller, 430n, parseEther('1'))
+
+      // The seller revokes the auction operator after listing.
+      const vaultAsSeller = await ctx.viem.getContractAt(
+        'PunksVault',
+        vaultAddress,
+        { client: { wallet: seller } },
+      )
+      await vaultAsSeller.write.setOperator([auctions.address, false])
+
+      // openAuction reverts: the auction can no longer pull the Punk.
+      const auctionsAsBidder = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder1 } },
+      )
+      const bidderBefore = await publicClient.getBalance({
+        address: bidder1.account.address,
+      })
+      await assert.rejects(
+        auctionsAsBidder.write.openAuction([1n, parseEther('1')], {
+          value: parseEther('1'),
+        }),
+      )
+      const bidderAfter = await publicClient.getBalance({
+        address: bidder1.account.address,
+      })
+
+      // The opener only spent gas — the bid value was never captured.
+      assert.ok(bidderBefore - bidderAfter < parseEther('0.1'))
+      assert.equal(
+        await publicClient.getBalance({ address: auctions.address }),
+        0n,
+      )
+
+      // The lot survived the failed open; no auction was created.
+      assert.equal(await auctions.read.lastAuctionId(), 0n)
+      assert.equal(
+        (await auctions.read.lots([1n]))[0].toLowerCase(),
+        seller.account.address.toLowerCase(),
+      )
+
+      // The now-stale lot can be cleared, freeing the Punk slot.
+      await auctions.write.clearStaleLot([1n])
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          430,
+        ]),
+        0n,
       )
     })
   })

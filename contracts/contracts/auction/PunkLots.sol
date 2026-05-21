@@ -5,7 +5,7 @@ import "../interfaces/IPunksAuction.sol";
 
 /// @title  PunkLots
 ///
-/// @notice Stored seller lots and per-Punk lot reservations for the auction house.
+/// @notice Punk lots handled by the auction house. Each punk can be in one lot.
 ///
 /// @dev    The concrete auction contract supplies the vault and market-specific
 ///         hooks used to validate custody and release reservations.
@@ -20,7 +20,7 @@ abstract contract PunkLots is IPunksAuction {
     /// @notice Returns the last lot id that was created.
     uint256 public lastLotId;
 
-    /// @notice Returns the scalar fields of a lot (items via `getLotItems`).
+    /// @notice Returns core data for a lot. Fetch items via `getLotItems`.
     mapping(uint256 => Lot) public lots;
     /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
     /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
@@ -102,7 +102,7 @@ abstract contract PunkLots is IPunksAuction {
     // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev Creates a lot of `items` owned by `msg.sender`. Pre-checks that the
-    ///      seller's vault is deployed and has approved this auction as
+    ///      seller's vault is deployed and has approved this contract as
     ///      operator, surfacing misconfiguration up front.
     function _createLot(
         LotItem[] calldata items,
@@ -154,11 +154,11 @@ abstract contract PunkLots is IPunksAuction {
         if (lot.seller == address(0)) revert LotNotFound();
 
         LotItem[] memory items = lotItems[id];
-        bool stale = !_auctionStillApproved(lot.seller);
+        bool stale = !_auctionIsApproved(lot.seller);
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
-                if (!_punkStillInSellerVault(items[i].standard, lot.seller, items[i].punkId)) {
+                if (!_punkInSellerVault(items[i].standard, lot.seller, items[i].punkId)) {
                     stale = true;
                     break;
                 }
@@ -222,9 +222,8 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
-    /// @dev Checks vault custody at open/accept/start time. The lot's existence
-    ///      already implies its slot reservations are intact (first-wins).
-    function _requireLotItemsValidForOpeningAuction(address seller, LotItem[] memory items) internal view {
+    /// @dev Checks vault custody when a lot is consumed into an auction.
+    function _requireLotItemsInVault(address seller, LotItem[] memory items) internal view {
         uint256 n = items.length;
         for (uint256 i; i < n;) {
             LotItem memory item = items[i];
@@ -274,19 +273,22 @@ abstract contract PunkLots is IPunksAuction {
         return keccak256(abi.encode(seller, tokenContract, tokenId));
     }
 
-    // ─────────────────────────────────── Hooks ──────────────────────────────────
-
-    function _requireAuctionApproved(address seller) internal view virtual;
-
-    function _auctionStillApproved(address seller) internal view virtual returns (bool);
-
+    /// @dev Reverts when the seller's vault does not currently hold the Punk.
     function _requirePunkInVault(
         TokenStandard standard,
         address seller,
         uint256 punkIndex
-    ) internal view virtual;
+    ) internal view {
+        if (!_punkInSellerVault(standard, seller, punkIndex)) revert PunkNotInVault();
+    }
 
-    function _punkStillInSellerVault(
+    // ─────────────────────────────────── Hooks ──────────────────────────────────
+
+    function _requireAuctionApproved(address seller) internal view virtual;
+
+    function _auctionIsApproved(address seller) internal view virtual returns (bool);
+
+    function _punkInSellerVault(
         TokenStandard standard,
         address seller,
         uint256 punkIndex

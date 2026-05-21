@@ -14,12 +14,35 @@ export const PUNKS_V1_WRAPPER =
 
 export const PUNKS_DATA = '0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C' as const
 
+export const PUNKS_MARKET =
+  '0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB' as const
+
+export const VAULT_FACTORY =
+  '0xf3381B259B2FE142c0A87bffF463695d935D6F66' as const
+
 export async function etchReverseRegistrar(connection: any): Promise<void> {
   const { viem } = connection
   const mock = await viem.deployContract('ReverseRegistrarMock')
   const publicClient = await viem.getPublicClient()
   const code = await publicClient.getCode({ address: mock.address })
   await connection.networkHelpers.setCode(REVERSE_REGISTRAR, code)
+}
+
+// Deploys a constructor-less mock and copies its runtime code to a fixed
+// address, so a contract that hardcodes that address as an immutable resolves
+// to the mock under test.
+async function etchMock(
+  connection: any,
+  address: `0x${string}`,
+  contractName: string,
+): Promise<void> {
+  const { viem } = connection
+  const deployed = await viem.deployContract(contractName)
+  const publicClient = await viem.getPublicClient()
+  await connection.networkHelpers.setCode(
+    address,
+    await publicClient.getCode({ address: deployed.address }),
+  )
 }
 
 export const DAY = 24 * 60 * 60
@@ -223,18 +246,44 @@ export async function deployAuctionStack() {
   const { viem } = connection
   const [deployer, seller, bidder1, bidder2, other, attacker] =
     await viem.getWalletClients()
+  const publicClient = await viem.getPublicClient()
 
-  const punks = await viem.deployContract('MockCryptoPunksMarket')
-  const punksV1 = await viem.deployContract('MockCryptoPunksMarketV1Buggy')
-  const punksData = await viem.deployContract('MockPunksData')
+  // PunksAuction hardcodes the mainnet addresses of both Punk markets, the
+  // PunksData contract, and the vault factory, so the mocks have to stand in
+  // at those exact addresses.
+  await etchMock(connection, PUNKS_MARKET, 'MockCryptoPunksMarket')
+  await etchMock(connection, PUNKS_V1_MARKET, 'MockCryptoPunksMarketV1Buggy')
+  await etchMock(connection, PUNKS_DATA, 'MockPunksData')
   await etchReverseRegistrar(connection)
-  const vaultFactory = await viem.deployContract('PunksVaultFactory')
-  const auctions = await viem.deployContract('PunksAuction', [
-    punks.address,
-    punksV1.address,
-    punksData.address,
-    vaultFactory.address,
-  ])
+
+  // The vault factory bakes its own address into every PunksVault clone's
+  // `FACTORY` immutable. Etching the factory at its canonical address means
+  // the implementation it points at must be built for that same address, so
+  // re-etch the implementation with one constructed for the canonical factory.
+  const factoryDeploy = await viem.deployContract('PunksVaultFactory')
+  const implAddress = (await factoryDeploy.read.IMPLEMENTATION()) as `0x${string}`
+  await connection.networkHelpers.setCode(
+    VAULT_FACTORY,
+    await publicClient.getCode({ address: factoryDeploy.address }),
+  )
+  const canonicalImpl = await viem.deployContract('PunksVault', [VAULT_FACTORY])
+  await connection.networkHelpers.setCode(
+    implAddress,
+    await publicClient.getCode({ address: canonicalImpl.address }),
+  )
+
+  const punks = await viem.getContractAt('MockCryptoPunksMarket', PUNKS_MARKET)
+  const punksV1 = await viem.getContractAt(
+    'MockCryptoPunksMarketV1Buggy',
+    PUNKS_V1_MARKET,
+  )
+  const punksData = await viem.getContractAt('MockPunksData', PUNKS_DATA)
+  const vaultFactory = await viem.getContractAt(
+    'PunksVaultFactory',
+    VAULT_FACTORY,
+  )
+
+  const auctions = await viem.deployContract('PunksAuction')
   const escrowAddress = (await auctions.read.ESCROW()) as `0x${string}`
   const escrow = await viem.getContractAt('PunksAuctionEscrow', escrowAddress)
 

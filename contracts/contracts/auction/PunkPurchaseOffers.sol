@@ -3,14 +3,14 @@ pragma solidity 0.8.34;
 
 import "../interfaces/IPunksAuction.sol";
 import "../interfaces/ICryptoPunksMarket.sol";
-import "../interfaces/IPunksData.sol";
+import "../interfaces/IPunksDataMatcher.sol";
 import "../lib/Punks.sol";
 import "../lib/PushPullEscrow.sol";
 
 /// @title  PunkPurchaseOffers
 ///
-/// @notice Native ETH offers for CryptoPunks with mask-based filters and N-slot bundles.
-///         Inspired by MouseDev's CryptoPunksBids.
+/// @notice Native ETH offers for CryptoPunks with trait filters and punk bundles.
+///         Bidding inspired by MouseDev's CryptoPunksBids.
 ///
 /// @dev    The concrete auction contract supplies the market-specific purchase
 ///         path used when an offer is accepted.
@@ -21,29 +21,21 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
 
     /// @notice Maximum slots per offer.
     uint8 internal constant MAX_OFFER_SLOTS = 80;
-    /// @notice Maximum entries in `OfferSlot.includeIds` per slot.
+    /// @notice Maximum number of punks to specifically include per slot.
     uint8 internal constant MAX_INCLUDE_IDS = 64;
-    /// @notice Maximum entries in `OfferSlot.excludeIds` per slot.
+    /// @notice Maximum number of punks to specifically exclude per slot.
     uint8 internal constant MAX_EXCLUDE_IDS = 64;
 
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
 
-    /// @notice Returns the scalar fields of an offer.
+    /// @notice Returns the core data of an offer.
     /// @dev    Dynamic `slots` are read via `getOfferSlots`.
     mapping(uint256 => Offer) public offers;
 
-    /// @notice Returns the trait predicate contract used for offer matching.
-    IPunksDataCriteria public immutable PUNKS_CRITERIA;
-    /// @notice Returns the visual predicate contract used for offer matching.
-    IPunksDataVisual public immutable PUNKS_VISUAL;
-
-    /// @notice Creates the offer module bound to a `PunksData` deployment.
-    constructor(address punksData) {
-        if (punksData == address(0)) revert ZeroAddress();
-        PUNKS_CRITERIA = IPunksDataCriteria(punksData);
-        PUNKS_VISUAL = IPunksDataVisual(punksData);
-    }
+    /// @notice Returns the sealed PunksData contract used for offer matching.
+    IPunksDataMatcher public immutable PUNKS_DATA =
+        IPunksDataMatcher(0x9cF9C8eA737A7d5157d3F4282aCe30880a7A117C);
 
     // ────────────────────────────────── Offers ─────────────────────────────────
 
@@ -266,7 +258,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         }
         if (includeLen > 0 && slot.criteria.isEmpty()) revert PunkNotMatched();
 
-        if (!slot.criteria.matches(PUNKS_CRITERIA, PUNKS_VISUAL, punkId)) {
+        if (!slot.criteria.matches(PUNKS_DATA, punkId)) {
             revert PunkNotMatched();
         }
     }

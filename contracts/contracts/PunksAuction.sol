@@ -39,18 +39,18 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     // ───────────────────────────────── Storage ─────────────────────────────────
 
     /// @notice Returns the canonical CryptoPunks market.
-    ICryptoPunksMarket public immutable PUNKS;
+    ICryptoPunksMarket public immutable PUNKS    = ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
     /// @notice Returns the Cͦ̍͊r͝y̅́p̙t̪͕̍o̫̾P̛̯u̼nk̟̓̚s market.
-    ICryptoPunksMarket public immutable PUNKS_V1;
-    /// @notice Returns the per-user `PunksVault` factory.
-    IPunksVaultFactory public immutable VAULTS;
+    ICryptoPunksMarket public immutable PUNKS_V1 = ICryptoPunksMarket(0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D);
+    /// @notice Returns the `PunksVault` factory.
+    IPunksVaultFactory public immutable VAULTS   = IPunksVaultFactory(0xf3381B259B2FE142c0A87bffF463695d935D6F66);
     /// @notice Returns the dedicated escrow that custodies Punks during auctions.
     PunksAuctionEscrow public immutable ESCROW;
 
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
 
-    /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
+    /// @notice Returns the core data of an auction. Fetch items via `getAuctionItems`.
     mapping(uint256 => Auction) public auctions;
 
     /// @dev Dynamic item arrays for live auctions, keyed by auction id.
@@ -58,18 +58,9 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
 
     // ────────────────────────────── Construction ───────────────────────────────
 
-    /// @notice Creates the auction house wired to both Punk markets and the vault factory.
-    constructor(address punks, address punksV1, address punksData, address vaultFactory)
-        PunkPurchaseOffers(punksData)
-    {
-        if (punks == address(0) || punksV1 == address(0) || vaultFactory == address(0)) {
-            revert ZeroAddress();
-        }
-        if (punks == punksV1) revert ZeroAddress();
-        PUNKS = ICryptoPunksMarket(punks);
-        PUNKS_V1 = ICryptoPunksMarket(punksV1);
-        VAULTS = IPunksVaultFactory(vaultFactory);
-        ESCROW = new PunksAuctionEscrow(punks, punksV1);
+    /// @notice Creates the auction house and its dedicated Punk escrow.
+    constructor() {
+        ESCROW = new PunksAuctionEscrow();
 
         IReverseRegistrar(0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb)
             .setName("punksauction.eth");
@@ -111,11 +102,11 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
             revert BuyerNotAllowed(lot.onlySellTo);
         }
 
-        uint96 bidWei = _checkedUint96(msg.value);
+        uint96 bidWei = uint96(msg.value);
         if (bidWei < lot.reserveWei) revert ReserveNotMet(lot.reserveWei, bidWei);
 
         LotItem[] memory items = lotItems[lotId];
-        _requireLotItemsValidForOpeningAuction(lot.seller, items);
+        _requireLotItemsInVault(lot.seller, items);
 
         delete lots[lotId];
         delete lotItems[lotId];
@@ -130,7 +121,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (snapshot.settled) revert AuctionAlreadySettled();
         if (block.timestamp > snapshot.endTimestamp) revert AuctionNotActive();
 
-        uint96 bidWei = _checkedUint96(msg.value);
+        uint96 bidWei = uint96(msg.value);
         uint96 minBid = _currentMinBidWei(snapshot.latestBidWei);
         if (bidWei < minBid) revert MinimumBidNotMet(minBid, bidWei);
 
@@ -179,10 +170,6 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 offerId,
         uint96 minAmountWei
     ) external nonReentrant returns (uint256 lotId) {
-        // The lot is created for `msg.sender`, so settling against it is
-        // inherently seller-gated — no separate `NotSeller` check is needed.
-        // It is also atomic: no `openAuction` or `startAuctionFromOffer` can
-        // consume the lot between its creation and the instant settlement.
         lotId = _createLot(items, _activeOfferAmount(offerId), address(0));
         _acceptOfferFromLot(offerId, lotId, minAmountWei);
     }
@@ -455,12 +442,6 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         return next > type(uint96).max ? type(uint96).max : uint96(next);
     }
 
-    /// @dev Casts an ETH amount to uint96 after checking the upper bound.
-    function _checkedUint96(uint256 value) internal pure returns (uint96) {
-        if (value > type(uint96).max) revert TooManyTokens();
-        return uint96(value);
-    }
-
     // ─────────────────────────── Vault interactions ─────────────────────────────
 
     /// @dev Resolves the Punk market contract for a standard.
@@ -474,7 +455,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     }
 
     /// @dev Pre-check at lot create time: the seller's vault must be
-    ///      deployed and the auction must be approved as operator on it.
+    ///      deployed and this contract must be approved as operator on it.
     function _requireAuctionApproved(address seller) internal view override {
         address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) revert VaultNotDeployed();
@@ -483,41 +464,21 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         }
     }
 
-    /// @dev Best-effort approval check for stale-lot cleanup.
-    function _auctionStillApproved(address seller) internal view override returns (bool) {
+    /// @dev Returns true when this contract is an approved operator on the seller's vault.
+    function _auctionIsApproved(address seller) internal view override returns (bool) {
         address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) return false;
-        try IPunksVault(vault).isOperator(address(this)) returns (bool approved) {
-            return approved;
-        } catch {
-            return false;
-        }
+        return IPunksVault(vault).isOperator(address(this));
     }
 
-    /// @dev Reverts when the seller's vault does not currently hold the Punk.
-    function _requirePunkInVault(
-        TokenStandard standard,
-        address seller,
-        uint256 punkIndex
-    ) internal view override {
-        if (
-            _marketFor(standard).punkIndexToAddress(punkIndex)
-                != VAULTS.predictVault(seller)
-        ) revert PunkNotInVault();
-    }
-
-    /// @dev Returns true when the seller's vault still holds the Punk.
-    function _punkStillInSellerVault(
+    /// @dev Returns true when the seller's vault currently holds the Punk.
+    function _punkInSellerVault(
         TokenStandard standard,
         address seller,
         uint256 punkIndex
     ) internal view override returns (bool) {
-        address vault = VAULTS.predictVault(seller);
-        try _marketFor(standard).punkIndexToAddress(punkIndex) returns (address holder) {
-            return holder == vault;
-        } catch {
-            return false;
-        }
+        return _marketFor(standard).punkIndexToAddress(punkIndex)
+            == VAULTS.predictVault(seller);
     }
 
     /// @dev Pulls a Punk from the seller's vault into the escrow.
