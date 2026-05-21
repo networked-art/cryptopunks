@@ -33,49 +33,12 @@ abstract contract PunkLots is IPunksAuction {
     // ─────────────────────────────────── Lots ───────────────────────────────────
 
     /// @inheritdoc IPunksAuction
-    /// @dev    Pre-checks that the seller's vault is deployed and has approved
-    ///         this auction as operator, surfacing misconfiguration up front.
     function createLot(
         LotItem[] calldata items,
         uint96 reserveWei,
         address onlySellTo
     ) external returns (uint256 id) {
-        if (reserveWei == 0) revert InvalidAmount();
-        _requireAuctionApproved(msg.sender);
-        _validateLotItems(items);
-
-        uint8 itemCount = uint8(items.length);
-
-        unchecked {
-            id = ++lastLotId;
-        }
-
-        lots[id] = Lot({
-            seller: msg.sender,
-            reserveWei: reserveWei,
-            onlySellTo: onlySellTo
-        });
-
-        emit LotCreated(
-            id,
-            msg.sender,
-            keccak256(abi.encode(items)),
-            itemCount,
-            reserveWei,
-            onlySellTo
-        );
-
-        LotItem[] storage storedItems = lotItems[id];
-        for (uint256 i; i < itemCount;) {
-            LotItem calldata item = items[i];
-            storedItems.push(item);
-            bytes32 key = _tokenKey(msg.sender, _tokenContractFor(item.standard), item.punkId);
-            lotForPunk[key] = id;
-            emit LotItemDetail(id, uint8(i), item.standard, item.punkId, item.weightBps);
-            unchecked {
-                ++i;
-            }
-        }
+        return _createLot(items, reserveWei, onlySellTo);
     }
 
     /// @inheritdoc IPunksAuction
@@ -137,6 +100,52 @@ abstract contract PunkLots is IPunksAuction {
     }
 
     // ───────────────────────────────── Internals ─────────────────────────────────
+
+    /// @dev Creates a lot of `items` owned by `msg.sender`. Pre-checks that the
+    ///      seller's vault is deployed and has approved this auction as
+    ///      operator, surfacing misconfiguration up front.
+    function _createLot(
+        LotItem[] calldata items,
+        uint96 reserveWei,
+        address onlySellTo
+    ) internal returns (uint256 id) {
+        if (reserveWei == 0) revert InvalidAmount();
+        _requireAuctionApproved(msg.sender);
+        _validateLotItems(items);
+
+        uint8 itemCount = uint8(items.length);
+
+        unchecked {
+            id = ++lastLotId;
+        }
+
+        lots[id] = Lot({
+            seller: msg.sender,
+            reserveWei: reserveWei,
+            onlySellTo: onlySellTo
+        });
+
+        emit LotCreated(
+            id,
+            msg.sender,
+            keccak256(abi.encode(items)),
+            itemCount,
+            reserveWei,
+            onlySellTo
+        );
+
+        LotItem[] storage storedItems = lotItems[id];
+        for (uint256 i; i < itemCount;) {
+            LotItem calldata item = items[i];
+            storedItems.push(item);
+            bytes32 key = _tokenKey(msg.sender, _tokenContractFor(item.standard), item.punkId);
+            lotForPunk[key] = id;
+            emit LotItemDetail(id, uint8(i), item.standard, item.punkId, item.weightBps);
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
     /// @dev Removes a lot that is no longer approved or whose custody slipped
     ///      out of the vault.

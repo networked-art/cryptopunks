@@ -153,25 +153,11 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         uint256 lotId,
         uint96 minAmountWei
     ) external nonReentrant {
-        Lot memory lot = lots[lotId];
-        if (lot.seller == address(0)) revert LotNotFound();
-        if (lot.seller != msg.sender) revert NotSeller();
+        address seller = lots[lotId].seller;
+        if (seller == address(0)) revert LotNotFound();
+        if (seller != msg.sender) revert NotSeller();
 
-        (Offer memory offer, , LotItem[] memory items) =
-            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
-
-        _pullLotItems(lot.seller, items);
-        _settleBundleDelivery(items, offer.amountWei, offer.offerer);
-
-        _pushOrCredit(lot.seller, offer.amountWei);
-
-        emit OfferAcceptedFromLot(
-            offerId,
-            lotId,
-            lot.seller,
-            offer.offerer,
-            offer.amountWei
-        );
+        _acceptOfferFromLot(offerId, lotId, minAmountWei);
     }
 
     /// @inheritdoc IPunksAuction
@@ -184,25 +170,31 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         nonReentrant
         returns (uint256 auctionId)
     {
-        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
-            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
+        return _startAuctionFromOffer(offerId, lotId, minAmountWei);
+    }
 
-        auctionId = _createAuctionFromItems(
-            lotId,
-            lot.seller,
-            items,
-            offer.offerer,
-            offer.amountWei
-        );
+    /// @inheritdoc IPunksAuction
+    function createLotAndAcceptOffer(
+        LotItem[] calldata items,
+        uint256 offerId,
+        uint96 minAmountWei
+    ) external nonReentrant returns (uint256 lotId) {
+        // The lot is created for `msg.sender`, so settling against it is
+        // inherently seller-gated — no separate `NotSeller` check is needed.
+        // It is also atomic: no `openAuction` or `startAuctionFromOffer` can
+        // consume the lot between its creation and the instant settlement.
+        lotId = _createLot(items, _activeOfferAmount(offerId), address(0));
+        _acceptOfferFromLot(offerId, lotId, minAmountWei);
+    }
 
-        emit OfferAuctionInitialised(
-            offerId,
-            auctionId,
-            lotId,
-            lot.seller,
-            offer.offerer,
-            offer.amountWei
-        );
+    /// @inheritdoc IPunksAuction
+    function createLotAndStartAuction(
+        LotItem[] calldata items,
+        uint256 offerId,
+        uint96 minAmountWei
+    ) external nonReentrant returns (uint256 auctionId) {
+        uint256 lotId = _createLot(items, _activeOfferAmount(offerId), address(0));
+        auctionId = _startAuctionFromOffer(offerId, lotId, minAmountWei);
     }
 
     // ─────────────────────────────────── Views ──────────────────────────────────
@@ -303,6 +295,59 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         delete offers[offerId];
         delete lots[lotId];
         delete lotItems[lotId];
+    }
+
+    /// @dev Settles an offer against a lot, delivering the bundle to the
+    ///      offerer and paying the seller. Callers must ensure `msg.sender`
+    ///      owns `lotId` — instant settlement is seller-gated.
+    function _acceptOfferFromLot(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    ) private {
+        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
+            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
+
+        _pullLotItems(lot.seller, items);
+        _settleBundleDelivery(items, offer.amountWei, offer.offerer);
+
+        _pushOrCredit(lot.seller, offer.amountWei);
+
+        emit OfferAcceptedFromLot(
+            offerId,
+            lotId,
+            lot.seller,
+            offer.offerer,
+            offer.amountWei
+        );
+    }
+
+    /// @dev Consumes an offer/lot pair into a live auction seeded with the
+    ///      offer as the opening bid.
+    function _startAuctionFromOffer(
+        uint256 offerId,
+        uint256 lotId,
+        uint96 minAmountWei
+    ) private returns (uint256 auctionId) {
+        (Offer memory offer, Lot memory lot, LotItem[] memory items) =
+            _consumeOfferAgainstLot(offerId, lotId, minAmountWei);
+
+        auctionId = _createAuctionFromItems(
+            lotId,
+            lot.seller,
+            items,
+            offer.offerer,
+            offer.amountWei
+        );
+
+        emit OfferAuctionInitialised(
+            offerId,
+            auctionId,
+            lotId,
+            lot.seller,
+            offer.offerer,
+            offer.amountWei
+        );
     }
 
     /// @dev Creates auction storage, pulls the items into custody, and emits the first bid.

@@ -2501,4 +2501,331 @@ describe('PunksAuction', () => {
       assert.equal(auction[2], parseEther('2'))
     })
   })
+
+  describe('lots — create and settle in one transaction', () => {
+    it('createLotAndAcceptOffer settles a single Punk in one transaction', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, punks, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 6000n)
+      await depositPunk(ctx, seller, 6000n)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('3'),
+        slots: [punkSlot(6000)],
+      })
+
+      const publicClient = await ctx.viem.getPublicClient()
+      const sellerBefore = await publicClient.getBalance({
+        address: seller.account.address,
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      const hash = await auctionsAsSeller.write.createLotAndAcceptOffer([
+        [lotItem(6000)],
+        offerId,
+        parseEther('3'),
+      ])
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+      const gas = receipt.gasUsed * receipt.effectiveGasPrice
+
+      // The Punk is delivered to the offerer and the seller is paid the full
+      // offer amount — all from one transaction.
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([6000n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+      assert.equal(
+        (await publicClient.getBalance({ address: seller.account.address })) -
+          sellerBefore +
+          gas,
+        parseEther('3'),
+      )
+
+      // The transient lot was created and consumed in the same transaction,
+      // leaving no lingering lot, offer, or per-Punk reservation.
+      assert.equal(await auctions.read.lastLotId(), 1n)
+      const lot = await auctions.read.lots([1n])
+      assert.equal(lot[0], zeroAddress)
+      const offer = await auctions.read.offers([offerId])
+      assert.equal(offer[1], zeroAddress)
+      assert.equal(
+        await auctions.read.activeLotFor([
+          seller.account.address,
+          Standard.CRYPTOPUNKS,
+          6000,
+        ]),
+        0n,
+      )
+
+      // ETH conservation: neither the auction nor the escrow retains funds.
+      assert.equal(
+        await publicClient.getBalance({ address: auctions.address }),
+        0n,
+      )
+      assert.equal(
+        await publicClient.getBalance({ address: escrow.address }),
+        0n,
+      )
+    })
+
+    it('createLotAndAcceptOffer settles a V1+V2 bundle in one transaction', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, punks, punksV1, seller, bidder1 } = ctx
+
+      await assignPunkV1(ctx, seller, 6200n)
+      await depositPunkV1(ctx, seller, 6200n)
+      await assignPunk(ctx, seller, 6200n)
+      await depositPunk(ctx, seller, 6200n)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('5'),
+        slots: [
+          punkSlot(6200, Standard.CRYPTOPUNKS_V1),
+          punkSlot(6200, Standard.CRYPTOPUNKS),
+        ],
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await auctionsAsSeller.write.createLotAndAcceptOffer([
+        [
+          lotItem(6200, 5_000, Standard.CRYPTOPUNKS_V1),
+          lotItem(6200, 5_000, Standard.CRYPTOPUNKS),
+        ],
+        offerId,
+        parseEther('5'),
+      ])
+
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([6200n])) as string).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+      assert.equal(
+        (
+          (await punksV1.read.punkIndexToAddress([6200n])) as string
+        ).toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+    })
+
+    it('createLotAndAcceptOffer respects the seller minimum', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 6300n)
+      await depositPunk(ctx, seller, 6300n)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(6300)],
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([
+          [lotItem(6300)],
+          offerId,
+          parseEther('2'),
+        ]),
+        auctions,
+        'OfferAmountBelowMinimum',
+      )
+    })
+
+    it('createLotAndAcceptOffer reverts when the offer is not active', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([
+          [lotItem(6400)],
+          999n,
+          parseEther('1'),
+        ]),
+        auctions,
+        'OfferNotActive',
+      )
+    })
+
+    it('createLotAndAcceptOffer still enforces the createLot vault pre-checks', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 6500n)
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(6500)],
+      })
+
+      // The seller never deployed a vault — lot creation must still fail.
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([
+          [lotItem(6500)],
+          offerId,
+          parseEther('1'),
+        ]),
+        auctions,
+        'VaultNotDeployed',
+      )
+    })
+
+    it('createLotAndAcceptOffer rejects an offer whose slots do not match the items', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 6600n)
+      await depositPunk(ctx, seller, 6600n)
+
+      // A two-slot offer cannot settle a single-item lot.
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(6600), punkSlot(6601)],
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndAcceptOffer([
+          [lotItem(6600)],
+          offerId,
+          parseEther('1'),
+        ]),
+        auctions,
+        'SlotItemCountMismatch',
+      )
+    })
+
+    it('createLotAndStartAuction opens a live auction seeded by the offer in one transaction', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, escrow, punks, seller, bidder1, bidder2 } = ctx
+
+      await assignPunk(ctx, seller, 6700n)
+      await depositPunk(ctx, seller, 6700n)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('2'),
+        slots: [punkSlot(6700)],
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await auctionsAsSeller.write.createLotAndStartAuction([
+        [lotItem(6700)],
+        offerId,
+        parseEther('2'),
+      ])
+
+      // A live auction now exists, seeded with the offer as the opening bid.
+      assert.equal(await auctions.read.lastLotId(), 1n)
+      assert.equal(await auctions.read.lastAuctionId(), 1n)
+      const auction = await auctions.read.auctions([1n])
+      assert.equal(
+        auction[0].toLowerCase(),
+        seller.account.address.toLowerCase(),
+      )
+      assert.equal(
+        auction[1].toLowerCase(),
+        bidder1.account.address.toLowerCase(),
+      )
+      assert.equal(auction[2], parseEther('2'))
+
+      // The Punk is in auction escrow and the offer was consumed.
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([6700n])) as string).toLowerCase(),
+        escrow.address.toLowerCase(),
+      )
+      const offer = await auctions.read.offers([offerId])
+      assert.equal(offer[1], zeroAddress)
+
+      // The auction behaves like any other: it accepts bids and settles.
+      const auctionsAsBidder2 = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: bidder2 } },
+      )
+      await auctionsAsBidder2.write.bid([1n], { value: parseEther('2.2') })
+      await ctx.connection.networkHelpers.time.increase(DAY + 1)
+      await auctions.write.settle([1n])
+      assert.equal(
+        ((await punks.read.punkIndexToAddress([6700n])) as string).toLowerCase(),
+        bidder2.account.address.toLowerCase(),
+      )
+    })
+
+    it('createLotAndStartAuction respects the caller minimum', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller, bidder1 } = ctx
+
+      await assignPunk(ctx, seller, 6800n)
+      await depositPunk(ctx, seller, 6800n)
+
+      const offerId = await placeOffer(ctx, bidder1, {
+        amountWei: parseEther('1'),
+        slots: [punkSlot(6800)],
+      })
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndStartAuction([
+          [lotItem(6800)],
+          offerId,
+          parseEther('2'),
+        ]),
+        auctions,
+        'OfferAmountBelowMinimum',
+      )
+    })
+
+    it('createLotAndStartAuction reverts when the offer is not active', async () => {
+      const ctx = await deployAuctionStack()
+      const { auctions, seller } = ctx
+
+      const auctionsAsSeller = await ctx.viem.getContractAt(
+        'PunksAuction',
+        auctions.address,
+        { client: { wallet: seller } },
+      )
+      await ctx.viem.assertions.revertWithCustomError(
+        auctionsAsSeller.write.createLotAndStartAuction([
+          [lotItem(6900)],
+          999n,
+          parseEther('1'),
+        ]),
+        auctions,
+        'OfferNotActive',
+      )
+    })
+  })
 })

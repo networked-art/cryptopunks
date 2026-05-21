@@ -165,6 +165,14 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
         if (offer.offerer == address(0)) revert OfferNotActive();
     }
 
+    /// @dev Returns an active offer's locked amount without copying its slots,
+    ///      reverting if the offer is missing.
+    function _activeOfferAmount(uint256 offerId) internal view returns (uint96) {
+        Offer storage offer = offers[offerId];
+        if (offer.offerer == address(0)) revert OfferNotActive();
+        return offer.amountWei;
+    }
+
     /// @dev Loads the offer storage struct, ensuring the caller is the offerer.
     function _offerForOfferer(uint256 offerId)
         private

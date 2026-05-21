@@ -290,6 +290,27 @@ interface IPunksAuction {
         external
         returns (uint256 auctionId);
 
+    /// @notice Creates a lot and instantly accepts an offer against it in a
+    ///         single transaction, settling without a 24h auction. The lot is
+    ///         created for the caller, so this path is inherently seller-only
+    ///         and cannot be sniped by an `openAuction` in between. The
+    ///         transient lot's reserve is the offer amount; `minAmountWei` is
+    ///         the seller's floor for the offer.
+    function createLotAndAcceptOffer(
+        LotItem[] calldata items,
+        uint256 offerId,
+        uint96 minAmountWei
+    ) external returns (uint256 lotId);
+
+    /// @notice Creates a lot and starts an auction from an offer in a single
+    ///         transaction, with the offer as the opening bid. `minAmountWei`
+    ///         is the caller's floor for the offer.
+    function createLotAndStartAuction(
+        LotItem[] calldata items,
+        uint256 offerId,
+        uint96 minAmountWei
+    ) external returns (uint256 auctionId);
+
     // ─────────────────────────────────── Views ──────────────────────────────────
 
     /// @notice Returns the scalar fields of an auction (items via `getAuctionItems`).
