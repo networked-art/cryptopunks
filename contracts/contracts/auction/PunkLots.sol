@@ -102,7 +102,7 @@ abstract contract PunkLots is IPunksAuction {
     // ───────────────────────────────── Internals ─────────────────────────────────
 
     /// @dev Creates a lot of `items` owned by `msg.sender`. Pre-checks that the
-    ///      seller's vault is deployed and has approved this auction as
+    ///      seller's vault is deployed and has approved this contract as
     ///      operator, surfacing misconfiguration up front.
     function _createLot(
         LotItem[] calldata items,
