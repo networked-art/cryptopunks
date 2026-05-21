@@ -29,7 +29,7 @@ abstract contract PunkPurchaseOffers is IPunksAuction, PushPullEscrow {
     /// @notice Returns the last offer id that was created.
     uint256 public lastOfferId;
 
-    /// @notice Returns the scalar fields of an offer.
+    /// @notice Returns the core data of an offer.
     /// @dev    Dynamic `slots` are read via `getOfferSlots`.
     mapping(uint256 => Offer) public offers;
 
