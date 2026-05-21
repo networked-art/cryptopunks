@@ -158,7 +158,7 @@ abstract contract PunkLots is IPunksAuction {
         if (!stale) {
             uint256 itemCount = items.length;
             for (uint256 i; i < itemCount;) {
-                if (!_punkStillInSellerVault(items[i].standard, lot.seller, items[i].punkId)) {
+                if (!_punkInSellerVault(items[i].standard, lot.seller, items[i].punkId)) {
                     stale = true;
                     break;
                 }
@@ -274,19 +274,22 @@ abstract contract PunkLots is IPunksAuction {
         return keccak256(abi.encode(seller, tokenContract, tokenId));
     }
 
+    /// @dev Reverts when the seller's vault does not currently hold the Punk.
+    function _requirePunkInVault(
+        TokenStandard standard,
+        address seller,
+        uint256 punkIndex
+    ) internal view {
+        if (!_punkInSellerVault(standard, seller, punkIndex)) revert PunkNotInVault();
+    }
+
     // ─────────────────────────────────── Hooks ──────────────────────────────────
 
     function _requireAuctionApproved(address seller) internal view virtual;
 
     function _auctionStillApproved(address seller) internal view virtual returns (bool);
 
-    function _requirePunkInVault(
-        TokenStandard standard,
-        address seller,
-        uint256 punkIndex
-    ) internal view virtual;
-
-    function _punkStillInSellerVault(
+    function _punkInSellerVault(
         TokenStandard standard,
         address seller,
         uint256 punkIndex

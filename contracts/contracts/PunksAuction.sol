@@ -473,41 +473,21 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         }
     }
 
-    /// @dev Best-effort approval check for stale-lot cleanup.
+    /// @dev Approval check used by stale-lot cleanup.
     function _auctionStillApproved(address seller) internal view override returns (bool) {
         address vault = VAULTS.predictVault(seller);
         if (vault.code.length == 0) return false;
-        try IPunksVault(vault).isOperator(address(this)) returns (bool approved) {
-            return approved;
-        } catch {
-            return false;
-        }
+        return IPunksVault(vault).isOperator(address(this));
     }
 
-    /// @dev Reverts when the seller's vault does not currently hold the Punk.
-    function _requirePunkInVault(
-        TokenStandard standard,
-        address seller,
-        uint256 punkIndex
-    ) internal view override {
-        if (
-            _marketFor(standard).punkIndexToAddress(punkIndex)
-                != VAULTS.predictVault(seller)
-        ) revert PunkNotInVault();
-    }
-
-    /// @dev Returns true when the seller's vault still holds the Punk.
-    function _punkStillInSellerVault(
+    /// @dev Returns true when the seller's vault currently holds the Punk.
+    function _punkInSellerVault(
         TokenStandard standard,
         address seller,
         uint256 punkIndex
     ) internal view override returns (bool) {
-        address vault = VAULTS.predictVault(seller);
-        try _marketFor(standard).punkIndexToAddress(punkIndex) returns (address holder) {
-            return holder == vault;
-        } catch {
-            return false;
-        }
+        return _marketFor(standard).punkIndexToAddress(punkIndex)
+            == VAULTS.predictVault(seller);
     }
 
     /// @dev Pulls a Punk from the seller's vault into the escrow.
