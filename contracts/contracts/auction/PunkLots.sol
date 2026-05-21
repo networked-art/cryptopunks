@@ -20,7 +20,7 @@ abstract contract PunkLots is IPunksAuction {
     /// @notice Returns the last lot id that was created.
     uint256 public lastLotId;
 
-    /// @notice Returns the scalar fields of a lot (items via `getLotItems`).
+    /// @notice Returns core data for a lot. Fetch items via `getLotItems`.
     mapping(uint256 => Lot) public lots;
     /// @notice Returns the active lot id holding a seller's Punk, or 0 if none.
     /// @dev    Keyed by `keccak256(seller, tokenContract, punkId)`. A non-zero
@@ -222,9 +222,10 @@ abstract contract PunkLots is IPunksAuction {
         }
     }
 
-    /// @dev Checks vault custody at open/accept/start time. The lot's existence
-    ///      already implies its slot reservations are intact (first-wins).
-    function _requireLotItemsValidForOpeningAuction(address seller, LotItem[] memory items) internal view {
+    /// @dev Checks vault custody when a lot is consumed into an auction. A
+    ///      surviving lot already implies its slot reservations are intact
+    ///      (first-wins), so only custody can have changed.
+    function _requireLotItemsInVault(address seller, LotItem[] memory items) internal view {
         uint256 n = items.length;
         for (uint256 i; i < n;) {
             LotItem memory item = items[i];

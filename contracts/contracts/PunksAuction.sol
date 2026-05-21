@@ -50,7 +50,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @notice Returns the last auction id that was created.
     uint256 public lastAuctionId;
 
-    /// @notice Returns the core data of an auction (fetch items via `getAuctionItems`).
+    /// @notice Returns the core data of an auction. Fetch items via `getAuctionItems`.
     mapping(uint256 => Auction) public auctions;
 
     /// @dev Dynamic item arrays for live auctions, keyed by auction id.
@@ -115,7 +115,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
         if (bidWei < lot.reserveWei) revert ReserveNotMet(lot.reserveWei, bidWei);
 
         LotItem[] memory items = lotItems[lotId];
-        _requireLotItemsValidForOpeningAuction(lot.seller, items);
+        _requireLotItemsInVault(lot.seller, items);
 
         delete lots[lotId];
         delete lotItems[lotId];
