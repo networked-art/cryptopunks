@@ -5,20 +5,9 @@ import {
   ZERO_ADDRESS,
 } from '@networked-art/punks-sdk'
 
-/**
- * Mainnet `PunksAuction` — the zero-fee auction house.
- *
- * TODO: `PunksAuction` is not deployed yet. Replace this placeholder with the
- * real address once it is live. Until then `isAuctionDeployed()` is false and
- * the list/detail pages render an empty "not deployed" state.
- */
-export const PUNKS_AUCTION_ADDRESS = ZERO_ADDRESS as Address
-
-/**
- * Block `PunksAuction` was deployed at — the lower bound for `eth_getLogs`
- * scans. TODO: set to the real deployment block alongside the address above.
- */
-export const PUNKS_AUCTION_DEPLOY_BLOCK = 0n
+/** Mainnet `PunksAuction` — the zero-fee auction house. */
+export const PUNKS_AUCTION_ADDRESS =
+  '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as Address
 
 /** Canonical `CryptoPunks` market (the fixed June 22nd 2017 redeploy). */
 export const CRYPTOPUNKS_ADDRESS = CRYPTOPUNKS_MARKET_ADDRESS as Address
