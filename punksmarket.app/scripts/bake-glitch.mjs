@@ -69,7 +69,7 @@ if (src.width !== SIZE || src.height !== SIZE) {
 const out = new PNG({ width: SIZE, height: SIZE })
 out.data.fill(0)
 
-const SLICE_ALPHA = 0.55
+const SLICE_ALPHA = 0.19
 
 for (let row = 0; row < SPRITE_COLS; row++) {
   for (let col = 0; col < SPRITE_COLS; col++) {
@@ -119,7 +119,7 @@ for (let row = 0; row < SPRITE_COLS; row++) {
     }
 
     // Horizontal slice overlays — full-tile-width white bands.
-    // On opaque pixels: overlay-blend with white at alpha 0.55 (brightens, preserves blacks).
+    // On opaque pixels: overlay-blend with white at SLICE_ALPHA (brightens, preserves blacks).
     // On transparent pixels: paint semi-opaque white so the band continues across the tile.
     for (const slice of slices) {
       for (let dy = 0; dy < slice.h; dy++) {
