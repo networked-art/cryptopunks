@@ -1,0 +1,14 @@
+{
+  "name": "@networked-art/punks-images",
+  "version": "0.0.0",
+  "description": "CryptoPunks sprite sheet and per-token image extraction",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.0"
+  }
+}
