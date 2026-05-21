@@ -11,7 +11,8 @@ const TILE = 24 // source pixels per punk
 const COLS = 100 // sprite sheet is a 100x100 grid of punks
 const COUNT = COLS * COLS // 10000
 const SHEET = COLS * TILE // 2400
-const LG = 1200 // large-variant edge length (50x)
+const LG = 1200 // large-variant edge length
+const SCALE = LG / TILE // 50x integer upscale
 
 // Background colors as RGBA hex (all opaque). The marketplace colors are
 // from contracts/contracts/PunksRenderer.sol; wrapped-v1 is the
@@ -26,6 +27,7 @@ const BACKGROUNDS = {
 }
 
 const RAW_TILE = { raw: { width: TILE, height: TILE, channels: 4 } }
+const RAW_LG = { raw: { width: LG, height: LG, channels: 4 } }
 
 // Slice the 24x24 RGBA region for `id` out of the decoded sprite sheet.
 function tileBuffer(sheet, id) {
@@ -40,14 +42,36 @@ function tileBuffer(sheet, id) {
   return out
 }
 
+// Nearest-neighbor 50x upscale by hand: replicate each source pixel into a
+// SCALE x SCALE block. sharp's resize() premultiplies alpha, and the
+// premultiply/unpremultiply round-trip shifts the RGB of semi-transparent
+// pixels by a unit or two — so a manual copy is the only exact upscale.
+function upscaleTile(tile) {
+  const dstRow = LG * 4
+  const out = Buffer.allocUnsafe(LG * dstRow)
+  const row = Buffer.allocUnsafe(dstRow)
+  for (let sy = 0; sy < TILE; sy++) {
+    for (let sx = 0; sx < TILE; sx++) {
+      const src = (sy * TILE + sx) * 4
+      let dst = sx * SCALE * 4
+      for (let n = 0; n < SCALE; n++) {
+        row[dst++] = tile[src]
+        row[dst++] = tile[src + 1]
+        row[dst++] = tile[src + 2]
+        row[dst++] = tile[src + 3]
+      }
+    }
+    for (let n = 0; n < SCALE; n++) {
+      row.copy(out, (sy * SCALE + n) * dstRow)
+    }
+  }
+  return out
+}
+
 async function emitPunk(sheet, id) {
   const tile = tileBuffer(sheet, id)
   await sharp(tile, RAW_TILE).png().toFile(join(DIST, 'sm', `${id}.png`))
-  await sharp(tile, RAW_TILE)
-    // nearest-neighbor keeps crisp pixel-art edges on the 50x upscale
-    .resize(LG, LG, { kernel: 'nearest' })
-    .png()
-    .toFile(join(DIST, 'lg', `${id}.png`))
+  await sharp(upscaleTile(tile), RAW_LG).png().toFile(join(DIST, 'lg', `${id}.png`))
 }
 
 async function emitBackground(name, hex) {
