@@ -16,7 +16,7 @@ import {
   v1PunkBid,
 } from 'ponder:schema'
 import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
-import { getAddress } from 'viem'
+import { getAbiItem, getAddress, toEventSelector, toHex } from 'viem'
 
 import { CryptoPunksV1Abi } from '../abis/CryptoPunksV1Abi'
 import {
@@ -45,6 +45,12 @@ type PonderEvent = {
 const SOURCE_V1 = 'cryptopunks_v1'
 const SOURCE_WRAPPER = 'v1_wrapper'
 const SOURCE_MARKET = 'punks_market'
+
+// topic0 of the V1 contract's `PunkBought` event. `buyPunk` emits this right
+// after its internal `punkNoLongerForSale` call — see `isBuyPunkByproduct`.
+const PUNK_BOUGHT_TOPIC = toEventSelector(
+  getAbiItem({ abi: CryptoPunksV1Abi, name: 'PunkBought' }),
+)
 
 // Sentinel name for the punks-dataset backfill. Bump suffix if the bundled
 // dataset hash ever changes (it should not — PunksData is sealed onchain).
@@ -226,13 +232,16 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const seller =
     existing && existing.seller !== ZERO_ADDRESS ? existing.seller : undefined
 
-  // A V1 listing whose buyer was the PunksMarket is consumed as part of a
-  // market settlement; the market's own sale row already covers it. DB-stored
-  // hex columns are lowercase, so re-normalize before comparing.
-  const onlySellTo = existing?.only_sell_to
-  const isMarketListing =
-    onlySellTo != null && normalize(onlySellTo) === PUNKS_MARKET_ADDRESS
-  if (!isMarketListing) {
+  // `buyPunk` calls `punkNoLongerForSale` internally, so a settlement, wrapper
+  // deposit, or direct buy emits a redundant PunkNoLongerForSale already
+  // covered by its own sale / wrap row. Only a standalone PunkNoLongerForSale —
+  // no sibling PunkBought in the tx — is a real listing cancellation.
+  const settlementByproduct = await isBuyPunkByproduct(
+    context,
+    meta.tx_hash,
+    event.args.punkIndex,
+  )
+  if (!settlementByproduct) {
     await insertActivity(context, {
       id: eventId(event),
       source: SOURCE_V1,
@@ -851,6 +860,26 @@ async function readNativeOwner(
     blockNumber,
   })
   return normalize(owner)
+}
+
+// `buyPunk` emits `PunkNoLongerForSale` (via its internal `punkNoLongerForSale`
+// call) immediately before `PunkBought` for the same punk. A seller-initiated
+// cancellation calls the public `punkNoLongerForSale` and has no sibling
+// `PunkBought`. Reading the receipt distinguishes settlement noise from a real
+// cancellation precisely; `context.client` caches the lookup in `ponder_sync`.
+async function isBuyPunkByproduct(
+  context: Context,
+  txHash: Address,
+  punkId: bigint,
+): Promise<boolean> {
+  const receipt = await context.client.getTransactionReceipt({ hash: txHash })
+  const punkTopic = toHex(punkId, { size: 32 })
+  return receipt.logs.some(
+    (log) =>
+      normalize(log.address) === CRYPTOPUNKS_V1_ADDRESS &&
+      log.topics[0] === PUNK_BOUGHT_TOPIC &&
+      log.topics[1] === punkTopic,
+  )
 }
 
 async function insertActivity(
