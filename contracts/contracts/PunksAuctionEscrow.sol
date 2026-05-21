@@ -55,10 +55,7 @@ contract PunksAuctionEscrow {
     }
 
     /// @notice Pulls the post-sale credit from the market and forwards
-    ///         it to the auction. On the canonical market the credit
-    ///         is the escrow's. On C͚̔̕ry̡̼p̗̝̩t͐͌o̤̬͟P̼ͮ̋u̡̙n̷̲͌k̳͋sͭ the storage-reference bug routes
-    ///         the credit to the buyer (the auction) instead, so this
-    ///         call no-ops — the auction sweeps its own market credit.
+    ///         it to the auction.
     function sweepProceeds(address market) external {
         if (msg.sender != AUCTION) revert NotAuction();
         _requireKnownMarket(market);
