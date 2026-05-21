@@ -35,6 +35,11 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/app.css'],
 
+  routeRules: {
+    // `/punk` has no page of its own — only `/punk/:id`. Bounce to the grid.
+    '/punk': { redirect: '/' },
+  },
+
   runtimeConfig: {
     // Server-only RPC URL. Override with NUXT_RPC_URL.
     rpcUrl: '',
