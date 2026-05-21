@@ -5,7 +5,7 @@ import "../interfaces/IPunksAuction.sol";
 
 /// @title  PunkLots
 ///
-/// @notice Stored seller lots and per-Punk lot reservations for the auction house.
+/// @notice Punk lots handled by the auction house. Each punk can be in one lot.
 ///
 /// @dev    The concrete auction contract supplies the vault and market-specific
 ///         hooks used to validate custody and release reservations.
