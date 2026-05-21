@@ -9,16 +9,22 @@
       v-else
       class="thumb-icon"
     >
-      <Icon :name="icon" />
+      <Icon name="lucide:gavel" />
     </span>
 
     <div class="row-body">
       <div class="row-line">
-        <span class="kind">{{ event.label }}</span>
         <span
-          v-if="reference"
-          class="reference"
-          >{{ reference }}</span
+          class="kind"
+          :class="`kind-${event.kind}`"
+          >{{ kindLabel }}</span
+        >
+        <NuxtLink
+          v-if="event.punkId !== undefined"
+          :to="`/punk/${event.punkId}`"
+          class="punk-id"
+          >Punk #{{ event.punkId
+          }}<span v-if="event.wrapped"> (Wrapped)</span></NuxtLink
         >
       </div>
       <div class="row-line muted">
@@ -29,12 +35,12 @@
           <AccountBadge :address="event.from" />
         </NuxtLink>
         <span
-          v-if="event.to"
+          v-if="event.to && !sameParties"
           class="arrow"
           >→</span
         >
         <NuxtLink
-          v-if="event.to"
+          v-if="event.to && !sameParties"
           :to="`/profile/${event.to}`"
         >
           <AccountBadge :address="event.to" />
@@ -71,21 +77,18 @@ import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{ event: ActivityEvent }>()
 
-const icon = computed(() => {
-  const name = props.event.eventName
-  if (name.startsWith('Lot')) return 'lucide:package'
-  if (name.startsWith('Offer')) return 'lucide:hand-coins'
-  if (name === 'Credited' || name === 'Withdrawal') return 'lucide:wallet'
-  return 'lucide:gavel'
-})
+const kindLabel = computed(
+  () => KIND_LABEL[props.event.kind] ?? props.event.kind,
+)
 
-const reference = computed(() => {
-  const e = props.event
-  if (e.auctionId !== undefined) return `Auction #${e.auctionId}`
-  if (e.lotId !== undefined) return `Lot #${e.lotId}`
-  if (e.offerId !== undefined) return `Offer #${e.offerId}`
-  return null
-})
+/// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
+/// them so the row shows a single party.
+const sameParties = computed(
+  () =>
+    !!props.event.from &&
+    !!props.event.to &&
+    props.event.from.toLowerCase() === props.event.to.toLowerCase(),
+)
 
 const isoTime = computed(() =>
   props.event.timestamp
@@ -98,6 +101,20 @@ const absoluteTime = computed(() =>
     ? new Date(props.event.timestamp * 1000).toLocaleString()
     : '',
 )
+</script>
+
+<script lang="ts">
+const KIND_LABEL: Record<string, string> = {
+  assign: 'Claimed',
+  transfer: 'Transferred',
+  wrap: 'Wrapped',
+  unwrap: 'Unwrapped',
+  listing: 'Listed',
+  listing_cancelled: 'Unlisted',
+  bid: 'Bid placed',
+  bid_cancelled: 'Bid cancelled',
+  sale: 'Sold',
+}
 </script>
 
 <style scoped>
@@ -157,7 +174,8 @@ const absoluteTime = computed(() =>
   color: var(--text);
 }
 
-.reference {
+.punk-id {
+  border: 0;
   color: var(--text-muted);
   font-size: 12px;
 }

@@ -1,246 +1,279 @@
 import type { Address, Hex } from 'viem'
-import { punksAuctionAbi } from '@networked-art/punks-sdk'
-import {
-  PUNKS_AUCTION_ADDRESS,
-  PUNKS_AUCTION_DEPLOY_BLOCK,
-  isAuctionDeployed,
-} from '~/utils/addresses'
+import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
+
+export type ActivityKind =
+  | 'assign'
+  | 'transfer'
+  | 'wrap'
+  | 'unwrap'
+  | 'listing'
+  | 'listing_cancelled'
+  | 'bid'
+  | 'bid_cancelled'
+  | 'sale'
+
+export type ActivitySource =
+  | 'cryptopunks_v2'
+  | 'wrapped_punks'
+  | 'cryptopunks_721'
+  | string
+
+// CryptoPunks (V2) and both its ERC-721 wrappers. `PunksAuction` is a separate
+// source the indexer will add later; this feed covers native market activity.
+const V2_ACTIVITY_SOURCES = [
+  'cryptopunks_v2',
+  'wrapped_punks',
+  'cryptopunks_721',
+]
+
+const WRAPPED_SOURCES = new Set(['wrapped_punks', 'cryptopunks_721'])
 
 export type ActivityEvent = {
   id: string
-  eventName: string
-  label: string
+  kind: ActivityKind
+  source: ActivitySource
+  punkId?: number
+  wrapped?: boolean
   from?: Address
   to?: Address
   amountWei?: bigint
-  auctionId?: bigint
-  lotId?: bigint
-  offerId?: bigint
-  punkId?: number
-  /// Every address the event touches — used to scope the feed to a profile.
-  parties: Address[]
   txHash: Hex
   blockNumber: bigint
   logIndex: number
-  timestamp?: number
+  timestamp: number
 }
 
-/// Per-Punk and other high-volume detail events are folded into their parent
-/// (e.g. `LotItemDetail` into `LotCreated`), so they never show as rows.
-const SKIPPED = new Set([
-  'LotItemDetail',
-  'OfferSlotDetail',
-  'AuctionItemDelivered',
-])
-
-type RawLog = {
-  eventName: string
-  args: Record<string, unknown>
-  transactionHash: Hex | null
-  blockNumber: bigint | null
-  logIndex: number | null
+type RawEvent = {
+  id: string
+  type: ActivityKind
+  source: ActivitySource
+  punk_id: string | null
+  actor: string | null
+  from: string | null
+  to: string | null
+  buyer: string | null
+  seller: string | null
+  bidder: string | null
+  wei_amount: string | null
+  listing_wei: string | null
+  tx_hash: string
+  block_number: string
+  log_index: number
+  timestamp: string
 }
 
-function addr(value: unknown): Address | undefined {
-  return typeof value === 'string' ? (value as Address) : undefined
-}
-
-function big(value: unknown): bigint | undefined {
-  return typeof value === 'bigint' ? value : undefined
-}
-
-/// Maps one decoded log to a feed row, or `null` to drop it.
-function mapLog(log: RawLog): ActivityEvent | null {
-  if (SKIPPED.has(log.eventName)) return null
-
-  const a = log.args
-  const base = {
-    id: `${log.transactionHash}-${log.logIndex}`,
-    eventName: log.eventName,
-    txHash: (log.transactionHash ?? '0x') as Hex,
-    blockNumber: log.blockNumber ?? 0n,
-    logIndex: log.logIndex ?? 0,
+const EVENTS_QUERY = `
+  query Events($where: eventFilter, $limit: Int!, $after: String) {
+    events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit, after: $after) {
+      items {
+        id
+        type
+        source
+        punk_id
+        actor
+        from
+        to
+        buyer
+        seller
+        bidder
+        wei_amount
+        listing_wei
+        tx_hash
+        block_number
+        log_index
+        timestamp
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
   }
+`
 
-  const lotId = big(a.lotId)
-  const auctionId = big(a.auctionId)
-  const offerId = big(a.offerId)
-
-  let label = log.eventName
-  let from: Address | undefined
-  let to: Address | undefined
-  let amountWei: bigint | undefined
-  let punkId: number | undefined
-
-  switch (log.eventName) {
-    case 'LotCreated':
-      label = 'Lot created'
-      from = addr(a.seller)
-      amountWei = big(a.reserveWei)
-      break
-    case 'LotUpdated':
-      label = 'Lot updated'
-      amountWei = big(a.reserveWei)
-      break
-    case 'LotCancelled':
-      label = 'Lot cancelled'
-      break
-    case 'LotCleared':
-      label = 'Lot cleared'
-      from = addr(a.cleaner)
-      break
-    case 'AuctionInitialised':
-      label = 'Auction started'
-      from = addr(a.seller)
-      break
-    case 'Bid':
-      label = 'Bid placed'
-      from = addr(a.bidder)
-      amountWei = big(a.amountWei)
-      break
-    case 'AuctionExtended':
-      label = 'Auction extended'
-      break
-    case 'AuctionSettled':
-      label = 'Auction settled'
-      from = addr(a.seller)
-      to = addr(a.winner)
-      amountWei = big(a.finalWei)
-      break
-    case 'OfferPlaced':
-      label = 'Offer placed'
-      from = addr(a.offerer)
-      amountWei = big(a.amountWei)
-      break
-    case 'OfferAmountAdjusted':
-      label = 'Offer adjusted'
-      amountWei = big(a.newAmountWei)
-      break
-    case 'OfferCancelled':
-      label = 'Offer cancelled'
-      break
-    case 'OfferAccepted':
-      label = 'Offer accepted'
-      from = addr(a.seller)
-      to = addr(a.offerer)
-      amountWei = big(a.amountWei)
-      punkId = a.punkId !== undefined ? Number(a.punkId) : undefined
-      break
-    case 'OfferAcceptedFromLot':
-      label = 'Offer accepted'
-      from = addr(a.seller)
-      to = addr(a.offerer)
-      amountWei = big(a.amountWei)
-      break
-    case 'OfferAuctionInitialised':
-      label = 'Auction started from offer'
-      from = addr(a.seller)
-      to = addr(a.offerer)
-      amountWei = big(a.amountWei)
-      break
-    case 'Credited':
-      label = 'Escrow credit'
-      to = addr(a.account)
-      amountWei = big(a.amount)
-      break
-    case 'Withdrawal':
-      label = 'Escrow withdrawal'
-      from = addr(a.account)
-      amountWei = big(a.amount)
-      break
-    default:
-      return null
-  }
-
-  const parties = [from, to].filter((p): p is Address => p !== undefined)
-
-  return {
-    ...base,
-    label,
-    from,
-    to,
-    amountWei,
-    auctionId,
-    lotId,
-    offerId,
-    punkId,
-    parties,
-  }
-}
-
-/**
- * `PunksAuction` activity, built from `eth_getLogs` over the contract's events.
- * Optionally scoped to a single address for the profile page.
- */
 export function useActivityFeed(
-  opts: { address?: MaybeRefOrGetter<Address | undefined> } = {},
+  opts: {
+    punkId?: MaybeRefOrGetter<number | undefined>
+    address?: MaybeRefOrGetter<Address | undefined>
+    kinds?: MaybeRefOrGetter<ActivityKind[] | undefined>
+    limit?: number
+  } = {},
 ) {
-  const client = useReadClient()
-
-  const all = ref<ActivityEvent[]>([])
+  const pageSize = opts.limit ?? 50
+  const events = ref<ActivityEvent[]>([])
   const pending = ref(false)
+  const loadingMore = ref(false)
   const error = ref<string | null>(null)
+  const hasMore = ref(false)
+  let cursor: string | null = null
+
+  // Bumped on every `load()`. Each in-flight fetch checks its token before
+  // writing back, so a slow earlier request (e.g. the unscoped feed kicked
+  // off before an ENS handle resolves) can't clobber a newer scoped one.
+  let requestToken = 0
+
+  function buildWhere() {
+    const where: Record<string, unknown> = {
+      source_in: V2_ACTIVITY_SOURCES,
+    }
+
+    const punkId = toValue(opts.punkId)
+    if (punkId !== undefined) where.punk_id = String(punkId)
+
+    const kinds = toValue(opts.kinds)
+    if (kinds && kinds.length) where.type_in = kinds
+
+    // Hide 0-wei `listing` rows — `offerPunkForSaleToAddress` with minValue=0
+    // is how punks get gifted/privately transferred, not a real listing.
+    // Cancellations are kept (they carry no listing_wei).
+    const hideZeroListings = {
+      OR: [{ type_not_in: ['listing'] }, { listing_wei_gt: '0' }],
+    }
+
+    const address = toValue(opts.address)?.toLowerCase()
+    if (address) {
+      where.AND = [
+        {
+          OR: [
+            { actor: address },
+            { from: address },
+            { to: address },
+            { buyer: address },
+            { seller: address },
+            { bidder: address },
+          ],
+        },
+        hideZeroListings,
+      ]
+    } else {
+      where.OR = hideZeroListings.OR
+    }
+
+    return where
+  }
+
+  async function fetchPage(after: string | null) {
+    const data = await queryIndexer<{
+      events: {
+        items: RawEvent[]
+        pageInfo: { hasNextPage: boolean; endCursor: string | null }
+      }
+    }>(EVENTS_QUERY, {
+      where: buildWhere(),
+      limit: pageSize,
+      after,
+    })
+
+    return {
+      mapped: data.events.items.map(mapEvent),
+      pageInfo: data.events.pageInfo,
+    }
+  }
 
   async function load() {
-    const c = client.value
-    if (!c) return
-    if (!isAuctionDeployed()) {
-      all.value = []
-      return
-    }
-
+    const token = ++requestToken
     pending.value = true
     error.value = null
+    cursor = null
     try {
-      const logs = (await c.getContractEvents({
-        address: PUNKS_AUCTION_ADDRESS,
-        abi: punksAuctionAbi,
-        fromBlock: PUNKS_AUCTION_DEPLOY_BLOCK,
-        toBlock: 'latest',
-      })) as unknown as RawLog[]
-
-      const mapped = logs
-        .map(mapLog)
-        .filter((e): e is ActivityEvent => e !== null)
-
-      const blockNumbers = [...new Set(mapped.map((e) => e.blockNumber))]
-      const blocks = await Promise.all(
-        blockNumbers.map((blockNumber) =>
-          c
-            .getBlock({ blockNumber })
-            .then((b) => [blockNumber, Number(b.timestamp)] as const)
-            .catch(() => [blockNumber, undefined] as const),
-        ),
-      )
-      const timestamps = new Map(blocks)
-      for (const event of mapped) {
-        event.timestamp = timestamps.get(event.blockNumber)
-      }
-
-      mapped.sort(
-        (a, b) =>
-          Number(b.blockNumber - a.blockNumber) || b.logIndex - a.logIndex,
-      )
-      all.value = mapped
+      const { mapped, pageInfo } = await fetchPage(null)
+      if (token !== requestToken) return
+      events.value = mapped
+      cursor = pageInfo.endCursor
+      hasMore.value = pageInfo.hasNextPage
     } catch (e) {
-      error.value = (e as Error).message
-      all.value = []
+      if (token !== requestToken) return
+      error.value =
+        e instanceof IndexerNotConfigured
+          ? 'No indexer configured.'
+          : (e as Error).message
+      events.value = []
+      hasMore.value = false
     } finally {
-      pending.value = false
+      if (token === requestToken) pending.value = false
     }
   }
 
-  watch(client, () => void load(), { immediate: true })
+  async function loadMore() {
+    if (loadingMore.value || !hasMore.value || !cursor) return
+    const token = requestToken
+    loadingMore.value = true
+    error.value = null
+    try {
+      const { mapped, pageInfo } = await fetchPage(cursor)
+      if (token !== requestToken) return
+      events.value = [...events.value, ...mapped]
+      cursor = pageInfo.endCursor
+      hasMore.value = pageInfo.hasNextPage
+    } catch (e) {
+      if (token !== requestToken) return
+      error.value =
+        e instanceof IndexerNotConfigured
+          ? 'No indexer configured.'
+          : (e as Error).message
+    } finally {
+      loadingMore.value = false
+    }
+  }
 
-  /// `address`, when supplied, filters the loaded feed client-side rather than
-  /// re-querying — the full log set is small for a young contract.
-  const events = computed(() => {
-    const scope = toValue(opts.address)?.toLowerCase()
-    if (!scope) return all.value
-    return all.value.filter((e) =>
-      e.parties.some((p) => p.toLowerCase() === scope),
-    )
+  watchEffect(() => {
+    void toValue(opts.punkId)
+    void toValue(opts.address)
+    void toValue(opts.kinds)
+    load()
   })
 
-  return { events, pending, error, refresh: load }
+  return {
+    events,
+    pending,
+    loadingMore,
+    error,
+    hasMore,
+    refresh: load,
+    loadMore,
+  }
+}
+
+function mapEvent(row: RawEvent): ActivityEvent {
+  return {
+    id: row.id,
+    kind: row.type,
+    source: row.source,
+    punkId: row.punk_id != null ? Number(row.punk_id) : undefined,
+    wrapped: isWrappedEvent(row),
+    from: pickFrom(row),
+    to: pickTo(row),
+    amountWei: pickAmount(row),
+    txHash: row.tx_hash as Hex,
+    blockNumber: BigInt(row.block_number),
+    logIndex: row.log_index,
+    timestamp: Number(row.timestamp),
+  }
+}
+
+/// Tag rows that operate on a wrapped ERC-721 Punk. `wrap` / `unwrap` rows
+/// already say so in their kind label, so the tag is left off there.
+function isWrappedEvent(row: RawEvent): boolean {
+  if (row.type === 'wrap' || row.type === 'unwrap') return false
+  return WRAPPED_SOURCES.has(row.source)
+}
+
+function pickFrom(row: RawEvent): Address | undefined {
+  if (row.type === 'sale')
+    return (row.seller ?? row.from) as Address | undefined
+  if (row.type === 'bid' || row.type === 'bid_cancelled')
+    return (row.bidder ?? row.actor) as Address | undefined
+  if (row.type === 'listing' || row.type === 'listing_cancelled')
+    return (row.actor ?? row.seller ?? row.from) as Address | undefined
+  return (row.from ?? row.actor) as Address | undefined
+}
+
+function pickTo(row: RawEvent): Address | undefined {
+  if (row.type === 'sale') return (row.buyer ?? row.to) as Address | undefined
+  return (row.to ?? undefined) as Address | undefined
+}
+
+function pickAmount(row: RawEvent): bigint | undefined {
+  const raw = row.wei_amount ?? row.listing_wei
+  return raw != null ? BigInt(raw) : undefined
 }

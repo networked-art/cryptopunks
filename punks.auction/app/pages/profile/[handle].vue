@@ -132,7 +132,7 @@
             v-else
             class="muted"
           >
-            No auction activity for this address.
+            No activity for this address.
           </p>
         </section>
       </div>
