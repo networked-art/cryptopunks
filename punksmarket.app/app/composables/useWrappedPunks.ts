@@ -1,7 +1,7 @@
 import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export const WRAPPED_BG = '#a69aff'
-export const UNWRAPPED_BG = '#444444'
+// export const UNWRAPPED_BG = '#444444'
 export const UNWRAPPED_BG = '#CDCDCD'
 
 const WRAPPED_QUERY = `
