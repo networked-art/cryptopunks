@@ -6,6 +6,7 @@ import {
   deployAuctionStack,
   emptyCriteria,
   lotItem,
+  REVERSE_REGISTRAR,
   type LotItemInput,
   type OfferSlotInput,
   punkSlot,
@@ -224,6 +225,24 @@ describe('PunksAuction', () => {
     assert.equal(
       ((await auctions.read.VAULTS()) as string).toLowerCase(),
       vaultFactory.address.toLowerCase(),
+    )
+  })
+
+  it('sets ENS reverse names for the auction and escrow', async () => {
+    const ctx = await deployAuctionStack()
+    const reverse = await ctx.viem.getContractAt(
+      'ReverseRegistrarMock',
+      REVERSE_REGISTRAR,
+    )
+
+    assert.equal(await reverse.read.calls(), 3n)
+    assert.equal(
+      await reverse.read.nameOf([ctx.auctions.address]),
+      'punksauction.eth',
+    )
+    assert.equal(
+      await reverse.read.nameOf([ctx.escrow.address]),
+      'escrow.punksauction.eth',
     )
   })
 
