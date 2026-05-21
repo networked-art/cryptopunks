@@ -6,6 +6,7 @@ import {
   PunksAuctionClient,
   PunksMarketClient,
   type ContractWritePlan,
+  type LotItemInput,
   type OfferSlotInput,
   type PlaceOfferInput,
   type PunksAuctionConfig,
@@ -249,6 +250,22 @@ export class PunksOffersFacade {
     minAmountWei: bigint
   }): Promise<TransactionHash> {
     return this.auctions.acceptOfferFromLot(params)
+  }
+
+  prepareCreateLotAndAccept(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): ContractWritePlan {
+    return this.auctions.prepareCreateLotAndAcceptOffer(params)
+  }
+
+  createLotAndAccept(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): Promise<TransactionHash> {
+    return this.auctions.createLotAndAcceptOffer(params)
   }
 }
 

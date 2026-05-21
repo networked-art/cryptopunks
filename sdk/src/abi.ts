@@ -1662,6 +1662,28 @@ export const punksAuctionAbi = [
     outputs: [{ name: 'auctionId', type: 'uint256' }],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'createLotAndAcceptOffer',
+    inputs: [
+      { name: 'items', type: 'tuple[]', components: lotItemAbi },
+      { name: 'offerId', type: 'uint256' },
+      { name: 'minAmountWei', type: 'uint96' },
+    ],
+    outputs: [{ name: 'lotId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createLotAndStartAuction',
+    inputs: [
+      { name: 'items', type: 'tuple[]', components: lotItemAbi },
+      { name: 'offerId', type: 'uint256' },
+      { name: 'minAmountWei', type: 'uint96' },
+    ],
+    outputs: [{ name: 'auctionId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
 ] as const satisfies Abi
 
 export const punkVaultFactoryAbi = [

@@ -787,6 +787,52 @@ export class PunksAuctionClient {
     return this.write(this.prepareStartAuctionFromOffer(params))
   }
 
+  prepareCreateLotAndAcceptOffer(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): ContractWritePlan {
+    const items = normalizeLotItems(params.items)
+    assertWei('minAmountWei', params.minAmountWei)
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Create CryptoPunks auction lot and accept offer',
+      'createLotAndAcceptOffer',
+      [items, BigInt(params.offerId), params.minAmountWei],
+    )
+  }
+
+  createLotAndAcceptOffer(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareCreateLotAndAcceptOffer(params))
+  }
+
+  prepareCreateLotAndStartAuction(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): ContractWritePlan {
+    const items = normalizeLotItems(params.items)
+    assertWei('minAmountWei', params.minAmountWei)
+    return simpleAuctionWrite(
+      this.requireAddress(),
+      'Create CryptoPunks auction lot and start auction from offer',
+      'createLotAndStartAuction',
+      [items, BigInt(params.offerId), params.minAmountWei],
+    )
+  }
+
+  createLotAndStartAuction(params: {
+    items: readonly LotItemInput[]
+    offerId: bigint | number
+    minAmountWei: bigint
+  }): Promise<TransactionHash> {
+    return this.write(this.prepareCreateLotAndStartAuction(params))
+  }
+
   prepareSettle(auctionId: bigint | number): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),

@@ -232,6 +232,21 @@ const deposit = await punks.auctions.prepareDeposit({
 })
 ```
 
+Once a Punk is in custody, a seller can create the lot and settle a standing
+offer in a single transaction — no separate `createLot` call, and no window for
+the lot to be opened as an auction before the seller acts:
+
+```ts
+await punks.offers.createLotAndAccept({
+  items: [{ punkId: 4156 }],
+  offerId: 42n,
+  minAmountWei: 250n * 10n ** 18n,
+})
+```
+
+`punks.auctions.createLotAndStartAuction(...)` is the auction-creating variant,
+seeding a 24h auction with the offer as its opening bid.
+
 ## Low-Level Exports
 
 The package still exports:

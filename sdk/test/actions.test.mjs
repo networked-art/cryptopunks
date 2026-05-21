@@ -448,6 +448,66 @@ describe('SDK contract actions', () => {
       /Stash address must not be the zero address/,
     )
   })
+
+  it('prepares one-transaction create-lot-and-settle auction writes', () => {
+    const punks = createPunksSdk({ addresses: { auction: AUCTION } })
+
+    const accept = punks.auctions.prepareCreateLotAndAcceptOffer({
+      items: [{ punkId: 4156 }],
+      offerId: 7,
+      minAmountWei: 50n,
+    })
+    assert.equal(accept.request.address, AUCTION)
+    assert.equal(accept.request.functionName, 'createLotAndAcceptOffer')
+    assert.equal(accept.request.args.length, 3)
+    assert.equal(accept.request.args[0].length, 1)
+    assert.equal(accept.request.args[0][0].punkId, 4156)
+    assert.equal(accept.request.args[0][0].weightBps, 10_000)
+    assert.equal(accept.request.args[1], 7n)
+    assert.equal(accept.request.args[2], 50n)
+
+    // The offers facade exposes the same helper alongside acceptFromLot.
+    const facadeAccept = punks.offers.prepareCreateLotAndAccept({
+      items: [{ punkId: 4156 }],
+      offerId: 7,
+      minAmountWei: 50n,
+    })
+    assert.deepEqual(facadeAccept.request, accept.request)
+
+    const startAuction = punks.auctions.prepareCreateLotAndStartAuction({
+      items: [
+        { punkId: 4156, standard: 'cryptopunks-v1', weightBps: 500 },
+        { punkId: 4156, standard: 'cryptopunks', weightBps: 9500 },
+      ],
+      offerId: 9n,
+      minAmountWei: 0n,
+    })
+    assert.equal(startAuction.request.functionName, 'createLotAndStartAuction')
+    assert.equal(startAuction.request.args[0].length, 2)
+    assert.equal(startAuction.request.args[0][0].weightBps, 500)
+    assert.equal(startAuction.request.args[0][1].weightBps, 9500)
+    assert.equal(startAuction.request.args[1], 9n)
+    assert.equal(startAuction.request.args[2], 0n)
+
+    assert.throws(
+      () =>
+        punks.auctions.prepareCreateLotAndAcceptOffer({
+          items: [{ punkId: 4156 }],
+          offerId: 7,
+          minAmountWei: -1n,
+        }),
+      /minAmountWei must be a non-negative bigint/,
+    )
+    assert.throws(
+      () =>
+        punks.auctions.prepareCreateLotAndAcceptOffer({
+          items: [],
+          offerId: 7,
+          minAmountWei: 50n,
+        }),
+      /lot must contain at least one item/,
+    )
+  })
 })
 
 function fakeRead({ address, functionName, args = [] }) {
