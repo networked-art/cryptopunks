@@ -1,10 +1,9 @@
 <template>
   <section class="block">
-    <h2 class="block-title">Traits</h2>
     <ul class="trait-list">
       <li
         v-for="t in traits"
-        :key="t.id"
+        :key="`${t.kind}-${t.id}`"
       >
         <span class="trait-kind">{{ t.kind }}</span>
         <NuxtLink
@@ -12,10 +11,26 @@
           :to="punkSearchHref(t.query)"
           >{{ t.name }}</NuxtLink
         >
-        <span class="trait-supply muted">{{ t.supply }}</span>
+        <span class="trait-supply muted">{{ t.supply.toLocaleString() }}</span>
+      </li>
+      <li>
+        <span class="trait-kind">Pixels</span>
+        <NuxtLink
+          class="trait-name"
+          :to="punkSearchHref(`${summary.pixelCount} pixels`)"
+          >{{ summary.pixelCount.toLocaleString() }} pixels</NuxtLink
+        >
+      </li>
+      <li>
+        <span class="trait-kind">Colors</span>
+        <NuxtLink
+          class="trait-name"
+          :to="punkSearchHref(`${summary.colorCount} colors`)"
+          >{{ summary.colorCount }} colors</NuxtLink
+        >
       </li>
       <li class="colors-row">
-        <span class="trait-kind">Colors</span>
+        <span class="trait-kind">Palette</span>
         <PunkColors :punk-id="punkId" />
       </li>
     </ul>
@@ -23,11 +38,13 @@
 </template>
 
 <script setup lang="ts">
+import type { PunkSummary } from '@networked-art/punks-sdk'
 import type { PunkDisplayTrait } from '~/composables/usePunkDisplayTraits'
 import { punkSearchHref } from '~/utils/punkSearch'
 
 defineProps<{
   punkId: number
+  summary: PunkSummary
   traits: PunkDisplayTrait[]
 }>()
 </script>

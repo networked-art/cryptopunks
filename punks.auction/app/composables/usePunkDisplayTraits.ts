@@ -16,12 +16,6 @@ export type PunkDisplayTrait = {
   query: string
 }
 
-export type PunkSkinTag = {
-  label: string
-  query: string
-}
-
-const HIDDEN_KINDS = new Set(['Skin', 'Type', 'Attributes'])
 const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
   (() => {
     const map: Partial<Record<HeadVariantName, SkinToneName>> = {}
@@ -33,40 +27,43 @@ const skinToneByHeadVariant: Partial<Record<HeadVariantName, SkinToneName>> =
     return map
   })()
 
+const KIND_ORDER = new Map<string, number>([
+  ['Type', 0],
+  ['Skin', 1],
+  ['Attributes', 99],
+])
+
+function kindSortKey(kind: string) {
+  return KIND_ORDER.get(kind) ?? 50
+}
+
 export function usePunkDisplayTraits(summary: MaybeRefOrGetter<PunkSummary>) {
-  const displayTraits = computed<PunkDisplayTrait[]>(() =>
-    (toValue(summary).traits ?? []).flatMap((t): PunkDisplayTrait[] => {
-      if (t.kind === 'HeadVariant') {
-        const tone = skinToneByHeadVariant[t.name as HeadVariantName]
-        if (!tone) return []
-        return [
-          {
-            ...t,
-            kind: 'Skin',
-            name: tone,
-            query: `${tone.toLowerCase()} skin`,
-          },
-        ]
-      }
-      if (t.kind === 'NormalizedType') {
-        return [{ ...t, kind: 'Type', query: quoteIfMultiword(t.name) }]
-      }
-      if (t.kind === 'AttributeCount') {
-        return [{ ...t, kind: 'Attributes', query: quoteIfMultiword(t.name) }]
-      }
-      return [{ ...t, query: quoteIfMultiword(t.name) }]
-    }),
-  )
-
-  const visibleTraits = computed(() =>
-    displayTraits.value.filter((t) => !HIDDEN_KINDS.has(t.kind)),
-  )
-
-  const skinTag = computed<PunkSkinTag | null>(() => {
-    const tone = skinToneByHeadVariant[toValue(summary).headVariantName]
-    if (!tone) return null
-    return { label: `${tone} Skin`, query: `${tone.toLowerCase()} skin` }
+  const displayTraits = computed<PunkDisplayTrait[]>(() => {
+    const rows = (toValue(summary).traits ?? []).flatMap(
+      (t): PunkDisplayTrait[] => {
+        if (t.kind === 'HeadVariant') {
+          const tone = skinToneByHeadVariant[t.name as HeadVariantName]
+          if (!tone) return []
+          return [
+            {
+              ...t,
+              kind: 'Skin',
+              name: tone,
+              query: `${tone.toLowerCase()} skin`,
+            },
+          ]
+        }
+        if (t.kind === 'NormalizedType') {
+          return [{ ...t, kind: 'Type', query: quoteIfMultiword(t.name) }]
+        }
+        if (t.kind === 'AttributeCount') {
+          return [{ ...t, kind: 'Attributes', query: quoteIfMultiword(t.name) }]
+        }
+        return [{ ...t, query: quoteIfMultiword(t.name) }]
+      },
+    )
+    return rows.sort((a, b) => kindSortKey(a.kind) - kindSortKey(b.kind))
   })
 
-  return { skinTag, visibleTraits }
+  return { displayTraits }
 }

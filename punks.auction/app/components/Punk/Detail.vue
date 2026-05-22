@@ -10,8 +10,11 @@
         <PunkDetailHeader
           :punk-id="punkId"
           :is-v1="isV1"
+        />
+        <PunkDetailTraits
+          :punk-id="punkId"
           :summary="summary"
-          :skin-tag="skinTag"
+          :traits="displayTraits"
         />
         <PunkDetailOwner
           :punk-id="punkId"
@@ -20,10 +23,6 @@
         <PunkDetailAuction
           :punk-id="punkId"
           :standard="standard"
-        />
-        <PunkDetailTraits
-          :punk-id="punkId"
-          :traits="visibleTraits"
         />
         <PunkDetailHistory
           v-if="!isV1"
@@ -48,7 +47,7 @@ const offline = usePunksOffline()
 const summary = computed(() =>
   offline.get(props.punkId, { includeTraits: true }),
 )
-const { skinTag, visibleTraits } = usePunkDisplayTraits(summary)
+const { displayTraits } = usePunkDisplayTraits(summary)
 </script>
 
 <style scoped>
