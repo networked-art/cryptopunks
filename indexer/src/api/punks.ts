@@ -4,11 +4,11 @@ import { db } from 'ponder:api'
 import { listing, punk, punkBid } from 'ponder:schema'
 import { memoize } from './cache'
 
-const BACKGROUNDS_TTL_MS = 10_000
+const MARKET_STATE_TTL_MS = 10_000
 
 type Row = Record<string, unknown>
 
-type BackgroundsResponse = {
+type MarketStateResponse = {
   listed: number[]
   active_bids: number[]
   legacy_wrapped: number[]
@@ -68,7 +68,7 @@ async function loadWrappedPunkIds(
   return normalizeRows(result).map((row) => toPunkId(row.punk_id))
 }
 
-async function computeBackgrounds(): Promise<BackgroundsResponse> {
+async function computeMarketState(): Promise<MarketStateResponse> {
   const [listed, activeBids, legacyWrapped, wrapped] = await Promise.all([
     loadListedPunkIds(),
     loadActiveBidPunkIds(),
@@ -87,11 +87,15 @@ async function computeBackgrounds(): Promise<BackgroundsResponse> {
 
 const app = new Hono()
 
-// GET /punks/backgrounds — compact state backgrounds.
-app.get('/backgrounds', async (c) => {
-  const data = await memoize('punks:backgrounds', BACKGROUNDS_TTL_MS, () =>
-    computeBackgrounds(),
+async function loadMarketState() {
+  return await memoize('punks:market-state', MARKET_STATE_TTL_MS, () =>
+    computeMarketState(),
   )
+}
+
+// GET /punks/market-state — compact original CryptoPunks market state.
+app.get('/market-state', async (c) => {
+  const data = await loadMarketState()
   c.header('cache-control', 'public, max-age=10, stale-while-revalidate=30')
   return c.json(data)
 })
