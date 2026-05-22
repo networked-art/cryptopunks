@@ -1,8 +1,8 @@
 import { avvatarDataUri } from 'avvatars'
 
-export const AVVATAR_GRID_SIZE = 24
+export const AVVATAR_GRID_SIZE = 12
 export const AVVATAR_FOREGROUND = '#ff5fa8'
-export const AVVATAR_BACKGROUND = '#ffffff'
+export const AVVATAR_BACKGROUND = '#f7f7f8'
 
 export function accountAvvatarDataUri(seed: string, size: number) {
   return avvatarDataUri({

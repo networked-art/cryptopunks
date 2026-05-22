@@ -218,7 +218,7 @@ const isOwnProfile = computed(() => {
 const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
 const profileAvatarUri = computed(() =>
   resolvedAddress.value
-    ? accountAvvatarDataUri(resolvedAddress.value, 96)
+    ? accountAvvatarDataUri(resolvedAddress.value, 72)
     : undefined,
 )
 
@@ -270,7 +270,7 @@ const myOffers = computed(() => {
 }
 
 .profile-avvatar {
-  width: clamp(64px, 14vw, 96px);
+  width: clamp(48px, 10.5vw, 72px);
   aspect-ratio: 1;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;

@@ -165,7 +165,7 @@ const stateLabel = computed(() => {
   padding: 0;
   border: var(--border);
   border-radius: var(--radius-sm);
-  background: white;
+  background: var(--bg-elevated);
 }
 
 .event-row {

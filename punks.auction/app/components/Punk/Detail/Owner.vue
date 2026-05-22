@@ -57,7 +57,7 @@ const ownerKnown = computed(
   padding: var(--size-3) var(--size-4);
   border: var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg);
+  background: var(--bg-elevated);
   font-size: 12px;
 }
 
