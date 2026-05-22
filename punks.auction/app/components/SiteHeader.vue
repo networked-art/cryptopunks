@@ -4,8 +4,9 @@
       <NuxtLink
         to="/"
         class="brand"
+        aria-label="Punks Auction"
       >
-        <span class="brand-word">Punks Auction</span>
+        <Logo class="brand-mark" />
       </NuxtLink>
 
       <nav class="nav">
@@ -104,6 +105,11 @@ const viewProfile = (id: string) => {
   font-weight: 600;
   border: 0;
   color: var(--text);
+}
+
+.brand-mark {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .brand:hover {
