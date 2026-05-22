@@ -1,6 +1,6 @@
 <template>
   <header class="site-header">
-    <div class="container header-inner">
+    <div class="header-inner">
       <NuxtLink
         to="/"
         class="brand"
@@ -92,10 +92,12 @@ const viewProfile = (id: string) => {
 }
 
 .header-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--size-6);
   height: 56px;
+  padding: 0 var(--size-4);
 }
 
 .brand {
@@ -105,6 +107,7 @@ const viewProfile = (id: string) => {
   font-weight: 600;
   border: 0;
   color: var(--text);
+  justify-self: start;
 }
 
 .brand-mark {
@@ -123,17 +126,12 @@ const viewProfile = (id: string) => {
 .nav {
   display: flex;
   gap: var(--size-4);
-  margin-right: auto;
   font-size: 13px;
 }
 
 @media (max-width: 640px) {
   .nav {
     display: none;
-  }
-
-  .brand {
-    margin-right: auto;
   }
 }
 
@@ -156,6 +154,7 @@ const viewProfile = (id: string) => {
   display: flex;
   align-items: center;
   gap: var(--size-3);
+  justify-self: end;
 }
 
 .connect :deep(.profile-trigger) {
