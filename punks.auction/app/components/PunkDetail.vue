@@ -28,12 +28,6 @@
     <section class="panel">
       <div class="panel-inner">
         <header class="head">
-          <NuxtLink
-            :to="backToSearchHref"
-            class="back"
-            >← Back to search</NuxtLink
-          >
-
           <h1 class="title">
             Punk <span class="dim">#</span>{{ punkId }}
             <Tag
@@ -241,7 +235,6 @@ const contractHref = computed(() =>
   addressUrl(isV1.value ? PUNKS_V1_ADDRESS : CRYPTOPUNKS_ADDRESS),
 )
 
-const { backToSearchHref } = useSearchNavigation()
 const offline = usePunksOffline()
 const { backgroundForPunk } = usePunkBackgrounds()
 const summary = computed(() =>
@@ -439,17 +432,6 @@ function searchHref(text: string) {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-}
-
-.back {
-  align-self: flex-start;
-  border: 0;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-.back:hover {
-  color: var(--accent);
 }
 
 .title {

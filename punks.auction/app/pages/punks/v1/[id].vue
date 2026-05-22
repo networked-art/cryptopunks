@@ -15,13 +15,6 @@
 <script setup lang="ts">
 import { TokenStandard } from '~/utils/auction'
 
-definePageMeta({
-  middleware(_to, from) {
-    const { rememberSearchFrom } = useSearchNavigation()
-    rememberSearchFrom(from)
-  },
-})
-
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
 const validId = computed(
