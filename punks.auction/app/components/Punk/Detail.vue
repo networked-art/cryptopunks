@@ -69,11 +69,18 @@ const { displayTraits } = usePunkDisplayTraits(summary)
 .panel-inner {
   display: flex;
   flex-direction: column;
-  gap: var(--size-7);
   width: 100%;
   max-width: 560px;
   margin-inline: auto;
   padding: var(--size-7) var(--size-6) var(--size-9);
+}
+
+.panel-inner > * + * {
+  margin-top: var(--size-7);
+}
+
+.panel-inner > :nth-child(2) {
+  margin-top: var(--size-4);
 }
 
 @media (max-width: 860px) {
