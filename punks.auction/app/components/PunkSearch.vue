@@ -11,11 +11,22 @@
             :placeholder="placeholder"
             @keydown.enter="onEnter"
           />
-          <span class="muted result-count">
-            {{ counts.filtered.toLocaleString()
-            }}<span class="result-total">
-              / {{ counts.total.toLocaleString() }}</span
+          <span class="search-actions">
+            <span class="muted result-count">
+              {{ counts.filtered.toLocaleString()
+              }}<span class="result-total">
+                / {{ counts.total.toLocaleString() }}</span
+              >
+            </span>
+            <button
+              v-if="text"
+              type="button"
+              class="unstyled clear-search"
+              aria-label="Clear search"
+              @click="clearSearch"
             >
+              <Icon name="lucide:x" />
+            </button>
           </span>
         </div>
         <ClientOnly>
@@ -210,6 +221,11 @@ function onEnter() {
   }
 }
 
+function clearSearch() {
+  text.value = ''
+  searchInput.value?.focus()
+}
+
 function intersectIds(
   baseIds: Iterable<number> | undefined,
   ownedIds: readonly number[],
@@ -225,6 +241,9 @@ function intersectIds(
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* Keep the search bar visible below the (also-sticky) site header while
@@ -238,9 +257,7 @@ function intersectIds(
   gap: var(--size-2);
   align-items: center;
   width: 100%;
-  max-width: 1200px;
   box-sizing: border-box;
-  margin: 0 auto;
   padding: var(--size-4);
   font-size: 16px;
 }
@@ -261,25 +278,61 @@ function intersectIds(
   min-width: 0;
   width: 100%;
   min-height: 48px;
-  padding-inline-end: 128px;
+  padding-inline-end: 176px;
   font-size: 16px;
 }
 
-.result-count {
+.search-input::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-actions {
   position: absolute;
   top: 50%;
   inset-inline-end: var(--size-3);
   z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   transform: translateY(-50%);
+}
+
+.result-count {
   font-size: 14px;
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
 }
 
+.clear-search {
+  width: 24px;
+  height: 24px;
+  min-inline-size: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.clear-search:hover,
+.clear-search:focus-visible {
+  color: var(--text);
+}
+
+.clear-search :deep(.icon) {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 640px) {
   .search-input {
-    padding-inline-end: 72px;
+    padding-inline-end: 104px;
   }
 
   .result-total {
