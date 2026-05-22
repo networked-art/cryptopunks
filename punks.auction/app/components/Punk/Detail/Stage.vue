@@ -70,9 +70,10 @@ async function downloadImage() {
 }
 
 .frame {
+  --art-width: min(420px, 42vw, 52vh);
   position: relative;
   margin: 0;
-  padding: clamp(var(--size-3), 2.4vw, var(--size-6));
+  padding: calc(var(--art-width) * 2 / 24);
   background: #fff;
   border: var(--border);
   box-shadow:
@@ -82,7 +83,7 @@ async function downloadImage() {
 
 .art-box {
   display: block;
-  width: min(420px, 42vw, 52vh);
+  width: var(--art-width);
   aspect-ratio: 1;
   font-size: 0;
 }
@@ -120,8 +121,8 @@ async function downloadImage() {
     padding: var(--size-7) var(--size-5);
   }
 
-  .art-box {
-    width: min(380px, 72vw);
+  .frame {
+    --art-width: min(380px, 72vw);
   }
 }
 </style>

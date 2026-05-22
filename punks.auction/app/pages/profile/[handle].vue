@@ -220,7 +220,7 @@ const profileAvatarUri = computed(() =>
   resolvedAddress.value
     ? avvatarDataUri({
         seed: resolvedAddress.value.toLowerCase(),
-        size: 96,
+        size: 24,
         foreground: '#ff5fa8',
         background: '#ffffff',
       })
@@ -275,8 +275,8 @@ const myOffers = computed(() => {
 }
 
 .profile-avvatar {
-  width: clamp(64px, 14vw, 96px);
-  aspect-ratio: 1;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
