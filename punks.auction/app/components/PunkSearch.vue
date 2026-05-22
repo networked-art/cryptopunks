@@ -63,6 +63,15 @@ const props = withDefaults(
 const offline = usePunksOffline()
 const route = useRoute()
 const router = useRouter()
+const { marketStateSets } = usePunkMarketState()
+
+const LISTED_QUALIFIER =
+  /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
+const BID_QUALIFIER =
+  /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
+const LEGACY_WRAPPED_QUALIFIER =
+  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?)(?=$|[\s,])/gi
+const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
@@ -87,6 +96,7 @@ onKeyStroke('/', (e) => {
 /// Debounce text inputs so the input field stays responsive while the
 /// search + grid re-render only run after the user pauses typing.
 const debouncedText = refDebounced(text, 80)
+const qualifiers = computed(() => extractQualifiers(debouncedText.value))
 
 /// The input is the single source of truth — URL is a derived persistence
 /// layer. We remember the last value we wrote so the inbound URL watcher can
@@ -152,7 +162,7 @@ const { ids: ownedIds, loading: ownedLoading } = useOwnedPunks(
 /// filter. The remaining free text is handed to the search.
 const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
 const parsedText = computed(() => {
-  const raw = debouncedText.value.trim()
+  const raw = qualifiers.value.text.trim()
   if (!raw) return { text: undefined, colors: undefined }
   const colors = raw.match(HEX_COLOR_TOKEN)
   const remaining = raw
@@ -177,6 +187,19 @@ const query = computed<PunkQuery>(() => {
     } else {
       ids = intersectIds(ids, ownedIds.value)
     }
+  }
+
+  if (qualifiers.value.listed) {
+    ids = intersectIds(ids, marketStateSets.value.listed)
+  }
+  if (qualifiers.value.activeBids) {
+    ids = intersectIds(ids, marketStateSets.value.active_bids)
+  }
+  if (qualifiers.value.wrapped) {
+    ids = intersectIds(ids, marketStateSets.value.wrapped)
+  }
+  if (qualifiers.value.legacyWrapped) {
+    ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
   }
 
   return {
@@ -226,13 +249,44 @@ function clearSearch() {
   searchInput.value?.focus()
 }
 
+function extractQualifiers(input: string) {
+  let listed = false
+  let activeBids = false
+  let wrapped = false
+  let legacyWrapped = false
+
+  const cleaned = input
+    .replace(LEGACY_WRAPPED_QUALIFIER, (_match, prefix: string) => {
+      legacyWrapped = true
+      return prefix || ''
+    })
+    .replace(LISTED_QUALIFIER, (_match, prefix: string) => {
+      listed = true
+      return prefix || ''
+    })
+    .replace(BID_QUALIFIER, (_match, prefix: string) => {
+      activeBids = true
+      return prefix || ''
+    })
+    .replace(WRAPPED_QUALIFIER, (_match, prefix: string) => {
+      wrapped = true
+      return prefix || ''
+    })
+    .replace(/\s*,\s*,+/g, ', ')
+    .replace(/(^[\s,]+|[\s,]+$)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return { text: cleaned, listed, activeBids, wrapped, legacyWrapped }
+}
+
 function intersectIds(
   baseIds: Iterable<number> | undefined,
-  ownedIds: readonly number[],
+  filterIds: Iterable<number>,
 ) {
-  if (!baseIds) return ownedIds
-  const owned = new Set(ownedIds)
-  return Array.from(baseIds).filter((id) => owned.has(id))
+  if (!baseIds) return Array.from(filterIds)
+  const filter = new Set(filterIds)
+  return Array.from(baseIds).filter((id) => filter.has(id))
 }
 </script>
 
