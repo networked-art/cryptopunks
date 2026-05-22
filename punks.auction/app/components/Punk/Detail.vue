@@ -62,6 +62,8 @@ const { skinTag, visibleTraits } = usePunkDisplayTraits(summary)
 }
 
 .panel {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 

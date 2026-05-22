@@ -66,7 +66,7 @@ async function downloadImage() {
   align-items: center;
   justify-content: center;
   height: calc(100dvh - var(--app-header-height));
-  padding: var(--size-6);
+  padding: var(--size-5) var(--size-6) var(--size-8);
 }
 
 .frame {
