@@ -3,6 +3,6 @@ export const PUNK_BACKGROUNDS = {
   default: '#6a8494',
   listed: '#8c5851',
   activeBid: '#8970b1',
-  legacyWrapped: '#66a6705e',
+  legacyWrapped: '#c7deca',
   wrapped: '#66a670',
 } as const
