@@ -132,6 +132,17 @@ const KIND_LABEL: Record<string, string> = {
   background: var(--bg-elevated);
 }
 
+.activity-row :deep(.punk-thumb) {
+  border-radius: 0;
+  transition: none;
+}
+
+.activity-row :deep(a.punk-thumb:hover),
+.activity-row :deep(a.punk-thumb:focus-visible) {
+  transform: none;
+  outline: none;
+}
+
 .thumb-icon {
   width: 44px;
   height: 44px;

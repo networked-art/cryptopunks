@@ -21,9 +21,7 @@
         class="cell"
         :style="cellStyle(cell)"
         :title="`Punk #${cell.id}`"
-      >
-        <span class="cell-id">{{ cell.id }}</span>
-      </NuxtLink>
+      />
     </div>
   </div>
 </template>
@@ -222,37 +220,23 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   image-rendering: pixelated;
   border: 0;
-  border-radius: 3px;
   background-repeat: no-repeat;
   color: inherit;
-  transition: transform 0.08s ease;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
 }
 
 .cell:hover,
 .cell:focus-visible {
   transform: scale(1.18);
   z-index: 5;
-  outline: 2px solid #000;
-  outline-offset: 0;
-}
-
-.cell-id {
-  position: absolute;
-  inset: auto 0 0 0;
-  z-index: 2;
-  font-size: 9px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(0, 0, 0, 0.55);
-  line-height: 11px;
-  opacity: 0;
-  transition: opacity 0.1s;
-  pointer-events: none;
-}
-
-.cell:hover .cell-id,
-.cell:focus-visible .cell-id {
-  opacity: 1;
+  outline: none;
+  box-shadow:
+    0 0 0 6px #fff,
+    0 0 0 7px var(--border-color),
+    0 1px 2px rgba(10, 10, 18, 0.05),
+    0 24px 48px -28px rgba(10, 10, 18, 0.4);
 }
 
 .empty {
