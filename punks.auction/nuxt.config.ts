@@ -37,9 +37,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/app.css'],
 
   routeRules: {
-    // `/punk` has no page of its own — only `/punk/:id`. Bounce to the grid.
-    '/punk': { redirect: '/' },
-    '/punk/v1': { redirect: '/' },
+    // `/punks/v1` has no page of its own — only `/punks/v1/:id`. Bounce to
+    // the grid so it doesn't fall through to the `/punks/:id` not-found state.
+    '/punks/v1': { redirect: '/punks' },
   },
 
   runtimeConfig: {

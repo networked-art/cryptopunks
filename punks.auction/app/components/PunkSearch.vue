@@ -200,11 +200,11 @@ function onEnter() {
   }
   const id = Number(text.value.trim())
   if (Number.isInteger(id) && id >= 0 && id <= 9999) {
-    router.push(`/punk/${id}`)
+    router.push(`/punks/${id}`)
     return
   }
   if (ids.value.length === 1) {
-    router.push(`/punk/${ids.value[0]}`)
+    router.push(`/punks/${ids.value[0]}`)
   }
 }
 

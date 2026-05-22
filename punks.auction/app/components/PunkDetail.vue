@@ -300,7 +300,7 @@ async function downloadImage() {
 }
 
 function searchHref(text: string) {
-  return { path: '/', query: { q: text } }
+  return { path: '/punks', query: { q: text } }
 }
 </script>
 

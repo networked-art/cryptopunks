@@ -10,10 +10,9 @@
 
       <nav class="nav">
         <NuxtLink
-          to="/"
+          to="/punks"
           active-class="nav-active"
-          exact-active-class="nav-active"
-          >Search</NuxtLink
+          >Punks</NuxtLink
         >
         <NuxtLink
           to="/auctions"

@@ -7,7 +7,7 @@
       <template #trigger>
         <NuxtLink
           class="swatch"
-          :to="{ path: '/', query: { q: `#${c.hex}` } }"
+          :to="{ path: '/punks', query: { q: `#${c.hex}` } }"
           :style="{ background: c.css }"
         />
       </template>

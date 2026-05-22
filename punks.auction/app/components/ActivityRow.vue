@@ -21,7 +21,7 @@
         >
         <NuxtLink
           v-if="event.punkId !== undefined"
-          :to="`/punk/${event.punkId}`"
+          :to="`/punks/${event.punkId}`"
           class="punk-id"
           >Punk #{{ event.punkId
           }}<span v-if="event.wrapped"> (Wrapped)</span></NuxtLink

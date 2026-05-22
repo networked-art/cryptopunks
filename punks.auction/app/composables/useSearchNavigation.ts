@@ -4,11 +4,13 @@ export function useSearchNavigation() {
   const lastQuery = useState<string | null>('last-search-query', () => null)
 
   const backToSearchHref = computed<RouteLocationRaw>(() =>
-    lastQuery.value ? { path: '/', query: { q: lastQuery.value } } : '/',
+    lastQuery.value
+      ? { path: '/punks', query: { q: lastQuery.value } }
+      : '/punks',
   )
 
   function rememberSearchFrom(from: RouteLocationNormalized) {
-    if (from.path !== '/') {
+    if (from.path !== '/punks') {
       lastQuery.value = null
       return
     }

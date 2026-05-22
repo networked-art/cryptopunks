@@ -17,7 +17,7 @@
       <NuxtLink
         v-for="cell in visible"
         :key="cell.id"
-        :to="`/punk/${cell.id}`"
+        :to="`/punks/${cell.id}`"
         class="cell"
         :style="cellStyle(cell)"
         :title="`Punk #${cell.id}`"

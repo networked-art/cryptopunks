@@ -58,9 +58,10 @@
         Buyers can also work the other side of the book. A purchase offer locks
         ETH against one or more slots, each a set of trait and colour criteria —
         for example any
-        <NuxtLink to="/?q=alien">Alien</NuxtLink>, every
-        <NuxtLink to="/?q=hoodie">Hoodie</NuxtLink>, or specifically
-        <NuxtLink to="/?q=6980 6981">#6980 and #6981</NuxtLink>. A seller can
+        <NuxtLink to="/punks?q=alien">Alien</NuxtLink>, every
+        <NuxtLink to="/punks?q=hoodie">Hoodie</NuxtLink>, or specifically
+        <NuxtLink to="/punks?q=6980 6981">#6980 and #6981</NuxtLink>. A seller
+        can
         accept an offer instantly against a stored lot, or use it as the opening
         bid for a fresh auction.
       </p>

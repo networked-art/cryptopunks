@@ -31,8 +31,8 @@ export function standardLabel(standard: TokenStandardValue): string {
 /// Route to the right punk detail page for an item's standard.
 export function punkHref(standard: TokenStandardValue, punkId: number): string {
   return standard === TokenStandard.CryptoPunksV1
-    ? `/punk/v1/${punkId}`
-    : `/punk/${punkId}`
+    ? `/punks/v1/${punkId}`
+    : `/punks/${punkId}`
 }
 
 export type LotItem = {
