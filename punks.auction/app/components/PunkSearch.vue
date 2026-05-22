@@ -2,14 +2,22 @@
   <section class="punk-search">
     <header class="search-bar">
       <FormInputGroup class="search-group">
-        <input
-          ref="searchInput"
-          v-model="text"
-          type="search"
-          class="search-input"
-          :placeholder="placeholder"
-          @keydown.enter="onEnter"
-        />
+        <div class="search-field">
+          <input
+            ref="searchInput"
+            v-model="text"
+            type="search"
+            class="search-input"
+            :placeholder="placeholder"
+            @keydown.enter="onEnter"
+          />
+          <span class="muted result-count">
+            {{ counts.filtered.toLocaleString()
+            }}<span class="result-total">
+              / {{ counts.total.toLocaleString() }}</span
+            >
+          </span>
+        </div>
         <ClientOnly>
           <Button
             v-if="ownerHandle"
@@ -19,12 +27,6 @@
           </Button>
         </ClientOnly>
       </FormInputGroup>
-      <span class="muted result-count">
-        {{ counts.filtered.toLocaleString()
-        }}<span class="result-total">
-          / {{ counts.total.toLocaleString() }}</span
-        >
-      </span>
     </header>
 
     <PunkGrid
@@ -237,9 +239,10 @@ function intersectIds(
   align-items: center;
   width: 100%;
   max-width: 1200px;
+  box-sizing: border-box;
   margin: 0 auto;
-  padding: var(--size-3) 0;
-  background: var(--bg);
+  padding: var(--size-4);
+  font-size: 16px;
 }
 
 .search-group {
@@ -247,18 +250,38 @@ function intersectIds(
   min-width: 0;
 }
 
+.search-field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .search-input {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
+  min-height: 48px;
+  padding-inline-end: 128px;
+  font-size: 16px;
 }
 
 .result-count {
-  font-size: 12px;
+  position: absolute;
+  top: 50%;
+  inset-inline-end: var(--size-3);
+  z-index: 2;
+  transform: translateY(-50%);
+  font-size: 14px;
+  line-height: 1;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 @media (max-width: 640px) {
+  .search-input {
+    padding-inline-end: 72px;
+  }
+
   .result-total {
     display: none;
   }
