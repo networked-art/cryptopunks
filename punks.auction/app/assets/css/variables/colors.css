@@ -17,4 +17,11 @@
   --accent: var(--primary);
   --accent-strong: #d11f72;
   --accent-soft: #ff5fa820;
+
+  /* CryptoPunks marketplace backgrounds. */
+  --punk-bg: #6a8494;
+  --punk-bg-listed: #8c5851;
+  --punk-bg-active-bid: #8970b1;
+  --punk-bg-legacy-wrapped: #66a6705e;
+  --punk-bg-wrapped: #66a670;
 }
