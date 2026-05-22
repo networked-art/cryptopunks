@@ -1441,6 +1441,7 @@ export const punksAuctionAbi = [
   { type: 'error', name: 'ListingPriceTooHigh', inputs: [] },
   { type: 'error', name: 'LotNotFound', inputs: [] },
   { type: 'error', name: 'LotNotStale', inputs: [] },
+  { type: 'error', name: 'LotTooLargeForInstantAccept', inputs: [] },
   {
     type: 'error',
     name: 'MinimumBidNotMet',
