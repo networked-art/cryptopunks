@@ -1,5 +1,5 @@
 import type { PunksSdk } from '@networked-art/punks-sdk'
-import { PUNK_BG } from '~/utils/render'
+import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 /// Renders a Punk to a PNG and triggers a browser download. The image comes
 /// straight from the SDK's offline renderer — pixel-exact, no post-processing.
@@ -44,7 +44,8 @@ export async function downloadPunkPng(
   const size = options.size ?? 1024
   const fileName = options.fileName ?? `punk-${punkId}.png`
   const svg = offline.render.svg(punkId, {
-    background: (options.background ?? PUNK_BG) as `#${string}`,
+    background: (options.background ??
+      PUNK_BACKGROUNDS.default) as `#${string}`,
   })
   const blob = await svgToBlob(svg, size)
 
