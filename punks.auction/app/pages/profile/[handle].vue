@@ -1,47 +1,70 @@
 <template>
   <div class="container profile-page">
     <header class="profile-head">
-      <h1
-        v-if="ensProfile.data.value?.ens"
-        class="profile-name"
-      >
-        {{ ensProfile.data.value.ens }}
-      </h1>
-      <h1
-        v-else
-        class="profile-name muted"
-      >
-        {{ shortAddr }}
-      </h1>
+      <img
+        v-if="profileAvatarUri"
+        class="profile-avvatar"
+        :src="profileAvatarUri"
+        :alt="`Avatar for ${titleLabel}`"
+      />
 
-      <ClientOnly>
-        <p
-          v-if="resolvedAddress"
-          class="profile-address muted"
-        >
-          {{ resolvedAddress }}
-        </p>
-        <p
-          v-else-if="resolving"
-          class="muted"
-        >
-          Resolving…
-        </p>
-        <p
-          v-else
-          class="error"
-        >
-          Could not resolve {{ handle }}
-        </p>
+      <div class="profile-details">
+        <div class="profile-title">
+          <h1
+            v-if="ensProfile.data.value?.ens"
+            class="profile-name"
+          >
+            {{ ensProfile.data.value.ens }}
+          </h1>
+          <h1
+            v-else
+            class="profile-name muted"
+          >
+            {{ shortAddr }}
+          </h1>
 
-        <p
-          v-if="resolvedAddress && escrowBalance > 0n"
-          class="escrow"
-        >
-          <span class="escrow-label">Claimable escrow</span>
-          <EthAmount :wei="escrowBalance" />
-        </p>
-      </ClientOnly>
+          <ClientOnly>
+            <NuxtLink
+              v-if="isOwnProfile"
+              to="/settings"
+              class="settings-link muted"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <Icon name="lucide:settings" />
+            </NuxtLink>
+          </ClientOnly>
+        </div>
+
+        <ClientOnly>
+          <p
+            v-if="resolvedAddress"
+            class="profile-address muted"
+          >
+            {{ resolvedAddress }}
+          </p>
+          <p
+            v-else-if="resolving"
+            class="muted"
+          >
+            Resolving…
+          </p>
+          <p
+            v-else
+            class="error"
+          >
+            Could not resolve {{ handle }}
+          </p>
+
+          <p
+            v-if="resolvedAddress && escrowBalance > 0n"
+            class="escrow"
+          >
+            <span class="escrow-label">Claimable escrow</span>
+            <EthAmount :wei="escrowBalance" />
+          </p>
+        </ClientOnly>
+      </div>
     </header>
 
     <ClientOnly>
@@ -142,15 +165,17 @@
 
 <script setup lang="ts">
 import { getPublicClient } from '@wagmi/core'
-import { useConfig } from '@wagmi/vue'
+import { useConfig, useConnection } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/components.evm'
+import { avvatarDataUri } from 'avvatars'
 
 const route = useRoute()
 const handle = computed(() => String(route.params.handle))
 
 const config = useConfig()
+const { address: connectedAddress } = useConnection()
 
 const ensProfile = useEnsWithAvatar(handle)
 
@@ -184,7 +209,24 @@ const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
 )
 
+const isOwnProfile = computed(() => {
+  const mine = connectedAddress.value?.toLowerCase()
+  const viewing = resolvedAddress.value?.toLowerCase()
+  return !!mine && !!viewing && mine === viewing
+})
+
 const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
+const profileAvatarUri = computed(() =>
+  resolvedAddress.value
+    ? avvatarDataUri({
+        seed: resolvedAddress.value.toLowerCase(),
+        size: 96,
+        foreground: '#ff5fa8',
+        background: '#ffffff',
+      })
+    : undefined,
+)
+
 useSeoMeta({
   title: () => `${titleLabel.value} · Punks Auction`,
   ogTitle: () => `${titleLabel.value} · Punks Auction`,
@@ -227,20 +269,58 @@ const myOffers = computed(() => {
 
 .profile-head {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--size-4);
+}
+
+.profile-avvatar {
+  width: clamp(64px, 14vw, 96px);
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.profile-details {
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: var(--size-1);
+}
+
+.profile-title {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  flex-wrap: wrap;
 }
 
 .profile-name {
   margin: 0;
   font-size: 28px;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.settings-link:hover {
+  color: var(--text);
 }
 
 .profile-address {
   margin: 0;
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .escrow {
@@ -297,5 +377,11 @@ const myOffers = computed(() => {
 .error {
   color: var(--accent);
   font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .profile-head {
+    align-items: flex-start;
+  }
 }
 </style>
