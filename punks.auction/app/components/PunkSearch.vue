@@ -70,7 +70,9 @@ const LISTED_QUALIFIER =
 const BID_QUALIFIER =
   /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
 const LEGACY_WRAPPED_QUALIFIER =
-  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?)(?=$|[\s,])/gi
+  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+legacy)(?=$|[\s,])/gi
+const MODERN_WRAPPED_QUALIFIER =
+  /(^|[\s,])(?:modern\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+modern)(?=$|[\s,])/gi
 const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
@@ -193,11 +195,20 @@ const query = computed<PunkQuery>(() => {
   if (qualifiers.value.activeBids) {
     ids = intersectIds(ids, marketStateSets.value.active_bids)
   }
-  if (qualifiers.value.wrapped) {
-    ids = intersectIds(ids, marketStateSets.value.wrapped)
-  }
   if (qualifiers.value.legacyWrapped) {
     ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
+  }
+  if (qualifiers.value.modernWrapped) {
+    ids = intersectIds(ids, marketStateSets.value.wrapped)
+  }
+  if (qualifiers.value.wrapped) {
+    ids = intersectIds(
+      ids,
+      unionIds(
+        marketStateSets.value.wrapped,
+        marketStateSets.value.legacy_wrapped,
+      ),
+    )
   }
 
   return {
@@ -252,10 +263,15 @@ function extractQualifiers(input: string) {
   let activeBids = false
   let wrapped = false
   let legacyWrapped = false
+  let modernWrapped = false
 
   const cleaned = input
     .replace(LEGACY_WRAPPED_QUALIFIER, (_match, prefix: string) => {
       legacyWrapped = true
+      return prefix || ''
+    })
+    .replace(MODERN_WRAPPED_QUALIFIER, (_match, prefix: string) => {
+      modernWrapped = true
       return prefix || ''
     })
     .replace(LISTED_QUALIFIER, (_match, prefix: string) => {
@@ -275,7 +291,7 @@ function extractQualifiers(input: string) {
     .replace(/\s+/g, ' ')
     .trim()
 
-  return { text: cleaned, listed, activeBids, wrapped, legacyWrapped }
+  return { text: cleaned, listed, activeBids, wrapped, legacyWrapped, modernWrapped }
 }
 
 function intersectIds(
@@ -285,6 +301,10 @@ function intersectIds(
   if (!baseIds) return Array.from(filterIds)
   const filter = new Set(filterIds)
   return Array.from(baseIds).filter((id) => filter.has(id))
+}
+
+function unionIds(...groups: Iterable<number>[]) {
+  return new Set(groups.flatMap((group) => Array.from(group)))
 }
 </script>
 
