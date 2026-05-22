@@ -1,7 +1,7 @@
 <template>
   <div class="landing">
     <h1 class="headline">
-      An Auction House &amp; Marketplace
+      An Auction House
       <span class="headline-em">for CryptoPunks</span>
     </h1>
   </div>
