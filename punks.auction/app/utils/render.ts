@@ -1,3 +1,3 @@
 /// The classic CryptoPunks background teal — used behind grid cells and
 /// detail-view renders so the app reads instantly as canonical CryptoPunks.
-export const PUNK_BG = '#638596'
+export const PUNK_BG = '#6a8494'
