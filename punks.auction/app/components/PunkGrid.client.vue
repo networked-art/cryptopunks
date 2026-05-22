@@ -78,9 +78,7 @@ const colStep = computed(() => cellSize.value + resolvedGap.value)
 const rowStep = computed(() => cellSize.value + resolvedGap.value)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() =>
-  rows.value === 0
-    ? 0
-    : (rows.value - 1) * rowStep.value + cellSize.value,
+  rows.value === 0 ? 0 : (rows.value - 1) * rowStep.value + cellSize.value,
 )
 
 /// Scroll events are coalesced to one measure() per animation frame, so the
@@ -140,12 +138,20 @@ function measure() {
   const el = containerRef.value
   if (!el) return
   const rect = el.getBoundingClientRect()
-  containerWidth.value = rect.width
-  /// Intersection of the container with the viewport, expressed in the
-  /// container's own (scroll-content) coordinate space.
+  /// `.punk-grid` carries padding, but the cells are laid out inside its
+  /// content box (`.grid-scroll`). Measure the content box so the column math
+  /// doesn't overshoot the padded width and spill cells off the page.
+  const cs = getComputedStyle(el)
+  const padLeft = parseFloat(cs.paddingLeft) || 0
+  const padRight = parseFloat(cs.paddingRight) || 0
+  const padTop = parseFloat(cs.paddingTop) || 0
+  containerWidth.value = rect.width - padLeft - padRight
+  /// Intersection of the content box with the viewport, expressed in the
+  /// content box's own (scroll-content) coordinate space.
   const vh = window.innerHeight || document.documentElement.clientHeight
-  const top = Math.max(0, -rect.top)
-  const bottom = Math.max(0, Math.min(rect.height, vh - rect.top))
+  const contentTop = rect.top + padTop
+  const top = Math.max(0, -contentTop)
+  const bottom = Math.max(0, Math.min(rect.height, vh - contentTop))
   visibleTop.value = top
   visibleHeight.value = Math.max(0, bottom - top)
 }
@@ -202,7 +208,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .punk-grid {
   position: relative;
-  width: 100%;
+  padding: var(--spacer);
 }
 
 .grid-scroll {
@@ -228,6 +234,7 @@ onBeforeUnmount(() => {
   transform: scale(1.18);
   z-index: 5;
   outline: 2px solid #000;
+  outline-offset: 0;
 }
 
 .cell-id {

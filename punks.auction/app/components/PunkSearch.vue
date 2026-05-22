@@ -242,22 +242,23 @@ function intersectIds(
   flex-direction: column;
   gap: var(--size-3);
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 /* Keep the search bar visible below the (also-sticky) site header while
-   the window scrolls through the virtualized grid below. */
+   the window scrolls through the virtualized grid below. Matches the
+   header's `.container` bounds so the two stay vertically aligned. */
 .search-bar {
   position: sticky;
-  top: 56px;
+  top: calc(56px + var(--border-width));
   z-index: var(--z-index-ui);
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2);
   align-items: center;
   width: 100%;
+  max-width: 1200px;
   box-sizing: border-box;
+  margin: 0 auto;
   padding: var(--size-4);
   font-size: 16px;
 }
