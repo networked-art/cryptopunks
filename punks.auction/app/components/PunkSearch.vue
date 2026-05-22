@@ -121,9 +121,7 @@ watch(
   },
 )
 
-const placeholder = computed(
-  () => `Try hoodie, 2 colors, vault.eth, #1234`,
-)
+const placeholder = computed(() => `Try hoodie, 2 colors, vault.eth, #1234`)
 
 /// Owner-search mode: when the *entire* trimmed input parses as an address or
 /// an ENS-like name, we treat it as "show this owner's punks" instead of
@@ -313,6 +311,7 @@ function intersectIds(
   max-width: 1200px;
   box-sizing: border-box;
   margin: 0 auto;
+  margin-top: calc(var(--size-4) + var(--size-3));
   padding: var(--size-4);
   font-size: 16px;
 }
