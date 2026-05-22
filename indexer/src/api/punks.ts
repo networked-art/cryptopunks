@@ -11,6 +11,8 @@ type Row = Record<string, unknown>
 type BackgroundsResponse = {
   listed: number[]
   active_bids: number[]
+  wrapped_punks: number[]
+  cryptopunks_721: number[]
   generated_at: number
 }
 
@@ -53,15 +55,32 @@ async function loadActiveBidPunkIds(): Promise<number[]> {
   return normalizeRows(result).map((row) => toPunkId(row.punk_id))
 }
 
+async function loadWrappedPunkIds(
+  wrapper: 'wrapped_punks' | 'cryptopunks_721',
+): Promise<number[]> {
+  const result = await db.execute(sql`
+    SELECT p.punk_id
+    FROM ${punk} p
+    WHERE p.is_wrapped = true
+      AND p.wrapper = ${wrapper}
+    ORDER BY p.punk_id ASC
+  `)
+  return normalizeRows(result).map((row) => toPunkId(row.punk_id))
+}
+
 async function computeBackgrounds(): Promise<BackgroundsResponse> {
-  const [listed, activeBids] = await Promise.all([
+  const [listed, activeBids, wrappedPunks, cryptopunks721] = await Promise.all([
     loadListedPunkIds(),
     loadActiveBidPunkIds(),
+    loadWrappedPunkIds('wrapped_punks'),
+    loadWrappedPunkIds('cryptopunks_721'),
   ])
 
   return {
     listed,
     active_bids: activeBids,
+    wrapped_punks: wrappedPunks,
+    cryptopunks_721: cryptopunks721,
     generated_at: Date.now(),
   }
 }
