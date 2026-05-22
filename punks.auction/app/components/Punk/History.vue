@@ -49,14 +49,13 @@
       </li>
     </ul>
 
-    <button
+    <Button
       v-if="rows.length > LIMIT"
-      type="button"
-      class="more"
+      class="small link muted"
       @click="expanded = !expanded"
     >
       {{ expanded ? 'Show less' : `Show all ${rows.length}` }}
-    </button>
+    </Button>
 
     <p
       v-if="!rows.length"
@@ -222,21 +221,6 @@ const stateLabel = computed(() => {
 }
 
 .event-time:hover {
-  color: var(--accent);
-}
-
-.more {
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.more:hover {
   color: var(--accent);
 }
 
