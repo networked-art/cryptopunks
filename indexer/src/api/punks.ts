@@ -11,8 +11,8 @@ type Row = Record<string, unknown>
 type BackgroundsResponse = {
   listed: number[]
   active_bids: number[]
-  wrapped_punks: number[]
-  cryptopunks_721: number[]
+  legacy_wrapped: number[]
+  wrapped: number[]
   generated_at: number
 }
 
@@ -69,7 +69,7 @@ async function loadWrappedPunkIds(
 }
 
 async function computeBackgrounds(): Promise<BackgroundsResponse> {
-  const [listed, activeBids, wrappedPunks, cryptopunks721] = await Promise.all([
+  const [listed, activeBids, legacyWrapped, wrapped] = await Promise.all([
     loadListedPunkIds(),
     loadActiveBidPunkIds(),
     loadWrappedPunkIds('wrapped_punks'),
@@ -79,8 +79,8 @@ async function computeBackgrounds(): Promise<BackgroundsResponse> {
   return {
     listed,
     active_bids: activeBids,
-    wrapped_punks: wrappedPunks,
-    cryptopunks_721: cryptopunks721,
+    legacy_wrapped: legacyWrapped,
+    wrapped,
     generated_at: Date.now(),
   }
 }
