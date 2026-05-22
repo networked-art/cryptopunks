@@ -43,8 +43,8 @@
     </dl>
 
     <p class="muted note">
-      Open for auction — the first bid at or above the reserve starts a
-      24-hour auction.
+      Open for auction — the first bid at or above the reserve starts a 24-hour
+      auction.
     </p>
   </Card>
 </template>
@@ -52,6 +52,8 @@
 <script setup lang="ts">
 import { ZERO_ADDRESS } from '@networked-art/punks-sdk'
 import type { LotRecord } from '~/utils/auction'
+
+defineOptions({ name: 'LotCard' })
 
 const props = defineProps<{ lot: LotRecord }>()
 
