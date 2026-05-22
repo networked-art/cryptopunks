@@ -187,6 +187,13 @@ const stateLabel = computed(() => {
   border: 0;
 }
 
+.event-party :deep(.avvatar) {
+  height: calc(1lh + var(--size-3) * 2);
+  margin-block: calc(var(--size-3) * -1);
+  margin-inline-start: calc(var(--size-3) * -1);
+  margin-inline-end: var(--size-2);
+}
+
 .event-detail {
   display: inline-flex;
   align-items: baseline;
