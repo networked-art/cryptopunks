@@ -37,6 +37,9 @@ export function usePunkMarketState() {
   const { data } = useAsyncData('punk-market-state', fetchPunkMarketState, {
     lazy: true,
     server: false,
+    /// Many components share this key on first paint; without `defer`, each
+    /// new caller cancels the prior request and starts a fresh one.
+    dedupe: 'defer',
   })
 
   const sets = computed(() => toSets(data.value))
