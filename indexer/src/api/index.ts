@@ -4,6 +4,7 @@ import { client, graphql } from 'ponder'
 import { db, publicClients } from 'ponder:api'
 import schema from 'ponder:schema'
 import bidsRouter from './bids'
+import punksRouter from './punks'
 import salesRouter from './sales'
 import statsRouter from './stats'
 import { getOffchainDb } from '../offchain'
@@ -21,6 +22,7 @@ app.route(
 )
 
 app.route('/bids', bidsRouter)
+app.route('/punks', punksRouter)
 app.route('/sales', salesRouter)
 app.route('/stats', statsRouter)
 
