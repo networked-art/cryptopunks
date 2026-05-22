@@ -169,7 +169,7 @@ import { useConfig, useConnection } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/components.evm'
-import { avvatarDataUri } from 'avvatars'
+import { accountAvvatarDataUri } from '~/utils/avvatar'
 
 const route = useRoute()
 const handle = computed(() => String(route.params.handle))
@@ -218,12 +218,7 @@ const isOwnProfile = computed(() => {
 const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
 const profileAvatarUri = computed(() =>
   resolvedAddress.value
-    ? avvatarDataUri({
-        seed: resolvedAddress.value.toLowerCase(),
-        size: 24,
-        foreground: '#ff5fa8',
-        background: '#ffffff',
-      })
+    ? accountAvvatarDataUri(resolvedAddress.value, 96)
     : undefined,
 )
 
@@ -275,8 +270,8 @@ const myOffers = computed(() => {
 }
 
 .profile-avvatar {
-  width: 24px;
-  height: 24px;
+  width: clamp(64px, 14vw, 96px);
+  aspect-ratio: 1;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }

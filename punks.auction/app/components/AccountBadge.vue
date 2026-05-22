@@ -17,19 +17,17 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
-import { avvatarDataUri } from 'avvatars'
+import { accountAvvatarDataUri } from '~/utils/avvatar'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   address: Address
-}>()
+  imageSize?: number
+}>(), {
+  imageSize: 24,
+})
 
 const avatarUri = computed(() =>
-  avvatarDataUri({
-    seed: props.address.toLowerCase(),
-    size: 16,
-    foreground: '#ff5fa8',
-    background: '#ffffff',
-  }),
+  accountAvvatarDataUri(props.address, props.imageSize),
 )
 </script>
 
