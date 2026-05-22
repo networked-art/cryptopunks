@@ -9,8 +9,6 @@
         class="avvatar"
         :src="avatarUri"
         :alt="`Avatar for ${address}`"
-        width="16"
-        height="16"
       />
       <span class="label">{{ display }}</span>
     </template>
@@ -37,8 +35,8 @@ const avatarUri = computed(() =>
 
 <style scoped>
 .avvatar {
-  width: 16px;
-  height: 16px;
+  height: 1lh;
+  aspect-ratio: 1;
   display: inline-block;
   vertical-align: middle;
   margin-right: 6px;
