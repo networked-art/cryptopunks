@@ -291,7 +291,14 @@ function extractQualifiers(input: string) {
     .replace(/\s+/g, ' ')
     .trim()
 
-  return { text: cleaned, listed, activeBids, wrapped, legacyWrapped, modernWrapped }
+  return {
+    text: cleaned,
+    listed,
+    activeBids,
+    wrapped,
+    legacyWrapped,
+    modernWrapped,
+  }
 }
 
 function intersectIds(

@@ -13,19 +13,19 @@
           :summary="summary"
           :skin-tag="skinTag"
         />
-        <PunkOwnerPanel
+        <PunkDetailOwner
           :punk-id="punkId"
           :standard="standard"
         />
-        <PunkAuctionContextSection
+        <PunkDetailAuction
           :punk-id="punkId"
           :standard="standard"
         />
-        <PunkTraitsSection
+        <PunkDetailTraits
           :punk-id="punkId"
           :traits="visibleTraits"
         />
-        <PunkDetailHistorySection
+        <PunkDetailHistory
           v-if="!isV1"
           :punk-id="punkId"
         />
