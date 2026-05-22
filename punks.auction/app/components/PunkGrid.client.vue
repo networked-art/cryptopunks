@@ -29,8 +29,6 @@
 </template>
 
 <script setup lang="ts">
-import { PUNK_BG } from '~/utils/render'
-
 const props = withDefaults(
   defineProps<{
     ids: number[]
@@ -45,6 +43,7 @@ const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
 
 const containerRef = ref<HTMLElement | null>(null)
+const { backgroundForPunk } = usePunkBackgrounds()
 /// Where the visible window starts/ends inside the grid, in content
 /// coordinates. We compute these from the container's bounding rect against
 /// the viewport, so the math is identical whether the window or some ancestor
@@ -124,7 +123,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: PUNK_BG,
+    backgroundColor: backgroundForPunk(c.id),
     backgroundImage: "url('/punks.png')",
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,

@@ -15,8 +15,11 @@
 </template>
 
 <script setup lang="ts">
-import { PUNK_BG } from '~/utils/render'
-import { TokenStandard, punkHref, type TokenStandardValue } from '~/utils/auction'
+import {
+  TokenStandard,
+  punkHref,
+  type TokenStandardValue,
+} from '~/utils/auction'
 
 const props = withDefaults(
   defineProps<{
@@ -29,6 +32,7 @@ const props = withDefaults(
 )
 
 const SPRITE_COLS = 100
+const { backgroundForPunk } = usePunkBackgrounds()
 
 const to = computed(() =>
   props.link ? punkHref(props.standard, props.punkId) : undefined,
@@ -47,7 +51,7 @@ const style = computed(() => {
   return {
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: PUNK_BG,
+    backgroundColor: backgroundForPunk(props.punkId, props.standard),
     backgroundImage: "url('/punks.png')",
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${col * px}px -${row * px}px`,

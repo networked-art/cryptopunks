@@ -10,6 +10,7 @@
       <div class="hero-image">
         <PunkImage
           :punk-id="punkId"
+          :standard="standard"
           :size="320"
         />
         <ClientOnly>
@@ -184,7 +185,6 @@ import {
   type SkinToneName,
 } from '@networked-art/punks-sdk'
 import { downloadPunkPng } from '~/utils/punkSnapshot'
-import { PUNK_BG } from '~/utils/render'
 import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
 
 const props = defineProps<{
@@ -196,6 +196,7 @@ const isV1 = computed(() => props.standard === TokenStandard.CryptoPunksV1)
 
 const { backToSearchHref } = useSearchNavigation()
 const offline = usePunksOffline()
+const { backgroundForPunk } = usePunkBackgrounds()
 const summary = computed(() =>
   offline.get(props.punkId, { includeTraits: true }),
 )
@@ -292,7 +293,7 @@ async function downloadImage() {
   try {
     await downloadPunkPng(offline, props.punkId, {
       size: 2048,
-      background: PUNK_BG,
+      background: backgroundForPunk(props.punkId, props.standard),
     })
   } finally {
     downloading.value = false

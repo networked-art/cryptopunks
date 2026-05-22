@@ -19,34 +19,40 @@
 </template>
 
 <script setup lang="ts">
-import { PUNK_BG } from '~/utils/render'
+import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
 
 const props = withDefaults(
   defineProps<{
     punkId: number
     size?: number | string
     background?: string
+    standard?: TokenStandardValue
     showId?: boolean
   }>(),
   {
     size: 96,
-    background: PUNK_BG,
+    standard: TokenStandard.CryptoPunks,
     showId: false,
   },
 )
 
 const offline = usePunksOffline()
+const { backgroundForPunk } = usePunkBackgrounds()
+
+const resolvedBackground = computed(
+  () => props.background ?? backgroundForPunk(props.punkId, props.standard),
+)
 
 const dataUri = computed(() =>
   offline.render.svgDataUri(props.punkId, {
-    background: props.background as `#${string}`,
+    background: resolvedBackground.value as `#${string}`,
   }),
 )
 
 const rootStyle = computed(() => ({
   width: typeof props.size === 'number' ? `${props.size}px` : props.size,
   height: typeof props.size === 'number' ? `${props.size}px` : props.size,
-  background: props.background,
+  background: resolvedBackground.value,
 }))
 </script>
 
