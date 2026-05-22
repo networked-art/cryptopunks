@@ -5,6 +5,9 @@
       An Auction House
       <span class="headline-em">for CryptoPunks</span>
     </h1>
+    <p class="subline">
+      Open source marketplace with 24h auctions on CryptoPunks lots
+    </p>
   </div>
 </template>
 
@@ -23,7 +26,7 @@ useSeoMeta({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--size-6);
+  gap: var(--size-8);
   padding: var(--size-9) var(--size-4);
   min-height: 60vh;
   max-height: 100vh;
@@ -31,7 +34,7 @@ useSeoMeta({
 }
 
 .headline {
-  margin: 0;
+  margin: var(--size-4) 0 0;
   max-width: 600px;
   font-size: clamp(30px, 6vw, 46px);
   font-weight: 500;
@@ -41,5 +44,13 @@ useSeoMeta({
 
 .headline-em {
   color: var(--accent-strong);
+}
+
+.subline {
+  margin: 0;
+  max-width: 560px;
+  color: var(--text-muted);
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.5;
 }
 </style>

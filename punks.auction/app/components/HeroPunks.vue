@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
 .hero-punks {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--size-1);
+  gap: var(--size-2);
   width: clamp(144px, 28vw, 216px);
 }
 
