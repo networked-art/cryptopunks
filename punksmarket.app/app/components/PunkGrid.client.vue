@@ -243,6 +243,7 @@ onBeforeUnmount(() => {
   transform: scale(1.18);
   z-index: 5;
   outline: 2px solid #000;
+  outline-offset: 0;
 }
 
 .cell.has-price-row {
