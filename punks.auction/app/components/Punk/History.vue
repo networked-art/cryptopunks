@@ -9,32 +9,71 @@
         :key="row.id"
         class="event-row"
       >
-        <NuxtLink
-          v-if="row.party"
-          :to="`/profile/${row.party}`"
-          class="event-party"
-        >
-          <AccountBadge :address="row.party!" />
-        </NuxtLink>
-        <span
-          v-else
-          class="event-party muted"
-          >—</span
-        >
+        <div class="event-main">
+          <div class="event-title-line">
+            <span class="event-kind">{{ row.kind }}</span>
+            <span
+              v-if="row.wrapped"
+              class="wrapped"
+              >wrapped</span
+            >
+            <EthAmount
+              v-if="row.amountWei !== undefined"
+              class="event-amount"
+              :wei="row.amountWei"
+            />
+          </div>
 
-        <span class="event-detail">
-          <span class="event-kind">{{ row.kind }}</span>
-          <span
-            v-if="row.wrapped"
-            class="wrapped"
-            >wrapped</span
+          <div
+            v-if="row.isTransfer && (row.from || row.to)"
+            class="event-indicators"
           >
-          <EthAmount
-            v-if="row.amountWei !== undefined"
-            class="event-amount"
-            :wei="row.amountWei"
-          />
-        </span>
+            <span
+              v-if="row.from"
+              class="event-indicator"
+            >
+              <span class="indicator-label">From</span>
+              <NuxtLink
+                :to="`/profile/${row.from}`"
+                class="event-account"
+              >
+                <AccountBadge :address="row.from" />
+              </NuxtLink>
+            </span>
+            <span
+              v-if="row.from && row.to"
+              class="indicator-arrow"
+              >→</span
+            >
+            <span
+              v-if="row.to"
+              class="event-indicator"
+            >
+              <span class="indicator-label">To</span>
+              <NuxtLink
+                :to="`/profile/${row.to}`"
+                class="event-account"
+              >
+                <AccountBadge :address="row.to" />
+              </NuxtLink>
+            </span>
+          </div>
+
+          <div
+            v-else-if="row.initiator"
+            class="event-indicators"
+          >
+            <span class="event-indicator">
+              <span class="indicator-label">{{ row.initiatorLabel }}</span>
+              <NuxtLink
+                :to="`/profile/${row.initiator}`"
+                class="event-account"
+              >
+                <AccountBadge :address="row.initiator" />
+              </NuxtLink>
+            </span>
+          </div>
+        </div>
 
         <a
           class="event-time"
@@ -68,6 +107,10 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
+import {
+  CRYPTOPUNKS_721_ADDRESS,
+  WRAPPED_PUNKS_ADDRESS,
+} from '@networked-art/punks-sdk'
 import type { ActivityEvent, ActivityKind } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
 
@@ -82,6 +125,7 @@ const { events, pending, error } = useActivityFeed({
   punkId: () => props.punkId,
   limit: 60,
 })
+const { owner: nativeOwner } = usePunkOwner(() => props.punkId)
 
 const KIND_LABEL: Record<ActivityKind, string> = {
   assign: 'Claimed',
@@ -95,9 +139,9 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   sale: 'Sold',
 }
 
-/// The account a row is "about" — the buyer of a sale, the bidder of a bid,
-/// the seller of a listing, otherwise whoever received the Punk.
-function pickParty(event: ActivityEvent): Address | undefined {
+/// Optional secondary account for non-transfer rows. Current-owner actions are
+/// omitted because the owner is already the page context.
+function pickInitiator(event: ActivityEvent): Address | undefined {
   switch (event.kind) {
     case 'sale':
       return event.to ?? event.from
@@ -108,6 +152,54 @@ function pickParty(event: ActivityEvent): Address | undefined {
       return event.from
     default:
       return event.to ?? event.from
+  }
+}
+
+function pickInitiatorLabel(event: ActivityEvent): string {
+  switch (event.kind) {
+    case 'sale':
+      return 'Buyer'
+    case 'bid':
+    case 'bid_cancelled':
+      return 'Bidder'
+    case 'listing':
+    case 'listing_cancelled':
+      return 'Seller'
+    case 'assign':
+      return 'To'
+    default:
+      return 'By'
+  }
+}
+
+function normalize(address?: Address | null): string | undefined {
+  return address?.toLowerCase()
+}
+
+function sameAddress(a?: Address | null, b?: Address | null): boolean {
+  const left = normalize(a)
+  const right = normalize(b)
+  return !!left && !!right && left === right
+}
+
+function isWrapperAddress(address?: Address | null): boolean {
+  return (
+    sameAddress(address, WRAPPED_PUNKS_ADDRESS) ||
+    sameAddress(address, CRYPTOPUNKS_721_ADDRESS)
+  )
+}
+
+function inferCurrentOwner(events: ActivityEvent[]): Address | undefined {
+  for (const event of events) {
+    if (
+      event.kind === 'assign' ||
+      event.kind === 'transfer' ||
+      event.kind === 'wrap' ||
+      event.kind === 'unwrap' ||
+      event.kind === 'sale'
+    ) {
+      if (event.to) return event.to
+    }
   }
 }
 
@@ -125,20 +217,35 @@ function formatAgo(timestamp: number): string {
   return `${Math.floor(days / 365)}y ago`
 }
 
+const currentOwner = computed(() => {
+  const inferred = inferCurrentOwner(events.value)
+  if (isWrapperAddress(nativeOwner.value) && inferred) return inferred
+  return nativeOwner.value ?? inferred
+})
+
 const rows = computed(() =>
-  events.value.map((event) => ({
-    id: event.id,
-    party: pickParty(event),
-    kind: KIND_LABEL[event.kind] ?? event.kind,
-    wrapped: event.wrapped,
-    amountWei:
-      event.amountWei !== undefined && event.amountWei > 0n
-        ? event.amountWei
-        : undefined,
-    txHash: event.txHash,
-    relative: formatAgo(event.timestamp),
-    absolute: new Date(event.timestamp * 1000).toLocaleString(),
-  })),
+  events.value.map((event) => {
+    const initiator = pickInitiator(event)
+    return {
+      id: event.id,
+      initiator: sameAddress(initiator, currentOwner.value)
+        ? undefined
+        : initiator,
+      initiatorLabel: pickInitiatorLabel(event),
+      isTransfer: event.kind === 'transfer',
+      from: event.from,
+      to: event.to,
+      kind: KIND_LABEL[event.kind] ?? event.kind,
+      wrapped: event.wrapped,
+      amountWei:
+        event.amountWei !== undefined && event.amountWei > 0n
+          ? event.amountWei
+          : undefined,
+      txHash: event.txHash,
+      relative: formatAgo(event.timestamp),
+      absolute: new Date(event.timestamp * 1000).toLocaleString(),
+    }
+  }),
 )
 
 const visibleRows = computed(() =>
@@ -170,7 +277,7 @@ const stateLabel = computed(() => {
 
 .event-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--size-3);
   padding: var(--size-3);
@@ -182,27 +289,68 @@ const stateLabel = computed(() => {
   border-bottom: 0;
 }
 
-.event-party {
+.event-main {
+  display: flex;
   min-width: 0;
-  border: 0;
+  flex-direction: column;
+  gap: var(--size-2);
 }
 
-.event-party :deep(.avvatar) {
-  height: calc(1lh + var(--size-3) * 2);
-  margin-block: calc(var(--size-3) * -1);
-  margin-inline-start: calc(var(--size-3) * -1);
-  margin-inline-end: var(--size-2);
-}
-
-.event-detail {
-  display: inline-flex;
+.event-title-line {
+  display: flex;
   align-items: baseline;
   gap: var(--size-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.event-indicators {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  min-width: 0;
+  flex-wrap: wrap;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.event-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.indicator-label {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
   white-space: nowrap;
+}
+
+.indicator-arrow {
+  color: var(--text-dim);
+}
+
+.event-account {
+  min-width: 0;
+  border: 0;
+  color: var(--text-muted);
+}
+
+.event-account :deep(.avvatar) {
+  height: 1.2em;
+  margin-right: var(--size-1);
+}
+
+.event-account :deep(.label) {
+  max-width: 14ch;
 }
 
 .event-kind {
   color: var(--text);
+  font-weight: 600;
 }
 
 .wrapped {
@@ -238,11 +386,10 @@ const stateLabel = computed(() => {
 
 @media (max-width: 460px) {
   .event-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
   }
 
   .event-time {
-    grid-column: 2;
     justify-content: flex-end;
   }
 }
