@@ -236,6 +236,8 @@ function intersectIds(
   gap: var(--size-2);
   align-items: center;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: var(--size-3) 0;
   background: var(--bg);
 }

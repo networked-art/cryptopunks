@@ -38,10 +38,11 @@ const props = withDefaults(
     gap?: number
     overscan?: number
   }>(),
-  { size: 56, gap: 2, overscan: 6 },
+  { size: 72, gap: 2, overscan: 6 },
 )
 
 const SPRITE_COLS = 100
+const PUNK_PIXEL_SIZE = 24
 
 const containerRef = ref<HTMLElement | null>(null)
 /// Where the visible window starts/ends inside the grid, in content
@@ -53,21 +54,34 @@ const visibleHeight = ref(0)
 const containerWidth = ref(0)
 
 /// Fit as many cells per row as possible given `gap` as the minimum spacing,
-/// then redistribute leftover width as extra horizontal gap so the row spans
-/// the full container (space-between). Vertical spacing stays at `gap`.
+/// then redistribute leftover width into the resolved gap. The same resolved
+/// gap is used on both axes so rows and columns keep equal spacing.
+const cellSize = computed(
+  () => Math.max(1, Math.ceil(props.size / PUNK_PIXEL_SIZE)) * PUNK_PIXEL_SIZE,
+)
 const cols = computed(() =>
   Math.max(
     1,
-    Math.floor((containerWidth.value + props.gap) / (props.size + props.gap)),
+    Math.floor(
+      (containerWidth.value + props.gap) / (cellSize.value + props.gap),
+    ),
   ),
 )
-const colStep = computed(() => {
-  if (cols.value <= 1) return props.size
-  return (containerWidth.value - props.size) / (cols.value - 1)
+const resolvedGap = computed(() => {
+  if (cols.value <= 1) return props.gap
+  return Math.max(
+    props.gap,
+    (containerWidth.value - cols.value * cellSize.value) / (cols.value - 1),
+  )
 })
-const rowStep = computed(() => props.size + props.gap)
+const colStep = computed(() => cellSize.value + resolvedGap.value)
+const rowStep = computed(() => cellSize.value + resolvedGap.value)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
-const totalHeight = computed(() => rows.value * rowStep.value)
+const totalHeight = computed(() =>
+  rows.value === 0
+    ? 0
+    : (rows.value - 1) * rowStep.value + cellSize.value,
+)
 
 /// Scroll events are coalesced to one measure() per animation frame, so the
 /// overscan buffer must be wide enough to cover whatever distance a fast
@@ -106,7 +120,7 @@ const visible = computed(() => {
 function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteRow = Math.floor(c.id / SPRITE_COLS)
   const spriteCol = c.id % SPRITE_COLS
-  const px = props.size
+  const px = cellSize.value
   return {
     top: `${c.row * rowStep.value}px`,
     left: `${c.col * colStep.value}px`,

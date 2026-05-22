@@ -1,6 +1,6 @@
 <template>
   <div class="container search-page">
-    <PunkSearch :size="56" />
+    <PunkSearch :size="72" />
   </div>
 </template>
 
@@ -21,6 +21,7 @@ useSeoMeta({
 
 <style scoped>
 .search-page {
+  max-width: none;
   padding-bottom: var(--size-4);
 }
 </style>
