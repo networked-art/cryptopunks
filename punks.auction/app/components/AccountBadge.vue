@@ -4,46 +4,44 @@
     resolve-ens
   >
     <template #default="{ display }">
-      <span class="account-badge">
-        <span
-          class="dot"
-          :style="{ background: dotColor }"
-        />
-        <span class="label">{{ display }}</span>
-      </span>
+      <img
+        v-if="avatarUri"
+        class="avvatar"
+        :src="avatarUri"
+        :alt="`Avatar for ${address}`"
+        width="16"
+        height="16"
+      />
+      <span class="label">{{ display }}</span>
     </template>
   </EvmAccount>
 </template>
 
 <script setup lang="ts">
 import type { Address } from 'viem'
+import { avvatarDataUri } from 'avvatars'
 
 const props = defineProps<{
   address: Address
 }>()
 
-// Cheap deterministic color from address for the dot.
-const dotColor = computed(() => `#${props.address.slice(2, 8)}`)
+const avatarUri = computed(() =>
+  avvatarDataUri({
+    seed: props.address.toLowerCase(),
+    size: 16,
+    foreground: '#ff5fa8',
+    background: '#ffffff',
+  }),
+)
 </script>
 
 <style scoped>
-.account-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: var(--tag-background);
-  box-shadow: var(--border-shadow);
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.avvatar {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
@@ -52,5 +50,6 @@ const dotColor = computed(() => `#${props.address.slice(2, 8)}`)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
 }
 </style>

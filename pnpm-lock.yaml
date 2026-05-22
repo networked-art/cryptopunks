@@ -116,6 +116,46 @@ importers:
     dependencies:
       '@1001-digital/components.evm':
         specifier: ^3.5.3
+        version: 3.5.3(@1001-digital/components@2.8.1(@1001-digital/styles@2.6.0)(vue@3.5.34(typescript@5.8.3)))(@vueuse/core@14.3.0(vue@3.5.34(typescript@5.8.3)))(@wagmi/core@3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76)))(@wagmi/vue@0.5.6(5ca148e16674af4a1812ff4ce6813cff))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.6))(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))(vue@3.5.34(typescript@5.8.3))
+      '@1001-digital/layers.evm':
+        specifier: ^2.7.8
+        version: 2.7.8(6b428d1bb68fed768a8d7d9af727779a)
+      '@networked-art/punks-sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@tanstack/vue-query':
+        specifier: 5.95.2
+        version: 5.95.2(vue@3.5.34(typescript@5.8.3))
+      '@vueuse/core':
+        specifier: ^14.2.1
+        version: 14.3.0(vue@3.5.34(typescript@5.8.3))
+      '@wagmi/core':
+        specifier: 3.4.6
+        version: 3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
+      '@wagmi/vue':
+        specifier: 0.5.6
+        version: 0.5.6(5ca148e16674af4a1812ff4ce6813cff)
+      avvatars:
+        specifier: ^0.1.0
+        version: 0.1.0
+      viem:
+        specifier: 2.48.4
+        version: 2.48.4(typescript@5.8.3)(zod@3.25.76)
+    devDependencies:
+      '@types/luxon':
+        specifier: ^3.4.2
+        version: 3.7.1
+      nuxt:
+        specifier: ^4.4.2
+        version: 4.4.5(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@electric-sql/pglite@0.2.13)(@parcel/watcher@2.5.6)(@types/node@25.8.0)(@vue/compiler-sfc@3.5.34)(cac@6.7.14)(db0@0.3.4(@electric-sql/pglite@0.2.13)(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0)))(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0))(idb-keyval@6.2.2)(ioredis@5.10.1)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.3))(rollup@4.60.3)(srvx@0.11.15)(terser@5.47.1)(tsx@4.22.1)(typescript@5.8.3)(vite@7.3.3(@types/node@25.8.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.1)(yaml@2.9.0))(vue-tsc@3.2.9(typescript@5.8.3))(xml2js@0.6.2)(yaml@2.9.0)
+      vue-tsc:
+        specifier: ^3.2.6
+        version: 3.2.9(typescript@5.8.3)
+
+  punksmarket.app:
+    dependencies:
+      '@1001-digital/components.evm':
+        specifier: ^3.5.3
         version: 3.5.3(@1001-digital/components@2.8.1(@1001-digital/styles@2.6.0)(vue@3.5.34(typescript@5.8.3)))(@vueuse/core@14.3.0(vue@3.5.34(typescript@5.8.3)))(@wagmi/core@3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76)))(@wagmi/vue@0.5.6(1e8b7eaeeaca96602d0b3b2d43c43ba6))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.6))(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))(vue@3.5.34(typescript@5.8.3))
       '@1001-digital/layers.evm':
         specifier: ^2.7.8
@@ -145,43 +185,6 @@ importers:
       nuxt:
         specifier: ^4.4.2
         version: 4.4.5(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@electric-sql/pglite@0.2.13)(@parcel/watcher@2.5.6)(@types/node@25.8.0)(@vue/compiler-sfc@3.5.34)(cac@6.7.14)(db0@0.3.4(@electric-sql/pglite@0.2.13)(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0)))(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0))(idb-keyval@6.2.2)(ioredis@5.10.1)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.3))(rollup@4.60.3)(terser@5.47.1)(tsx@4.22.1)(typescript@5.8.3)(vite@7.3.3(@types/node@25.8.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.1)(yaml@2.9.0))(vue-tsc@3.2.9(typescript@5.8.3))(xml2js@0.6.2)(yaml@2.9.0)
-      vue-tsc:
-        specifier: ^3.2.6
-        version: 3.2.9(typescript@5.8.3)
-
-  punksmarket.app:
-    dependencies:
-      '@1001-digital/components.evm':
-        specifier: ^3.5.3
-        version: 3.5.3(@1001-digital/components@2.8.1(@1001-digital/styles@2.6.0)(vue@3.5.34(typescript@5.8.3)))(@vueuse/core@14.3.0(vue@3.5.34(typescript@5.8.3)))(@wagmi/core@3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76)))(@wagmi/vue@0.5.6(5ca148e16674af4a1812ff4ce6813cff))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.6))(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))(vue@3.5.34(typescript@5.8.3))
-      '@1001-digital/layers.evm':
-        specifier: ^2.7.8
-        version: 2.7.8(6b428d1bb68fed768a8d7d9af727779a)
-      '@networked-art/punks-sdk':
-        specifier: workspace:*
-        version: link:../sdk
-      '@tanstack/vue-query':
-        specifier: 5.95.2
-        version: 5.95.2(vue@3.5.34(typescript@5.8.3))
-      '@vueuse/core':
-        specifier: ^14.2.1
-        version: 14.3.0(vue@3.5.34(typescript@5.8.3))
-      '@wagmi/core':
-        specifier: 3.4.6
-        version: 3.4.6(@tanstack/query-core@5.95.2)(@types/react@19.2.14)(immer@10.0.2)(react@19.2.6)(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
-      '@wagmi/vue':
-        specifier: 0.5.6
-        version: 0.5.6(5ca148e16674af4a1812ff4ce6813cff)
-      viem:
-        specifier: 2.48.4
-        version: 2.48.4(typescript@5.8.3)(zod@3.25.76)
-    devDependencies:
-      '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.7.1
-      nuxt:
-        specifier: ^4.4.2
-        version: 4.4.5(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@electric-sql/pglite@0.2.13)(@parcel/watcher@2.5.6)(@types/node@25.8.0)(@vue/compiler-sfc@3.5.34)(cac@6.7.14)(db0@0.3.4(@electric-sql/pglite@0.2.13)(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0)))(drizzle-orm@0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(gel@2.2.0)(kysely@0.26.3)(pg@8.20.0))(idb-keyval@6.2.2)(ioredis@5.10.1)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.3))(rollup@4.60.3)(srvx@0.11.15)(terser@5.47.1)(tsx@4.22.1)(typescript@5.8.3)(vite@7.3.3(@types/node@25.8.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.1)(yaml@2.9.0))(vue-tsc@3.2.9(typescript@5.8.3))(xml2js@0.6.2)(yaml@2.9.0)
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
@@ -4852,6 +4855,9 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  avvatars@0.1.0:
+    resolution: {integrity: sha512-w7PziTTPgQRSO4aToPzYrGtMhYe8w33j0+uMkbvm/GHSdbTTho/SvLDRL/ABOFrpjM5f9PLqf4PSN+mtvCvxaA==}
 
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
@@ -16618,6 +16624,8 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  avvatars@0.1.0: {}
 
   axios-retry@4.5.0(axios@1.16.0):
     dependencies:
