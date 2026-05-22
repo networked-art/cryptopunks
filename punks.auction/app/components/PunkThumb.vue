@@ -3,12 +3,14 @@
     v-if="to"
     :to="to"
     class="punk-thumb"
+    :class="{ fluid }"
     :style="style"
     :title="title"
   />
   <span
     v-else
     class="punk-thumb"
+    :class="{ fluid }"
     :style="style"
     :title="title"
   />
@@ -27,11 +29,20 @@ const props = withDefaults(
     size?: number
     standard?: TokenStandardValue
     link?: boolean
+    /// Scale to the container (let a CSS grid size the tile) instead of a
+    /// fixed pixel `size` — see `LotGrid`.
+    fluid?: boolean
   }>(),
-  { size: 44, standard: TokenStandard.CryptoPunks, link: true },
+  {
+    size: 44,
+    standard: TokenStandard.CryptoPunks,
+    link: true,
+    fluid: false,
+  },
 )
 
 const SPRITE_COLS = 100
+const SPRITE_SPAN = SPRITE_COLS - 1
 const { backgroundForPunk } = usePunkBackgrounds()
 
 const to = computed(() =>
@@ -45,14 +56,28 @@ const title = computed(
 )
 
 const style = computed(() => {
-  const px = props.size
   const row = Math.floor(props.punkId / SPRITE_COLS)
   const col = props.punkId % SPRITE_COLS
-  return {
-    width: `${px}px`,
-    height: `${px}px`,
+  const sheet = {
     backgroundColor: backgroundForPunk(props.punkId, props.standard),
     backgroundImage: "url('/punks.png')",
+  }
+
+  // Fluid tiles place the sprite in percentages so they scale to whatever
+  // box a grid hands them; fixed tiles use pixel math against `size`.
+  if (props.fluid) {
+    return {
+      ...sheet,
+      backgroundSize: `${SPRITE_COLS * 100}% ${SPRITE_COLS * 100}%`,
+      backgroundPosition: `${(col / SPRITE_SPAN) * 100}% ${(row / SPRITE_SPAN) * 100}%`,
+    }
+  }
+
+  const px = props.size
+  return {
+    ...sheet,
+    width: `${px}px`,
+    height: `${px}px`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${col * px}px -${row * px}px`,
   }
@@ -67,6 +92,12 @@ const style = computed(() => {
   border-radius: 3px;
   background-repeat: no-repeat;
   flex-shrink: 0;
+}
+
+.punk-thumb.fluid {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }
 
 a.punk-thumb {

@@ -101,13 +101,16 @@ useSeoMeta({
   twitterTitle: 'Auctions · Punks Auction',
 })
 
+// MOCK DATA — `PunksAuction` has no live lots yet, so the list pages run on
+// fixtures while the card UI is built. Swap back to `useAuctions()` /
+// `useLots()` (from `useAuctionData.ts`) once there is on-chain data.
 const {
   auctions,
   pending: auctionsPending,
   error: auctionsError,
   deployed,
-} = useAuctions()
-const { lots, pending: lotsPending, error: lotsError } = useLots()
+} = useMockAuctions()
+const { lots, pending: lotsPending, error: lotsError } = useMockLots()
 
 /// Running = not yet settled. Live auctions first, soonest-ending leading;
 /// auctions past their end but awaiting settlement trail behind.

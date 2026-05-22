@@ -1,21 +1,19 @@
 <template>
-  <div class="punk-detail">
-    <NuxtLink
-      :to="backToSearchHref"
-      class="back muted"
-      >← back to search</NuxtLink
-    >
-
-    <section class="hero">
-      <div class="hero-image">
-        <PunkImage
-          :punk-id="punkId"
-          :standard="standard"
-          :size="320"
-        />
+  <article class="punk-detail">
+    <aside class="stage">
+      <div class="stage-inner">
+        <figure class="frame">
+          <div class="art-box">
+            <PunkImage
+              :punk-id="punkId"
+              :standard="standard"
+              size="100%"
+            />
+          </div>
+        </figure>
         <ClientOnly>
           <Button
-            class="download-btn small"
+            class="download small"
             :disabled="downloading"
             title="Download PNG"
             aria-label="Download PNG"
@@ -25,69 +23,60 @@
           </Button>
         </ClientOnly>
       </div>
+    </aside>
 
-      <div class="hero-info">
-        <h1 class="hero-title">
-          Punk <span class="dim">#</span>{{ punkId }}
-          <Tag
-            v-if="isV1"
-            small
-            class="v1-tag"
-            >V1</Tag
-          >
-        </h1>
-
-        <Tags class="hero-meta">
-          <NuxtLink :to="searchHref(summary.punkTypeName)">
-            <Tag small>{{ summary.punkTypeName }}</Tag>
-          </NuxtLink>
+    <section class="panel">
+      <div class="panel-inner">
+        <header class="head">
           <NuxtLink
-            v-if="skinTag"
-            :to="searchHref(skinTag.query)"
+            :to="backToSearchHref"
+            class="back"
+            >← Back to search</NuxtLink
           >
-            <Tag small>{{ skinTag.label }}</Tag>
-          </NuxtLink>
-          <NuxtLink :to="searchHref(`${summary.attributeCount} attributes`)">
-            <Tag small
-              >{{ summary.attributeCount }} attribute{{
-                summary.attributeCount === 1 ? '' : 's'
-              }}</Tag
-            >
-          </NuxtLink>
-          <NuxtLink :to="searchHref(`${summary.colorCount} colors`)">
-            <Tag small>{{ summary.colorCount }} colors</Tag>
-          </NuxtLink>
-          <NuxtLink :to="searchHref(`${summary.pixelCount} pixels`)">
-            <Tag small>{{ summary.pixelCount }} px</Tag>
-          </NuxtLink>
-        </Tags>
 
-        <ul class="trait-list">
-          <li
-            v-for="t in visibleTraits"
-            :key="t.id"
-          >
-            <span class="trait-kind">{{ t.kind }}</span>
+          <h1 class="title">
+            Punk <span class="dim">#</span>{{ punkId }}
+            <Tag
+              v-if="isV1"
+              small
+              class="v1-tag"
+              >V1</Tag
+            >
+          </h1>
+
+          <Tags class="meta">
+            <NuxtLink :to="searchHref(summary.punkTypeName)">
+              <Tag small>{{ summary.punkTypeName }}</Tag>
+            </NuxtLink>
             <NuxtLink
-              class="trait-name"
-              :to="searchHref(t.query)"
-              >{{ t.name }}</NuxtLink
+              v-if="skinTag"
+              :to="searchHref(skinTag.query)"
             >
-            <span class="muted trait-supply">{{ t.supply }}</span>
-          </li>
-
-          <li class="colors-row">
-            <span class="trait-kind">Colors</span>
-            <PunkColors :punk-id="punkId" />
-          </li>
-        </ul>
+              <Tag small>{{ skinTag.label }}</Tag>
+            </NuxtLink>
+            <NuxtLink :to="searchHref(`${summary.attributeCount} attributes`)">
+              <Tag small
+                >{{ summary.attributeCount }} attribute{{
+                  summary.attributeCount === 1 ? '' : 's'
+                }}</Tag
+              >
+            </NuxtLink>
+            <NuxtLink :to="searchHref(`${summary.colorCount} colors`)">
+              <Tag small>{{ summary.colorCount }} colors</Tag>
+            </NuxtLink>
+            <NuxtLink :to="searchHref(`${summary.pixelCount} pixels`)">
+              <Tag small>{{ summary.pixelCount }} px</Tag>
+            </NuxtLink>
+          </Tags>
+        </header>
 
         <ClientOnly>
-          <div class="owner-panel">
-            <span class="trait-kind">Owner</span>
+          <div class="owner">
+            <span class="owner-label">Owned by</span>
             <NuxtLink
               v-if="ownerKnown"
               :to="`/profile/${owner}`"
+              class="owner-account"
             >
               <AccountBadge :address="owner!" />
             </NuxtLink>
@@ -102,78 +91,131 @@
               >Unclaimed</span
             >
           </div>
+          <template #fallback>
+            <div class="owner">
+              <span class="owner-label">Owned by</span>
+              <span class="muted">…</span>
+            </div>
+          </template>
         </ClientOnly>
+
+        <ClientOnly>
+          <section class="block">
+            <h2 class="block-title">On the auction house</h2>
+            <p
+              v-if="!deployed"
+              class="block-note muted"
+            >
+              <code>PunksAuction</code> is not deployed yet.
+            </p>
+            <p
+              v-else-if="contextPending && isContextEmpty"
+              class="block-note muted"
+            >
+              Loading…
+            </p>
+            <p
+              v-else-if="isContextEmpty"
+              class="block-note muted"
+            >
+              This Punk is not in any auction, lot, or offer.
+            </p>
+            <div
+              v-else
+              class="context"
+            >
+              <div
+                v-if="punkAuctions.length"
+                class="context-group"
+              >
+                <h3 class="context-title">In auction</h3>
+                <div class="card-grid">
+                  <AuctionCard
+                    v-for="auction in punkAuctions"
+                    :key="String(auction.id)"
+                    :auction="auction"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="punkLots.length"
+                class="context-group"
+              >
+                <h3 class="context-title">In a lot</h3>
+                <div class="card-grid">
+                  <LotCard
+                    v-for="lot in punkLots"
+                    :key="String(lot.id)"
+                    :lot="lot"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="punkOffers.length"
+                class="context-group"
+              >
+                <h3 class="context-title">Matching offers</h3>
+                <div class="card-grid">
+                  <OfferCard
+                    v-for="offer in punkOffers"
+                    :key="String(offer.id)"
+                    :offer="offer"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        </ClientOnly>
+
+        <section class="block">
+          <h2 class="block-title">Traits</h2>
+          <ul class="trait-list">
+            <li
+              v-for="t in visibleTraits"
+              :key="t.id"
+            >
+              <span class="trait-kind">{{ t.kind }}</span>
+              <NuxtLink
+                class="trait-name"
+                :to="searchHref(t.query)"
+                >{{ t.name }}</NuxtLink
+              >
+              <span class="trait-supply muted">{{ t.supply }}</span>
+            </li>
+            <li class="colors-row">
+              <span class="trait-kind">Colors</span>
+              <PunkColors :punk-id="punkId" />
+            </li>
+          </ul>
+        </section>
+
+        <section
+          v-if="!isV1"
+          class="block"
+        >
+          <h2 class="block-title">History</h2>
+          <ClientOnly>
+            <PunkHistory :punk-id="punkId" />
+            <template #fallback>
+              <p class="block-note muted">Loading history…</p>
+            </template>
+          </ClientOnly>
+        </section>
+
+        <footer class="provenance">
+          <span>Ethereum mainnet</span>
+          <a
+            :href="contractHref"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View contract
+            <Icon name="lucide:external-link" />
+          </a>
+        </footer>
       </div>
     </section>
-
-    <ClientOnly>
-      <section class="detail-section">
-        <h2 class="section-title">On the auction house</h2>
-        <div
-          v-if="!deployed"
-          class="muted"
-        >
-          <code>PunksAuction</code> is not deployed yet.
-        </div>
-        <div
-          v-else-if="contextPending && isContextEmpty"
-          class="muted"
-        >
-          Loading…
-        </div>
-        <div
-          v-else-if="isContextEmpty"
-          class="muted"
-        >
-          This Punk is not in any auction, lot, or offer.
-        </div>
-        <div
-          v-else
-          class="context"
-        >
-          <div
-            v-if="punkAuctions.length"
-            class="context-group"
-          >
-            <h3 class="context-title">In auction</h3>
-            <div class="card-grid">
-              <AuctionCard
-                v-for="auction in punkAuctions"
-                :key="String(auction.id)"
-                :auction="auction"
-              />
-            </div>
-          </div>
-          <div
-            v-if="punkLots.length"
-            class="context-group"
-          >
-            <h3 class="context-title">In a lot</h3>
-            <div class="card-grid">
-              <LotCard
-                v-for="lot in punkLots"
-                :key="String(lot.id)"
-                :lot="lot"
-              />
-            </div>
-          </div>
-          <div
-            v-if="punkOffers.length"
-            class="context-group"
-          >
-            <h3 class="context-title">Matching offers</h3>
-            <div class="card-grid">
-              <OfferCard
-                v-for="offer in punkOffers"
-                :key="String(offer.id)"
-                :offer="offer"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-    </ClientOnly>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -186,6 +228,8 @@ import {
 } from '@networked-art/punks-sdk'
 import { downloadPunkPng } from '~/utils/punkSnapshot'
 import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
+import { CRYPTOPUNKS_ADDRESS, PUNKS_V1_ADDRESS } from '~/utils/addresses'
+import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{
   punkId: number
@@ -193,6 +237,9 @@ const props = defineProps<{
 }>()
 
 const isV1 = computed(() => props.standard === TokenStandard.CryptoPunksV1)
+const contractHref = computed(() =>
+  addressUrl(isV1.value ? PUNKS_V1_ADDRESS : CRYPTOPUNKS_ADDRESS),
+)
 
 const { backToSearchHref } = useSearchNavigation()
 const offline = usePunksOffline()
@@ -307,147 +354,168 @@ function searchHref(text: string) {
 
 <style scoped>
 .punk-detail {
-  padding: var(--size-6) 0 var(--size-8);
+  --app-header-height: 57px;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  width: 100%;
+}
+
+/* ── Left: the gallery frame ─────────────────────────────────────────── */
+
+.stage {
+  background: var(--gray-z-2);
+  border-right: var(--border);
+}
+
+.stage-inner {
+  position: sticky;
+  top: var(--app-header-height);
   display: flex;
   flex-direction: column;
-  gap: var(--size-6);
+  align-items: center;
+  justify-content: center;
+  height: calc(100dvh - var(--app-header-height));
+  padding: var(--size-6);
 }
 
-.back {
-  font-size: 12px;
-  border: 0;
-  align-self: flex-start;
-}
-
-.hero {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: var(--size-6);
-  align-items: start;
-}
-
-.hero-image {
+.frame {
   position: relative;
-  align-self: start;
-  aspect-ratio: 1/1;
+  margin: 0;
+  padding: clamp(var(--size-3), 2.4vw, var(--size-6));
+  background: #fff;
+  border: var(--border);
+  box-shadow:
+    0 1px 2px rgba(10, 10, 18, 0.05),
+    0 24px 48px -28px rgba(10, 10, 18, 0.4);
 }
 
-.download-btn {
+.art-box {
+  display: block;
+  width: min(420px, 42vw, 52vh);
+  aspect-ratio: 1;
+  font-size: 0;
+}
+
+.art-box :deep(.punk-image) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.download {
   position: absolute;
-  top: var(--size-3);
-  right: var(--size-3);
-  opacity: 0.2;
-  transition: opacity var(--speed) ease;
+  right: var(--size-5);
+  bottom: var(--size-5);
+  opacity: 0.25;
+  transition: opacity var(--speed, 0.15s) ease;
 }
 
-.hero-image:hover .download-btn,
-.download-btn:focus-visible,
-.download-btn:hover {
+.stage-inner:hover .download,
+.download:focus-visible,
+.download:hover {
   opacity: 1;
 }
 
-@media (max-width: 720px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
+/* ── Right: details + history ────────────────────────────────────────── */
 
-  .hero-image {
-    justify-self: center;
-  }
+.panel {
+  min-width: 0;
 }
 
-.hero-info {
+.panel-inner {
   display: flex;
   flex-direction: column;
-  gap: var(--size-5);
-  container-type: inline-size;
+  gap: var(--size-7);
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  padding: var(--size-7) var(--size-6) var(--size-9);
 }
 
-.hero-title {
-  font-size: 32px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  margin: 0;
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+
+.back {
+  align-self: flex-start;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+.title {
   display: flex;
   align-items: center;
   gap: var(--size-2);
+  margin: 0;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .v1-tag {
   font-size: 11px;
 }
 
-.trait-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--size-1) var(--size-9);
+.meta {
+  margin-top: var(--size-1);
+}
+
+/* Owner ledger box */
+
+.owner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
+  padding: var(--size-3) var(--size-4);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
   font-size: 12px;
 }
 
-@container (max-width: 560px) {
-  .trait-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-.trait-list li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--size-2);
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.trait-kind {
+.owner-label {
   text-transform: uppercase;
-  color: var(--text-dim);
-  font-size: 10px;
   letter-spacing: 0.06em;
-  width: 76px;
-  flex-shrink: 0;
-}
-
-.trait-name {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
-
-.trait-name:hover {
-  border-bottom-color: currentColor;
-}
-
-.colors-row {
-  align-items: center;
-}
-
-.trait-supply {
-  margin-left: auto;
   font-size: 10px;
+  color: var(--text-dim);
 }
 
-.owner-panel {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2);
+.owner-account {
+  border: 0;
+  min-width: 0;
 }
 
-.detail-section {
+/* Sections */
+
+.block {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
 }
 
-.section-title {
+.block-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-dim);
+}
+
+.block-note {
+  margin: 0;
+  font-size: 12px;
 }
 
 .context {
@@ -466,13 +534,88 @@ function searchHref(text: string) {
   margin: 0;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--size-3);
+}
+
+/* Traits */
+
+.trait-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.trait-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-3);
+  padding: var(--size-2) 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.trait-list li:last-child {
+  border-bottom: 0;
+}
+
+.trait-kind {
+  flex-shrink: 0;
+  width: 84px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.trait-name {
+  border: 0;
+  color: inherit;
+  box-shadow: inset 0 -1px 0 transparent;
+}
+
+.trait-name:hover {
+  box-shadow: inset 0 -1px 0 currentColor;
+}
+
+.trait-supply {
+  margin-left: auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.colors-row {
+  align-items: center !important;
+}
+
+/* Provenance footer */
+
+.provenance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
+  padding-top: var(--size-4);
+  border-top: var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.provenance a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  color: var(--text-muted);
+}
+
+.provenance a:hover {
+  color: var(--accent);
 }
 
 code {
@@ -481,6 +624,37 @@ code {
   color: var(--text-muted);
   padding: 1px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 0.9em;
+}
+
+/* ── Stacked layout ──────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .punk-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .stage {
+    border-right: 0;
+    border-bottom: var(--border);
+  }
+
+  .stage-inner {
+    position: relative;
+    height: auto;
+    padding: var(--size-7) var(--size-5);
+  }
+
+  .art-box {
+    width: min(380px, 72vw);
+  }
+
+  .panel-inner {
+    padding: var(--size-6) var(--size-5) var(--size-8);
+  }
+
+  .title {
+    font-size: 28px;
+  }
 }
 </style>

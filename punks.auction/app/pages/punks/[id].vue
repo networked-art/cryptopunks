@@ -1,16 +1,14 @@
 <template>
-  <div class="container">
-    <PunkDetail
-      v-if="validId"
-      :punk-id="id"
-      :standard="TokenStandard.CryptoPunks"
-    />
-    <div
-      v-else
-      class="not-found muted"
-    >
-      Punk #{{ route.params.id }} does not exist. Punk ids run 0–9999.
-    </div>
+  <PunkDetail
+    v-if="validId"
+    :punk-id="id"
+    :standard="TokenStandard.CryptoPunks"
+  />
+  <div
+    v-else
+    class="not-found muted"
+  >
+    Punk #{{ route.params.id }} does not exist. Punk ids run 0–9999.
   </div>
 </template>
 
@@ -39,6 +37,9 @@ useSeoMeta({
 
 <style scoped>
 .not-found {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
   padding: var(--size-8);
   text-align: center;
 }
