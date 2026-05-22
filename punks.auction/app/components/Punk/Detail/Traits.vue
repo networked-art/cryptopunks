@@ -20,6 +20,9 @@
           :to="punkSearchHref(`${summary.pixelCount} pixels`)"
           >{{ summary.pixelCount.toLocaleString() }} pixels</NuxtLink
         >
+        <span class="trait-supply muted">{{
+          pixelCountSupply.toLocaleString()
+        }}</span>
       </li>
       <li>
         <span class="trait-kind">Colors</span>
@@ -28,6 +31,9 @@
           :to="punkSearchHref(`${summary.colorCount} colors`)"
           >{{ summary.colorCount }} colors</NuxtLink
         >
+        <span class="trait-supply muted">{{
+          colorCountSupply.toLocaleString()
+        }}</span>
       </li>
       <li class="colors-row">
         <span class="trait-kind">Palette</span>
@@ -42,11 +48,19 @@ import type { PunkSummary } from '@networked-art/punks-sdk'
 import type { PunkDisplayTrait } from '~/composables/usePunkDisplayTraits'
 import { punkSearchHref } from '~/utils/punkSearch'
 
-defineProps<{
+const props = defineProps<{
   punkId: number
   summary: PunkSummary
   traits: PunkDisplayTrait[]
 }>()
+
+const offline = usePunksOffline()
+const pixelCountSupply = computed(() =>
+  offline.count({ pixelCount: props.summary.pixelCount }),
+)
+const colorCountSupply = computed(() =>
+  offline.count({ colorCount: props.summary.colorCount }),
+)
 </script>
 
 <style scoped>
