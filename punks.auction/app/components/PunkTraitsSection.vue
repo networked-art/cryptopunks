@@ -1,0 +1,98 @@
+<template>
+  <section class="block">
+    <h2 class="block-title">Traits</h2>
+    <ul class="trait-list">
+      <li
+        v-for="t in traits"
+        :key="t.id"
+      >
+        <span class="trait-kind">{{ t.kind }}</span>
+        <NuxtLink
+          class="trait-name"
+          :to="punkSearchHref(t.query)"
+          >{{ t.name }}</NuxtLink
+        >
+        <span class="trait-supply muted">{{ t.supply }}</span>
+      </li>
+      <li class="colors-row">
+        <span class="trait-kind">Colors</span>
+        <PunkColors :punk-id="punkId" />
+      </li>
+    </ul>
+  </section>
+</template>
+
+<script setup lang="ts">
+import type { PunkDisplayTrait } from '~/composables/usePunkDisplayTraits'
+import { punkSearchHref } from '~/utils/punkSearch'
+
+defineProps<{
+  punkId: number
+  traits: PunkDisplayTrait[]
+}>()
+</script>
+
+<style scoped>
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+
+.block-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.trait-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.trait-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-3);
+  padding: var(--size-2) 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.trait-list li:last-child {
+  border-bottom: 0;
+}
+
+.trait-kind {
+  flex-shrink: 0;
+  width: 84px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.trait-name {
+  border: 0;
+  color: inherit;
+  box-shadow: inset 0 -1px 0 transparent;
+}
+
+.trait-name:hover {
+  box-shadow: inset 0 -1px 0 currentColor;
+}
+
+.trait-supply {
+  margin-left: auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.colors-row {
+  align-items: center !important;
+}
+</style>
