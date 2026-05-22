@@ -17,11 +17,6 @@
               class="wrapped"
               >wrapped</span
             >
-            <EthAmount
-              v-if="row.amountWei !== undefined"
-              class="event-amount"
-              :wei="row.amountWei"
-            />
           </div>
 
           <div
@@ -75,16 +70,23 @@
           </div>
         </div>
 
-        <a
-          class="event-time"
-          :href="txUrl(row.txHash)"
-          target="_blank"
-          rel="noopener"
-          :title="row.absolute"
-        >
-          <span>{{ row.relative }}</span>
-          <Icon name="lucide:arrow-up-right" />
-        </a>
+        <div class="event-meta">
+          <EthAmount
+            v-if="row.amountWei !== undefined"
+            class="event-amount"
+            :wei="row.amountWei"
+          />
+          <a
+            class="event-time"
+            :href="txUrl(row.txHash)"
+            target="_blank"
+            rel="noopener"
+            :title="row.absolute"
+          >
+            <span>{{ row.relative }}</span>
+            <Icon name="lucide:arrow-up-right" />
+          </a>
+        </div>
       </li>
     </ul>
 
@@ -107,10 +109,6 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
-import {
-  CRYPTOPUNKS_721_ADDRESS,
-  WRAPPED_PUNKS_ADDRESS,
-} from '@networked-art/punks-sdk'
 import type { ActivityEvent, ActivityKind } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
 
@@ -125,7 +123,6 @@ const { events, pending, error } = useActivityFeed({
   punkId: () => props.punkId,
   limit: 60,
 })
-const { owner: nativeOwner } = usePunkOwner(() => props.punkId)
 
 const KIND_LABEL: Record<ActivityKind, string> = {
   assign: 'Claimed',
@@ -139,8 +136,6 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   sale: 'Sold',
 }
 
-/// Optional secondary account for non-transfer rows. Current-owner actions are
-/// omitted because the owner is already the page context.
 function pickInitiator(event: ActivityEvent): Address | undefined {
   switch (event.kind) {
     case 'sale':
@@ -172,37 +167,6 @@ function pickInitiatorLabel(event: ActivityEvent): string {
   }
 }
 
-function normalize(address?: Address | null): string | undefined {
-  return address?.toLowerCase()
-}
-
-function sameAddress(a?: Address | null, b?: Address | null): boolean {
-  const left = normalize(a)
-  const right = normalize(b)
-  return !!left && !!right && left === right
-}
-
-function isWrapperAddress(address?: Address | null): boolean {
-  return (
-    sameAddress(address, WRAPPED_PUNKS_ADDRESS) ||
-    sameAddress(address, CRYPTOPUNKS_721_ADDRESS)
-  )
-}
-
-function inferCurrentOwner(events: ActivityEvent[]): Address | undefined {
-  for (const event of events) {
-    if (
-      event.kind === 'assign' ||
-      event.kind === 'transfer' ||
-      event.kind === 'wrap' ||
-      event.kind === 'unwrap' ||
-      event.kind === 'sale'
-    ) {
-      if (event.to) return event.to
-    }
-  }
-}
-
 function formatAgo(timestamp: number): string {
   const seconds = Math.max(0, Math.floor(Date.now() / 1000) - timestamp)
   if (seconds < 60) return 'just now'
@@ -217,35 +181,24 @@ function formatAgo(timestamp: number): string {
   return `${Math.floor(days / 365)}y ago`
 }
 
-const currentOwner = computed(() => {
-  const inferred = inferCurrentOwner(events.value)
-  if (isWrapperAddress(nativeOwner.value) && inferred) return inferred
-  return nativeOwner.value ?? inferred
-})
-
 const rows = computed(() =>
-  events.value.map((event) => {
-    const initiator = pickInitiator(event)
-    return {
-      id: event.id,
-      initiator: sameAddress(initiator, currentOwner.value)
-        ? undefined
-        : initiator,
-      initiatorLabel: pickInitiatorLabel(event),
-      isTransfer: event.kind === 'transfer',
-      from: event.from,
-      to: event.to,
-      kind: KIND_LABEL[event.kind] ?? event.kind,
-      wrapped: event.wrapped,
-      amountWei:
-        event.amountWei !== undefined && event.amountWei > 0n
-          ? event.amountWei
-          : undefined,
-      txHash: event.txHash,
-      relative: formatAgo(event.timestamp),
-      absolute: new Date(event.timestamp * 1000).toLocaleString(),
-    }
-  }),
+  events.value.map((event) => ({
+    id: event.id,
+    initiator: pickInitiator(event),
+    initiatorLabel: pickInitiatorLabel(event),
+    isTransfer: event.kind === 'transfer',
+    from: event.from,
+    to: event.to,
+    kind: KIND_LABEL[event.kind] ?? event.kind,
+    wrapped: event.wrapped,
+    amountWei:
+      event.amountWei !== undefined && event.amountWei > 0n
+        ? event.amountWei
+        : undefined,
+    txHash: event.txHash,
+    relative: formatAgo(event.timestamp),
+    absolute: new Date(event.timestamp * 1000).toLocaleString(),
+  })),
 )
 
 const visibleRows = computed(() =>
@@ -358,6 +311,13 @@ const stateLabel = computed(() => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+.event-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--size-1);
 }
 
 .event-amount {
