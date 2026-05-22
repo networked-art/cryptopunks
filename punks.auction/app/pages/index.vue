@@ -1,5 +1,6 @@
 <template>
   <div class="landing">
+    <HeroPunks />
     <h1 class="headline">
       An Auction House
       <span class="headline-em">for CryptoPunks</span>
@@ -19,8 +20,10 @@ useSeoMeta({
 <style scoped>
 .landing {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: var(--size-6);
   padding: var(--size-9) var(--size-4);
   min-height: 60vh;
   max-height: 100vh;
