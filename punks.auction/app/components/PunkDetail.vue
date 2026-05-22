@@ -197,13 +197,12 @@
         </section>
 
         <footer class="provenance">
-          <span>Ethereum mainnet</span>
           <a
-            :href="contractHref"
+            :href="rendererHref"
             target="_blank"
             rel="noopener noreferrer"
           >
-            View contract
+            Onchain Punksdata
             <Icon name="lucide:external-link" />
           </a>
         </footer>
@@ -219,10 +218,10 @@ import {
   skinToneNames,
   type HeadVariantName,
   type SkinToneName,
+  PUNKS_RENDERER_ENS,
 } from '@networked-art/punks-sdk'
 import { downloadPunkPng } from '~/utils/punkSnapshot'
 import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
-import { CRYPTOPUNKS_ADDRESS, PUNKS_V1_ADDRESS } from '~/utils/addresses'
 import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{
@@ -231,8 +230,8 @@ const props = defineProps<{
 }>()
 
 const isV1 = computed(() => props.standard === TokenStandard.CryptoPunksV1)
-const contractHref = computed(() =>
-  addressUrl(isV1.value ? PUNKS_V1_ADDRESS : CRYPTOPUNKS_ADDRESS),
+const rendererHref = computed(
+  () => `${addressUrl(PUNKS_RENDERER_ENS)}/read#punkSvg:${props.punkId}`,
 )
 
 const offline = usePunksOffline()
@@ -580,7 +579,7 @@ function searchHref(text: string) {
 .provenance {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--size-3);
   padding-top: var(--size-4);
   border-top: var(--border);
