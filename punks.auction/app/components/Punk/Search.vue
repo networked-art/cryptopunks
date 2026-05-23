@@ -2,7 +2,10 @@
   <section class="punk-search">
     <header class="search-bar">
       <FormInputGroup class="search-group">
-        <div class="search-field">
+        <div
+          class="search-field"
+          :class="{ 'with-profile-link': ownerHandle }"
+        >
           <input
             ref="searchInput"
             v-model="text"
@@ -355,6 +358,12 @@ function unionIds(...groups: Iterable<number>[]) {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
+  z-index: 1;
+}
+
+.search-field:hover,
+.search-field:focus-within {
+  z-index: 2;
 }
 
 .search-input {
@@ -366,7 +375,14 @@ function unionIds(...groups: Iterable<number>[]) {
   font-size: 16px;
 }
 
+.search-field.with-profile-link .search-input {
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+
 .search-group :deep(.profile-link.button) {
+  border-start-start-radius: 0 !important;
+  border-end-start-radius: 0 !important;
   block-size: var(--search-control-height);
   min-block-size: var(--search-control-height);
   box-sizing: border-box;
