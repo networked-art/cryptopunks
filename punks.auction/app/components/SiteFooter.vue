@@ -1,6 +1,14 @@
 <template>
   <footer class="site-footer">
-    <div class="footer-inner">
+    <nav
+      class="footer-nav"
+      aria-label="Footer"
+    >
+      <NuxtLink
+        to="/terms"
+        active-class="nav-active"
+        >Terms</NuxtLink
+      >
       <a
         href="https://networked.art"
         target="_blank"
@@ -13,7 +21,7 @@
         rel="noopener noreferrer"
         >GitHub</a
       >
-    </div>
+    </nav>
   </footer>
 </template>
 
@@ -24,26 +32,28 @@
   color: var(--text-muted);
 }
 
-.footer-inner {
+.footer-nav {
   min-height: 48px;
   padding: 0 var(--size-4);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--size-4);
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0;
 }
 
-.footer-inner a {
-  color: inherit;
+.footer-nav a {
+  color: var(--text-muted);
   border: 0;
+  padding: 4px 0;
   text-decoration: none;
 }
 
-.footer-inner a:hover {
-  color: var(--accent);
+.footer-nav a:hover,
+.nav-active {
+  color: var(--text);
 }
 
 @media (max-width: 640px) {
@@ -51,7 +61,7 @@
     padding-block-end: var(--bottom-nav-height);
   }
 
-  .footer-inner {
+  .footer-nav {
     min-height: 56px;
   }
 }
