@@ -145,6 +145,10 @@ onBeforeUnmount(() => {
   transform: scale(0.88);
 }
 
+.hero-punk :deep(.punk-thumb) {
+  border-radius: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-punk {
     transition: none;
