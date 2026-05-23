@@ -32,6 +32,7 @@
         <ClientOnly>
           <Button
             v-if="ownerHandle"
+            class="profile-link"
             :to="`/profile/${ownerHandle}`"
           >
             View profile
@@ -344,6 +345,8 @@ function unionIds(...groups: Iterable<number>[]) {
 }
 
 .search-group {
+  --search-control-height: calc(var(--form-item-height) + var(--size-4));
+
   flex: 1 1 240px;
   min-width: 0;
 }
@@ -358,9 +361,16 @@ function unionIds(...groups: Iterable<number>[]) {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
-  min-height: 48px;
+  min-height: var(--search-control-height);
   padding-inline-end: 176px;
   font-size: 16px;
+}
+
+.search-group :deep(.profile-link.button) {
+  block-size: var(--search-control-height);
+  min-block-size: var(--search-control-height);
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .search-input::-webkit-search-cancel-button {
