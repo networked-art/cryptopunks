@@ -58,7 +58,7 @@ const ownerKnown = computed(
 
 .block-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .owner-account {

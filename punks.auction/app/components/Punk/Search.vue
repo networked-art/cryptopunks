@@ -5,6 +5,7 @@
         <div
           class="search-field"
           :class="{ 'with-profile-link': ownerHandle }"
+          :style="{ '--search-underline-width': underlineWidth }"
         >
           <input
             ref="searchInput"
@@ -128,6 +129,7 @@ watch(
 )
 
 const placeholder = computed(() => `Try hoodie, 2 colors, vault.eth, #1234`)
+const underlineWidth = computed(() => `${Math.max(text.value.length, 1)}ch`)
 
 /// Owner-search mode: when the *entire* trimmed input parses as an address or
 /// an ENS-like name, we treat it as "show this owner's punks" instead of
@@ -344,7 +346,8 @@ function unionIds(...groups: Iterable<number>[]) {
   margin: 0 auto;
   margin-top: calc(var(--size-4) + var(--size-3));
   padding: var(--size-4);
-  font-size: 16px;
+  font-size: var(--font-sm);
+  text-transform: uppercase;
 }
 
 .search-group {
@@ -352,18 +355,44 @@ function unionIds(...groups: Iterable<number>[]) {
 
   flex: 1 1 240px;
   min-width: 0;
+  box-shadow: 0 12px 28px rgb(10 10 18 / 16%);
 }
 
 .search-field {
+  --search-actions-width: 176px;
+
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
   z-index: 1;
 }
 
+.search-field::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: var(--ui-padding-inline);
+  top: calc(50% + 0.65em);
+  z-index: 3;
+  width: min(
+    var(--search-underline-width, 1ch),
+    calc(100% - var(--ui-padding-inline) - var(--search-actions-width))
+  );
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--speed),
+    width 80ms linear;
+}
+
 .search-field:hover,
 .search-field:focus-within {
   z-index: 2;
+}
+
+.search-field:focus-within::after {
+  opacity: 1;
 }
 
 .search-input {
@@ -372,7 +401,19 @@ function unionIds(...groups: Iterable<number>[]) {
   width: 100%;
   min-height: var(--search-control-height);
   padding-inline-end: 176px;
-  font-size: 16px;
+  border-radius: 0 !important;
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  box-shadow: none;
+}
+
+.search-input:hover,
+.search-input:active,
+.search-input:focus,
+.search-input:focus-visible,
+.search-input.active {
+  outline: none;
+  box-shadow: none;
 }
 
 .search-field.with-profile-link .search-input {
@@ -383,10 +424,18 @@ function unionIds(...groups: Iterable<number>[]) {
 .search-group :deep(.profile-link.button) {
   border-start-start-radius: 0 !important;
   border-end-start-radius: 0 !important;
+  border-radius: 0 !important;
   block-size: var(--search-control-height);
   min-block-size: var(--search-control-height);
   box-sizing: border-box;
+  font-size: var(--font-sm);
+  box-shadow: none;
   white-space: nowrap;
+}
+
+.search-group :deep(.profile-link.button:is(:hover, :active, :focus, .active)) {
+  outline: none;
+  box-shadow: none;
 }
 
 .search-input::-webkit-search-cancel-button {
@@ -407,7 +456,7 @@ function unionIds(...groups: Iterable<number>[]) {
 }
 
 .result-count {
-  font-size: 14px;
+  font-size: var(--font-sm);
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
@@ -438,6 +487,10 @@ function unionIds(...groups: Iterable<number>[]) {
 }
 
 @media (max-width: 640px) {
+  .search-field {
+    --search-actions-width: 104px;
+  }
+
   .search-input {
     padding-inline-end: 104px;
   }

@@ -2,5 +2,19 @@
   --font-family:
     'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo,
     Consolas, monospace;
+
+  /* Fixed-pixel scale tuned for JetBrains Mono. Overrides the layer's fluid
+     defaults so type stays predictable next to fixed-size punk artwork. */
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-md: 13px;
   --font-base: 14px;
+  --font-lg: 16px;
+  --font-xl: 22px;
+  --font-2xl: 28px;
+  --font-3xl: 34px;
+
+  /* Fluid display sizes — reserved for the marketing hero on `/`. */
+  --font-display: clamp(30px, 6vw, 46px);
+  --font-display-sm: clamp(15px, 2vw, 18px);
 }

@@ -237,7 +237,7 @@ const stateLabel = computed(() => {
   gap: var(--size-3);
   padding: var(--size-3);
   border-bottom: var(--border);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .event-main {
@@ -262,7 +262,7 @@ const stateLabel = computed(() => {
   min-width: 0;
   flex-wrap: wrap;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: var(--font-xs);
 }
 
 .event-indicator {
@@ -317,7 +317,7 @@ const stateLabel = computed(() => {
   gap: 3px;
   border: 0;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -332,7 +332,7 @@ const stateLabel = computed(() => {
 
 .state {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 @media (max-width: 460px) {

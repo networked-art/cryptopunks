@@ -54,7 +54,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: var(--font-lg);
   line-height: 1;
 }
 

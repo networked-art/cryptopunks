@@ -31,18 +31,18 @@ defineProps<{
   align-items: center;
   gap: var(--size-2);
   margin: 0;
-  font-size: 34px;
+  font-size: var(--font-3xl);
   font-weight: 600;
   letter-spacing: -0.03em;
 }
 
 .v1-tag {
-  font-size: 11px;
+  font-size: var(--font-xs);
 }
 
 @media (max-width: 860px) {
   .title {
-    font-size: 28px;
+    font-size: var(--font-2xl);
   }
 }
 </style>

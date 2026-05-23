@@ -43,7 +43,7 @@ const remaining = computed(() => Math.max(0, props.items.length - props.max))
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   background: var(--bg-elevated);
   border: 1px dashed var(--border-strong);

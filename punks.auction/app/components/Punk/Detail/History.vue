@@ -29,6 +29,6 @@ defineProps<{
 
 .block-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 </style>

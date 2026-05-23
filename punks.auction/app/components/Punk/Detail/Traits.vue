@@ -74,7 +74,7 @@ const colorCountSupply = computed(() =>
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .trait-list li {
@@ -106,7 +106,7 @@ const colorCountSupply = computed(() =>
 
 .trait-supply {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--font-xs);
   font-variant-numeric: tabular-nums;
 }
 

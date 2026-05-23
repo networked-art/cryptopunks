@@ -84,7 +84,7 @@ const rootStyle = computed(() => ({
   left: 0;
   right: 0;
   z-index: 5;
-  font-size: 10px;
+  font-size: var(--font-xs);
   color: var(--text);
   background: rgba(0, 0, 0, 0.55);
   text-align: center;

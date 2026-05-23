@@ -169,7 +169,7 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 .row-line.muted {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
 }
 
@@ -179,7 +179,7 @@ const KIND_LABEL: Record<string, string> = {
 
 .kind {
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: var(--font-xs);
   letter-spacing: 0.05em;
   color: var(--text);
 }
@@ -187,7 +187,7 @@ const KIND_LABEL: Record<string, string> = {
 .punk-id {
   border: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .row-meta {
@@ -209,7 +209,7 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 .time-ago {
-  font-size: 11px;
+  font-size: var(--font-xs);
   white-space: nowrap;
 }
 

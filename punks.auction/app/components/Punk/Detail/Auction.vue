@@ -107,7 +107,7 @@ const isContextEmpty = computed(
 
 .block-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .context {
@@ -124,7 +124,7 @@ const isContextEmpty = computed(
 
 .context-title {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--text-muted);
 }

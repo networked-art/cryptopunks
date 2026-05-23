@@ -88,7 +88,7 @@ useSeoMeta({
 
 .page-head h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   letter-spacing: -0.02em;
 }
@@ -105,7 +105,7 @@ useSeoMeta({
 
 .setting-status {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .setting-status code {
@@ -113,7 +113,7 @@ useSeoMeta({
   background: var(--bg-elevated);
   padding: 1px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .setting-row {
@@ -132,11 +132,11 @@ useSeoMeta({
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.4;
 }
 
 .setting-text .small {
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 </style>

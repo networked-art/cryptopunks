@@ -77,7 +77,7 @@ const isPrivate = computed(
 }
 
 .card-id {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 
@@ -87,7 +87,7 @@ const isPrivate = computed(
   grid-template-columns: max-content 1fr;
   column-gap: var(--size-4);
   row-gap: var(--size-1);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .fact {
@@ -103,7 +103,7 @@ const isPrivate = computed(
 }
 
 .note {
-  font-size: 11px;
+  font-size: var(--font-xs);
   margin: 0;
 }
 </style>

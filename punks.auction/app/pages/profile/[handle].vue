@@ -292,7 +292,7 @@ const myOffers = computed(() => {
 
 .profile-name {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -303,7 +303,7 @@ const myOffers = computed(() => {
   align-items: center;
   justify-content: center;
   border: 0;
-  font-size: 16px;
+  font-size: var(--font-lg);
   line-height: 1;
   padding: 4px;
 }
@@ -314,7 +314,7 @@ const myOffers = computed(() => {
 
 .profile-address {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   overflow-wrap: anywhere;
 }
 
@@ -323,7 +323,7 @@ const myOffers = computed(() => {
   display: flex;
   align-items: baseline;
   gap: var(--size-2);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .profile-cols {
@@ -359,7 +359,7 @@ const myOffers = computed(() => {
 
 .error {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 @media (max-width: 520px) {

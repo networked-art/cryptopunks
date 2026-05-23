@@ -100,12 +100,12 @@ const slots = computed(() =>
 }
 
 .card-id {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 
 .amount {
-  font-size: 15px;
+  font-size: var(--font-lg);
 }
 
 .facts {
@@ -114,7 +114,7 @@ const slots = computed(() =>
   grid-template-columns: max-content 1fr;
   column-gap: var(--size-4);
   row-gap: var(--size-1);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .fact {
@@ -154,12 +154,12 @@ const slots = computed(() =>
 }
 
 .slot-summary {
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .slot-count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--font-xs);
 }
 
 .slot-thumbs {
