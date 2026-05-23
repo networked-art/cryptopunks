@@ -5,7 +5,7 @@
   --text: var(--color);
   --text-muted: var(--muted);
   --text-dim: var(--gray-z-5);
-  --border-strong: var(--gray-z-3);
+  --border-strong: color-mix(in srgb, var(--gray-z-3) 45%, var(--gray-z-2));
   --font-mono: var(--font-family);
   --radius: var(--border-radius-lg);
   --radius-sm: var(--border-radius-sm);
