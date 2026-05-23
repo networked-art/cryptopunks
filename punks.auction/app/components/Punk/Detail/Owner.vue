@@ -1,7 +1,7 @@
 <template>
-  <ClientOnly>
-    <div class="owner">
-      <span class="owner-label">Owned by</span>
+  <section class="block">
+    <h2 class="block-title">Owned by</h2>
+    <ClientOnly>
       <NuxtLink
         v-if="ownerKnown"
         :to="`/profile/${owner}`"
@@ -11,22 +11,19 @@
       </NuxtLink>
       <span
         v-else-if="ownerPending"
-        class="muted"
+        class="block-note muted"
         >Loading…</span
       >
       <span
         v-else
-        class="muted"
+        class="block-note muted"
         >Unclaimed</span
       >
-    </div>
-    <template #fallback>
-      <div class="owner">
-        <span class="owner-label">Owned by</span>
-        <span class="muted">…</span>
-      </div>
-    </template>
-  </ClientOnly>
+      <template #fallback>
+        <span class="block-note muted">…</span>
+      </template>
+    </ClientOnly>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -49,23 +46,24 @@ const ownerKnown = computed(
 </script>
 
 <style scoped>
-.owner {
+.block {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--size-3);
-  padding: var(--size-3) var(--size-4);
-  border: var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  font-size: 12px;
 }
 
-.owner-label {
+.block-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10px;
   color: var(--text-dim);
+}
+
+.block-note {
+  margin: 0;
+  font-size: 12px;
 }
 
 .owner-account {
