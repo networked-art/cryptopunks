@@ -33,7 +33,7 @@
           class="bidder"
           :to="`/profile/${auction.latestBidder}`"
         >
-          <AccountBadge :address="auction.latestBidder" />
+          <Account :address="auction.latestBidder" />
         </NuxtLink>
       </div>
     </div>

@@ -25,7 +25,7 @@
         <dt>Seller</dt>
         <dd>
           <NuxtLink :to="`/profile/${lot.seller}`">
-            <AccountBadge :address="lot.seller" />
+            <Account :address="lot.seller" />
           </NuxtLink>
         </dd>
       </div>
@@ -36,7 +36,7 @@
         <dt>Buyer</dt>
         <dd>
           <NuxtLink :to="`/profile/${lot.onlySellTo}`">
-            <AccountBadge :address="lot.onlySellTo" />
+            <Account :address="lot.onlySellTo" />
           </NuxtLink>
         </dd>
       </div>

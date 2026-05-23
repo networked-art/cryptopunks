@@ -32,7 +32,7 @@
                 :to="`/profile/${row.from}`"
                 class="event-account"
               >
-                <AccountBadge :address="row.from" />
+                <Account :address="row.from" />
               </NuxtLink>
             </span>
             <span
@@ -49,7 +49,7 @@
                 :to="`/profile/${row.to}`"
                 class="event-account"
               >
-                <AccountBadge :address="row.to" />
+                <Account :address="row.to" />
               </NuxtLink>
             </span>
           </div>
@@ -64,7 +64,7 @@
                 :to="`/profile/${row.initiator}`"
                 class="event-account"
               >
-                <AccountBadge :address="row.initiator" />
+                <Account :address="row.initiator" />
               </NuxtLink>
             </span>
           </div>

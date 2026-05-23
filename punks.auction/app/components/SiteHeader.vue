@@ -36,7 +36,7 @@
             class="profile-link"
             aria-label="View your profile"
           >
-            <AccountBadge :address="address" />
+            <Account :address="address" />
           </NuxtLink>
         </div>
       </ClientOnly>
@@ -188,6 +188,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .header-inner {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .nav {
     display: none;
   }

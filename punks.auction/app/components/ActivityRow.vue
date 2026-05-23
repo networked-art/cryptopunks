@@ -32,7 +32,7 @@
           v-if="event.from"
           :to="`/profile/${event.from}`"
         >
-          <AccountBadge :address="event.from" />
+          <Account :address="event.from" />
         </NuxtLink>
         <span
           v-if="event.to && !sameParties"
@@ -43,7 +43,7 @@
           v-if="event.to && !sameParties"
           :to="`/profile/${event.to}`"
         >
-          <AccountBadge :address="event.to" />
+          <Account :address="event.to" />
         </NuxtLink>
       </div>
     </div>

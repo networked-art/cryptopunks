@@ -13,7 +13,7 @@
         <dt>Offerer</dt>
         <dd>
           <NuxtLink :to="`/profile/${offer.offerer}`">
-            <AccountBadge :address="offer.offerer" />
+            <Account :address="offer.offerer" />
           </NuxtLink>
         </dd>
       </div>

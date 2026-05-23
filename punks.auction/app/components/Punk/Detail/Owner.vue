@@ -7,7 +7,7 @@
         :to="`/profile/${owner}`"
         class="owner-account"
       >
-        <AccountBadge :address="owner!" />
+        <Account :address="owner!" />
       </NuxtLink>
       <span
         v-else-if="ownerPending"
