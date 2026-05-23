@@ -29,7 +29,12 @@
 
       <ClientOnly>
         <div class="connect">
-          <EvmConnectDialog v-if="!isConnected" />
+          <EvmConnectDialog
+            v-if="!isConnected"
+            class-name="primary"
+          >
+            Connect
+          </EvmConnectDialog>
           <NuxtLink
             v-else-if="address && profileHandle"
             :to="`/profile/${profileHandle}`"
