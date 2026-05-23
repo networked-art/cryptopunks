@@ -2,7 +2,9 @@
   <div class="container about-page">
     <header class="page-head">
       <h1>About</h1>
-      <p class="muted">A zero-fee auction house for CryptoPunks.</p>
+      <p class="muted">
+        An open-source auction house on the world computer, for CryptoPunks.
+      </p>
     </header>
 
     <section class="about-section">
@@ -15,11 +17,6 @@
           rel="noopener"
           >CryptoPunks</a
         >. It charges no fees — every wei a bidder pays reaches the seller.
-      </p>
-      <p class="muted">
-        The contract is not deployed yet. Until it is, the auction, lot, and
-        offer pages render an empty state; the collection itself is fully
-        browsable from the bundled dataset.
       </p>
     </section>
 
@@ -61,19 +58,41 @@
         <NuxtLink to="/punks?q=alien">Alien</NuxtLink>, every
         <NuxtLink to="/punks?q=hoodie">Hoodie</NuxtLink>, or specifically
         <NuxtLink to="/punks?q=6980 6981">#6980 and #6981</NuxtLink>. A seller
-        can
-        accept an offer instantly against a stored lot, or use it as the opening
-        bid for a fresh auction.
+        can accept an offer instantly against a stored lot, or use it as the
+        opening bid for a fresh auction.
       </p>
     </section>
 
     <section class="about-section">
-      <h2 class="section-title eyebrow">The contract</h2>
+      <h2 class="section-title eyebrow">The contracts</h2>
       <dl class="contract-meta">
-        <dt class="eyebrow">Contract</dt>
-        <dd><code>PunksAuction</code></dd>
-        <dt class="eyebrow">Fees</dt>
-        <dd>None</dd>
+        <dt class="eyebrow">PunksAuction</dt>
+        <dd>
+          <a
+            href="https://evm.now/address/0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b"
+            target="_blank"
+            rel="noopener"
+            ><code>punksauction.eth</code></a
+          >
+        </dd>
+        <dt class="eyebrow">PunksAuctionEscrow</dt>
+        <dd>
+          <a
+            href="https://evm.now/address/0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24"
+            target="_blank"
+            rel="noopener"
+            ><code>escrow.punksauction.eth</code></a
+          >
+        </dd>
+        <dt class="eyebrow">PunksVaultFactory</dt>
+        <dd>
+          <a
+            href="https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66"
+            target="_blank"
+            rel="noopener"
+            ><code>punksvaultfactory.eth</code></a
+          >
+        </dd>
       </dl>
     </section>
   </div>
