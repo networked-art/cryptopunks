@@ -37,7 +37,7 @@ const avatarUri = computed(() =>
   aspect-ratio: 1;
   display: inline-block;
   vertical-align: middle;
-  margin-right: 6px;
+  margin-right: var(--size-2);
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 

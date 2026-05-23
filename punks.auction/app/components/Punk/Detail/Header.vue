@@ -32,8 +32,8 @@ defineProps<{
   gap: var(--size-2);
   margin: 0;
   font-size: var(--font-3xl);
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-weight: var(--font-weight-bolder);
+  letter-spacing: var(--letter-spacing-tighter);
 }
 
 .v1-tag {

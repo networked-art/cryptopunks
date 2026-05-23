@@ -75,6 +75,6 @@ useSeoMeta({
 
 .terms-section p {
   margin: 0;
-  line-height: 1.55;
+  line-height: var(--line-height-loose);
 }
 </style>

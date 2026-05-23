@@ -297,7 +297,7 @@ const stateLabel = computed(() => {
 
 .event-kind {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--font-weight-bolder);
 }
 
 .event-meta {
@@ -308,13 +308,13 @@ const stateLabel = computed(() => {
 }
 
 .event-amount {
-  font-weight: 600;
+  font-weight: var(--font-weight-bolder);
 }
 
 .event-time {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--size-1);
   border: 0;
   color: var(--text-dim);
   font-size: var(--font-xs);

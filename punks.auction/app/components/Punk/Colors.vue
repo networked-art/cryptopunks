@@ -58,7 +58,7 @@ function stripHexPrefix(hex: string) {
 .punk-colors {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: var(--size-1);
 }
 
 .swatch {
@@ -66,7 +66,7 @@ function stripHexPrefix(hex: string) {
   width: 14px;
   height: 14px;
   border: var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .swatch:hover {

@@ -127,7 +127,7 @@ useSeoMeta({
 
 .about-section p {
   margin: 0;
-  line-height: 1.55;
+  line-height: var(--line-height-loose);
 }
 
 .contract-meta {
@@ -146,19 +146,6 @@ useSeoMeta({
 
 .credit {
   font-size: var(--font-sm);
-}
-
-code {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: var(--font-sm);
-}
-
-a code {
-  color: var(--accent-strong);
 }
 
 .about-section p a,

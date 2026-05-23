@@ -89,7 +89,7 @@ const style = computed(() => {
   display: block;
   image-rendering: pixelated;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background-repeat: no-repeat;
   flex-shrink: 0;
 }

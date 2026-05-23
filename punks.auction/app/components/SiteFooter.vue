@@ -55,7 +55,7 @@
   align-items: center;
   justify-content: center;
   font-size: var(--font-lg);
-  line-height: 1;
+  line-height: var(--line-height);
 }
 
 @media (max-width: 640px) {

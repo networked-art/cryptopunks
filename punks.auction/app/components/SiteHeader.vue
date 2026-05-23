@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--size-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-bolder);
   border: 0;
   color: var(--text);
   justify-self: start;
@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
 }
 
 .brand-word {
-  letter-spacing: -0.02em;
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 @media (max-width: 640px) {

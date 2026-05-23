@@ -195,13 +195,4 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 .error {
   color: var(--accent);
 }
-
-code {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: var(--font-sm);
-}
 </style>

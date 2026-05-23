@@ -180,7 +180,7 @@ const KIND_LABEL: Record<string, string> = {
 .kind {
   text-transform: uppercase;
   font-size: var(--font-xs);
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-md);
   color: var(--text);
 }
 

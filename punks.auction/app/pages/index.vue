@@ -37,9 +37,9 @@ useSeoMeta({
   margin: var(--size-4) 0 0;
   max-width: 600px;
   font-size: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tighter);
+  line-height: var(--line-height-tight);
 }
 
 .headline-em {
@@ -51,6 +51,6 @@ useSeoMeta({
   max-width: 560px;
   color: var(--text-muted);
   font-size: var(--font-display-sm);
-  line-height: 1.5;
+  line-height: var(--line-height-relaxed);
 }
 </style>

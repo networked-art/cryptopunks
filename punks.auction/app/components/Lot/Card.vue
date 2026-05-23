@@ -78,7 +78,7 @@ const isPrivate = computed(
 
 .card-id {
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
 }
 
 .facts {

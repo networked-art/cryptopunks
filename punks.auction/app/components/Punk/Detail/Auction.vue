@@ -125,7 +125,7 @@ const isContextEmpty = computed(
 .context-title {
   margin: 0;
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   color: var(--text-muted);
 }
 
@@ -133,14 +133,5 @@ const isContextEmpty = computed(
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--size-3);
-}
-
-code {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 0.9em;
 }
 </style>

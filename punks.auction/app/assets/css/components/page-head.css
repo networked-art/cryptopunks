@@ -1,6 +1,6 @@
 .page-head h1 {
   margin: 0 0 var(--size-1);
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   font-size: var(--font-xl);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--letter-spacing-tight);
 }

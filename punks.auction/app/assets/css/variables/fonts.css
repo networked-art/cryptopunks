@@ -17,4 +17,21 @@
   /* Fluid display sizes — reserved for the marketing hero on `/`. */
   --font-display: clamp(30px, 6vw, 46px);
   --font-display-sm: clamp(15px, 2vw, 18px);
+
+  /* Weights — layer covers light(300)/normal(400)/bold(500). Add 600 for
+     the heavier accents (nav, prices, kind labels, big titles). */
+  --font-weight-bolder: 600;
+
+  /* Letter spacing — layer covers sm(-0.025)/default(0.025)/md(0.05)/lg(0.1).
+     Add tight headline values and the slightly-wider uppercase eyebrow. */
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-tighter: -0.03em;
+  --letter-spacing-wide: 0.08em;
+
+  /* Line heights — layer covers default(100%)/sm(105%)/md(120%)/lg(160%).
+     Add the prose/UI ratios we actually use. */
+  --line-height-tight: 1.12;
+  --line-height-snug: 1.4;
+  --line-height-relaxed: 1.5;
+  --line-height-loose: 1.55;
 }

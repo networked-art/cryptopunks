@@ -96,7 +96,7 @@ function smallestDisplayValue(precision: number) {
 .eth-amount {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--size-1);
   font-variant-numeric: tabular-nums;
 }
 

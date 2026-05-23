@@ -293,7 +293,7 @@ const myOffers = computed(() => {
 .profile-name {
   margin: 0;
   font-size: var(--font-2xl);
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
@@ -304,8 +304,8 @@ const myOffers = computed(() => {
   justify-content: center;
   border: 0;
   font-size: var(--font-lg);
-  line-height: 1;
-  padding: 4px;
+  line-height: var(--line-height);
+  padding: var(--size-1);
 }
 
 .settings-link:hover {

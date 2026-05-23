@@ -28,7 +28,7 @@
     min-block-size: var(--size-4);
     font-size: var(--font-xs) !important;
     align-items: center;
-    line-height: 1;
+    line-height: var(--line-height);
 
     /* JetBrains Mono uppercase sits optically high in the line box; nudge the
        text down a hair to land on the visual center. */

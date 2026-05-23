@@ -92,7 +92,7 @@ const absoluteEnd = computed(() =>
 
 .id {
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-bolder);
 }
 
 .status {
@@ -101,7 +101,7 @@ const absoluteEnd = computed(() =>
   gap: var(--size-1);
   flex-shrink: 0;
   font-size: var(--font-xs);
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-md);
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--text-muted);
@@ -148,7 +148,7 @@ const absoluteEnd = computed(() =>
 
 .price {
   font-size: var(--font-lg);
-  font-weight: 600;
+  font-weight: var(--font-weight-bolder);
 }
 
 .when {

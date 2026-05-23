@@ -89,8 +89,8 @@ useSeoMeta({
 .page-head h1 {
   margin: 0;
   font-size: var(--font-2xl);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .settings-section {
@@ -108,14 +108,6 @@ useSeoMeta({
   font-size: var(--font-md);
 }
 
-.setting-status code {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: var(--font-sm);
-}
-
 .setting-row {
   display: flex;
   align-items: flex-start;
@@ -124,16 +116,16 @@ useSeoMeta({
 }
 
 .setting-row input[type='checkbox'] {
-  margin-top: 4px;
+  margin-top: var(--size-1);
   flex-shrink: 0;
 }
 
 .setting-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--size-0);
   font-size: var(--font-base);
-  line-height: 1.4;
+  line-height: var(--line-height-snug);
 }
 
 .setting-text .small {
