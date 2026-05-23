@@ -1,3 +1,7 @@
+:root {
+  --dialog-border-radius: 0;
+}
+
 .dialog {
   --background: #fff;
   --dialog-header-background: #fff;
