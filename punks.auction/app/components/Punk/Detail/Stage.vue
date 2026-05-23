@@ -117,6 +117,7 @@ async function downloadImage() {
 
   .stage-inner {
     position: relative;
+    top: auto;
     height: auto;
     padding: var(--size-7) var(--size-5);
   }
