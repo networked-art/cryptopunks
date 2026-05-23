@@ -13,12 +13,7 @@
             type="search"
             class="search-input"
             :placeholder="placeholder"
-            @click="syncUnderline"
-            @focus="syncUnderline"
-            @input="syncUnderline"
             @keydown.enter="onEnter"
-            @keyup="syncUnderline"
-            @select="syncUnderline"
           />
           <span
             ref="underlineMeasure"
@@ -155,18 +150,8 @@ function measureUnderline() {
     underlineMeasure.value?.getBoundingClientRect().width ?? 0
 }
 
-function syncUnderline(event?: Event) {
-  const input =
-    event?.target instanceof HTMLInputElement
-      ? event.target
-      : searchInput.value
-  if (!input) {
-    underlineText.value = text.value
-    nextTick(measureUnderline)
-    return
-  }
-  const cursorIndex = input.selectionStart ?? input.value.length
-  underlineText.value = input.value.slice(0, cursorIndex)
+function syncUnderline() {
+  underlineText.value = text.value
   nextTick(measureUnderline)
 }
 
