@@ -371,7 +371,7 @@ function unionIds(...groups: Iterable<number>[]) {
   max-width: 720px;
   box-sizing: border-box;
   margin: 0 auto;
-  margin-top: calc(var(--size-4) + var(--size-3));
+  margin-top: var(--size-2);
   padding: var(--size-4);
   font-size: var(--font-sm);
   text-transform: uppercase;
