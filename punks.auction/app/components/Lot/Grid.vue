@@ -66,6 +66,5 @@ const columns = computed(() => {
   color: var(--text-muted);
   background: var(--bg-elevated);
   border: 1px dashed var(--border-strong);
-  border-radius: 3px;
 }
 </style>

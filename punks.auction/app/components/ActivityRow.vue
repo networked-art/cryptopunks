@@ -151,7 +151,6 @@ const KIND_LABEL: Record<string, string> = {
   justify-content: center;
   background: var(--bg-elevated);
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
   color: var(--text-dim);
 }
 

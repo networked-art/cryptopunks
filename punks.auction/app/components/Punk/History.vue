@@ -226,7 +226,6 @@ const stateLabel = computed(() => {
   margin: 0;
   padding: 0;
   border: var(--border);
-  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
 }
 

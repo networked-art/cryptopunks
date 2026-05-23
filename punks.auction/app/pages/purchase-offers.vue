@@ -83,7 +83,6 @@ const sortedOffers = computed(() =>
   padding: var(--size-8);
   text-align: center;
   border: 1px dashed var(--border-color);
-  border-radius: var(--radius);
 }
 
 .error {

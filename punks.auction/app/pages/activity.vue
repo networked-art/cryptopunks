@@ -177,7 +177,6 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   margin: 0;
   padding: 0;
   border: var(--border);
-  border-radius: var(--radius);
   background: var(--bg-elevated);
 }
 
@@ -185,7 +184,6 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   padding: var(--size-8);
   text-align: center;
   border: 1px dashed var(--border-color);
-  border-radius: var(--radius);
 }
 
 .load-more {

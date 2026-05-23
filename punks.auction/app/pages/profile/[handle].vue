@@ -353,7 +353,6 @@ const myOffers = computed(() => {
   margin: 0;
   padding: 0;
   border: var(--border);
-  border-radius: var(--radius);
   background: var(--bg-elevated);
 }
 

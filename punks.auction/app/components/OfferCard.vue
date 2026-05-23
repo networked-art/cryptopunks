@@ -141,7 +141,6 @@ const slots = computed(() =>
 .slot {
   padding: var(--size-2);
   border: var(--border);
-  border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   gap: var(--size-2);
