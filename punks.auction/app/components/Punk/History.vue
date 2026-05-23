@@ -94,7 +94,7 @@
 
     <Button
       v-if="rows.length > LIMIT"
-      class="small link muted"
+      class="small link muted show-more"
       @click="expanded = !expanded"
     >
       {{ expanded ? 'Show less' : `Show all ${rows.length}` }}
@@ -328,6 +328,10 @@ const stateLabel = computed(() => {
 
 .event-time:hover {
   color: var(--accent);
+}
+
+.show-more {
+  align-self: center;
 }
 
 .state {
