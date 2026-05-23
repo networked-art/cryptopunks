@@ -28,7 +28,6 @@
           v-if="!isV1"
           :punk-id="punkId"
         />
-        <PunkDetailFooter :punk-id="punkId" />
       </div>
     </section>
   </article>
