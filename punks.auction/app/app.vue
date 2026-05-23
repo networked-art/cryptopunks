@@ -6,7 +6,7 @@
       <NuxtPage />
     </main>
     <SiteFooter />
-    <BottomNav class="mobile-nav">
+    <BottomNav class="mobile-nav app-nav">
       <NuxtLink
         to="/punks"
         active-class="nav-active"
@@ -53,15 +53,7 @@
 .mobile-nav {
   display: none;
   backdrop-filter: none;
-  background: var(--background);
-}
-
-.mobile-nav :deep(a) {
-  font-size: 13px;
-}
-
-.mobile-nav :deep(.nav-active) {
-  color: var(--text);
+  background: var(--bg-elevated);
 }
 
 @media (max-width: 640px) {

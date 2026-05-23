@@ -13,3 +13,24 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.app-nav a {
+  color: var(--text-muted);
+  border: 0;
+  padding: 4px 0;
+  text-decoration: none;
+}
+
+.app-nav a:hover,
+.app-nav .nav-active {
+  color: var(--text);
+}

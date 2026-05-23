@@ -13,7 +13,7 @@
       </NuxtLink>
 
       <nav
-        class="nav"
+        class="nav app-nav"
         @mouseleave="hoveredIndex = null"
       >
         <NuxtLink
@@ -179,14 +179,6 @@ onBeforeUnmount(() => {
   letter-spacing: -0.02em;
 }
 
-.nav {
-  display: flex;
-  gap: var(--size-4);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 @media (max-width: 640px) {
   .header-inner {
     grid-template-columns: 1fr 1fr;
@@ -195,17 +187,6 @@ onBeforeUnmount(() => {
   .nav {
     display: none;
   }
-}
-
-.nav a {
-  border: 0;
-  color: var(--text-muted);
-  padding: 4px 0;
-}
-
-.nav a:hover,
-.nav-active {
-  color: var(--text);
 }
 
 .nav-indicator {

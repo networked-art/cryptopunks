@@ -1,25 +1,31 @@
 <template>
   <footer class="site-footer">
     <nav
-      class="footer-nav"
+      class="footer-nav app-nav"
       aria-label="Footer"
     >
+      <div class="footer-links">
+        <a
+          href="https://networked.art"
+          target="_blank"
+          rel="noopener noreferrer"
+          >networked.art</a
+        >
+        <a
+          class="github-link"
+          href="https://github.com/networked-art/cryptopunks/tree/master/punks.auction"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub repository"
+          title="GitHub repository"
+        >
+          <Icon name="lucide:github" />
+        </a>
+      </div>
       <NuxtLink
         to="/terms"
         active-class="nav-active"
         >Terms</NuxtLink
-      >
-      <a
-        href="https://networked.art"
-        target="_blank"
-        rel="noopener noreferrer"
-        >networked.art</a
-      >
-      <a
-        href="https://github.com/networked-art/cryptopunks/tree/master/punks.auction"
-        target="_blank"
-        rel="noopener noreferrer"
-        >GitHub</a
       >
     </nav>
   </footer>
@@ -35,25 +41,21 @@
 .footer-nav {
   min-height: 48px;
   padding: 0 var(--size-4);
+  justify-content: space-between;
+}
+
+.footer-links {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--size-4);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0;
 }
 
-.footer-nav a {
-  color: var(--text-muted);
-  border: 0;
-  padding: 4px 0;
-  text-decoration: none;
-}
-
-.footer-nav a:hover,
-.nav-active {
-  color: var(--text);
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
 }
 
 @media (max-width: 640px) {
