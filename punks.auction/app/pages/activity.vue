@@ -177,6 +177,7 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   margin: 0;
   padding: 0;
   border: var(--border);
+  border-bottom: 0;
   background: var(--bg-elevated);
 }
 

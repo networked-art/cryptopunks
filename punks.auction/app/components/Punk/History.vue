@@ -226,6 +226,7 @@ const stateLabel = computed(() => {
   margin: 0;
   padding: 0;
   border: var(--border);
+  border-bottom: 0;
   background: var(--bg-elevated);
 }
 
@@ -237,10 +238,6 @@ const stateLabel = computed(() => {
   padding: var(--size-3);
   border-bottom: var(--border);
   font-size: 12px;
-}
-
-.event-row:last-child {
-  border-bottom: 0;
 }
 
 .event-main {
