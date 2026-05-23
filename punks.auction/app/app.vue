@@ -5,6 +5,7 @@
     <main class="shell-main">
       <NuxtPage />
     </main>
+    <SiteFooter />
     <BottomNav class="mobile-nav">
       <NuxtLink
         to="/punks"
