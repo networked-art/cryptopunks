@@ -205,7 +205,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .punk-grid {
   position: relative;
-  padding: var(--spacer);
 }
 
 .grid-scroll {

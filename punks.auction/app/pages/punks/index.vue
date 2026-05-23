@@ -22,6 +22,6 @@ useSeoMeta({
 <style scoped>
 .search-page {
   width: 100%;
-  padding-bottom: var(--size-4);
+  padding: 0 var(--spacer) var(--size-4);
 }
 </style>
