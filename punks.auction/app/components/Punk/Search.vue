@@ -4,7 +4,7 @@
       <FormInputGroup class="search-group">
         <div
           class="search-field"
-          :class="{ 'with-profile-link': ownerHandle }"
+          :class="{ 'with-profile-link': ownerHandle, 'has-text': text }"
           :style="{ '--search-underline-width': underlineWidth }"
         >
           <input
@@ -13,8 +13,19 @@
             type="search"
             class="search-input"
             :placeholder="placeholder"
+            @click="syncUnderline"
+            @focus="syncUnderline"
+            @input="syncUnderline"
             @keydown.enter="onEnter"
+            @keyup="syncUnderline"
+            @select="syncUnderline"
           />
+          <span
+            ref="underlineMeasure"
+            class="search-underline-measure"
+            aria-hidden="true"
+            >{{ underlineText }}</span
+          >
           <span class="search-actions">
             <span class="muted result-count">
               {{ counts.filtered.toLocaleString()
@@ -53,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { onKeyStroke, refDebounced } from '@vueuse/core'
+import { onKeyStroke, refDebounced, useMediaQuery } from '@vueuse/core'
 import { isAddress, type Address } from 'viem'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
@@ -82,6 +93,7 @@ const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
+const underlineMeasure = useTemplateRef<HTMLElement>('underlineMeasure')
 
 /// `/` is a global shortcut for "focus the search". Skip when the user is
 /// already typing into an editable element so the slash lands as a character.
@@ -128,8 +140,38 @@ watch(
   },
 )
 
-const placeholder = computed(() => `Try hoodie, 2 colors, vault.eth, #1234`)
-const underlineWidth = computed(() => `${Math.max(text.value.length, 1)}ch`)
+const isMobileSearch = useMediaQuery('(max-width: 640px)')
+const placeholder = computed(() =>
+  isMobileSearch.value
+    ? 'HOODIE, 2 COLORS, ...'
+    : 'Try hoodie, 2 colors, vault.eth, #1234',
+)
+const underlineText = ref(text.value)
+const underlineWidthPx = ref(0)
+const underlineWidth = computed(() => `${underlineWidthPx.value}px`)
+
+function measureUnderline() {
+  underlineWidthPx.value =
+    underlineMeasure.value?.getBoundingClientRect().width ?? 0
+}
+
+function syncUnderline(event?: Event) {
+  const input =
+    event?.target instanceof HTMLInputElement
+      ? event.target
+      : searchInput.value
+  if (!input) {
+    underlineText.value = text.value
+    nextTick(measureUnderline)
+    return
+  }
+  const cursorIndex = input.selectionStart ?? input.value.length
+  underlineText.value = input.value.slice(0, cursorIndex)
+  nextTick(measureUnderline)
+}
+
+watch(text, () => nextTick(syncUnderline))
+onMounted(() => nextTick(syncUnderline))
 
 /// Owner-search mode: when the *entire* trimmed input parses as an address or
 /// an ENS-like name, we treat it as "show this owner's punks" instead of
@@ -355,7 +397,12 @@ function unionIds(...groups: Iterable<number>[]) {
 
   flex: 1 1 240px;
   min-width: 0;
-  box-shadow: 0 12px 28px rgb(10 10 18 / 16%);
+  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
+  transition: box-shadow 180ms ease;
+}
+
+.search-group:focus-within {
+  box-shadow: 0 18px 42px rgb(10 10 18 / 28%);
 }
 
 .search-field {
@@ -371,12 +418,9 @@ function unionIds(...groups: Iterable<number>[]) {
   content: '';
   position: absolute;
   inset-inline-start: var(--ui-padding-inline);
-  top: calc(50% + 0.65em);
+  top: calc(50% + 1em);
   z-index: 3;
-  width: min(
-    var(--search-underline-width, 1ch),
-    calc(100% - var(--ui-padding-inline) - var(--search-actions-width))
-  );
+  width: 0;
   height: 2px;
   background: var(--accent);
   opacity: 0;
@@ -386,12 +430,34 @@ function unionIds(...groups: Iterable<number>[]) {
     width 80ms linear;
 }
 
+.search-underline-measure {
+  position: absolute;
+  display: inline-block;
+  inset-inline-start: var(--ui-padding-inline);
+  top: calc(50% + 1em);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre;
+  font-family: var(--ui-font-family);
+  font-size: var(--font-sm);
+  font-weight: var(--ui-font-weight);
+  letter-spacing: var(--ui-letter-spacing);
+  line-height: var(--ui-line-height);
+  text-transform: uppercase;
+}
+
 .search-field:hover,
 .search-field:focus-within {
   z-index: 2;
 }
 
-.search-field:focus-within::after {
+.search-field.has-text:focus-within::after {
+  width: min(
+    var(--search-underline-width, 0ch),
+    calc(100% - var(--ui-padding-inline) - var(--search-actions-width))
+  );
   opacity: 1;
 }
 
@@ -457,7 +523,7 @@ function unionIds(...groups: Iterable<number>[]) {
 
 .result-count {
   font-size: var(--font-sm);
-  line-height: 1;
+  line-height: var(--line-height);
   white-space: nowrap;
   pointer-events: none;
 }
