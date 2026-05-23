@@ -5,3 +5,11 @@
 .accent {
   color: var(--accent);
 }
+
+.eyebrow {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}

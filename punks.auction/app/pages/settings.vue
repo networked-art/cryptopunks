@@ -7,7 +7,7 @@
 
     <ClientOnly>
       <section class="settings-section">
-        <h2 class="section-title">Wallet</h2>
+        <h2 class="section-title eyebrow">Wallet</h2>
         <p
           v-if="address"
           class="muted setting-status"
@@ -32,7 +32,7 @@
       </section>
 
       <section class="settings-section">
-        <h2 class="section-title">Rendering</h2>
+        <h2 class="section-title eyebrow">Rendering</h2>
         <label class="setting-row">
           <input
             v-model="renderV1"
@@ -101,11 +101,6 @@ useSeoMeta({
 
 .section-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .setting-status {

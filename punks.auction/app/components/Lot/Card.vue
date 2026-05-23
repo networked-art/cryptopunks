@@ -16,13 +16,13 @@
 
     <dl class="facts">
       <div class="fact">
-        <dt>Reserve</dt>
+        <dt class="eyebrow">Reserve</dt>
         <dd>
           <EthAmount :wei="lot.reserveWei" />
         </dd>
       </div>
       <div class="fact">
-        <dt>Seller</dt>
+        <dt class="eyebrow">Seller</dt>
         <dd>
           <NuxtLink :to="`/profile/${lot.seller}`">
             <Account :address="lot.seller" />
@@ -33,7 +33,7 @@
         v-if="isPrivate"
         class="fact"
       >
-        <dt>Buyer</dt>
+        <dt class="eyebrow">Buyer</dt>
         <dd>
           <NuxtLink :to="`/profile/${lot.onlySellTo}`">
             <Account :address="lot.onlySellTo" />
@@ -95,10 +95,6 @@ const isPrivate = computed(
 }
 
 .fact dt {
-  color: var(--text-dim);
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.05em;
   align-self: center;
 }
 

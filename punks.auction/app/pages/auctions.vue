@@ -14,7 +14,7 @@
 
     <ClientOnly>
       <section class="section">
-        <h2 class="section-title">Running auctions</h2>
+        <h2 class="section-title eyebrow">Running auctions</h2>
         <div
           v-if="auctionsPending && !runningAuctions.length"
           class="muted"
@@ -52,7 +52,7 @@
       </section>
 
       <section class="section">
-        <h2 class="section-title">Open lots</h2>
+        <h2 class="section-title eyebrow">Open lots</h2>
         <div
           v-if="lotsPending && !sortedLots.length"
           class="muted"
@@ -146,11 +146,6 @@ const sortedLots = computed(() =>
 
 .section-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .card-grid {

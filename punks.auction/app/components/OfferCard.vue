@@ -10,7 +10,7 @@
 
     <dl class="facts">
       <div class="fact">
-        <dt>Offerer</dt>
+        <dt class="eyebrow">Offerer</dt>
         <dd>
           <NuxtLink :to="`/profile/${offer.offerer}`">
             <Account :address="offer.offerer" />
@@ -18,7 +18,7 @@
         </dd>
       </div>
       <div class="fact">
-        <dt>Bundle</dt>
+        <dt class="eyebrow">Bundle</dt>
         <dd>
           {{ offer.slots.length }} slot{{ offer.slots.length === 1 ? '' : 's' }}
         </dd>
@@ -122,10 +122,6 @@ const slots = computed(() =>
 }
 
 .fact dt {
-  color: var(--text-dim);
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.05em;
   align-self: center;
 }
 

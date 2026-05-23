@@ -28,7 +28,9 @@
       </div>
 
       <div class="line line-bidder">
-        <span class="by">{{ status === 'settled' ? 'Won by' : 'Bid by' }}</span>
+        <span class="by eyebrow">{{
+          status === 'settled' ? 'Won by' : 'Bid by'
+        }}</span>
         <NuxtLink
           class="bidder"
           :to="`/profile/${auction.latestBidder}`"
@@ -159,13 +161,6 @@ const absoluteEnd = computed(() =>
 
 .line-bidder {
   justify-content: flex-start;
-}
-
-.by {
-  font-size: var(--font-xs);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-dim);
 }
 
 .bidder {

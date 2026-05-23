@@ -5,7 +5,7 @@
         v-for="t in traits"
         :key="`${t.kind}-${t.id}`"
       >
-        <span class="trait-kind">{{ t.kind }}</span>
+        <span class="trait-kind eyebrow">{{ t.kind }}</span>
         <NuxtLink
           class="trait-name"
           :to="punkSearchHref(t.query)"
@@ -14,7 +14,7 @@
         <span class="trait-supply muted">{{ t.supply.toLocaleString() }}</span>
       </li>
       <li>
-        <span class="trait-kind">Pixels</span>
+        <span class="trait-kind eyebrow">Pixels</span>
         <NuxtLink
           class="trait-name"
           :to="punkSearchHref(`${summary.pixelCount} pixels`)"
@@ -25,7 +25,7 @@
         }}</span>
       </li>
       <li>
-        <span class="trait-kind">Colors</span>
+        <span class="trait-kind eyebrow">Colors</span>
         <NuxtLink
           class="trait-name"
           :to="punkSearchHref(`${summary.colorCount} colors`)"
@@ -36,7 +36,7 @@
         }}</span>
       </li>
       <li class="colors-row">
-        <span class="trait-kind">Palette</span>
+        <span class="trait-kind eyebrow">Palette</span>
         <PunkColors :punk-id="punkId" />
       </li>
     </ul>
@@ -70,15 +70,6 @@ const colorCountSupply = computed(() =>
   gap: var(--size-3);
 }
 
-.block-title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
 .trait-list {
   list-style: none;
   margin: 0;
@@ -101,10 +92,6 @@ const colorCountSupply = computed(() =>
 .trait-kind {
   flex-shrink: 0;
   width: 84px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10px;
-  color: var(--text-dim);
 }
 
 .trait-name {

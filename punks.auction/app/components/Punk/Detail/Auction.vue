@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <section class="block">
-      <h2 class="block-title">On the auction house</h2>
+      <h2 class="block-title eyebrow">On the auction house</h2>
       <p
         v-if="!deployed"
         class="block-note muted"
@@ -103,11 +103,6 @@ const isContextEmpty = computed(
 
 .block-title {
   margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
 }
 
 .block-note {

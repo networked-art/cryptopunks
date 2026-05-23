@@ -24,7 +24,7 @@
     </section>
 
     <section class="about-section">
-      <h2 class="section-title">Vaults</h2>
+      <h2 class="section-title eyebrow">Vaults</h2>
       <p>
         A seller never hands custody to the auction house. Each seller keeps
         their Punks in their own <code>PunksVault</code>, deployed
@@ -36,7 +36,7 @@
     </section>
 
     <section class="about-section">
-      <h2 class="section-title">Lots and auctions</h2>
+      <h2 class="section-title eyebrow">Lots and auctions</h2>
       <p>
         A seller bundles one or more vaulted Punks into a <em>lot</em> with a
         reserve price. A lot just sits there — it costs nothing and is not yet
@@ -53,7 +53,7 @@
     </section>
 
     <section class="about-section">
-      <h2 class="section-title">Purchase offers</h2>
+      <h2 class="section-title eyebrow">Purchase offers</h2>
       <p>
         Buyers can also work the other side of the book. A purchase offer locks
         ETH against one or more slots, each a set of trait and colour criteria —
@@ -68,11 +68,11 @@
     </section>
 
     <section class="about-section">
-      <h2 class="section-title">The contract</h2>
+      <h2 class="section-title eyebrow">The contract</h2>
       <dl class="contract-meta">
-        <dt>Contract</dt>
+        <dt class="eyebrow">Contract</dt>
         <dd><code>PunksAuction</code></dd>
-        <dt>Fees</dt>
+        <dt class="eyebrow">Fees</dt>
         <dd>None</dd>
       </dl>
     </section>
@@ -104,11 +104,6 @@ useSeoMeta({
 
 .section-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .about-section p {
@@ -123,13 +118,6 @@ useSeoMeta({
   column-gap: var(--size-4);
   row-gap: var(--size-2);
   align-items: baseline;
-}
-
-.contract-meta dt {
-  color: var(--text-muted);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .contract-meta dd {

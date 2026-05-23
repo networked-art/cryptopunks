@@ -1,6 +1,6 @@
 <template>
   <section class="block">
-    <h2 class="block-title">Owned by</h2>
+    <h2 class="block-title eyebrow">Owned by</h2>
     <ClientOnly>
       <NuxtLink
         v-if="ownerKnown"
@@ -54,11 +54,6 @@ const ownerKnown = computed(
 
 .block-title {
   margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
 }
 
 .block-note {

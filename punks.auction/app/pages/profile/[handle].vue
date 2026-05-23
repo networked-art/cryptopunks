@@ -60,7 +60,7 @@
             v-if="resolvedAddress && escrowBalance > 0n"
             class="escrow"
           >
-            <span class="escrow-label">Claimable escrow</span>
+            <span class="eyebrow">Claimable escrow</span>
             <EthAmount :wei="escrowBalance" />
           </p>
         </ClientOnly>
@@ -73,7 +73,7 @@
         class="profile-cols"
       >
         <section class="profile-section">
-          <h2 class="section-title">Owned Punks</h2>
+          <h2 class="section-title eyebrow">Owned Punks</h2>
           <p
             v-if="ownedLoading"
             class="muted"
@@ -100,7 +100,7 @@
         </section>
 
         <section class="profile-section">
-          <h2 class="section-title">Active lots</h2>
+          <h2 class="section-title eyebrow">Active lots</h2>
           <div
             v-if="myLots.length"
             class="card-grid"
@@ -120,7 +120,7 @@
         </section>
 
         <section class="profile-section">
-          <h2 class="section-title">Active offers</h2>
+          <h2 class="section-title eyebrow">Active offers</h2>
           <div
             v-if="myOffers.length"
             class="card-grid"
@@ -140,7 +140,7 @@
         </section>
 
         <section class="profile-section">
-          <h2 class="section-title">Recent activity</h2>
+          <h2 class="section-title eyebrow">Recent activity</h2>
           <ul
             v-if="activity.length"
             class="event-list"
@@ -326,13 +326,6 @@ const myOffers = computed(() => {
   font-size: 13px;
 }
 
-.escrow-label {
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
 .profile-cols {
   display: flex;
   flex-direction: column;
@@ -347,11 +340,6 @@ const myOffers = computed(() => {
 
 .section-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .card-grid {

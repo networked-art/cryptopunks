@@ -14,7 +14,7 @@
             <span class="event-kind">{{ row.kind }}</span>
             <span
               v-if="row.wrapped"
-              class="wrapped"
+              class="wrapped eyebrow"
               >wrapped</span
             >
           </div>
@@ -27,7 +27,7 @@
               v-if="row.from"
               class="event-indicator"
             >
-              <span class="indicator-label">From</span>
+              <span class="indicator-label eyebrow">From</span>
               <NuxtLink
                 :to="`/profile/${row.from}`"
                 class="event-account"
@@ -44,7 +44,7 @@
               v-if="row.to"
               class="event-indicator"
             >
-              <span class="indicator-label">To</span>
+              <span class="indicator-label eyebrow">To</span>
               <NuxtLink
                 :to="`/profile/${row.to}`"
                 class="event-account"
@@ -59,7 +59,9 @@
             class="event-indicators"
           >
             <span class="event-indicator">
-              <span class="indicator-label">{{ row.initiatorLabel }}</span>
+              <span class="indicator-label eyebrow">{{
+                row.initiatorLabel
+              }}</span>
               <NuxtLink
                 :to="`/profile/${row.initiator}`"
                 class="event-account"
@@ -275,10 +277,6 @@ const stateLabel = computed(() => {
 }
 
 .indicator-label {
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 10px;
   white-space: nowrap;
 }
 
@@ -304,13 +302,6 @@ const stateLabel = computed(() => {
 .event-kind {
   color: var(--text);
   font-weight: 600;
-}
-
-.wrapped {
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-dim);
 }
 
 .event-meta {
