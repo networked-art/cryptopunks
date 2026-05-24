@@ -41,6 +41,18 @@ export type LotItem = {
   weightBps: number
 }
 
+export function formatLotItemLabel(item: Pick<LotItem, 'standard' | 'punkId'>) {
+  return `Punk #${item.punkId}${
+    item.standard === TokenStandard.CryptoPunksV1 ? ' (V1)' : ''
+  }`
+}
+
+export function formatLotItemsLabel(items: readonly LotItem[]) {
+  const [item] = items
+  if (items.length === 1 && item) return formatLotItemLabel(item)
+  return `${items.length.toLocaleString()} Punks`
+}
+
 export type LotRecord = {
   id: bigint
   seller: Address

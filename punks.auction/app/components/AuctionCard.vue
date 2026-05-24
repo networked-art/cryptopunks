@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { auctionStatus, type AuctionRecord } from '~/utils/auction'
+import { auctionStatus, formatLotItemsLabel, type AuctionRecord } from '~/utils/auction'
 
 const props = defineProps<{ auction: AuctionRecord }>()
 
@@ -24,8 +24,7 @@ const statusLabel = computed(
     ({ live: 'live', ended: 'ended', settled: 'settled' })[status.value],
 )
 const itemCountLabel = computed(() => {
-  const count = props.auction.items.length
-  return `${count.toLocaleString()} Punk${count === 1 ? '' : 's'}`
+  return formatLotItemsLabel(props.auction.items)
 })
 
 const endIso = computed(() =>

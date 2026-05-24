@@ -12,14 +12,13 @@
 </template>
 
 <script setup lang="ts">
-import type { LotRecord } from '~/utils/auction'
+import { formatLotItemsLabel, type LotRecord } from '~/utils/auction'
 
 defineOptions({ name: 'LotCard' })
 
 const props = defineProps<{ lot: LotRecord }>()
 
 const itemCountLabel = computed(() => {
-  const count = props.lot.items.length
-  return `${count.toLocaleString()} Punk${count === 1 ? '' : 's'}`
+  return formatLotItemsLabel(props.lot.items)
 })
 </script>
