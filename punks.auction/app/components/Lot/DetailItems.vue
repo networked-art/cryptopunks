@@ -3,9 +3,10 @@
     <h2 class="block-title eyebrow">Items</h2>
     <ul class="items">
       <li
-        v-for="item in items"
+        v-for="item in sortedItems"
         :key="`${item.standard}-${item.punkId}`"
         class="item"
+        :class="{ 'item-with-weight': showWeights }"
       >
         <NuxtLink
           class="item-link"
@@ -19,7 +20,7 @@
           />
           <span class="item-label">{{ formatLotItemLabel(item) }}</span>
         </NuxtLink>
-        <span class="weight">{{ formatWeight(item.weightBps) }}</span>
+        <span v-if="showWeights" class="weight">{{ formatWeight(item.weightBps) }}</span>
       </li>
     </ul>
   </section>
@@ -32,9 +33,19 @@ import {
   type LotItem,
 } from '~/utils/auction'
 
-defineProps<{
+const props = defineProps<{
   items: LotItem[]
 }>()
+
+const showWeights = computed(() => {
+  const weights = props.items.map((item) => item.weightBps)
+  if (weights.length < 2) return false
+  return Math.max(...weights) - Math.min(...weights) > 100
+})
+
+const sortedItems = computed(() =>
+  [...props.items].sort((a, b) => b.weightBps - a.weightBps),
+)
 
 function formatWeight(weightBps: number) {
   const percent = weightBps / 100
@@ -64,12 +75,17 @@ function formatWeight(weightBps: number) {
 
 .item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: var(--size-3);
   padding: var(--size-2);
   border: var(--border);
   background: var(--bg-elevated);
+}
+
+.item-with-weight {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  padding-right: var(--size-3);
 }
 
 .item-link {
@@ -78,6 +94,10 @@ function formatWeight(weightBps: number) {
   gap: var(--size-3);
   min-width: 0;
   border: 0;
+}
+
+.item-link :deep(.punk-thumb) {
+  border-radius: 0;
 }
 
 .item-label {

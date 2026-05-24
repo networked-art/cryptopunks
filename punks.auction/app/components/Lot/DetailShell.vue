@@ -56,10 +56,6 @@ defineProps<{
   margin: 0;
 }
 
-.frame :deep(.lot-preview) {
-  border: var(--border);
-}
-
 .panel {
   display: flex;
   align-items: center;

@@ -23,7 +23,18 @@
             label="Live auction,"
           />
           {{ statusLabel }}
+          <span
+            v-if="showCountdown"
+            class="countdown"
+          >
+            {{ endCountdown.str }}
+          </span>
         </dd>
+      </div>
+
+      <div class="fact">
+        <dt>Ends</dt>
+        <dd>{{ endLabel }}</dd>
       </div>
 
       <div class="fact">
@@ -31,21 +42,6 @@
         <dd>
           <EthAmount :wei="displayAuction.latestBidWei" />
         </dd>
-      </div>
-
-      <div
-        v-if="displayMinimumBidWei"
-        class="fact"
-      >
-        <dt>Next bid</dt>
-        <dd>
-          <EthAmount :wei="displayMinimumBidWei" />
-        </dd>
-      </div>
-
-      <div class="fact">
-        <dt>Ends</dt>
-        <dd>{{ endLabel }}</dd>
       </div>
 
       <div class="fact">
@@ -58,35 +54,24 @@
       </div>
 
       <div class="fact">
-        <dt>High bidder</dt>
+        <dt>High Bidder</dt>
         <dd>
           <NuxtLink :to="`/profile/${displayAuction.latestBidder}`">
             <Account :address="displayAuction.latestBidder" />
           </NuxtLink>
         </dd>
       </div>
-
-      <div
-        v-if="displayAuction.sourceLotId"
-        class="fact"
-      >
-        <dt>Source lot</dt>
-        <dd>
-          <NuxtLink :to="`/lots/${displayAuction.sourceLotId}`">
-            Lot #{{ displayAuction.sourceLotId }}
-          </NuxtLink>
-        </dd>
-      </div>
     </dl>
 
-    <LotDetailItems :items="displayAuction.items" />
-
     <AuctionActions
-      v-if="!isMock && displayMinimumBidWei"
+      v-if="displayMinimumBidWei"
       :auction="displayAuction"
       :minimum-bid-wei="displayMinimumBidWei"
+      :preview="isMock"
       @changed="onChanged"
     />
+
+    <LotDetailItems :items="displayAuction.items" />
   </LotDetailShell>
 
   <div
@@ -106,7 +91,6 @@
 </template>
 
 <script setup lang="ts">
-import { useNow } from '@vueuse/core'
 import { mockAuctionById } from '~/composables/useAuctionData.mock'
 import {
   auctionStatus,
@@ -114,6 +98,8 @@ import {
   minNextBidWei,
   type AuctionStatus,
 } from '~/utils/auction'
+
+const COUNTDOWN_WINDOW_SECONDS = 12 * 60 * 60
 
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
@@ -130,12 +116,25 @@ const displayAuction = computed(
 )
 const isMock = computed(() => !auction.value && !!displayAuction.value)
 
-const now = useNow({ interval: 1000 })
+const now = useSeconds()
 const status = computed<AuctionStatus>(() => {
   const current = displayAuction.value
   if (!current) return 'settled'
-  return auctionStatus(current, Math.floor(now.value.getTime() / 1000))
+  return auctionStatus(current, now.value)
 })
+const secondsUntilEnd = computed(() => {
+  const current = displayAuction.value
+  return current ? Math.max(0, current.endTimestamp - now.value) : 0
+})
+const endCountdown = useCountDown(
+  secondsUntilEnd,
+  COUNTDOWN_WINDOW_SECONDS + 1,
+)
+const showCountdown = computed(
+  () =>
+    status.value === 'live' &&
+    secondsUntilEnd.value <= COUNTDOWN_WINDOW_SECONDS,
+)
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Live'
   if (status.value === 'ended') return 'Awaiting settlement'
@@ -233,6 +232,12 @@ useSeoMeta({
   vertical-align: 0.1em;
 }
 
+.countdown {
+  margin-inline-start: var(--size-1);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .state {
   display: grid;
   place-items: center;
@@ -242,10 +247,6 @@ useSeoMeta({
 }
 
 @media (max-width: 540px) {
-  .facts {
-    grid-template-columns: 1fr;
-  }
-
   .title {
     font-size: var(--font-2xl);
   }
