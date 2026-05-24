@@ -9,7 +9,8 @@
       <span
         v-if="detail"
         aria-hidden="true"
-      >&middot;</span>
+        >&middot;</span
+      >
       <EthAmount
         class="summary-amount"
         :wei="wei"
@@ -33,10 +34,10 @@ defineProps<{
   align-items: center;
   gap: var(--size-4);
   min-width: 0;
-  font-size: var(--font-xs);
+  font-size: var(--font-base);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
-  line-height: var(--line-height-tight);
+  line-height: var(--line-height-snug);
 }
 
 .summary-subject,
@@ -55,7 +56,7 @@ defineProps<{
   display: inline-flex;
   align-items: baseline;
   justify-content: end;
-  gap: var(--size-1);
+  gap: var(--size-2);
   text-align: right;
 }
 
