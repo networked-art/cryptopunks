@@ -184,7 +184,7 @@ const sortedLots = computed(() =>
       1fr
     )
   );
-  gap: var(--size-4);
+  gap: var(--size-6);
   min-width: 0;
 }
 
