@@ -3,10 +3,10 @@ import { describe, it } from 'node:test'
 import {
   CRYPTOPUNKS_721_ADDRESS,
   CRYPTOPUNKS_MARKET_ADDRESS,
+  PUNKS_AUCTION_ADDRESS,
   PUNKS_RENDERER_BACKGROUND_DEFAULT,
   STASH_FACTORY_ADDRESS,
   WRAPPED_PUNKS_ADDRESS,
-  PunksDataValidationError,
   createPunksSdk,
 } from '../dist/index.js'
 import { bundledOfflinePunksDataWithPixels } from '../dist/offline-pixel-data.js'
@@ -255,10 +255,10 @@ describe('PunksSdk', () => {
     assert.equal(bid.request.functionName, 'bid')
     assert.equal(bid.request.value, 150n)
 
-    assert.throws(
-      () =>
-        createPunksSdk().auctions.prepareBid({ auctionId: 1n, amountWei: 1n }),
-      PunksDataValidationError,
-    )
+    const defaultBid = createPunksSdk().auctions.prepareBid({
+      auctionId: 1n,
+      amountWei: 1n,
+    })
+    assert.equal(defaultBid.request.address, PUNKS_AUCTION_ADDRESS)
   })
 })

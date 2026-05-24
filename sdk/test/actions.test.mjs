@@ -11,6 +11,8 @@ import {
 import {
   CRYPTOPUNKS_721_ADDRESS,
   CRYPTOPUNKS_MARKET_ADDRESS,
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_DATA_ADDRESS,
   STASH_FACTORY_ADDRESS,
   WRAPPED_PUNKS_ADDRESS,
   ZERO_ADDRESS,
@@ -449,6 +451,33 @@ describe('SDK contract actions', () => {
     )
   })
 
+  it('defaults auction actions to mainnet and reads auction helpers', async () => {
+    const reads = []
+    const publicClient = {
+      readContract: async (request) => {
+        reads.push(request)
+        return fakeRead(request)
+      },
+    }
+    const punks = createPunksSdk({ publicClient })
+
+    assert.equal(punks.auctions.address, PUNKS_AUCTION_ADDRESS)
+    assert.equal(await punks.auctions.punksDataAddress(), PUNKS_DATA_ADDRESS)
+    assert.equal(
+      await punks.auctions.activeLotFor({
+        seller: OWNER,
+        standard: 'cryptopunks-v1',
+        punkId: 123,
+      }),
+      77n,
+    )
+
+    assert.deepEqual(
+      reads.find((read) => read.functionName === 'activeLotFor')?.args,
+      [OWNER, 1, 123],
+    )
+  })
+
   it('prepares one-transaction create-lot-and-settle auction writes', () => {
     const punks = createPunksSdk({ addresses: { auction: AUCTION } })
 
@@ -584,6 +613,18 @@ function fakeRead({ address, functionName, args = [] }) {
         return [2, 10n, AUCTION]
       default:
         throw new Error(`unhandled stash read ${functionName}`)
+    }
+  }
+
+  if (address === PUNKS_AUCTION_ADDRESS) {
+    switch (functionName) {
+      case 'PUNKS_DATA':
+        return PUNKS_DATA_ADDRESS
+      case 'activeLotFor':
+        assert.deepEqual(args, [OWNER, 1, 123])
+        return 77n
+      default:
+        throw new Error(`unhandled auction read ${functionName}`)
     }
   }
 

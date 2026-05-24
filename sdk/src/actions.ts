@@ -1,6 +1,7 @@
 import type { Abi, Address, Hex, PublicClient, WalletClient } from 'viem'
 import {
   CRYPTOPUNKS_MARKET_ADDRESS,
+  PUNKS_AUCTION_ADDRESS,
   PunkStandard,
   ZERO_ADDRESS,
   type PunkStandardValue,
@@ -378,14 +379,14 @@ export type PunksAuctionConfig = WalletConfig & {
 }
 
 export class PunksAuctionClient {
-  readonly address?: Address
+  readonly address: Address
   private readonly dataset: PunksDataset
   private readonly publicClient?: PublicClient
   private readonly walletClient?: WalletClient
   private readonly account?: Address
 
   constructor(config: PunksAuctionConfig) {
-    this.address = config.address
+    this.address = config.address ?? PUNKS_AUCTION_ADDRESS
     this.dataset = config.dataset
     this.publicClient = config.publicClient
     this.walletClient = config.walletClient
@@ -410,6 +411,24 @@ export class PunksAuctionClient {
 
   async v1MarketAddress(): Promise<Address> {
     return this.read<Address>('PUNKS_V1')
+  }
+
+  async punksDataAddress(): Promise<Address> {
+    return this.read<Address>('PUNKS_DATA')
+  }
+
+  async activeLotFor(params: {
+    seller: Address
+    standard?: PunkStandardRef
+    punkId: number
+  }): Promise<bigint> {
+    validatePunkId(params.punkId)
+    const standard = normalizePunkStandard(params.standard ?? 'cryptopunks')
+    return this.read<bigint>('activeLotFor', [
+      params.seller,
+      standard,
+      params.punkId,
+    ])
   }
 
   /// Returns the deterministic vault address for `user`. Same value whether
@@ -934,11 +953,6 @@ export class PunksAuctionClient {
   }
 
   private requireAddress(): Address {
-    if (!this.address) {
-      throw new PunksDataValidationError(
-        'auction address is required for auction actions',
-      )
-    }
     return this.address
   }
 

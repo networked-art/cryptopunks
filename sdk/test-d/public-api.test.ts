@@ -1,5 +1,7 @@
 import type { Address, Hex, WalletClient } from 'viem'
 import {
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_AUCTION_ESCROW_ADDRESS,
   createPunksSimilarity,
   createPunksDataClient,
   createPunksSdk,
@@ -25,6 +27,9 @@ declare const operator: Address
 declare const stashAddress: Address
 declare const auction: Address
 declare const walletClient: WalletClient
+
+const punksAuctionAddress: Address = PUNKS_AUCTION_ADDRESS
+const punksAuctionEscrowAddress: Address = PUNKS_AUCTION_ESCROW_ADDRESS
 
 const bid: StashPunkBid = {
   order: {
@@ -134,6 +139,12 @@ factory.renounceRoles
 
 const punks = createPunksSdk()
 const punksData = createPunksDataClient({})
+const auctionPunksData: Promise<Address> = punks.auctions.punksDataAddress()
+const activeLot: Promise<bigint> = punks.auctions.activeLotFor({
+  seller: owner,
+  standard: 'cryptopunks',
+  punkId: 8348,
+})
 const punksDataHash: Promise<Hex> = punksData.datasetHash()
 const offerPlan: ContractWritePlan = punks.offers.preparePlace({
   amountWei: 10n,
