@@ -28,8 +28,7 @@ useSeoMeta({
   justify-content: center;
   gap: var(--size-8);
   padding: var(--size-9) var(--size-4);
-  min-height: 60vh;
-  max-height: 100vh;
+  min-height: calc(100svh - 113px);
   text-align: center;
 }
 
