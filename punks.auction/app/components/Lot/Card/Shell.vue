@@ -31,7 +31,6 @@ defineProps<{
   inset: 0;
   z-index: 8;
   border: 0;
-  border-radius: var(--radius-sm);
   color: inherit;
   cursor: pointer;
   text-decoration: none;

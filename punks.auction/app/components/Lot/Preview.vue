@@ -105,7 +105,6 @@ function next() {
   padding: 9%;
   background: white;
   border: var(--border);
-  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -158,7 +157,6 @@ function next() {
   inline-size: max-content;
   min-block-size: var(--font-lg);
   padding: var(--border-width);
-  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   box-shadow: 0 0 0 var(--border-width) var(--border-color);
 }
@@ -173,7 +171,6 @@ function next() {
   color: var(--text-muted);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -186,6 +183,10 @@ function next() {
 .preview-button :deep(.icon) {
   width: var(--font-sm);
   height: var(--font-sm);
+}
+
+.lot-preview :deep(.punk-thumb) {
+  border-radius: 0;
 }
 
 .preview-count {
