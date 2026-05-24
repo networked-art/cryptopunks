@@ -3,23 +3,37 @@
     <div
       v-if="activeItem"
       class="deck"
+      :class="deckClass"
     >
-      <PunkThumb
-        v-if="backingItem"
-        :key="`${activeIndex}-${backingItem.standard}-${backingItem.punkId}`"
-        class="backing-punk"
-        :punk-id="backingItem.punkId"
-        :standard="backingItem.standard"
-        :link="false"
-        fluid
-      />
-      <PunkThumb
-        class="main-punk"
-        :punk-id="activeItem.punkId"
-        :standard="activeItem.standard"
-        :link="false"
-        fluid
-      />
+      <template v-if="isMosaic">
+        <PunkThumb
+          v-for="item in mosaicItems"
+          :key="`${item.standard}-${item.punkId}`"
+          class="mosaic-punk"
+          :punk-id="item.punkId"
+          :standard="item.standard"
+          :link="false"
+          fluid
+        />
+      </template>
+      <template v-else>
+        <PunkThumb
+          v-if="backingItem"
+          :key="`${activeIndex}-${backingItem.standard}-${backingItem.punkId}`"
+          class="backing-punk"
+          :punk-id="backingItem.punkId"
+          :standard="backingItem.standard"
+          :link="false"
+          fluid
+        />
+        <PunkThumb
+          class="main-punk"
+          :punk-id="activeItem.punkId"
+          :standard="activeItem.standard"
+          :link="false"
+          fluid
+        />
+      </template>
     </div>
     <div
       v-else
@@ -29,7 +43,7 @@
     </div>
 
     <div
-      v-if="items.length > 1"
+      v-if="isCarousel"
       class="preview-controls"
     >
       <button
@@ -74,21 +88,30 @@ watch(
 )
 
 const activeItem = computed(() => props.items[activeIndex.value])
+const isCarousel = computed(() => props.items.length > 4)
+const isMosaic = computed(
+  () => props.items.length > 1 && props.items.length <= 4,
+)
+const mosaicItems = computed(() => props.items.slice(0, 4))
+const deckClass = computed(() => {
+  if (isMosaic.value) return `mosaic mosaic-${props.items.length}`
+  return 'carousel'
+})
 
 const backingItem = computed(() => {
-  if (props.items.length <= 1) return undefined
+  if (!isCarousel.value) return undefined
   return props.items[(activeIndex.value + 1) % props.items.length]
 })
 
 function previous() {
   const length = props.items.length
-  if (length < 2) return
+  if (!isCarousel.value) return
   activeIndex.value = (activeIndex.value - 1 + length) % length
 }
 
 function next() {
   const length = props.items.length
-  if (length < 2) return
+  if (!isCarousel.value) return
   activeIndex.value = (activeIndex.value + 1) % length
 }
 </script>
@@ -120,6 +143,39 @@ function next() {
 .backing-punk,
 .main-punk {
   grid-area: 1 / 1;
+}
+
+.mosaic {
+  gap: var(--size-1);
+  place-content: center;
+  place-items: center;
+}
+
+.mosaic-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mosaic-3 {
+  grid-template-columns:
+    minmax(0, calc((200% - var(--size-1)) / 3))
+    minmax(0, calc((100% - (2 * var(--size-1))) / 3));
+  grid-template-rows: repeat(
+    2,
+    minmax(0, calc((100% - (2 * var(--size-1))) / 3))
+  );
+}
+
+.mosaic-3 .mosaic-punk:first-child {
+  grid-row: 1 / -1;
+}
+
+.mosaic-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.mosaic-punk {
+  width: 100%;
 }
 
 .backing-punk {
