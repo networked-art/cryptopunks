@@ -37,13 +37,13 @@ defineProps<{
   font-size: var(--font-base);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
-  line-height: var(--line-height-snug);
+  line-height: var(--line-height-loose);
 }
 
 .summary-subject,
 .summary-meta {
   min-width: 0;
-  color: var(--text-dim);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
