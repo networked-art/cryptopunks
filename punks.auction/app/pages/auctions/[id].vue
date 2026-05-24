@@ -24,7 +24,7 @@
           />
           {{ statusLabel }}
           <span
-            v-if="showCountdown"
+            v-if="status === 'live'"
             class="countdown"
           >
             {{ endCountdown.str }}
@@ -139,11 +139,6 @@ const secondsUntilEnd = computed(() => {
 const endCountdown = useCountDown(
   secondsUntilEnd,
   COUNTDOWN_WINDOW_SECONDS + 1,
-)
-const showCountdown = computed(
-  () =>
-    status.value === 'live' &&
-    secondsUntilEnd.value <= COUNTDOWN_WINDOW_SECONDS,
 )
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Live'
