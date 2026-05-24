@@ -50,19 +50,6 @@
               None
             </dd>
           </div>
-
-          <div class="state-cell">
-            <dt class="label">Balance</dt>
-            <dd v-if="address && pendingWithdrawal > 0n">
-              <EthAmount :wei="pendingWithdrawal" />
-            </dd>
-            <dd
-              v-else
-              class="muted"
-            >
-              None
-            </dd>
-          </div>
         </dl>
 
         <p
@@ -77,7 +64,9 @@
           class="connect-row"
         >
           <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
-          <span class="muted">Connect a wallet to interact with this Punk.</span>
+          <span class="muted"
+            >Connect a wallet to interact with this Punk.</span
+          >
         </div>
 
         <div
@@ -147,14 +136,6 @@
               </Button>
             </div>
           </template>
-
-          <Button
-            v-if="pendingWithdrawal > 0n"
-            class="primary withdraw"
-            @click="actWithdrawProceeds"
-          >
-            Withdraw <EthAmount :wei="pendingWithdrawal" />
-          </Button>
         </div>
       </div>
 
@@ -197,13 +178,13 @@ const {
 
 const listing = ref<PunkListing | null>(null)
 const bid = ref<PunkMarketBid | null>(null)
-const pendingWithdrawal = ref<bigint>(0n)
 const marketPending = ref(false)
 const error = ref<string | null>(null)
 const pending = computed(() => ownerPending.value || marketPending.value)
 
 const isOwner = computed(
-  () => !!address.value && !!owner.value && sameAddress(owner.value, address.value),
+  () =>
+    !!address.value && !!owner.value && sameAddress(owner.value, address.value),
 )
 
 const liveListing = computed(() => {
@@ -245,41 +226,32 @@ async function refresh() {
   if (!c || !Number.isInteger(props.punkId)) {
     listing.value = null
     bid.value = null
-    pendingWithdrawal.value = 0n
     return
   }
 
   marketPending.value = true
   error.value = null
   try {
-    const account = address.value
-    const [nextListing, nextBid, nextWithdrawal] = await Promise.all([
+    const [nextListing, nextBid] = await Promise.all([
       sdk.value.market.listing(props.punkId),
       sdk.value.market.bid(props.punkId),
-      account
-        ? sdk.value.market.pendingWithdrawal(account)
-        : Promise.resolve(0n),
     ])
     if (token !== refreshToken) return
     listing.value = nextListing
     bid.value = nextBid
-    pendingWithdrawal.value = nextWithdrawal
   } catch (e) {
     if (token !== refreshToken) return
     error.value = (e as Error).message
     listing.value = null
     bid.value = null
-    pendingWithdrawal.value = 0n
   } finally {
     if (token === refreshToken) marketPending.value = false
   }
 }
 
-watch(
-  [() => props.punkId, address, publicClient, sdk],
-  () => void refresh(),
-  { immediate: true },
-)
+watch([() => props.punkId, address, publicClient, sdk], () => void refresh(), {
+  immediate: true,
+})
 
 type DialogRef = {
   initializeRequest: (request?: () => Promise<Hash>) => void
@@ -339,10 +311,6 @@ function actWithdrawBid() {
   run(sdk.value.market.prepareWithdrawBid(props.punkId))
 }
 
-function actWithdrawProceeds() {
-  run(sdk.value.market.prepareWithdraw())
-}
-
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase()
 }
@@ -376,7 +344,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 .state-grid {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--size-3);
 }
 
@@ -423,10 +391,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   display: flex;
   gap: var(--size-2);
   flex-wrap: wrap;
-}
-
-.withdraw {
-  flex-basis: 100%;
 }
 
 .warn,
