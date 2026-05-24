@@ -189,7 +189,6 @@ function next() {
 .main-punk {
   position: relative;
   z-index: 5;
-  box-shadow: 0 0 0 var(--border-width) var(--border-color);
 }
 
 .empty-preview {
