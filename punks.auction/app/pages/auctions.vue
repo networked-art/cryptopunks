@@ -1,94 +1,95 @@
 <template>
   <div class="container auctions-page">
-    <header class="page-head">
-      <h1>Auctions</h1>
-      <p class="muted">
-        Live auctions on
-        <a
-          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
-          >CryptoPunks</a
-        >, settled through <code>PunksAuction</code>. Open lots below can be
-        turned into an auction by anyone's first bid.
-      </p>
+    <header class="auction-hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Punks Auction House</span>
+        <h1>Auctions</h1>
+        <p class="muted">
+          CryptoPunks lots with native-ETH settlement through
+          <a
+            href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
+            >PunksAuction</a
+          >. Open lots become 24-hour auctions the moment the first qualifying
+          bid lands.
+        </p>
+      </div>
     </header>
 
-    <ClientOnly>
-      <section class="section">
-        <h2 class="section-title eyebrow">Running auctions</h2>
-        <div
-          v-if="auctionsPending && !runningAuctions.length"
-          class="muted"
-        >
-          Loading auctions…
-        </div>
-        <div
-          v-else-if="!deployed"
-          class="empty muted"
-        >
-          Auctions appear here once <code>PunksAuction</code> is deployed.
-        </div>
-        <div
-          v-else-if="auctionsError"
-          class="error"
-        >
-          Failed to load auctions: {{ auctionsError }}
-        </div>
-        <div
-          v-else-if="!runningAuctions.length"
-          class="empty muted"
-        >
-          No running auctions.
-        </div>
-        <div
-          v-else
-          class="card-grid"
-        >
-          <AuctionCard
-            v-for="auction in runningAuctions"
-            :key="String(auction.id)"
-            :auction="auction"
-          />
-        </div>
-      </section>
+    <section class="section">
+      <h2 class="section-title">Running auctions</h2>
+      <div
+        v-if="auctionsPending && !activeAuctions.length"
+        class="state muted"
+      >
+        Loading auctions…
+      </div>
+      <div
+        v-else-if="!deployed"
+        class="state empty muted"
+      >
+        Auctions appear here once <code>PunksAuction</code> is deployed.
+      </div>
+      <div
+        v-else-if="auctionsError"
+        class="error"
+      >
+        Failed to load auctions: {{ auctionsError }}
+      </div>
+      <div
+        v-else-if="!activeAuctions.length"
+        class="state empty muted"
+      >
+        No active auctions.
+      </div>
+      <div
+        v-else
+        class="card-grid"
+      >
+        <AuctionCard
+          v-for="auction in activeAuctions"
+          :key="String(auction.id)"
+          :auction="auction"
+        />
+      </div>
+    </section>
 
-      <section class="section">
-        <h2 class="section-title eyebrow">Open lots</h2>
-        <div
-          v-if="lotsPending && !sortedLots.length"
-          class="muted"
-        >
-          Loading lots…
-        </div>
-        <div
-          v-else-if="!deployed"
-          class="empty muted"
-        >
-          Lots appear here once <code>PunksAuction</code> is deployed.
-        </div>
-        <div
-          v-else-if="lotsError"
-          class="error"
-        >
-          Failed to load lots: {{ lotsError }}
-        </div>
-        <div
-          v-else-if="!sortedLots.length"
-          class="empty muted"
-        >
-          No open lots.
-        </div>
-        <div
-          v-else
-          class="card-grid"
-        >
-          <LotCard
-            v-for="lot in sortedLots"
-            :key="String(lot.id)"
-            :lot="lot"
-          />
-        </div>
-      </section>
-    </ClientOnly>
+    <section class="section">
+      <h2 class="section-title">Open lots</h2>
+      <div
+        v-if="lotsPending && !sortedLots.length"
+        class="state muted"
+      >
+        Loading lots…
+      </div>
+      <div
+        v-else-if="!deployed"
+        class="state empty muted"
+      >
+        Lots appear here once <code>PunksAuction</code> is deployed.
+      </div>
+      <div
+        v-else-if="lotsError"
+        class="error"
+      >
+        Failed to load lots: {{ lotsError }}
+      </div>
+      <div
+        v-else-if="!sortedLots.length"
+        class="state empty muted"
+      >
+        No open lots.
+      </div>
+      <div
+        v-else
+        class="card-grid"
+      >
+        <LotCard
+          v-for="lot in sortedLots"
+          :key="String(lot.id)"
+          :lot="lot"
+        />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -112,17 +113,10 @@ const {
 } = useMockAuctions()
 const { lots, pending: lotsPending, error: lotsError } = useMockLots()
 
-/// Running = not yet settled. Live auctions first, soonest-ending leading;
-/// auctions past their end but awaiting settlement trail behind.
-const runningAuctions = computed(() =>
+const activeAuctions = computed(() =>
   auctions.value
-    .filter((a) => !a.settled)
-    .sort((a, b) => {
-      const aLive = auctionStatus(a) === 'live'
-      const bLive = auctionStatus(b) === 'live'
-      if (aLive !== bLive) return aLive ? -1 : 1
-      return a.endTimestamp - b.endTimestamp
-    }),
+    .filter((auction) => auctionStatus(auction) === 'live')
+    .sort((a, b) => a.endTimestamp - b.endTimestamp),
 )
 
 const sortedLots = computed(() =>
@@ -132,32 +126,80 @@ const sortedLots = computed(() =>
 
 <style scoped>
 .auctions-page {
-  padding: var(--size-6) var(--size-4);
+  padding: var(--size-7) var(--size-4) var(--size-9);
   display: flex;
   flex-direction: column;
-  gap: var(--size-6);
+  gap: var(--size-7);
+}
+
+.auction-hero {
+  min-width: 0;
+  padding-bottom: var(--size-6);
+  border-bottom: var(--border);
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-copy h1 {
+  margin: var(--size-1) 0 var(--size-3);
+  font-size: var(--font-3xl);
+  font-weight: var(--font-weight-bolder);
+  letter-spacing: 0;
+  line-height: var(--line-height-tight);
+}
+
+.hero-copy p {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: var(--line-height-loose);
+  overflow-wrap: anywhere;
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--size-3);
+  gap: var(--size-4);
+  min-width: 0;
 }
 
 .section-title {
   margin: 0;
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bolder);
+  letter-spacing: 0;
+  line-height: var(--line-height-tight);
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--size-3);
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      min(
+        100%,
+        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-9))
+      ),
+      1fr
+    )
+  );
+  gap: var(--size-4);
+  min-width: 0;
+}
+
+.card-grid > * {
+  min-width: 0;
+}
+
+.state {
+  margin: 0;
 }
 
 .empty {
   padding: var(--size-8);
   text-align: center;
-  border: 1px dashed var(--border-color);
+  border: var(--border);
 }
 
 .error {
