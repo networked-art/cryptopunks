@@ -24,5 +24,7 @@ const endIso = computed(() =>
   new Date(props.auction.endTimestamp * 1000).toISOString(),
 )
 const endAgo = useTimeAgo(endIso)
-const timeLabel = computed(() => (endAgo.value ?? '').replace(/^in\s+/, ''))
+const timeLabel = computed(() =>
+  (endAgo.value ?? '').replace(/^in\s+/, '').replace(/\b(hr|min)\./g, '$1'),
+)
 </script>
