@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { sql } from 'ponder'
 import { db } from 'ponder:api'
 import { listing, punk, punkBid } from 'ponder:schema'
+import { formatEther } from 'viem'
 import { memoize } from './cache'
 
 const MARKET_STATE_TTL_MS = 10_000
@@ -10,11 +11,14 @@ type Row = Record<string, unknown>
 
 type MarketStateResponse = {
   listed: number[]
+  listed_prices: number[]
   active_bids: number[]
   legacy_wrapped: number[]
   wrapped: number[]
   generated_at: number
 }
+
+type ListedEntry = { id: number; price: number }
 
 function normalizeRows(result: unknown): Row[] {
   if (Array.isArray(result)) return result as Row[]
@@ -28,17 +32,25 @@ function toPunkId(value: unknown): number {
   return Number(value)
 }
 
-async function loadListedPunkIds(): Promise<number[]> {
+async function loadListedPunkEntries(): Promise<ListedEntry[]> {
   const result = await db.execute(sql`
-    SELECT l.punk_id
+    SELECT l.punk_id, l.min_value_wei
     FROM ${listing} l
     JOIN ${punk} p ON p.punk_id = l.punk_id
     WHERE l.active = true
       AND p.native_owner IS NOT NULL
       AND l.seller = p.native_owner
-    ORDER BY l.punk_id ASC
+    ORDER BY l.min_value_wei ASC, l.punk_id ASC
   `)
-  return normalizeRows(result).map((row) => toPunkId(row.punk_id))
+  return normalizeRows(result).map((row) => ({
+    id: toPunkId(row.punk_id),
+    price: toEthRounded(row.min_value_wei),
+  }))
+}
+
+function toEthRounded(value: unknown): number {
+  const wei = BigInt(value as bigint | string | number)
+  return Number(parseFloat(formatEther(wei)).toFixed(2))
 }
 
 async function loadActiveBidPunkIds(): Promise<number[]> {
@@ -69,15 +81,18 @@ async function loadWrappedPunkIds(
 }
 
 async function computeMarketState(): Promise<MarketStateResponse> {
-  const [listed, activeBids, legacyWrapped, wrapped] = await Promise.all([
-    loadListedPunkIds(),
-    loadActiveBidPunkIds(),
-    loadWrappedPunkIds('wrapped_punks'),
-    loadWrappedPunkIds('cryptopunks_721'),
-  ])
+  const [listedEntries, activeBids, legacyWrapped, wrapped] = await Promise.all(
+    [
+      loadListedPunkEntries(),
+      loadActiveBidPunkIds(),
+      loadWrappedPunkIds('wrapped_punks'),
+      loadWrappedPunkIds('cryptopunks_721'),
+    ],
+  )
 
   return {
-    listed,
+    listed: listedEntries.map((entry) => entry.id),
+    listed_prices: listedEntries.map((entry) => entry.price),
     active_bids: activeBids,
     legacy_wrapped: legacyWrapped,
     wrapped,
