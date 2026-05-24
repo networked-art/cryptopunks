@@ -5,6 +5,7 @@
     box-shadow var(--speed);
   color: var(--muted) !important;
   text-transform: uppercase;
+  border-radius: 0 !important;
 
   &:not(.small) {
     cursor: pointer;
@@ -13,12 +14,14 @@
     &.active,
     &:hover,
     &:focus {
-      color: var(--accent) !important;
-      box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+      background: var(--button-primary-background) !important;
+      color: var(--button-primary-color) !important;
+      box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
 
       button {
-        color: var(--accent) !important;
-        box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+        background: var(--button-primary-background) !important;
+        color: var(--button-primary-color) !important;
+        box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
       }
     }
   }
@@ -36,6 +39,10 @@
       position: relative;
       top: 0.06em;
     }
+
+    > span + button {
+      border-radius: 0 !important;
+    }
   }
 }
 
@@ -47,8 +54,9 @@ a:focus > .tag {
 
 a:hover > .tag,
 a:focus > .tag {
-  color: var(--accent) !important;
-  box-shadow: 0 0 0 var(--border-width) var(--accent) !important;
+  background: var(--button-primary-background) !important;
+  color: var(--button-primary-color) !important;
+  box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
 }
 
 /* Tag's container uses align-items: stretch so the dismiss button fills the
