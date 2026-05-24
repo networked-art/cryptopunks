@@ -12,14 +12,10 @@
           >networked.art</a
         >
         <a
-          class="github-link"
           href="https://github.com/networked-art/cryptopunks/tree/master/punks.auction"
           target="_blank"
-          rel="noopener noreferrer"
-          aria-label="GitHub repository"
-          title="GitHub repository"
         >
-          <Icon name="lucide:github" />
+          Github
         </a>
       </div>
       <NuxtLink
@@ -48,14 +44,6 @@
   display: flex;
   align-items: center;
   gap: var(--size-4);
-}
-
-.github-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-lg);
-  line-height: var(--line-height);
 }
 
 @media (max-width: 640px) {
