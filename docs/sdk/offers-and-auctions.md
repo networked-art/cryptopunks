@@ -1,7 +1,7 @@
 # Offers And Auctions
 
-Offers and auctions use the Networked Art auction contract. Configure its
-address before preparing or submitting writes:
+Offers and auctions use the Networked Art auction contract. The SDK defaults
+to the mainnet deployment; pass `addresses.auction` only to override it:
 
 ```ts
 const punks = createPunksSdk({
@@ -81,13 +81,12 @@ await punks.offers.cancel(12n)
 
 await punks.offers.adjustAmount({
   offerId: 12n,
-  amountWei: 5n * 10n ** 18n,
-  increase: true,
+  newAmountWei: 5n * 10n ** 18n,
 })
 ```
 
-`adjustAmount` sends `value: amountWei` only when `increase === true`. Use
-`increase: false` to claim back amount without sending ETH.
+`adjustAmount` sets the absolute locked offer amount. The SDK reads the
+current offer and sends only the increase as `value`; decreases send no ETH.
 
 Accept offers:
 
