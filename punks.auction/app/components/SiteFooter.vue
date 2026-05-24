@@ -55,11 +55,22 @@
 
 @media (max-width: 640px) {
   .site-footer {
-    padding-block-end: var(--bottom-nav-height);
+    margin-block-end: var(--bottom-nav-height);
+    background: var(--background);
+    color: var(--text-dim);
   }
 
   .footer-nav {
     min-height: 56px;
+  }
+
+  .footer-nav a,
+  .footer-nav .nav-active {
+    color: var(--text-dim);
+  }
+
+  .footer-nav a:hover {
+    color: var(--text-muted);
   }
 }
 </style>
