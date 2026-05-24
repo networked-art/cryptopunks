@@ -23,10 +23,9 @@
       </div>
 
       <div class="fact">
-        <dt>Visibility</dt>
+        <dt>Available to</dt>
         <dd>
           <template v-if="isPrivateLot">
-            Reserved for
             <NuxtLink :to="`/profile/${displayLot.onlySellTo}`">
               <Account :address="displayLot.onlySellTo" />
             </NuxtLink>
@@ -116,7 +115,9 @@ const itemCountLabel = computed(() =>
   displayLot.value ? formatLotItemsLabel(displayLot.value.items) : '',
 )
 const isPrivateLot = computed(
-  () => !!displayLot.value && !sameAddress(displayLot.value.onlySellTo, ZERO_ADDRESS),
+  () =>
+    !!displayLot.value &&
+    !sameAddress(displayLot.value.onlySellTo, ZERO_ADDRESS),
 )
 
 watch(
