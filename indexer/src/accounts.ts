@@ -48,48 +48,46 @@ function shouldSkip(lower: string): boolean {
   return KNOWN_NON_EOA_LOWER.has(lower) || completedAddresses.has(lower)
 }
 
+// Pinned to `max(eventBlock, factoryDeployBlock)` so the eth_call always lands
+// on a block where the factories exist, regardless of when the triggering
+// event happened. The result is a pure function of `user` either way.
 async function predictPair(
   context: Context,
   user: Address,
   blockNumber: bigint,
 ): Promise<{ vault: Address | null; stash: Address | null }> {
-  try {
-    const results = await context.client.multicall({
-      allowFailure: true,
-      blockNumber,
-      contracts: [
-        {
-          address: PUNKS_VAULT_FACTORY_ADDRESS,
-          abi: punkVaultFactoryAbi,
-          functionName: 'predictVault',
-          args: [user],
-        },
-        {
-          address: STASH_FACTORY_ADDRESS,
-          abi: stashFactoryAbi,
-          functionName: 'stashAddressFor',
-          args: [user],
-        },
-      ],
-    })
-    return {
-      vault: results[0]?.status === 'success' ? (results[0].result as Address) : null,
-      stash: results[1]?.status === 'success' ? (results[1].result as Address) : null,
-    }
-  } catch {
-    return { vault: null, stash: null }
+  const callBlock =
+    blockNumber >= PUNKS_VAULT_FACTORY_START_BLOCK
+      ? blockNumber
+      : PUNKS_VAULT_FACTORY_START_BLOCK
+  const results = await context.client.multicall({
+    allowFailure: true,
+    blockNumber: callBlock,
+    contracts: [
+      {
+        address: PUNKS_VAULT_FACTORY_ADDRESS,
+        abi: punkVaultFactoryAbi,
+        functionName: 'predictVault',
+        args: [user],
+      },
+      {
+        address: STASH_FACTORY_ADDRESS,
+        abi: stashFactoryAbi,
+        functionName: 'stashAddressFor',
+        args: [user],
+      },
+    ],
+  })
+  return {
+    vault: results[0]?.status === 'success' ? (results[0].result as Address) : null,
+    stash: results[1]?.status === 'success' ? (results[1].result as Address) : null,
   }
 }
 
 /**
- * Upserts an EOA into the `accounts` table. Multicalls
- * `PunksVaultFactory.predictVault` and `StashFactory.stashAddressFor` (both
- * pure views of the user address) to populate the deterministic per-user
- * vault and stash addresses. The call is pinned to `max(eventBlock,
- * factoryDeployBlock)` so the multicall always hits a block where the
- * factories exist — independent of when the triggering event occurred. This
- * means every first-sighted EOA gets its vault/stash, even ones whose only
- * activity predates the factory deploy.
+ * Upserts an EOA into the `accounts` table, populating the deterministic
+ * per-user vault and stash addresses from `PunksVaultFactory.predictVault`
+ * and `StashFactory.stashAddressFor` (both pure views of the user address).
  *
  * Safe to call repeatedly: deduplicates via an in-process set plus a DB find,
  * and never overwrites an already-populated column.
@@ -110,15 +108,10 @@ export async function ensureAccount(
     return
   }
 
-  let { vault, stash } = existing
-    ? { vault: existing.vault, stash: existing.stash }
-    : { vault: null as Address | null, stash: null as Address | null }
+  let vault: Address | null = existing?.vault ?? null
+  let stash: Address | null = existing?.stash ?? null
 
-  const callBlock =
-    blockNumber >= PUNKS_VAULT_FACTORY_START_BLOCK
-      ? blockNumber
-      : PUNKS_VAULT_FACTORY_START_BLOCK
-  const predicted = await predictPair(context, normalized, callBlock)
+  const predicted = await predictPair(context, normalized, blockNumber)
   vault = vault ?? predicted.vault
   stash = stash ?? predicted.stash
 
