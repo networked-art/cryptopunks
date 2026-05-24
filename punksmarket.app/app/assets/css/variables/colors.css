@@ -13,6 +13,9 @@
   --gray-z-3: #d0d0dc;
   --gray-z-5: #9a9ab0;
 
+  /* The default --gray-z-2 thumb is invisible against --background. */
+  --scrollbar-thumb-color: var(--gray-z-5);
+
   /* App-specific tokens used directly throughout punksmarket.app. */
   --accent: var(--primary);
   --accent-strong: #6552d9;
