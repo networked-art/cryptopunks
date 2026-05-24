@@ -82,12 +82,14 @@ async function predictPair(
 }
 
 /**
- * Upserts an EOA into the `accounts` table. On first sight at or after the
- * vault factory's deploy block, multicalls `PunksVaultFactory.predictVault`
- * and `StashFactory.stashAddressFor` (both pure views) to populate the
- * deterministic per-user vault and stash addresses. Earlier sightings store
- * the row with `vault` / `stash` NULL; the next post-deploy sighting
- * backfills them.
+ * Upserts an EOA into the `accounts` table. Multicalls
+ * `PunksVaultFactory.predictVault` and `StashFactory.stashAddressFor` (both
+ * pure views of the user address) to populate the deterministic per-user
+ * vault and stash addresses. The call is pinned to `max(eventBlock,
+ * factoryDeployBlock)` so the multicall always hits a block where the
+ * factories exist — independent of when the triggering event occurred. This
+ * means every first-sighted EOA gets its vault/stash, even ones whose only
+ * activity predates the factory deploy.
  *
  * Safe to call repeatedly: deduplicates via an in-process set plus a DB find,
  * and never overwrites an already-populated column.
@@ -112,11 +114,13 @@ export async function ensureAccount(
     ? { vault: existing.vault, stash: existing.stash }
     : { vault: null as Address | null, stash: null as Address | null }
 
-  if (blockNumber >= PUNKS_VAULT_FACTORY_START_BLOCK) {
-    const predicted = await predictPair(context, normalized, blockNumber)
-    vault = vault ?? predicted.vault
-    stash = stash ?? predicted.stash
-  }
+  const callBlock =
+    blockNumber >= PUNKS_VAULT_FACTORY_START_BLOCK
+      ? blockNumber
+      : PUNKS_VAULT_FACTORY_START_BLOCK
+  const predicted = await predictPair(context, normalized, callBlock)
+  vault = vault ?? predicted.vault
+  stash = stash ?? predicted.stash
 
   if (!existing) {
     await context.db.insert(account).values({

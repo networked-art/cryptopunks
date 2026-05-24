@@ -61,11 +61,10 @@ export const v1Punk = onchainTable(
 // Per-EOA registry. Populated whenever an address shows up in an event (V1/V2
 // market, wrappers, PunksMarket bids, etc.). `vault` / `stash` are the
 // deterministic per-user contract addresses read from `PunksVaultFactory.
-// predictVault` and `StashFactory.stashAddressFor` — populated on first sight
-// at or after the vault factory's deploy block. Earlier sightings store the
-// address with `vault` / `stash` NULL; the next post-deploy sighting backfills
-// them. `user_proxy` is set from `WrappedPunks:ProxyRegistered`. The vault /
-// stash / user_proxy columns are individually indexed for fast reverse lookup
+// predictVault` and `StashFactory.stashAddressFor` (both pure functions of
+// the user address) — populated on first sight regardless of event block.
+// `user_proxy` is set from `WrappedPunks:ProxyRegistered`. The vault / stash
+// / user_proxy columns are individually indexed for fast reverse lookup
 // (vault address → owner EOA), which powers profile-URL canonicalization.
 export const account = onchainTable(
   'accounts',
