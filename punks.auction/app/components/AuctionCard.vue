@@ -5,8 +5,8 @@
     <LotCardSummary
       :label="endText"
       :wei="auction.latestBidWei"
-      :amount-label="statusLabel"
-      :amount-live="status === 'live'"
+      :label-status="statusLabel"
+      :label-status-live="status === 'live'"
     >
       {{ itemCountLabel }}
     </LotCardSummary>

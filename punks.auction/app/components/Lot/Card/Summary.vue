@@ -5,7 +5,21 @@
         v-if="label || $slots.label"
         class="summary-kicker"
       >
-        <slot name="label">{{ label }}</slot>
+        <span
+          v-if="labelStatus"
+          class="summary-status"
+          :class="{ live: labelStatusLive }"
+        >
+          <span
+            v-if="labelStatusLive"
+            class="live-dot"
+            aria-hidden="true"
+          />
+          {{ labelStatus }}
+        </span>
+        <span class="summary-kicker-text">
+          <slot name="label">{{ label }}</slot>
+        </span>
       </div>
       <div
         v-if="$slots.default"
@@ -40,6 +54,8 @@
 defineProps<{
   label: string
   wei: bigint | number | string
+  labelStatus?: string
+  labelStatusLive?: boolean
   amountLabel?: string
   amountLive?: boolean
 }>()
@@ -61,6 +77,7 @@ defineProps<{
 }
 
 .summary-kicker,
+.summary-status,
 .amount-kicker {
   color: var(--text-dim);
   font-size: var(--font-xs);
@@ -70,10 +87,29 @@ defineProps<{
 }
 
 .summary-kicker {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: var(--size-3);
+  min-width: 0;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.summary-kicker-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.summary-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  flex-shrink: 0;
+}
+
+.summary-status.live {
+  color: var(--accent-strong);
 }
 
 .summary-value {
