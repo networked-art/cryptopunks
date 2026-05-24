@@ -87,7 +87,7 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   gap: var(--size-1);
-  text-transform: lowercase;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
