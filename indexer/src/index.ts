@@ -10,6 +10,7 @@ import {
   ZERO_ADDRESS,
   wrapperKindFor,
 } from '../utils/contracts'
+import { ensureAccounts, recordUserProxy } from './accounts'
 import {
   dayUnix,
   seedPreChainlinkPricesFromCsv,
@@ -55,6 +56,7 @@ ponder.on('CryptoPunksV2:Assign', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -86,6 +88,7 @@ ponder.on('CryptoPunksV2:PunkTransfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -135,6 +138,12 @@ ponder.on('CryptoPunksV2:PunkOffered', async ({ event, context }) => {
   const onlySellTo = offer?.onlySellTo ?? normalize(event.args.toAddress)
   const active = offer?.isForSale ?? true
   const meta = eventMeta(event)
+  await ensureAccounts(
+    context,
+    [seller, onlySellTo],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -176,6 +185,7 @@ ponder.on('CryptoPunksV2:PunkNoLongerForSale', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -200,6 +210,7 @@ ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidWithdrawn', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -226,6 +237,7 @@ ponder.on('CryptoPunksV2:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
   const activeBid = await context.db.find(punkBid, { punk_id: punkId })
   const saleWei =
     event.args.value === 0n ? (activeBid?.value_wei ?? 0n) : event.args.value
@@ -309,6 +321,20 @@ ponder.on('CryptoPunks721:Transfer', async ({ event, context }) => {
   })
 })
 
+// Tracks every `UserProxy` registration so the `accounts` table can resolve
+// proxy address → owner EOA for profile-URL canonicalization.
+ponder.on('WrappedPunks:ProxyRegistered', async ({ event, context }) => {
+  const user = normalize(event.args.user)
+  const proxy = normalize(event.args.proxy)
+  await recordUserProxy(
+    context,
+    user,
+    proxy,
+    event.block.number,
+    event.block.timestamp,
+  )
+})
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -340,6 +366,7 @@ async function handleWrapperTransfer(opts: {
   const to = normalize(args.to)
   const punkId = (args.tokenId ?? args.id) as bigint
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
 
   if (from === ZERO_ADDRESS) {
     await insertActivity(context, {

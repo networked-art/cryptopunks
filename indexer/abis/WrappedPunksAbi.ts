@@ -5,4 +5,8 @@ import { parseAbi } from 'viem'
 export const WrappedPunksAbi = parseAbi([
   'function ownerOf(uint256 tokenId) view returns (address)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
+  // Emitted when a user calls `registerProxy()` to set up their personal
+  // UserProxy. The proxy address is per-user and used as the wrap path's
+  // intermediary. Args are non-indexed.
+  'event ProxyRegistered(address user, address proxy)',
 ])

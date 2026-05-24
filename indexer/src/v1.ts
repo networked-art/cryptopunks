@@ -25,6 +25,7 @@ import {
   V1_WRAPPER_ADDRESS,
   ZERO_ADDRESS,
 } from '../utils/contracts'
+import { ensureAccounts } from './accounts'
 import { dayUnix, usdValueCentsForBlock } from './prices'
 
 type Address = `0x${string}`
@@ -115,6 +116,7 @@ ponder.on('CryptoPunksV1:Assign', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -145,6 +147,7 @@ ponder.on('CryptoPunksV1:PunkTransfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -189,6 +192,12 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
   const onlySellTo = offer?.onlySellTo ?? normalize(event.args.toAddress)
   const active = offer?.isForSale ?? true
   const meta = eventMeta(event)
+  await ensureAccounts(
+    context,
+    [seller, onlySellTo],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -260,6 +269,7 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
 ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -296,6 +306,7 @@ ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
 ponder.on('CryptoPunksV1:PunkBidWithdrawn', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -334,6 +345,7 @@ ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
   const activeBid = await context.db.find(v1PunkBid, { punk_id: punkId })
   const saleWei =
     event.args.value === 0n ? (activeBid?.value_wei ?? 0n) : event.args.value
@@ -379,6 +391,7 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.tokenId
   const meta = eventMeta(event)
+  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
 
   if (from === ZERO_ADDRESS) {
     await insertActivity(context, {
@@ -464,6 +477,7 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
 ponder.on('PunksMarket:BidPlaced', async ({ event, context }) => {
   const bidder = normalize(event.args.bidder)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
   const criteria = normalizeCriteria(event.args.criteria)
   const includeIds = idList(event.args.includeIds)
   const excludeIds = idList(event.args.excludeIds)
@@ -617,6 +631,12 @@ ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
   const bidder = normalize(event.args.bidder)
   const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
+  await ensureAccounts(
+    context,
+    [seller, bidder, caller],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -669,6 +689,12 @@ ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
   const recipient = normalize(event.args.recipient)
   const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
+  await ensureAccounts(
+    context,
+    [seller, recipient, caller],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -689,6 +715,7 @@ ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
 ponder.on('PunksMarket:Credited', async ({ event, context }) => {
   const account = normalize(event.args.account)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [account], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -705,6 +732,7 @@ ponder.on('PunksMarket:Credited', async ({ event, context }) => {
 ponder.on('PunksMarket:Withdrawal', async ({ event, context }) => {
   const account = normalize(event.args.account)
   const meta = eventMeta(event)
+  await ensureAccounts(context, [account], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
     id: eventId(event),
