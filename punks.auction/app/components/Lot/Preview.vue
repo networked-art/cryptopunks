@@ -125,7 +125,8 @@ function next() {
   justify-content: center;
   inline-size: 100%;
   aspect-ratio: 1 / 1.24;
-  padding: 9%;
+  --preview-inset: 19%;
+  padding: var(--preview-inset);
   background: white;
   border: var(--border);
   overflow: hidden;
@@ -205,7 +206,7 @@ function next() {
   position: absolute;
   z-index: 10;
   inset-inline-start: 50%;
-  inset-block-end: 9%;
+  inset-block-end: calc((var(--preview-inset) + 12%) / 2);
   transform: translate(-50%, 50%);
   display: flex;
   align-items: center;
