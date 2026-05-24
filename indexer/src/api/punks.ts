@@ -11,14 +11,17 @@ type Row = Record<string, unknown>
 
 type MarketStateResponse = {
   listed: number[]
-  listed_prices: number[]
+  /// Parallel to `listed`; null when the listing is private (onlySellTo
+  /// restricted) so consumers can omit it from price-asc sorts while still
+  /// counting the punk as listed.
+  listed_prices: (number | null)[]
   active_bids: number[]
   legacy_wrapped: number[]
   wrapped: number[]
   generated_at: number
 }
 
-type ListedEntry = { id: number; price: number }
+type ListedEntry = { id: number; price: number | null }
 
 function normalizeRows(result: unknown): Row[] {
   if (Array.isArray(result)) return result as Row[]
@@ -33,8 +36,11 @@ function toPunkId(value: unknown): number {
 }
 
 async function loadListedPunkEntries(): Promise<ListedEntry[]> {
+  /// Private "onlySellTo" listings still count as listed (they show up in the
+  /// `listed` set) but their price is suppressed so consumers don't include
+  /// them in a market-wide price-asc sort.
   const result = await db.execute(sql`
-    SELECT l.punk_id, l.min_value_wei
+    SELECT l.punk_id, l.min_value_wei, l.only_sell_to
     FROM ${listing} l
     JOIN ${punk} p ON p.punk_id = l.punk_id
     WHERE l.active = true
@@ -44,7 +50,7 @@ async function loadListedPunkEntries(): Promise<ListedEntry[]> {
   `)
   return normalizeRows(result).map((row) => ({
     id: toPunkId(row.punk_id),
-    price: toEthRounded(row.min_value_wei),
+    price: row.only_sell_to == null ? toEthRounded(row.min_value_wei) : null,
   }))
 }
 
