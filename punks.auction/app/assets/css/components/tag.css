@@ -7,11 +7,22 @@
   text-transform: uppercase;
   border-radius: 0 !important;
 
+  &.active {
+    background: var(--button-primary-background) !important;
+    color: var(--button-primary-color) !important;
+    box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
+
+    button {
+      background: var(--button-primary-background) !important;
+      color: var(--button-primary-color) !important;
+      box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
+    }
+  }
+
   &:not(.small) {
     cursor: pointer;
     min-block-size: var(--form-item-height);
 
-    &.active,
     &:hover,
     &:focus {
       background: var(--button-primary-background) !important;

@@ -29,12 +29,13 @@
         <section class="manager-section">
           <div class="section-head">
             <h3>PunksVault</h3>
-            <span
-              class="status-pill"
-              :class="vaultDeployed ? 'is-ok' : 'is-muted'"
+            <Tag
+              small
+              class="status-tag"
+              :class="{ active: vaultDeployed }"
             >
               {{ vaultStatusLabel }}
-            </span>
+            </Tag>
           </div>
 
           <p
@@ -114,12 +115,13 @@
         <section class="manager-section">
           <div class="section-head">
             <h3>Claimable ETH</h3>
-            <span
-              class="status-pill"
-              :class="hasClaimableBalance ? 'is-ok' : 'is-muted'"
+            <Tag
+              small
+              class="status-tag"
+              :class="{ active: hasClaimableBalance }"
             >
               {{ hasClaimableBalance ? 'Available' : 'None' }}
-            </span>
+            </Tag>
           </div>
 
           <dl class="balance-list">
@@ -474,21 +476,9 @@ a {
   border: 0;
 }
 
-.status-pill {
+.status-tag {
   flex: 0 0 auto;
-  padding: var(--size-1) var(--size-2);
-  border: var(--border);
-  font-size: var(--font-xs);
-  line-height: 1;
-}
-
-.status-pill.is-ok {
-  color: var(--text);
-  border-color: var(--accent-strong);
-}
-
-.status-pill.is-muted {
-  color: var(--text-dim);
+  cursor: default;
 }
 
 .text-ok {
