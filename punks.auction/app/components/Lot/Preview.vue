@@ -149,8 +149,8 @@ function next() {
   position: absolute;
   z-index: 10;
   inset-inline-start: 50%;
-  inset-block-end: var(--size-2);
-  transform: translateX(-50%);
+  inset-block-end: 9%;
+  transform: translate(-50%, 50%);
   display: flex;
   align-items: center;
   gap: var(--size-1);
