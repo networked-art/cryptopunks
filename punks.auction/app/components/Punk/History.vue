@@ -11,7 +11,7 @@
       >
         <div class="event-main">
           <div class="event-title-line">
-            <span class="event-kind">{{ row.kind }}</span>
+            <ActivityKindLabel :kind="row.kind" />
             <span
               v-if="row.wrapped"
               class="wrapped eyebrow"
@@ -58,17 +58,12 @@
             v-else-if="row.initiator"
             class="event-indicators"
           >
-            <span class="event-indicator">
-              <span class="indicator-label eyebrow">{{
-                row.initiatorLabel
-              }}</span>
-              <NuxtLink
-                :to="`/profile/${row.initiator}`"
-                class="event-account"
-              >
-                <Account :address="row.initiator" />
-              </NuxtLink>
-            </span>
+            <NuxtLink
+              :to="`/profile/${row.initiator}`"
+              class="event-account"
+            >
+              <Account :address="row.initiator" />
+            </NuxtLink>
           </div>
         </div>
 
@@ -111,7 +106,7 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
-import type { ActivityEvent, ActivityKind } from '~/composables/useActivityFeed'
+import type { ActivityEvent } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{
@@ -126,18 +121,6 @@ const { events, pending, error } = useActivityFeed({
   limit: 60,
 })
 
-const KIND_LABEL: Record<ActivityKind, string> = {
-  assign: 'Claimed',
-  transfer: 'Transferred',
-  wrap: 'Wrapped',
-  unwrap: 'Unwrapped',
-  listing: 'Listed',
-  listing_cancelled: 'Unlisted',
-  bid: 'Bid placed',
-  bid_cancelled: 'Bid withdrawn',
-  sale: 'Sold',
-}
-
 function pickInitiator(event: ActivityEvent): Address | undefined {
   switch (event.kind) {
     case 'sale':
@@ -149,23 +132,6 @@ function pickInitiator(event: ActivityEvent): Address | undefined {
       return event.from
     default:
       return event.to ?? event.from
-  }
-}
-
-function pickInitiatorLabel(event: ActivityEvent): string {
-  switch (event.kind) {
-    case 'sale':
-      return 'Buyer'
-    case 'bid':
-    case 'bid_cancelled':
-      return 'Bidder'
-    case 'listing':
-    case 'listing_cancelled':
-      return 'Seller'
-    case 'assign':
-      return 'To'
-    default:
-      return 'By'
   }
 }
 
@@ -187,11 +153,10 @@ const rows = computed(() =>
   events.value.map((event) => ({
     id: event.id,
     initiator: pickInitiator(event),
-    initiatorLabel: pickInitiatorLabel(event),
     isTransfer: event.kind === 'transfer',
     from: event.from,
     to: event.to,
-    kind: KIND_LABEL[event.kind] ?? event.kind,
+    kind: event.kind,
     wrapped: event.wrapped,
     amountWei:
       event.amountWei !== undefined && event.amountWei > 0n
@@ -293,11 +258,6 @@ const stateLabel = computed(() => {
 
 .event-account :deep(.label) {
   max-width: 14ch;
-}
-
-.event-kind {
-  color: var(--text);
-  font-weight: var(--font-weight-bolder);
 }
 
 .event-meta {

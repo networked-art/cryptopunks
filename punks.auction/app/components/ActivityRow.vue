@@ -14,11 +14,7 @@
 
     <div class="row-body">
       <div class="row-line">
-        <span
-          class="kind"
-          :class="`kind-${event.kind}`"
-          >{{ kindLabel }}</span
-        >
+        <ActivityKindLabel :kind="event.kind" />
         <NuxtLink
           v-if="event.punkId !== undefined"
           :to="`/punks/${event.punkId}`"
@@ -77,10 +73,6 @@ import { txUrl } from '~/utils/explorer'
 
 const props = defineProps<{ event: ActivityEvent }>()
 
-const kindLabel = computed(
-  () => KIND_LABEL[props.event.kind] ?? props.event.kind,
-)
-
 /// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
 /// them so the row shows a single party.
 const sameParties = computed(
@@ -101,20 +93,6 @@ const absoluteTime = computed(() =>
     ? new Date(props.event.timestamp * 1000).toLocaleString()
     : '',
 )
-</script>
-
-<script lang="ts">
-const KIND_LABEL: Record<string, string> = {
-  assign: 'Claimed',
-  transfer: 'Transferred',
-  wrap: 'Wrapped',
-  unwrap: 'Unwrapped',
-  listing: 'Listed',
-  listing_cancelled: 'Unlisted',
-  bid: 'Bid placed',
-  bid_cancelled: 'Bid cancelled',
-  sale: 'Sold',
-}
 </script>
 
 <style scoped>
@@ -175,13 +153,6 @@ const KIND_LABEL: Record<string, string> = {
 
 .arrow {
   color: var(--text-dim);
-}
-
-.kind {
-  text-transform: uppercase;
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
-  color: var(--text);
 }
 
 .punk-id {
