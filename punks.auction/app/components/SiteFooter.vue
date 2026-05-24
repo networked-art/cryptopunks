@@ -18,11 +18,18 @@
           Github
         </a>
       </div>
-      <NuxtLink
-        to="/terms"
-        active-class="nav-active"
-        >Terms</NuxtLink
-      >
+      <div class="footer-links footer-links-right">
+        <NuxtLink
+          to="/about"
+          active-class="nav-active"
+          >About</NuxtLink
+        >
+        <NuxtLink
+          to="/terms"
+          active-class="nav-active"
+          >Terms</NuxtLink
+        >
+      </div>
     </nav>
   </footer>
 </template>

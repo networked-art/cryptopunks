@@ -74,7 +74,6 @@ const navItems = [
   { to: '/auctions', label: 'Auctions' },
   { to: '/purchase-offers', label: 'Offers' },
   { to: '/activity', label: 'Activity' },
-  { to: '/about', label: 'About' },
 ]
 
 const route = useRoute()
