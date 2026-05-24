@@ -49,24 +49,6 @@
             v-else
             class="status-list"
           >
-            <div v-if="vaultAddress">
-              <dt>Vault address</dt>
-              <dd>
-                <a
-                  :href="addressUrl(vaultAddress)"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <Account :address="vaultAddress" />
-                </a>
-              </dd>
-            </div>
-            <div v-if="vaultOwner">
-              <dt>Owner</dt>
-              <dd>
-                <Account :address="vaultOwner" />
-              </dd>
-            </div>
             <div>
               <dt>Auction operator</dt>
               <dd :class="auctionApproved ? 'text-ok' : 'muted'">
@@ -218,7 +200,6 @@ import {
 } from '@networked-art/punks-sdk'
 import type { Address, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
-import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{
   account: Address

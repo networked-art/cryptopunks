@@ -2,6 +2,9 @@ import type { Address } from 'viem'
 import {
   CRYPTOPUNKS_MARKET_ADDRESS,
   CRYPTOPUNKS_V1_ADDRESS,
+  PUNKS_VAULT_FACTORY_ADDRESS as SDK_PUNKS_VAULT_FACTORY_ADDRESS,
+  STASH_FACTORY_ADDRESS as SDK_STASH_FACTORY_ADDRESS,
+  WRAPPED_PUNKS_ADDRESS as SDK_WRAPPED_PUNKS_ADDRESS,
   ZERO_ADDRESS,
 } from '@networked-art/punks-sdk'
 
@@ -14,6 +17,15 @@ export const CRYPTOPUNKS_ADDRESS = CRYPTOPUNKS_MARKET_ADDRESS as Address
 
 /** The original June 9th 2017 `CryptoPunks` market. */
 export const PUNKS_V1_ADDRESS = CRYPTOPUNKS_V1_ADDRESS as Address
+
+/** `PunksVaultFactory` — deploys deterministic per-user `PunksVault` clones. */
+export const PUNKS_VAULT_FACTORY_ADDRESS = SDK_PUNKS_VAULT_FACTORY_ADDRESS
+
+/** Yuga Labs `StashFactory` — deploys deterministic per-user `Stash` clones. */
+export const STASH_FACTORY_ADDRESS = SDK_STASH_FACTORY_ADDRESS
+
+/** Original `WrappedCryptopunks` — also the per-user `UserProxy` registry. */
+export const WRAPPED_PUNKS_ADDRESS = SDK_WRAPPED_PUNKS_ADDRESS
 
 /** True once `PUNKS_AUCTION_ADDRESS` points at a real deployment. */
 export function isAuctionDeployed(): boolean {

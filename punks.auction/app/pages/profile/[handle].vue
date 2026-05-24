@@ -64,6 +64,8 @@
         v-if="resolvedAddress"
         class="profile-cols"
       >
+        <ProfileAddresses :account="resolvedAddress" />
+
         <ProfileManager
           v-if="ownAccount"
           :account="ownAccount"
@@ -83,16 +85,23 @@
           >
             Could not load owned Punks: {{ ownedError }}
           </p>
-          <PunkGrid
-            v-else-if="owned.length"
-            :ids="owned"
-            :size="48"
-          />
+          <template v-else-if="owned.length">
+            <PunkGrid
+              :ids="owned"
+              :size="48"
+            />
+            <p
+              v-if="breakdownLabel"
+              class="muted breakdown"
+            >
+              {{ breakdownLabel }}
+            </p>
+          </template>
           <p
             v-else
             class="muted"
           >
-            No canonical Punks held.
+            No CryptoPunks held.
           </p>
         </section>
 
@@ -169,6 +178,7 @@ import { shortAddress } from '@1001-digital/components.evm'
 import { accountAvvatarDataUri } from '~/utils/avvatar'
 
 const route = useRoute()
+const router = useRouter()
 const handle = computed(() => String(route.params.handle))
 
 const config = useConfig()
@@ -182,24 +192,39 @@ const resolvedAddress = ref<Address | null>(null)
 watchEffect(async () => {
   resolving.value = true
   const h = handle.value
-  if (isAddress(h)) {
-    resolvedAddress.value = h as Address
-    resolving.value = false
-    return
+  const handleIsAddress = isAddress(h)
+
+  let eoa: Address | null = null
+  if (handleIsAddress) {
+    eoa = h as Address
+  } else {
+    const client = getPublicClient(config) as PublicClient | undefined
+    if (!client) {
+      resolving.value = false
+      return
+    }
+    try {
+      const addr = await client.getEnsAddress({ name: h })
+      eoa = (addr as Address | null) ?? null
+    } catch {
+      eoa = null
+    }
   }
-  const client = getPublicClient(config) as PublicClient | undefined
-  if (!client) {
-    resolving.value = false
-    return
+
+  // Canonicalize URLs of the form `/profile/<vault|stash|userProxy>` to
+  // `/profile/<owner>` so a single profile is always reachable via the same
+  // address. Only attempted when the handle is already an address — ENS
+  // handles are user-chosen and stay verbatim.
+  if (handleIsAddress && eoa) {
+    const resolved = await resolveProfileAddress(eoa)
+    if (resolved.redirect) {
+      void router.replace(`/profile/${resolved.canonical}`)
+      return
+    }
   }
-  try {
-    const addr = await client.getEnsAddress({ name: h })
-    resolvedAddress.value = addr as Address | null
-  } catch {
-    resolvedAddress.value = null
-  } finally {
-    resolving.value = false
-  }
+
+  resolvedAddress.value = eoa
+  resolving.value = false
 })
 
 const shortAddr = computed(() =>
@@ -230,26 +255,47 @@ useSeoMeta({
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
+const { vault, stash } = useAccountAddresses(profileAddress)
+
 const {
   ids: owned,
+  breakdown,
   loading: ownedLoading,
   error: ownedError,
-} = useOwnedPunks(profileAddress)
+} = useAccountPunks({ account: profileAddress, vault, stash })
+
+const breakdownLabel = computed(() => {
+  const parts: string[] = []
+  if (breakdown.value.wallet) parts.push(`${breakdown.value.wallet} in wallet`)
+  if (breakdown.value.vault) parts.push(`${breakdown.value.vault} in vault`)
+  if (breakdown.value.wrapped) parts.push(`${breakdown.value.wrapped} wrapped`)
+  if (breakdown.value.stash) parts.push(`${breakdown.value.stash} in stash`)
+  return parts.join(' · ')
+})
 
 const { events: activity } = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { offers } = useOffers()
 
-const myLots = computed(() => {
+const ownerAddresses = computed(() => {
+  const set = new Set<string>()
   const a = resolvedAddress.value?.toLowerCase()
-  if (!a) return []
-  return lots.value.filter((lot) => lot.seller.toLowerCase() === a)
+  if (a) set.add(a)
+  const v = vault.value?.toLowerCase()
+  if (v) set.add(v)
+  return set
+})
+
+const myLots = computed(() => {
+  const addrs = ownerAddresses.value
+  if (!addrs.size) return []
+  return lots.value.filter((lot) => addrs.has(lot.seller.toLowerCase()))
 })
 
 const myOffers = computed(() => {
-  const a = resolvedAddress.value?.toLowerCase()
-  if (!a) return []
-  return offers.value.filter((offer) => offer.offerer.toLowerCase() === a)
+  const addrs = ownerAddresses.value
+  if (!addrs.size) return []
+  return offers.value.filter((offer) => addrs.has(offer.offerer.toLowerCase()))
 })
 </script>
 
@@ -351,6 +397,12 @@ const myOffers = computed(() => {
 .error {
   color: var(--accent);
   font-size: var(--font-sm);
+}
+
+.breakdown {
+  margin: 0;
+  margin-top: var(--size-2);
+  font-size: var(--font-xs);
 }
 
 @media (max-width: 520px) {
