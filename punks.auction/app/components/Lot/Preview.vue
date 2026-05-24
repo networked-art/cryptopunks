@@ -17,6 +17,7 @@
         class="main-punk"
         :punk-id="activeItem.punkId"
         :standard="activeItem.standard"
+        :link="false"
         fluid
       />
     </div>
