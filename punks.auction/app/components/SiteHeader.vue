@@ -168,6 +168,7 @@ onBeforeUnmount(() => {
   border: 0;
   color: var(--text);
   justify-self: start;
+  padding-inline: var(--size-1);
 }
 
 .brand-mark {
