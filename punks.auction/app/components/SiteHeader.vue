@@ -143,6 +143,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .site-header {
+  --site-header-height: 56px;
+  --site-header-frame-gap: calc(
+    (var(--site-header-height) - var(--form-item-height)) / 2
+  );
+
   border-bottom: var(--border);
   background: var(--bg-elevated);
   position: sticky;
@@ -156,8 +161,8 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--size-6);
-  height: 56px;
-  padding: 0 var(--size-4);
+  height: var(--site-header-height);
+  padding: 0 var(--site-header-frame-gap);
 }
 
 .brand {
