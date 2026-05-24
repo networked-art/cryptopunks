@@ -55,4 +55,9 @@ defineProps<{
 .lot-card-shell:focus-within :deep(.summary-subject-text::after) {
   opacity: 1;
 }
+
+.lot-card-shell:hover :deep(.lot-preview),
+.lot-card-shell:focus-within :deep(.lot-preview) {
+  box-shadow: 0 18px 42px rgb(10 10 18 / 28%);
+}
 </style>

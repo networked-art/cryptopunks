@@ -129,6 +129,8 @@ function next() {
   padding: var(--preview-inset);
   background: white;
   border: var(--border);
+  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
+  transition: box-shadow 180ms ease;
   overflow: hidden;
 }
 
