@@ -36,8 +36,7 @@ function item(
 }
 
 function createMockAuctions(): AuctionRecord[] {
-  const now =
-    Math.floor(Date.now() / (MOCK_TIME_STEP * 1000)) * MOCK_TIME_STEP
+  const now = Math.floor(Date.now() / (MOCK_TIME_STEP * 1000)) * MOCK_TIME_STEP
 
   return [
     // Live · single-Punk lot · the bold one-tile hero.
@@ -59,9 +58,9 @@ function createMockAuctions(): AuctionRecord[] {
       endTimestamp: now + 19 * HOUR,
       settled: false,
       items: [
-        item(2924, 2_500),
-        item(8348, 2_500, TokenStandard.CryptoPunksV1),
-        item(5217, 2_500),
+        item(2924, 3_500),
+        item(8348, 500, TokenStandard.CryptoPunksV1),
+        item(5217, 3_500),
         item(1190, 2_500),
       ],
     },
