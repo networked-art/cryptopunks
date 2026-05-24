@@ -55,14 +55,6 @@
           >
             Could not resolve {{ handle }}
           </p>
-
-          <p
-            v-if="resolvedAddress && escrowBalance > 0n"
-            class="escrow"
-          >
-            <span class="eyebrow">Claimable escrow</span>
-            <EthAmount :wei="escrowBalance" />
-          </p>
         </ClientOnly>
       </div>
     </header>
@@ -72,6 +64,11 @@
         v-if="resolvedAddress"
         class="profile-cols"
       >
+        <ProfileManager
+          v-if="ownAccount"
+          :account="ownAccount"
+        />
+
         <section class="profile-section">
           <h2 class="section-title eyebrow">Owned Punks</h2>
           <p
@@ -214,6 +211,9 @@ const isOwnProfile = computed(() => {
   const viewing = resolvedAddress.value?.toLowerCase()
   return !!mine && !!viewing && mine === viewing
 })
+const ownAccount = computed(() =>
+  isOwnProfile.value ? (resolvedAddress.value ?? undefined) : undefined,
+)
 
 const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
 const profileAvatarUri = computed(() =>
@@ -236,7 +236,6 @@ const {
   error: ownedError,
 } = useOwnedPunks(profileAddress)
 
-const { balance: escrowBalance } = useEscrowBalance(profileAddress)
 const { events: activity } = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { offers } = useOffers()
@@ -316,14 +315,6 @@ const myOffers = computed(() => {
   margin: 0;
   font-size: var(--font-sm);
   overflow-wrap: anywhere;
-}
-
-.escrow {
-  margin: var(--size-2) 0 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--size-2);
-  font-size: var(--font-md);
 }
 
 .profile-cols {
