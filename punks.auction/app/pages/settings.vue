@@ -33,11 +33,10 @@
 
       <section class="settings-section">
         <h2 class="section-title eyebrow">Rendering</h2>
-        <label class="setting-row">
-          <input
-            v-model="renderV1"
-            type="checkbox"
-          />
+        <FormCheckbox
+          v-model="renderV1"
+          class="setting-row"
+        >
           <span class="setting-text">
             <strong>Render V1 Punks</strong>
             <span class="muted small">
@@ -45,7 +44,7 @@
               canonical CryptoPunks. Off by default.
             </span>
           </span>
-        </label>
+        </FormCheckbox>
       </section>
     </ClientOnly>
   </div>
@@ -108,16 +107,23 @@ useSeoMeta({
   font-size: var(--font-md);
 }
 
-.setting-row {
+.setting-row.form-checkbox {
+  --setting-checkbox-active-color: var(--accent);
+  --setting-checkbox-border-color: var(--text-muted);
+  --setting-checkbox-check-color: #fff;
+  --primary: var(--setting-checkbox-active-color);
+  --muted: var(--setting-checkbox-border-color);
+  --background: var(--setting-checkbox-check-color);
+
   display: flex;
   align-items: flex-start;
   gap: var(--size-3);
+  color: var(--text);
   cursor: pointer;
 }
 
-.setting-row input[type='checkbox'] {
+.setting-row :deep(.form-checkbox-button) {
   margin-top: var(--size-1);
-  flex-shrink: 0;
 }
 
 .setting-text {

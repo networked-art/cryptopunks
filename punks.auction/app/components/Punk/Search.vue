@@ -49,6 +49,19 @@
           </Button>
         </ClientOnly>
       </FormInputGroup>
+
+      <div
+        class="search-sublines"
+        :class="{ 'is-stuck': isScrolled }"
+      >
+        <FormCheckbox
+          :model-value="listedActive"
+          class="for-sale-toggle"
+          @update:model-value="toggleListed = !toggleListed"
+        >
+          For sale
+        </FormCheckbox>
+      </div>
     </header>
 
     <PunkGrid
@@ -87,8 +100,12 @@ const MODERN_WRAPPED_QUALIFIER =
 const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
+const toggleListed = ref(false)
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
 const underlineMeasure = useTemplateRef<HTMLElement>('underlineMeasure')
+
+const { y: scrollY } = useWindowScroll()
+const isScrolled = computed(() => scrollY.value > 0)
 
 /// `/` is a global shortcut for "focus the search". Skip when the user is
 /// already typing into an editable element so the slash lands as a character.
@@ -111,6 +128,9 @@ onKeyStroke('/', (e) => {
 /// search + grid re-render only run after the user pauses typing.
 const debouncedText = refDebounced(text, 80)
 const qualifiers = computed(() => extractQualifiers(debouncedText.value))
+const listedActive = computed(
+  () => qualifiers.value.listed || toggleListed.value,
+)
 
 /// The input is the single source of truth — URL is a derived persistence
 /// layer. We remember the last value we wrote so the inbound URL watcher can
