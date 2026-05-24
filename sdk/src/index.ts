@@ -124,11 +124,16 @@ export {
   normalizeSkinToneRefs,
   toOfflineSearchQuery,
 } from './query'
-export { parseSearchText, tokenizeSearchText } from './text-parse'
+export {
+  parseSearchText,
+  searchSynonyms,
+  tokenizeSearchText,
+} from './text-parse'
 export type {
   ParsedNumericConstraint,
   ParsedSearchText,
   ParsedSearchTextGroup,
+  SearchSynonymsMap,
   SearchTextTerm,
 } from './text-parse'
 export { formatSearchText } from './text-format'

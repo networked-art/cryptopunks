@@ -7,11 +7,13 @@ import {
   createPunksSdk,
   createStashClient,
   createStashFactoryClient,
+  searchSynonyms,
   stashPunkBidTypedData,
   type ContractWritePlan,
   type PunkMarketBid,
   type PunkSimilarityExplanation,
   type PunkSimilarityResult,
+  type SearchSynonymsMap,
   type StashOwnerStatus,
   type StashPunkBid,
   type TransactionHash,
@@ -30,6 +32,8 @@ declare const walletClient: WalletClient
 
 const punksAuctionAddress: Address = PUNKS_AUCTION_ADDRESS
 const punksAuctionEscrowAddress: Address = PUNKS_AUCTION_ESCROW_ADDRESS
+const synonymMap: SearchSynonymsMap = searchSynonyms
+const marilynSynonym: string = synonymMap.marilyn
 
 const bid: StashPunkBid = {
   order: {

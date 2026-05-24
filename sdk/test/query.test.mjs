@@ -11,7 +11,13 @@ const data = createOfflinePunksDataClient()
 
 /// Quick helpers — trait ids referenced by the assertions below.
 const MALE_TRAIT_ID = data.resolveTraitSync('Male').id
+const FEMALE_TRAIT_ID = data.resolveTraitSync('Female').id
 const STRINGY_HAIR_TRAIT_ID = data.resolveTraitSync('Stringy Hair').id
+const BLONDE_BOB_TRAIT_ID = data.resolveTraitSync('Blonde Bob').id
+const GOLD_CHAIN_TRAIT_ID = data.resolveTraitSync('Gold Chain').id
+const HOT_LIPSTICK_TRAIT_ID = data.resolveTraitSync('Hot Lipstick').id
+const MEDICAL_MASK_TRAIT_ID = data.resolveTraitSync('Medical Mask').id
+const MOHAWK_TRAIT_ID = data.resolveTraitSync('Mohawk').id
 const HEAD_VARIANT_TRAIT_OFFSET = 5
 const FEMALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 5 // HeadVariant.Female4
 const MALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 9 // HeadVariant.Male4
@@ -113,6 +119,23 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.throws(
       () => compileOfferSlot(data, { query: { text: 'beard albino' } }),
       /any-of trait group/,
+    )
+  })
+
+  it('compiles offchain synonyms as canonical trait constraints', () => {
+    const covid = compileOfferSlot(data, { query: { text: 'covid punk' } })
+    assert.equal(covid.criteria.requiredTraitMask, mask(MEDICAL_MASK_TRAIT_ID))
+
+    const marilyn = compileOfferSlot(data, { query: { text: 'marilyn' } })
+    assert.equal(
+      marilyn.criteria.requiredTraitMask,
+      mask(FEMALE_TRAIT_ID, BLONDE_BOB_TRAIT_ID, HOT_LIPSTICK_TRAIT_ID),
+    )
+
+    const mrT = compileOfferSlot(data, { query: { text: 'mr. t' } })
+    assert.equal(
+      mrT.criteria.requiredTraitMask,
+      mask(MALE_TRAIT_ID, MOHAWK_TRAIT_ID, GOLD_CHAIN_TRAIT_ID),
     )
   })
 })

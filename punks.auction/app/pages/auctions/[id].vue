@@ -44,6 +44,16 @@
         </dd>
       </div>
 
+      <div
+        v-if="displayMinimumBidWei"
+        class="fact"
+      >
+        <dt>Next bid</dt>
+        <dd>
+          <EthAmount :wei="displayMinimumBidWei" />
+        </dd>
+      </div>
+
       <div class="fact">
         <dt>Seller</dt>
         <dd>

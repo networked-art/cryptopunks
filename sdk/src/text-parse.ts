@@ -4,6 +4,7 @@ import {
   skinToneNames,
   type SkinToneValue,
 } from './constants'
+import searchSynonymsJson from './search-synonyms.json'
 import { PunksDataValidationError } from './utils'
 
 /// Single tokenized term from a search text query.
@@ -43,6 +44,21 @@ export type ParsedSearchTextGroup = {
 export type ParsedSearchText = {
   orGroups: ParsedSearchTextGroup[]
 }
+
+export type SearchSynonymsMap = Record<string, string>
+
+/// Offchain folk-trait aliases. Keys are user-facing search phrases; values
+/// are normal search text, so contributors can compose existing canonical
+/// traits with quotes for exact multi-word trait names.
+export const searchSynonyms: SearchSynonymsMap = searchSynonymsJson
+
+type SearchSynonymEntry = {
+  key: string
+  tokens: string[]
+  value: SearchTextTerm[]
+}
+
+const SEARCH_SYNONYM_ENTRIES = buildSearchSynonymEntries(searchSynonyms)
 
 /// Parses a search text string into structured constraints + free-term
 /// fallback. Recognizes:
@@ -235,13 +251,95 @@ function parseSearchTextGroup(
         i += 1
         continue
       }
+
+      // Collection suffixes are filler in free-text search. This keeps folk
+      // aliases composable: `marilyn punk` should mean the `marilyn` alias,
+      // not `marilyn` AND an impossible trait named `punk`.
+      if (isSearchFillerTerm(t0)) {
+        i += 1
+        continue
+      }
     }
 
     group.freeTerms.push(t0)
     i += 1
   }
 
+  group.freeTerms = expandSearchSynonymTerms(group.freeTerms)
   return group
+}
+
+function buildSearchSynonymEntries(
+  synonyms: SearchSynonymsMap,
+): SearchSynonymEntry[] {
+  const entries: SearchSynonymEntry[] = []
+  for (const [rawKey, rawValue] of Object.entries(synonyms)) {
+    if (typeof rawKey !== 'string' || typeof rawValue !== 'string') continue
+    const key = normalizeSynonymText(rawKey)
+    if (!key) continue
+    const value = tokenizeSearchText(rawValue)
+    if (value.length === 0) continue
+    entries.push({
+      key,
+      tokens: key.split(/\s+/),
+      value,
+    })
+  }
+  return entries.sort((a, b) => {
+    const tokenDelta = b.tokens.length - a.tokens.length
+    if (tokenDelta !== 0) return tokenDelta
+    return b.key.length - a.key.length
+  })
+}
+
+function expandSearchSynonymTerms(
+  terms: readonly SearchTextTerm[],
+): SearchTextTerm[] {
+  if (terms.length === 0 || SEARCH_SYNONYM_ENTRIES.length === 0) {
+    return [...terms]
+  }
+
+  const expanded: SearchTextTerm[] = []
+  let i = 0
+  while (i < terms.length) {
+    const match = findSearchSynonymAt(terms, i)
+    if (match === undefined) {
+      expanded.push(terms[i])
+      i += 1
+      continue
+    }
+    expanded.push(...match.entry.value)
+    i += match.consumed
+  }
+  return expanded
+}
+
+function findSearchSynonymAt(
+  terms: readonly SearchTextTerm[],
+  start: number,
+): { entry: SearchSynonymEntry; consumed: number } | undefined {
+  for (const entry of SEARCH_SYNONYM_ENTRIES) {
+    const consumed = matchSearchSynonymEntry(terms, start, entry)
+    if (consumed !== undefined) return { entry, consumed }
+  }
+  return undefined
+}
+
+function matchSearchSynonymEntry(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  entry: SearchSynonymEntry,
+): number | undefined {
+  let phrase = ''
+  const maxTerms = Math.min(entry.tokens.length, terms.length - start)
+  for (let consumed = 1; consumed <= maxTerms; consumed++) {
+    const normalized = normalizeSynonymText(terms[start + consumed - 1].text)
+    if (!normalized) return undefined
+    phrase = phrase ? `${phrase} ${normalized}` : normalized
+    if (phrase === entry.key) return consumed
+    if (!entry.key.startsWith(`${phrase} `)) return undefined
+  }
+  return undefined
 }
 
 type ComparatorKind = '<=' | '<' | '>=' | '>' | '='
@@ -401,4 +499,18 @@ function parseNonNegativeInt(value: string): number | undefined {
 
 function normalizeWord(value: string): string {
   return value.toLowerCase().replaceAll(/[_,]/g, '')
+}
+
+function normalizeSynonymText(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function isSearchFillerTerm(term: SearchTextTerm): boolean {
+  if (term.exact) return false
+  const normalized = normalizeSynonymText(term.text)
+  return normalized === 'punk' || normalized === 'punks'
 }

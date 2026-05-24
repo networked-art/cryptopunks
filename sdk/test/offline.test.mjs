@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
+import { parseSearchText, searchSynonyms } from '../dist/index.js'
 import {
   createOfflinePunksDataClient,
   createOfflinePunksDataClientFromDataset,
@@ -157,6 +158,55 @@ describe('OfflinePunksDataClient', () => {
       sdk
         .searchSync({ attributes: { required: ['Alien'] } })
         .filter((id) => id !== 2890),
+    )
+  })
+
+  it('expands offchain folk-trait synonyms in text search', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    assert.equal(searchSynonyms.marilyn, 'female "blonde bob" "hot lipstick"')
+    assert.deepEqual(parseSearchText('covid punk').orGroups[0].freeTerms, [
+      { text: 'medical mask', exact: true },
+    ])
+    assert.deepEqual(parseSearchText('zombie punks').orGroups[0].freeTerms, [
+      { text: 'zombie', exact: false },
+    ])
+
+    assert.deepEqual(
+      sdk.searchSync({ text: 'covid punk' }),
+      sdk.searchSync({ text: '"medical mask"' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'marilyn' }),
+      sdk.searchSync({ text: 'female "blonde bob" "hot lipstick"' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'marilyn punks' }),
+      sdk.searchSync({ text: 'marilyn' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'claude' }),
+      sdk.searchSync({ text: '"crazy hair"' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: '"helena bonham carter"' }),
+      sdk.searchSync({ text: 'female "wild hair"' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'helena bonham carter sunglasses cigarette' }),
+      sdk.searchSync({ text: 'female "wild hair" shades cigarette' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'crazy black-haired girls' }),
+      sdk.searchSync({ text: 'female "wild hair"' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'sunglasses cigarette' }),
+      sdk.searchSync({ text: 'shades cigarette' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'masks' }),
+      sdk.countSync({ text: 'mask' }),
     )
   })
 
