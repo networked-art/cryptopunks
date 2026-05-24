@@ -66,7 +66,7 @@
     <section class="about-section">
       <h2 class="section-title eyebrow">The contracts</h2>
       <dl class="contract-meta">
-        <dt class="eyebrow">PunksAuction</dt>
+        <dt class="eyebrow">Punks Auction</dt>
         <dd>
           <a
             href="https://evm.now/address/0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b"
@@ -75,7 +75,7 @@
             ><code>punksauction.eth</code></a
           >
         </dd>
-        <dt class="eyebrow">PunksAuctionEscrow</dt>
+        <dt class="eyebrow">Punks Auction Escrow</dt>
         <dd>
           <a
             href="https://evm.now/address/0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24"
@@ -84,7 +84,7 @@
             ><code>escrow.punksauction.eth</code></a
           >
         </dd>
-        <dt class="eyebrow">PunksVaultFactory</dt>
+        <dt class="eyebrow">Punks Vault Factory</dt>
         <dd>
           <a
             href="https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66"
