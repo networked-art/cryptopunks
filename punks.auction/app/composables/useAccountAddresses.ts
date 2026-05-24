@@ -39,16 +39,25 @@ export function useAccountAddresses(
   const error = ref<string | null>(null)
   let token = 0
 
+  function reset() {
+    vault.value = null
+    stash.value = null
+    userProxy.value = null
+    vaultDeployed.value = false
+    stashDeployed.value = false
+  }
+
   async function load() {
     const t = ++token
     const addr = toValue(account)
     const c = client.value
+    // Always clear stale prior-account refs at the start of a fresh run, so
+    // navigating profile A → B never renders A's vault/stash under B's
+    // header while the multicall is in flight.
+    reset()
     if (!addr || !c) {
-      vault.value = null
-      stash.value = null
-      userProxy.value = null
-      vaultDeployed.value = false
-      stashDeployed.value = false
+      loading.value = false
+      error.value = null
       return
     }
     loading.value = true

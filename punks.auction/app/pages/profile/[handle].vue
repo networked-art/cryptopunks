@@ -64,7 +64,14 @@
         v-if="resolvedAddress"
         class="profile-cols"
       >
-        <ProfileAddresses :account="resolvedAddress" />
+        <ProfileAddresses
+          :account="resolvedAddress"
+          :vault="vault"
+          :stash="stash"
+          :user-proxy="userProxy"
+          :vault-deployed="vaultDeployed"
+          :stash-deployed="stashDeployed"
+        />
 
         <ProfileManager
           v-if="ownAccount"
@@ -188,11 +195,17 @@ const ensProfile = useEnsWithAvatar(handle)
 
 const resolving = ref(true)
 const resolvedAddress = ref<Address | null>(null)
+// Token guard for the async watchEffect: each run bumps the counter and
+// checks it before writing back, so a slow earlier resolution (ENS round-trip
+// + indexer round-trip) can't clobber a newer one started after a quick
+// handle change.
+let resolveToken = 0
 
 watchEffect(async () => {
-  resolving.value = true
+  const t = ++resolveToken
   const h = handle.value
   const handleIsAddress = isAddress(h)
+  resolving.value = true
 
   let eoa: Address | null = null
   if (handleIsAddress) {
@@ -200,7 +213,7 @@ watchEffect(async () => {
   } else {
     const client = getPublicClient(config) as PublicClient | undefined
     if (!client) {
-      resolving.value = false
+      if (t === resolveToken) resolving.value = false
       return
     }
     try {
@@ -209,6 +222,7 @@ watchEffect(async () => {
     } catch {
       eoa = null
     }
+    if (t !== resolveToken) return
   }
 
   // Canonicalize URLs of the form `/profile/<vault|stash|userProxy>` to
@@ -217,7 +231,13 @@ watchEffect(async () => {
   // handles are user-chosen and stay verbatim.
   if (handleIsAddress && eoa) {
     const resolved = await resolveProfileAddress(eoa)
+    if (t !== resolveToken) return
     if (resolved.redirect) {
+      // Clear the spinner before navigating; the next `handle` change will
+      // re-run this effect with the canonical address. Without this, the
+      // template renders "Resolving…" indefinitely if `router.replace`
+      // resolves on the next microtask.
+      resolving.value = false
       void router.replace(`/profile/${resolved.canonical}`)
       return
     }
@@ -255,7 +275,13 @@ useSeoMeta({
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
-const { vault, stash } = useAccountAddresses(profileAddress)
+const {
+  vault,
+  stash,
+  userProxy,
+  vaultDeployed,
+  stashDeployed,
+} = useAccountAddresses(profileAddress)
 
 const {
   ids: owned,
@@ -277,12 +303,18 @@ const { events: activity } = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { offers } = useOffers()
 
+// Lots/offers the profile owns are filtered by `seller`/`offerer` matching
+// any of the user's custody addresses: EOA, vault, or stash. (UserProxy is
+// excluded — it's a transient wrap-flow intermediary, never an at-rest
+// seller.)
 const ownerAddresses = computed(() => {
   const set = new Set<string>()
   const a = resolvedAddress.value?.toLowerCase()
   if (a) set.add(a)
   const v = vault.value?.toLowerCase()
   if (v) set.add(v)
+  const s = stash.value?.toLowerCase()
+  if (s) set.add(s)
   return set
 })
 

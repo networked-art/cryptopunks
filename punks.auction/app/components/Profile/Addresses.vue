@@ -94,14 +94,16 @@
 import type { Address } from 'viem'
 import { addressUrl } from '~/utils/explorer'
 
-const props = defineProps<{
+// Presentational only — addresses come from the page's `useAccountAddresses`
+// so the same composable result feeds both this panel and `useAccountPunks`.
+defineProps<{
   account: Address | undefined
+  vault: Address | null
+  stash: Address | null
+  userProxy: Address | null
+  vaultDeployed: boolean
+  stashDeployed: boolean
 }>()
-
-const account = computed(() => props.account)
-
-const { vault, stash, userProxy, vaultDeployed, stashDeployed } =
-  useAccountAddresses(account)
 </script>
 
 <style scoped>

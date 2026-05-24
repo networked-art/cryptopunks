@@ -7,20 +7,19 @@ const PUNKS_QUERY = `
       items { punk_id owner is_wrapped }
     }
     v1Punks(where: { owner_in: $addrs }, limit: 10000) {
-      items { punk_id owner }
+      items { punk_id owner is_wrapped }
     }
   }
 `
 
 type PunkRow = { punk_id: string; owner: string; is_wrapped: boolean }
-type V1PunkRow = { punk_id: string; owner: string }
 
 export type AccountPunkBreakdown = {
   /** Native-owned by the EOA (not wrapped, not in vault/stash). */
   wallet: number
-  /** Held by the user's `PunksVault`. */
+  /** Held by the user's `PunksVault`. Custody dominates wrap state. */
   vault: number
-  /** Held by the user's Yuga `Stash`. */
+  /** Held by the user's Yuga `Stash`. Custody dominates wrap state. */
   stash: number
   /** Wrapped — ERC-721 token owned by the EOA. */
   wrapped: number
@@ -53,16 +52,24 @@ export function useAccountPunks(opts: {
   const error = ref<string | null>(null)
   let token = 0
 
+  function reset() {
+    ids.value = []
+    v1Ids.value = []
+    v2Ids.value = []
+    breakdown.value = { wallet: 0, vault: 0, stash: 0, wrapped: 0 }
+  }
+
   async function load() {
     const t = ++token
     const acct = toValue(opts.account)
     const vlt = toValue(opts.vault)
     const stsh = toValue(opts.stash)
+    // Clear stale prior-profile data before any await, so navigating A → B
+    // never shows A's grid + breakdown under B's header.
+    reset()
     if (!acct) {
-      ids.value = []
-      v1Ids.value = []
-      v2Ids.value = []
-      breakdown.value = { wallet: 0, vault: 0, stash: 0, wrapped: 0 }
+      loading.value = false
+      error.value = null
       return
     }
 
@@ -75,7 +82,7 @@ export function useAccountPunks(opts: {
     try {
       const data = await queryIndexer<{
         punks: { items: PunkRow[] }
-        v1Punks: { items: V1PunkRow[] }
+        v1Punks: { items: PunkRow[] }
       }>(PUNKS_QUERY, { addrs })
       if (t !== token) return
 
@@ -84,10 +91,10 @@ export function useAccountPunks(opts: {
       const stshLower = stsh?.toLowerCase() ?? null
 
       const counts = { wallet: 0, vault: 0, stash: 0, wrapped: 0 }
-      const v2Set = new Set<number>()
-      for (const row of data.punks.items) {
-        const id = Number(row.punk_id)
-        v2Set.add(id)
+      // Custody dominates wrap state: a wrapped token held by the vault is
+      // counted as "vault", not "wrapped". The "wrapped" bucket only reflects
+      // wrapper ERC-721s sitting in the EOA's own wallet.
+      const classify = (row: PunkRow) => {
         const owner = row.owner.toLowerCase()
         if (owner === acctLower) {
           if (row.is_wrapped) counts.wrapped++
@@ -96,9 +103,15 @@ export function useAccountPunks(opts: {
         else if (stshLower && owner === stshLower) counts.stash++
       }
 
+      const v2Set = new Set<number>()
+      for (const row of data.punks.items) {
+        v2Set.add(Number(row.punk_id))
+        classify(row)
+      }
       const v1Set = new Set<number>()
       for (const row of data.v1Punks.items) {
         v1Set.add(Number(row.punk_id))
+        classify(row)
       }
 
       v2Ids.value = Array.from(v2Set).sort((a, b) => a - b)
