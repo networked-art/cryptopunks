@@ -433,12 +433,12 @@ function unionIds(...groups: Iterable<number>[]) {
 
   flex: 1 1 240px;
   min-width: 0;
-  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
+  box-shadow: var(--shadow-2, 0 10px 24px rgb(10 10 18 / 12%));
   transition: box-shadow 180ms ease;
 }
 
 .search-group:focus-within {
-  box-shadow: 0 18px 42px rgb(10 10 18 / 28%);
+  box-shadow: var(--shadow-3, 0 18px 42px rgb(10 10 18 / 28%));
 }
 
 .search-field {

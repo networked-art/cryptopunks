@@ -126,7 +126,7 @@ function next() {
   --preview-inset: 19%;
   padding: var(--preview-inset);
   background: white;
-  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
+  box-shadow: var(--shadow, 0 6px 16px rgb(10 10 18 / 8%));
   transition: box-shadow 180ms ease;
   overflow: hidden;
 }
