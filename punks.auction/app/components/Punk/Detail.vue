@@ -17,8 +17,14 @@
           :traits="displayTraits"
         />
         <PunkDetailOwner
+          :key="`owner-${marketChangeKey}`"
           :punk-id="punkId"
           :standard="standard"
+        />
+        <PunkDetailMarket
+          v-if="!isV1"
+          :punk-id="punkId"
+          @changed="onMarketChanged"
         />
         <PunkDetailAuction
           :punk-id="punkId"
@@ -26,6 +32,7 @@
         />
         <PunkDetailHistory
           v-if="!isV1"
+          :key="`history-${marketChangeKey}`"
           :punk-id="punkId"
         />
       </div>
@@ -47,6 +54,11 @@ const summary = computed(() =>
   offline.get(props.punkId, { includeTraits: true }),
 )
 const { displayTraits } = usePunkDisplayTraits(summary)
+const marketChangeKey = ref(0)
+
+function onMarketChanged() {
+  marketChangeKey.value += 1
+}
 </script>
 
 <style scoped>
