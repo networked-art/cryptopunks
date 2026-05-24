@@ -1,18 +1,51 @@
 import type { Address } from 'viem'
 import { queryIndexer } from '~/utils/indexer'
 
+const OWNED_PUNKS_PAGE_SIZE = 1000
+
 const PUNKS_QUERY = `
-  query AccountPunks($addrs: [String!]!) {
-    punks(where: { owner_in: $addrs }, limit: 10000) {
+  query AccountPunks($addrs: [String!]!, $limit: Int!, $after: String) {
+    punks(
+      where: { owner_in: $addrs }
+      orderBy: "punk_id"
+      orderDirection: "asc"
+      limit: $limit
+      after: $after
+    ) {
       items { punk_id owner is_wrapped }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
-    v1Punks(where: { owner_in: $addrs }, limit: 10000) {
+  }
+`
+
+const V1_PUNKS_QUERY = `
+  query AccountV1Punks($addrs: [String!]!, $limit: Int!, $after: String) {
+    v1Punks(
+      where: { owner_in: $addrs }
+      orderBy: "punk_id"
+      orderDirection: "asc"
+      limit: $limit
+      after: $after
+    ) {
       items { punk_id owner is_wrapped }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `
 
 type PunkRow = { punk_id: string; owner: string; is_wrapped: boolean }
+type PunkConnection = {
+  items: PunkRow[]
+  pageInfo: { hasNextPage: boolean; endCursor: string | null }
+}
+type PunkQueryKey = 'punks' | 'v1Punks'
+type PunkQueryData = Partial<Record<PunkQueryKey, PunkConnection>>
 
 export type AccountPunkBreakdown = {
   /** Native-owned by the EOA (not wrapped, not in vault/stash). */
@@ -31,8 +64,8 @@ export type AccountPunkBreakdown = {
  * Yuga `Stash`. Returns a deduplicated sorted union plus a per-custody
  * breakdown for the count sublabel.
  *
- * Single GraphQL query: one `owner_in` predicate per collection. Re-fires
- * whenever the inputs change.
+ * Pages through V1 and V2 with one `owner_in` predicate per collection.
+ * Re-fires whenever the inputs change.
  */
 export function useAccountPunks(opts: {
   account: MaybeRefOrGetter<Address | undefined>
@@ -80,10 +113,10 @@ export function useAccountPunks(opts: {
     loading.value = true
     error.value = null
     try {
-      const data = await queryIndexer<{
-        punks: { items: PunkRow[] }
-        v1Punks: { items: PunkRow[] }
-      }>(PUNKS_QUERY, { addrs })
+      const [punks, v1Punks] = await Promise.all([
+        fetchAllPunkRows(PUNKS_QUERY, 'punks', addrs, () => t === token),
+        fetchAllPunkRows(V1_PUNKS_QUERY, 'v1Punks', addrs, () => t === token),
+      ])
       if (t !== token) return
 
       const acctLower = acct.toLowerCase()
@@ -104,12 +137,12 @@ export function useAccountPunks(opts: {
       }
 
       const v2Set = new Set<number>()
-      for (const row of data.punks.items) {
+      for (const row of punks) {
         v2Set.add(Number(row.punk_id))
         classify(row)
       }
       const v1Set = new Set<number>()
-      for (const row of data.v1Punks.items) {
+      for (const row of v1Punks) {
         v1Set.add(Number(row.punk_id))
         classify(row)
       }
@@ -141,4 +174,35 @@ export function useAccountPunks(opts: {
   )
 
   return { ids, v1Ids, v2Ids, breakdown, loading, error, refresh: load }
+}
+
+async function fetchAllPunkRows(
+  query: string,
+  key: PunkQueryKey,
+  addrs: string[],
+  isCurrent: () => boolean,
+): Promise<PunkRow[]> {
+  const rows: PunkRow[] = []
+  let after: string | null = null
+
+  while (isCurrent()) {
+    const data: PunkQueryData = await queryIndexer<PunkQueryData>(query, {
+      addrs,
+      limit: OWNED_PUNKS_PAGE_SIZE,
+      after,
+    })
+    const page = data[key]
+    if (!page) {
+      throw new Error('Indexer returned no punk page')
+    }
+    rows.push(...page.items)
+
+    if (!page.pageInfo.hasNextPage) break
+    if (!page.pageInfo.endCursor) {
+      throw new Error('Indexer pagination cursor missing')
+    }
+    after = page.pageInfo.endCursor
+  }
+
+  return rows
 }
