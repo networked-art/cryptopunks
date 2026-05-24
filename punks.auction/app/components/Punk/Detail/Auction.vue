@@ -18,7 +18,7 @@
         v-else-if="isContextEmpty"
         class="block-note muted"
       >
-        This Punk is not in any auction, lot, or offer.
+        This Punk is not in any active auction, listed lot, or offer.
       </p>
       <div
         v-else
@@ -28,7 +28,7 @@
           v-if="punkAuctions.length"
           class="context-group"
         >
-          <h3 class="context-title">In auction</h3>
+          <h3 class="context-title">Active auction</h3>
           <div class="card-grid">
             <LazyAuctionCard
               v-for="auction in punkAuctions"
@@ -41,7 +41,7 @@
           v-if="punkLots.length"
           class="context-group"
         >
-          <h3 class="context-title">In a lot</h3>
+          <h3 class="context-title">Listed in a lot</h3>
           <div class="card-grid">
             <LazyLotCard
               v-for="lot in punkLots"

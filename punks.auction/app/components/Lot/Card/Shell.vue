@@ -25,6 +25,23 @@ defineProps<{
   flex-direction: column;
   gap: var(--size-2);
   block-size: 100%;
+  transition: transform 180ms ease;
+}
+
+.lot-card-shell:hover,
+.lot-card-shell:focus-within {
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lot-card-shell {
+    transition: none;
+  }
+
+  .lot-card-shell:hover,
+  .lot-card-shell:focus-within {
+    transform: none;
+  }
 }
 
 .lot-card-link {

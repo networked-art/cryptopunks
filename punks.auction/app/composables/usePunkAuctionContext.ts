@@ -1,4 +1,5 @@
 import {
+  auctionStatus,
   offerSlotToQuery,
   type LotItem,
   type TokenStandardValue,
@@ -13,10 +14,13 @@ export function usePunkAuctionContext(
   punkId: MaybeRefOrGetter<number>,
   standard: MaybeRefOrGetter<TokenStandardValue>,
 ) {
-  const { auctions, pending: auctionsPending, deployed } = useAuctions()
-  const { lots, pending: lotsPending } = useLots()
+  // MOCK DATA — use the same fixtures as the auction index/detail pages until
+  // the auction indexer is ready to back punk-level context.
+  const { auctions, pending: auctionsPending, deployed } = useMockAuctions()
+  const { lots, pending: lotsPending } = useMockLots()
   const { offers, pending: offersPending } = useOffers()
   const offline = usePunksOffline()
+  const now = useSeconds()
 
   function matchesItem(item: LotItem): boolean {
     return (
@@ -25,7 +29,11 @@ export function usePunkAuctionContext(
   }
 
   const punkAuctions = computed(() =>
-    auctions.value.filter((a) => a.items.some(matchesItem)),
+    auctions.value.filter(
+      (auction) =>
+        auctionStatus(auction, now.value) === 'live' &&
+        auction.items.some(matchesItem),
+    ),
   )
 
   const punkLots = computed(() =>

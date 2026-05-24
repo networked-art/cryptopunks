@@ -23,18 +23,6 @@
       </div>
 
       <div class="fact">
-        <dt>Available to</dt>
-        <dd>
-          <template v-if="isPrivateLot">
-            <NuxtLink :to="`/profile/${displayLot.onlySellTo}`">
-              <Account :address="displayLot.onlySellTo" />
-            </NuxtLink>
-          </template>
-          <template v-else>Public</template>
-        </dd>
-      </div>
-
-      <div class="fact">
         <dt>Seller</dt>
         <dd>
           <NuxtLink :to="`/profile/${displayLot.seller}`">
@@ -42,20 +30,15 @@
           </NuxtLink>
         </dd>
       </div>
-
-      <div class="fact">
-        <dt>Items</dt>
-        <dd>{{ displayLot.items.length.toLocaleString() }}</dd>
-      </div>
     </dl>
-
-    <LotDetailItems :items="displayLot.items" />
 
     <LotActions
       v-if="!isMock"
       :lot="displayLot"
       @changed="onChanged"
     />
+
+    <LotDetailItems :items="displayLot.items" />
   </LotDetailShell>
 
   <div
@@ -81,8 +64,6 @@
 </template>
 
 <script setup lang="ts">
-import { ZERO_ADDRESS } from '@networked-art/punks-sdk'
-import type { Address } from 'viem'
 import { mockLotById } from '~/composables/useAuctionData.mock'
 import {
   auctionStatus,
@@ -114,11 +95,6 @@ const isMock = computed(() => !lot.value && !!displayLot.value)
 const itemCountLabel = computed(() =>
   displayLot.value ? formatLotItemsLabel(displayLot.value.items) : '',
 )
-const isPrivateLot = computed(
-  () =>
-    !!displayLot.value &&
-    !sameAddress(displayLot.value.onlySellTo, ZERO_ADDRESS),
-)
 
 watch(
   sourceAuction,
@@ -143,10 +119,6 @@ async function activeAuctionForLot(lotId: number) {
   } catch {
     return null
   }
-}
-
-function sameAddress(a?: Address | string | null, b?: Address | string | null) {
-  return !!a && !!b && a.toLowerCase() === b.toLowerCase()
 }
 
 useSeoMeta({
