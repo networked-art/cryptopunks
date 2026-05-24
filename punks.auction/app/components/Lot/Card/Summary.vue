@@ -7,7 +7,22 @@
     </div>
 
     <div class="summary-meta">
-      <span v-if="detail">{{ detail }}</span>
+      <span
+        v-if="detail"
+        class="summary-detail"
+      >
+        <span
+          v-if="liveIndicator"
+          class="summary-live-indicator"
+          aria-hidden="true"
+        />
+        <span
+          v-if="liveIndicator"
+          class="summary-live-label"
+          >Live auction,
+        </span>
+        {{ detail }}
+      </span>
       <span
         v-if="detail"
         aria-hidden="true"
@@ -25,6 +40,7 @@
 defineProps<{
   label?: string
   detail?: string
+  liveIndicator?: boolean
   wei: bigint | number | string
 }>()
 </script>
@@ -46,7 +62,7 @@ defineProps<{
 .summary-subject,
 .summary-meta {
   min-width: 0;
-  color: var(--text-dim);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -79,6 +95,31 @@ defineProps<{
   justify-content: end;
   gap: var(--size-2);
   text-align: right;
+}
+
+.summary-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2);
+}
+
+.summary-live-indicator {
+  position: relative;
+  inline-size: 0.36rem;
+  block-size: 0.36rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.summary-live-label {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  inline-size: 1px;
+  block-size: 1px;
+  white-space: nowrap;
 }
 
 .summary-amount,

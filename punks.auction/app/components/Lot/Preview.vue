@@ -54,9 +54,7 @@
       >
         <Icon name="lucide:chevron-left" />
       </button>
-      <span
-        class="preview-count"
-      >
+      <span class="preview-count">
         {{ activeIndex + 1 }} / {{ items.length }}
       </span>
       <button
@@ -206,7 +204,7 @@ function next() {
   position: absolute;
   z-index: 10;
   inset-inline-start: 50%;
-  inset-block-end: calc((var(--preview-inset) + 12%) / 2);
+  inset-block-end: 12.5%;
   transform: translate(-50%, 50%);
   display: flex;
   align-items: center;
