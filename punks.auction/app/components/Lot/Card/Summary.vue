@@ -162,7 +162,6 @@ defineProps<{
   font-size: var(--font-xs);
   font-variant-numeric: tabular-nums;
   line-height: var(--line-height-tight);
-  text-transform: lowercase;
 }
 
 .summary-amount {
