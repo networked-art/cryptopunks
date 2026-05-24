@@ -51,10 +51,6 @@
               Listing not directed to PunksMarket.sol.
             </div>
           </div>
-          <div v-else-if="staleListing">
-            <span class="muted">Stale offer</span>
-            <div class="warn">Seller no longer owns this punk.</div>
-          </div>
           <span
             v-else
             class="muted"
@@ -104,10 +100,10 @@
               @listed="onListed"
             />
             <Button
-              v-if="liveListing || staleListing"
+              v-if="liveListing"
               @click="actUnlist"
             >
-              {{ staleListing ? 'Clear stale offer' : 'Cancel listing' }}
+              Cancel listing
             </Button>
           </div>
           <Button
@@ -144,12 +140,6 @@
             General listings shouldn't be made for safety reasons so in the
             spirit of education you can't process them through PunksMarket.sol.
             <NuxtLink to="/about">Learn more</NuxtLink>.
-          </p>
-          <p
-            v-else-if="staleListing"
-            class="warn"
-          >
-            Stale raw offer — seller no longer owns this punk.
           </p>
 
           <Button
@@ -205,7 +195,6 @@ import { type Address, type Hash, type TransactionReceipt } from 'viem'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
-import { isLiveListingOwner } from '~/utils/listings'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{
@@ -242,12 +231,8 @@ const isOwner = computed(
 )
 const liveListing = computed(() => {
   const live = listing.value
-  if (!live?.isForSale || !owner.value) return null
-  return isLiveListingOwner(live.seller, owner.value) ? live : null
+  return live?.isForSale ? live : null
 })
-const staleListing = computed(
-  () => !!listing.value?.isForSale && !!owner.value && !liveListing.value,
-)
 const isDirectedToPunksMarket = computed(() => {
   const listing = liveListing.value
   if (!listing) return false
