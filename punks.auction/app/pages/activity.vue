@@ -32,9 +32,9 @@
 
       <div
         v-if="pending"
-        class="muted"
+        class="loading"
       >
-        Loading activity…
+        <Spinner label="Loading activity" />
       </div>
       <div
         v-else-if="error"
@@ -185,6 +185,11 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   padding: var(--size-8);
   text-align: center;
   border: 1px dashed var(--border-color);
+}
+
+.loading {
+  padding: var(--size-8);
+  text-align: center;
 }
 
 .load-more {
