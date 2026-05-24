@@ -623,6 +623,10 @@ function unionIds(...groups: Iterable<number>[]) {
 }
 
 @media (max-width: 640px) {
+  .search-bar {
+    padding-inline: 0;
+  }
+
   .search-field {
     --search-actions-width: 104px;
   }

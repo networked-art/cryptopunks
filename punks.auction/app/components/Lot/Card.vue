@@ -1,6 +1,6 @@
 <template>
   <LotCardShell
-    :to="`/auctions/${lot.id}`"
+    :to="`/lots/${lot.id}`"
     :aria-label="`View lot ${lot.id}`"
   >
     <LotPreview :items="lot.items" />

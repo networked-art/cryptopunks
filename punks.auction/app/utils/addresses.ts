@@ -12,6 +12,9 @@ import {
 export const PUNKS_AUCTION_ADDRESS =
   '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as Address
 
+/** First block containing the `PunksAuction` deployment. */
+export const PUNKS_AUCTION_START_BLOCK = 25_146_787n
+
 /** Canonical `CryptoPunks` market (the fixed June 22nd 2017 redeploy). */
 export const CRYPTOPUNKS_ADDRESS = CRYPTOPUNKS_MARKET_ADDRESS as Address
 

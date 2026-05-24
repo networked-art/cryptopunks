@@ -1,10 +1,14 @@
-import type { Address, PublicClient } from 'viem'
+import { parseAbiItem, type Address, type PublicClient } from 'viem'
 import {
   punksAuctionAbi,
   type PunkQuery,
   type PunksFilter,
 } from '@networked-art/punks-sdk'
-import { PUNKS_AUCTION_ADDRESS, isAuctionDeployed } from '~/utils/addresses'
+import {
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_AUCTION_START_BLOCK,
+  isAuctionDeployed,
+} from '~/utils/addresses'
 
 // ──────────────────────────────── Constants ────────────────────────────────
 
@@ -63,6 +67,7 @@ export type LotRecord = {
 
 export type AuctionRecord = {
   id: bigint
+  sourceLotId?: bigint
   seller: Address
   latestBidder: Address
   latestBidWei: bigint
@@ -176,6 +181,10 @@ const auctionContract = {
   abi: punksAuctionAbi,
 } as const
 
+const AUCTION_INITIALISED = parseAbiItem(
+  'event AuctionInitialised(uint256 indexed auctionId, uint256 indexed lotId, address indexed seller, uint8 itemCount, uint40 endTimestamp)',
+)
+
 /// Resolves the highest assigned id for `lots` / `auctions` / `offers`.
 async function lastId(
   client: PublicClient,
@@ -198,6 +207,49 @@ function decodeItems(
     punkId: item.punkId,
     weightBps: item.weightBps,
   }))
+}
+
+async function readLotCore(
+  client: PublicClient,
+  id: bigint,
+): Promise<
+  | {
+      id: bigint
+      seller: Address
+      reserveWei: bigint
+      onlySellTo: Address
+    }
+  | null
+> {
+  const result = await client.readContract({
+    ...auctionContract,
+    functionName: 'lots',
+    args: [id],
+  })
+  const [seller, reserveWei, onlySellTo] = result as readonly [
+    Address,
+    bigint,
+    Address,
+  ]
+  if (seller === '0x0000000000000000000000000000000000000000') return null
+  return { id, seller, reserveWei, onlySellTo }
+}
+
+export async function readLot(
+  client: PublicClient,
+  id: bigint | number,
+): Promise<LotRecord | null> {
+  if (!isAuctionDeployed()) return null
+  const lotId = BigInt(id)
+  const core = await readLotCore(client, lotId)
+  if (!core) return null
+
+  const items = await client.readContract({
+    ...auctionContract,
+    functionName: 'getLotItems',
+    args: [lotId],
+  })
+  return { ...core, items: decodeItems(items as never) }
 }
 
 export async function readLots(client: PublicClient): Promise<LotRecord[]> {
@@ -250,6 +302,62 @@ export async function readLots(client: PublicClient): Promise<LotRecord[]> {
   })
 }
 
+async function readAuctionCore(
+  client: PublicClient,
+  id: bigint,
+): Promise<
+  | {
+      id: bigint
+      seller: Address
+      latestBidder: Address
+      latestBidWei: bigint
+      endTimestamp: number
+      settled: boolean
+    }
+  | null
+> {
+  const result = await client.readContract({
+    ...auctionContract,
+    functionName: 'auctions',
+    args: [id],
+  })
+  const [seller, latestBidder, latestBidWei, endTimestamp, settled] =
+    result as readonly [Address, Address, bigint, number, boolean]
+  if (Number(endTimestamp) === 0) return null
+  return {
+    id,
+    seller,
+    latestBidder,
+    latestBidWei,
+    endTimestamp: Number(endTimestamp),
+    settled,
+  }
+}
+
+export async function readAuction(
+  client: PublicClient,
+  id: bigint | number,
+): Promise<AuctionRecord | null> {
+  if (!isAuctionDeployed()) return null
+  const auctionId = BigInt(id)
+  const core = await readAuctionCore(client, auctionId)
+  if (!core) return null
+
+  const [items, sourceLotId] = await Promise.all([
+    client.readContract({
+      ...auctionContract,
+      functionName: 'getAuctionItems',
+      args: [auctionId],
+    }),
+    readSourceLotIdForAuction(client, auctionId),
+  ])
+  return {
+    ...core,
+    sourceLotId: sourceLotId ?? undefined,
+    items: decodeItems(items as never),
+  }
+}
+
 export async function readAuctions(
   client: PublicClient,
 ): Promise<AuctionRecord[]> {
@@ -282,6 +390,7 @@ export async function readAuctions(
       args: [row.id] as const,
     })),
   })
+  const sourceLotIds = await readAuctionSourceLotIds(client)
 
   return present.map((row, i) => {
     const [seller, latestBidder, latestBidWei, endTimestamp, settled] = row.core!
@@ -289,6 +398,7 @@ export async function readAuctions(
     const itemsRes = itemsResults[i]
     return {
       id: row.id,
+      sourceLotId: sourceLotIds.get(row.id),
       seller,
       latestBidder,
       latestBidWei,
@@ -300,6 +410,59 @@ export async function readAuctions(
           : [],
     }
   })
+}
+
+export async function readAuctionForLot(
+  client: PublicClient,
+  lotId: bigint | number,
+): Promise<AuctionRecord | null> {
+  if (!isAuctionDeployed()) return null
+  const logs = await client.getLogs({
+    address: PUNKS_AUCTION_ADDRESS,
+    event: AUCTION_INITIALISED,
+    args: { lotId: BigInt(lotId) },
+    fromBlock: PUNKS_AUCTION_START_BLOCK,
+    toBlock: 'latest',
+  })
+  const latest = logs.at(-1)
+  const auctionId = latest?.args.auctionId
+  if (auctionId === undefined) return null
+  const auction = await readAuction(client, auctionId)
+  return auction ? { ...auction, sourceLotId: BigInt(lotId) } : null
+}
+
+async function readSourceLotIdForAuction(
+  client: PublicClient,
+  auctionId: bigint,
+): Promise<bigint | null> {
+  const logs = await client.getLogs({
+    address: PUNKS_AUCTION_ADDRESS,
+    event: AUCTION_INITIALISED,
+    args: { auctionId },
+    fromBlock: PUNKS_AUCTION_START_BLOCK,
+    toBlock: 'latest',
+  })
+  return logs.at(-1)?.args.lotId ?? null
+}
+
+async function readAuctionSourceLotIds(
+  client: PublicClient,
+): Promise<Map<bigint, bigint>> {
+  const logs = await client.getLogs({
+    address: PUNKS_AUCTION_ADDRESS,
+    event: AUCTION_INITIALISED,
+    fromBlock: PUNKS_AUCTION_START_BLOCK,
+    toBlock: 'latest',
+  })
+  return new Map(
+    logs
+      .filter(
+        (log): log is typeof log & {
+          args: { auctionId: bigint; lotId: bigint }
+        } => log.args.auctionId !== undefined && log.args.lotId !== undefined,
+      )
+      .map((log) => [log.args.auctionId, log.args.lotId]),
+  )
 }
 
 export async function readOffers(client: PublicClient): Promise<OfferRecord[]> {

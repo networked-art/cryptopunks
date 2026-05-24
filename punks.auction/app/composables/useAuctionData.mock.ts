@@ -149,6 +149,12 @@ export function useMockAuctions() {
   }
 }
 
+export function mockAuctionById(id: bigint | number): AuctionRecord | null {
+  return (
+    createMockAuctions().find((auction) => auction.id === BigInt(id)) ?? null
+  )
+}
+
 export function useMockLots() {
   return {
     lots: ref<LotRecord[]>(mockLots),
@@ -157,4 +163,8 @@ export function useMockLots() {
     deployed: true,
     refresh: async () => {},
   }
+}
+
+export function mockLotById(id: bigint | number): LotRecord | null {
+  return mockLots.find((lot) => lot.id === BigInt(id)) ?? null
 }
