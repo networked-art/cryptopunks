@@ -45,7 +45,7 @@
         v-else
         class="card-grid"
       >
-        <AuctionCard
+        <LazyAuctionCard
           v-for="auction in activeAuctions"
           :key="String(auction.id)"
           :auction="auction"
@@ -83,7 +83,7 @@
         v-else
         class="card-grid"
       >
-        <LotCard
+        <LazyLotCard
           v-for="lot in sortedLots"
           :key="String(lot.id)"
           :lot="lot"

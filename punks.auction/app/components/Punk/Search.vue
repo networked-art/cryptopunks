@@ -64,7 +64,7 @@
       </div>
     </header>
 
-    <PunkGrid
+    <LazyPunkGrid
       :ids="ids"
       :size="size"
     />
@@ -72,7 +72,12 @@
 </template>
 
 <script setup lang="ts">
-import { onKeyStroke, refDebounced, useMediaQuery } from '@vueuse/core'
+import {
+  onKeyStroke,
+  refDebounced,
+  useMediaQuery,
+  useWindowScroll,
+} from '@vueuse/core'
 import { isAddress, type Address } from 'viem'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
@@ -87,7 +92,8 @@ const props = withDefaults(
 const offline = usePunksOffline()
 const route = useRoute()
 const router = useRouter()
-const { marketStateSets } = usePunkMarketState()
+const { marketStateLoaded, marketStateSets, listedPrices } =
+  usePunkMarketState()
 
 const LISTED_QUALIFIER =
   /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
@@ -242,26 +248,28 @@ const query = computed<PunkQuery>(() => {
     }
   }
 
-  if (qualifiers.value.listed) {
-    ids = intersectIds(ids, marketStateSets.value.listed)
-  }
-  if (qualifiers.value.activeBids) {
-    ids = intersectIds(ids, marketStateSets.value.active_bids)
-  }
-  if (qualifiers.value.legacyWrapped) {
-    ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
-  }
-  if (qualifiers.value.modernWrapped) {
-    ids = intersectIds(ids, marketStateSets.value.wrapped)
-  }
-  if (qualifiers.value.wrapped) {
-    ids = intersectIds(
-      ids,
-      unionIds(
-        marketStateSets.value.wrapped,
-        marketStateSets.value.legacy_wrapped,
-      ),
-    )
+  if (marketStateLoaded.value) {
+    if (qualifiers.value.listed) {
+      ids = intersectIds(ids, marketStateSets.value.listed)
+    }
+    if (qualifiers.value.activeBids) {
+      ids = intersectIds(ids, marketStateSets.value.active_bids)
+    }
+    if (qualifiers.value.legacyWrapped) {
+      ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
+    }
+    if (qualifiers.value.modernWrapped) {
+      ids = intersectIds(ids, marketStateSets.value.wrapped)
+    }
+    if (qualifiers.value.wrapped) {
+      ids = intersectIds(
+        ids,
+        unionIds(
+          marketStateSets.value.wrapped,
+          marketStateSets.value.legacy_wrapped,
+        ),
+      )
+    }
   }
 
   return {
@@ -278,11 +286,19 @@ const query = computed<PunkQuery>(() => {
 })
 
 const ids = computed(() => {
+  let result: number[]
   try {
-    return offline.search(query.value)
+    result = offline.search(query.value)
   } catch {
     return []
   }
+  if (!listedActive.value || !marketStateLoaded.value) return result
+  const prices = listedPrices.value
+  return [...result].sort(
+    (a, b) =>
+      (prices.get(a) ?? Number.POSITIVE_INFINITY) -
+      (prices.get(b) ?? Number.POSITIVE_INFINITY),
+  )
 })
 
 const counts = computed(() => ({
@@ -559,6 +575,51 @@ function unionIds(...groups: Iterable<number>[]) {
 .clear-search :deep(.icon) {
   width: 16px;
   height: 16px;
+}
+
+.search-sublines {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--size-2) var(--size-3);
+  background: transparent;
+  transition:
+    background var(--speed),
+    box-shadow var(--speed);
+}
+
+.search-sublines.is-stuck {
+  background: white;
+  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
+}
+
+.for-sale-toggle.form-checkbox {
+  --for-sale-checkbox-active-color: var(--accent);
+  --for-sale-checkbox-border-color: var(--text-muted);
+  --for-sale-checkbox-check-color: var(--button-primary-color);
+  --primary: var(--for-sale-checkbox-active-color);
+  --muted: var(--for-sale-checkbox-border-color);
+  --background: var(--for-sale-checkbox-check-color);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2);
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--ui-letter-spacing);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--speed);
+}
+
+.for-sale-toggle:hover,
+.for-sale-toggle:focus-within {
+  color: var(--text);
+}
+
+.for-sale-toggle :deep(.form-checkbox-button) {
+  cursor: pointer;
 }
 
 @media (max-width: 640px) {

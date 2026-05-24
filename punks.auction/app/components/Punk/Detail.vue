@@ -21,16 +21,16 @@
           :punk-id="punkId"
           :standard="standard"
         />
-        <PunkDetailMarket
+        <LazyPunkDetailMarket
           v-if="!isV1"
           :punk-id="punkId"
           @changed="onMarketChanged"
         />
-        <PunkDetailAuction
+        <LazyPunkDetailAuction
           :punk-id="punkId"
           :standard="standard"
         />
-        <PunkDetailHistory
+        <LazyPunkDetailHistory
           v-if="!isV1"
           :key="`history-${marketChangeKey}`"
           :punk-id="punkId"

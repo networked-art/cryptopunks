@@ -2,12 +2,26 @@ import type { PunksSdk } from '@networked-art/punks-sdk'
 import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 /// Renders a Punk to a PNG and triggers a browser download. The image comes
-/// straight from the SDK's offline renderer — pixel-exact, no post-processing.
+/// from the SDK's full pixel dataset, which is imported only on demand.
 
 export type SnapshotOptions = {
   size?: number
   background?: string
   fileName?: string
+}
+
+let pixelSdkPromise: Promise<PunksSdk> | null = null
+
+async function getPixelSdk(): Promise<PunksSdk> {
+  if (!pixelSdkPromise) {
+    pixelSdkPromise = Promise.all([
+      import('@networked-art/punks-sdk'),
+      import('@networked-art/punks-sdk/offline-pixel-data'),
+    ]).then(([sdk, data]) =>
+      sdk.createPunksSdk({ dataset: data.bundledOfflinePunksDataWithPixels }),
+    )
+  }
+  return pixelSdkPromise
 }
 
 async function svgToBlob(svg: string, size: number): Promise<Blob> {
@@ -37,13 +51,13 @@ async function svgToBlob(svg: string, size: number): Promise<Blob> {
 }
 
 export async function downloadPunkPng(
-  offline: PunksSdk,
   punkId: number,
   options: SnapshotOptions = {},
 ): Promise<void> {
   const size = options.size ?? 1024
   const fileName = options.fileName ?? `punk-${punkId}.png`
-  const svg = offline.render.svg(punkId, {
+  const pixelSdk = await getPixelSdk()
+  const svg = pixelSdk.render.svg(punkId, {
     background: (options.background ??
       PUNK_BACKGROUNDS.default) as `#${string}`,
   })

@@ -75,7 +75,7 @@
         >
           <template v-if="isOwner">
             <div class="action-group">
-              <PunkDetailMarketListForm
+              <LazyPunkDetailMarketListForm
                 :punk-id="punkId"
                 :current-price-wei="liveListing?.priceWei ?? null"
                 @listed="onChanged"
@@ -96,7 +96,7 @@
               Accept bid <EthAmount :wei="activeBid.valueWei" />
             </Button>
 
-            <PunkDetailMarketTransferForm
+            <LazyPunkDetailMarketTransferForm
               :punk-id="punkId"
               @transferred="onChanged"
             />
@@ -122,7 +122,7 @@
             </p>
 
             <div class="action-group">
-              <PunkDetailMarketBidForm
+              <LazyPunkDetailMarketBidForm
                 :punk-id="punkId"
                 :current-bid="activeBid"
                 :primary="!liveListing"

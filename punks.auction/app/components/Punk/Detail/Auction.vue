@@ -30,7 +30,7 @@
         >
           <h3 class="context-title">In auction</h3>
           <div class="card-grid">
-            <AuctionCard
+            <LazyAuctionCard
               v-for="auction in punkAuctions"
               :key="String(auction.id)"
               :auction="auction"
@@ -43,7 +43,7 @@
         >
           <h3 class="context-title">In a lot</h3>
           <div class="card-grid">
-            <LotCard
+            <LazyLotCard
               v-for="lot in punkLots"
               :key="String(lot.id)"
               :lot="lot"
@@ -56,7 +56,7 @@
         >
           <h3 class="context-title">Matching offers</h3>
           <div class="card-grid">
-            <OfferCard
+            <LazyOfferCard
               v-for="offer in punkOffers"
               :key="String(offer.id)"
               :offer="offer"

@@ -44,7 +44,7 @@
       </div>
       <template v-else-if="events.length">
         <ul class="event-list">
-          <ActivityRow
+          <LazyActivityRow
             v-for="event in events"
             :key="event.id"
             :event="event"

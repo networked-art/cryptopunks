@@ -110,7 +110,7 @@ useSeoMeta({
 .setting-row.form-checkbox {
   --setting-checkbox-active-color: var(--accent);
   --setting-checkbox-border-color: var(--text-muted);
-  --setting-checkbox-check-color: #fff;
+  --setting-checkbox-check-color: var(--button-primary-color);
   --primary: var(--setting-checkbox-active-color);
   --muted: var(--setting-checkbox-border-color);
   --background: var(--setting-checkbox-check-color);

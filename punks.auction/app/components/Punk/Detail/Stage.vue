@@ -34,7 +34,6 @@ const props = defineProps<{
   standard: TokenStandardValue
 }>()
 
-const offline = usePunksOffline()
 const { backgroundForPunk } = usePunkBackgrounds()
 const downloading = ref(false)
 
@@ -42,7 +41,7 @@ async function downloadImage() {
   if (downloading.value) return
   downloading.value = true
   try {
-    await downloadPunkPng(offline, props.punkId, {
+    await downloadPunkPng(props.punkId, {
       size: 2048,
       background: backgroundForPunk(props.punkId, props.standard),
     })

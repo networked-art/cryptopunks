@@ -64,7 +64,7 @@
         v-if="resolvedAddress"
         class="profile-cols"
       >
-        <ProfileAddresses
+        <LazyProfileAddresses
           :account="resolvedAddress"
           :vault="vault"
           :stash="stash"
@@ -73,7 +73,7 @@
           :stash-deployed="stashDeployed"
         />
 
-        <ProfileManager
+        <LazyProfileManager
           v-if="ownAccount"
           :account="ownAccount"
         />
@@ -93,7 +93,7 @@
             Could not load owned Punks: {{ ownedError }}
           </p>
           <template v-else-if="owned.length">
-            <PunkGrid
+            <LazyPunkGrid
               :ids="owned"
               :size="48"
             />
@@ -118,7 +118,7 @@
             v-if="myLots.length"
             class="card-grid"
           >
-            <LotCard
+            <LazyLotCard
               v-for="lot in myLots"
               :key="String(lot.id)"
               :lot="lot"
@@ -138,7 +138,7 @@
             v-if="myOffers.length"
             class="card-grid"
           >
-            <OfferCard
+            <LazyOfferCard
               v-for="offer in myOffers"
               :key="String(offer.id)"
               :offer="offer"
@@ -158,7 +158,7 @@
             v-if="activity.length"
             class="event-list"
           >
-            <ActivityRow
+            <LazyActivityRow
               v-for="event in activity"
               :key="event.id"
               :event="event"

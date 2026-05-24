@@ -38,7 +38,7 @@
         v-else
         class="card-grid"
       >
-        <OfferCard
+        <LazyOfferCard
           v-for="offer in sortedOffers"
           :key="String(offer.id)"
           :offer="offer"

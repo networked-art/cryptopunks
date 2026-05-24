@@ -12,7 +12,7 @@ import {
   PUNKS_V1_ADDRESS,
 } from '~/utils/addresses'
 
-/** Offline SDK — search, dataset, rendering. Available everywhere. */
+/** Offline SDK — search and dataset reads. Available everywhere. */
 export function usePunksOffline(): PunksSdk {
   const { $punksOffline } = useNuxtApp()
   return $punksOffline as PunksSdk

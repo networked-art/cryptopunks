@@ -3,12 +3,13 @@
     class="punk-image"
     :style="rootStyle"
     :title="`Punk #${punkId}`"
+    role="img"
+    :aria-label="`CryptoPunk ${punkId}`"
   >
-    <img
+    <span
       class="punk-base"
-      :src="dataUri"
-      :alt="`CryptoPunk ${punkId}`"
-      draggable="false"
+      :style="spriteStyle"
+      aria-hidden="true"
     />
     <span
       v-if="showId"
@@ -36,17 +37,12 @@ const props = withDefaults(
   },
 )
 
-const offline = usePunksOffline()
 const { backgroundForPunk } = usePunkBackgrounds()
+const SPRITE_COLS = 100
+const SPRITE_SPAN = SPRITE_COLS - 1
 
 const resolvedBackground = computed(
   () => props.background ?? backgroundForPunk(props.punkId, props.standard),
-)
-
-const dataUri = computed(() =>
-  offline.render.svgDataUri(props.punkId, {
-    background: resolvedBackground.value as `#${string}`,
-  }),
 )
 
 const rootStyle = computed(() => ({
@@ -54,6 +50,16 @@ const rootStyle = computed(() => ({
   height: typeof props.size === 'number' ? `${props.size}px` : props.size,
   background: resolvedBackground.value,
 }))
+
+const spriteStyle = computed(() => {
+  const row = Math.floor(props.punkId / SPRITE_COLS)
+  const col = props.punkId % SPRITE_COLS
+  return {
+    backgroundImage: "url('/punks.png')",
+    backgroundSize: `${SPRITE_COLS * 100}% ${SPRITE_COLS * 100}%`,
+    backgroundPosition: `${(col / SPRITE_SPAN) * 100}% ${(row / SPRITE_SPAN) * 100}%`,
+  }
+})
 </script>
 
 <style scoped>
@@ -65,16 +71,14 @@ const rootStyle = computed(() => ({
   flex-shrink: 0;
 }
 
-.punk-image img {
+.punk-base {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
   user-select: none;
-}
-
-.punk-base {
-  position: relative;
+  background-repeat: no-repeat;
   z-index: 1;
 }
 

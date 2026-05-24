@@ -1,17 +1,16 @@
 import { createPunksSdk } from '@networked-art/punks-sdk'
-import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
+import { bundledOfflinePunksData } from '@networked-art/punks-sdk/offline-data'
 
 /**
- * Offline-only SDK — search, dataset, and rendering. The collection itself is
- * served entirely from the bundled dataset; chain state (auctions, lots,
- * offers, ownership) is read straight from contracts in the composables.
+ * Offline-only SDK — search and dataset reads. The sprite sheet serves visual
+ * rendering; full indexed pixel data is loaded only by the PNG download path.
  */
 export default defineNuxtPlugin(() => {
-  const offline = createPunksSdk({ dataset: bundledOfflinePunksDataWithPixels })
+  const offline = createPunksSdk({ dataset: bundledOfflinePunksData })
   return {
     provide: {
       punksOffline: offline,
-      punksDataset: bundledOfflinePunksDataWithPixels,
+      punksDataset: bundledOfflinePunksData,
     },
   }
 })
