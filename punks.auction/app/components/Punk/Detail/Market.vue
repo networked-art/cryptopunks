@@ -26,9 +26,6 @@
                 private
               </span>
             </dd>
-            <dd v-else-if="staleListing">
-              <span class="muted">Stale listing</span>
-            </dd>
             <dd
               v-else
               class="muted"
@@ -95,10 +92,10 @@
                 @listed="onChanged"
               />
               <Button
-                v-if="liveListing || staleListing"
+                v-if="liveListing"
                 @click="actUnlist"
               >
-                {{ staleListing ? 'Clear stale listing' : 'Cancel listing' }}
+                Cancel listing
               </Button>
             </div>
 
@@ -133,13 +130,6 @@
                 <Account :address="liveListing.onlySellTo" />
               </NuxtLink>
               .
-            </p>
-            <p
-              v-else-if="staleListing"
-              class="warn"
-            >
-              The canonical market still has an old listing, but the seller is
-              no longer the Punk owner.
             </p>
 
             <div class="action-group">
@@ -217,13 +207,8 @@ const isOwner = computed(
 
 const liveListing = computed(() => {
   const current = listing.value
-  if (!current?.isForSale || !owner.value) return null
-  return sameAddress(current.seller, owner.value) ? current : null
+  return current?.isForSale ? current : null
 })
-
-const staleListing = computed(
-  () => !!listing.value?.isForSale && !!owner.value && !liveListing.value,
-)
 
 const activeBid = computed(() => {
   const current = bid.value
