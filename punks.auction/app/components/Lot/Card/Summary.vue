@@ -1,7 +1,9 @@
 <template>
   <div class="lot-card-summary">
     <div class="summary-subject">
-      <slot>{{ label }}</slot>
+      <span class="summary-subject-text">
+        <slot>{{ label }}</slot>
+      </span>
     </div>
 
     <div class="summary-meta">
@@ -50,6 +52,24 @@ defineProps<{
 .summary-subject {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.summary-subject-text {
+  position: relative;
+  display: inline-block;
+  padding-block-end: var(--size-1);
+}
+
+.summary-subject-text::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 2px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 
 .summary-meta {

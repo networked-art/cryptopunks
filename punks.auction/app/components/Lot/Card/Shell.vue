@@ -46,4 +46,13 @@ defineProps<{
   outline-offset: var(--size-1);
 }
 
+.lot-card-shell:hover :deep(.summary-subject-text),
+.lot-card-shell:focus-within :deep(.summary-subject-text) {
+  color: var(--text);
+}
+
+.lot-card-shell:hover :deep(.summary-subject-text::after),
+.lot-card-shell:focus-within :deep(.summary-subject-text::after) {
+  opacity: 1;
+}
 </style>
