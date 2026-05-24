@@ -3,17 +3,12 @@
     <LotPreview :items="auction.items" />
 
     <LotCardSummary
-      label="Current bid"
+      :label="endText"
       :wei="auction.latestBidWei"
-      :live="status === 'live'"
+      :amount-label="statusLabel"
+      :amount-live="status === 'live'"
     >
-      <time
-        class="timer"
-        :datetime="endIso"
-        :title="absoluteEnd"
-      >
-        {{ status === 'live' ? 'Ends' : 'Ended' }} {{ endAgo }}
-      </time>
+      {{ itemCountLabel }}
     </LotCardSummary>
   </LotCardShell>
 </template>
@@ -24,18 +19,20 @@ import { auctionStatus, type AuctionRecord } from '~/utils/auction'
 const props = defineProps<{ auction: AuctionRecord }>()
 
 const status = computed(() => auctionStatus(props.auction))
+const statusLabel = computed(
+  () =>
+    ({ live: 'live', ended: 'ended', settled: 'settled' })[status.value],
+)
+const itemCountLabel = computed(() => {
+  const count = props.auction.items.length
+  return `${count.toLocaleString()} Punk${count === 1 ? '' : 's'}`
+})
 
 const endIso = computed(() =>
   new Date(props.auction.endTimestamp * 1000).toISOString(),
 )
 const endAgo = useTimeAgo(endIso)
-const absoluteEnd = computed(() =>
-  new Date(props.auction.endTimestamp * 1000).toLocaleString(),
+const endText = computed(
+  () => `${status.value === 'live' ? 'ends' : 'ended'} ${endAgo.value}`,
 )
 </script>
-
-<style scoped>
-.timer {
-  color: inherit;
-}
-</style>

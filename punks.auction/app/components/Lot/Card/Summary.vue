@@ -1,18 +1,11 @@
 <template>
   <div class="lot-card-summary">
     <div class="summary-copy">
-      <div class="summary-label">
-        <span class="eyebrow">{{ label }}</span>
-        <span
-          v-if="live"
-          class="live-status"
-        >
-          <span
-            class="live-dot"
-            aria-hidden="true"
-          />
-          Live
-        </span>
+      <div
+        v-if="label || $slots.label"
+        class="summary-kicker"
+      >
+        <slot name="label">{{ label }}</slot>
       </div>
       <div
         v-if="$slots.default"
@@ -22,10 +15,24 @@
       </div>
     </div>
 
-    <EthAmount
-      class="summary-amount"
-      :wei="wei"
-    />
+    <div class="summary-value">
+      <div
+        v-if="amountLabel"
+        class="amount-kicker"
+        :class="{ live: amountLive }"
+      >
+        <span
+          v-if="amountLive"
+          class="live-dot"
+          aria-hidden="true"
+        />
+        {{ amountLabel }}
+      </div>
+      <EthAmount
+        class="summary-amount"
+        :wei="wei"
+      />
+    </div>
   </div>
 </template>
 
@@ -33,42 +40,59 @@
 defineProps<{
   label: string
   wei: bigint | number | string
-  live?: boolean
+  amountLabel?: string
+  amountLive?: boolean
 }>()
 </script>
 
 <style scoped>
 .lot-card-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: end;
-  justify-content: space-between;
-  gap: var(--size-3);
+  gap: var(--size-4);
   min-width: 0;
 }
 
 .summary-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-}
-
-.summary-label {
-  min-width: 0;
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: var(--size-2);
+  min-width: 0;
 }
 
-.live-status {
+.summary-kicker,
+.amount-kicker {
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0;
+  line-height: var(--line-height-tight);
+}
+
+.summary-kicker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.summary-value {
+  display: grid;
+  justify-items: end;
+  gap: var(--size-1);
+  text-align: right;
+}
+
+.amount-kicker {
   display: inline-flex;
   align-items: center;
   gap: var(--size-1);
-  color: var(--accent-strong);
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-wide);
-  text-transform: uppercase;
+  text-transform: lowercase;
   white-space: nowrap;
+}
+
+.amount-kicker.live {
+  color: var(--accent-strong);
 }
 
 .live-dot {
@@ -101,13 +125,15 @@ defineProps<{
   color: var(--text-muted);
   font-size: var(--font-xs);
   font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+  text-transform: lowercase;
 }
 
 .summary-amount {
-  flex-shrink: 0;
   color: var(--text);
-  font-size: var(--font-2xl);
+  font-size: var(--font-xl);
   font-weight: var(--font-weight-bolder);
-  line-height: 1;
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
 }
 </style>

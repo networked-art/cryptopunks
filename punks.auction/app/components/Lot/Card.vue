@@ -3,7 +3,7 @@
     <LotPreview :items="lot.items" />
 
     <LotCardSummary
-      label="Reserve"
+      label="reserve"
       :wei="lot.reserveWei"
     >
       {{ itemCountLabel }}
