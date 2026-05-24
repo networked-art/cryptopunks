@@ -39,13 +39,13 @@ const KNOWN_NON_EOA_LOWER = new Set<string>([
   '0x6d263b22d1b2feb93881af6ff57666efa5a8f346', // UnwrapV1Punks
 ])
 
-// In-process cache of addresses whose vault + stash are already populated.
-// Skips repeated DB finds and RPC reads for hot accounts within a single
-// indexer process. Cleared on restart; the DB find covers cold starts.
-const completedAddresses = new Set<string>()
-
-function shouldSkip(lower: string): boolean {
-  return KNOWN_NON_EOA_LOWER.has(lower) || completedAddresses.has(lower)
+// Lowercases a viem-returned address into the form Ponder's `t.hex()` columns
+// round-trip — so the compare against `existing.vault`/`existing.stash` is
+// stable. Without this, `predictVault` returns checksummed and `existing.vault`
+// is read back lowercase, firing a spurious UPDATE on every event for the same
+// EOA.
+function lower(addr: Address | null): Address | null {
+  return addr ? (addr.toLowerCase() as Address) : null
 }
 
 // Pinned to `max(eventBlock, factoryDeployBlock)` so the eth_call always lands
@@ -79,8 +79,12 @@ async function predictPair(
     ],
   })
   return {
-    vault: results[0]?.status === 'success' ? (results[0].result as Address) : null,
-    stash: results[1]?.status === 'success' ? (results[1].result as Address) : null,
+    vault: lower(
+      results[0]?.status === 'success' ? (results[0].result as Address) : null,
+    ),
+    stash: lower(
+      results[1]?.status === 'success' ? (results[1].result as Address) : null,
+    ),
   }
 }
 
@@ -89,8 +93,13 @@ async function predictPair(
  * per-user vault and stash addresses from `PunksVaultFactory.predictVault`
  * and `StashFactory.stashAddressFor` (both pure views of the user address).
  *
- * Safe to call repeatedly: deduplicates via an in-process set plus a DB find,
- * and never overwrites an already-populated column.
+ * Safe to call repeatedly: relies on Ponder's internal `db.find` cache for
+ * the hot path, and never overwrites an already-populated column.
+ *
+ * Deliberately avoids a module-level "completed" Set: Ponder reverts DB
+ * writes on reorg without resetting user module state, so a process-local
+ * cache that skips re-inserts would leave subsequent `recordUserProxy`
+ * updates pointing at a row the reorg already deleted.
  */
 export async function ensureAccount(
   context: Context,
@@ -98,15 +107,11 @@ export async function ensureAccount(
   blockNumber: bigint,
   timestamp: bigint,
 ): Promise<void> {
-  const lower = address.toLowerCase()
-  if (shouldSkip(lower)) return
+  if (KNOWN_NON_EOA_LOWER.has(address.toLowerCase())) return
 
   const normalized = getAddress(address) as Address
   const existing = await context.db.find(account, { address: normalized })
-  if (existing?.vault && existing.stash) {
-    completedAddresses.add(lower)
-    return
-  }
+  if (existing?.vault && existing.stash) return
 
   let vault: Address | null = existing?.vault ?? null
   let stash: Address | null = existing?.stash ?? null
@@ -131,8 +136,6 @@ export async function ensureAccount(
       updated_at: timestamp,
     })
   }
-
-  if (vault && stash) completedAddresses.add(lower)
 }
 
 /**
@@ -149,9 +152,9 @@ export async function ensureAccounts(
   const seen = new Set<string>()
   for (const raw of addresses) {
     if (!raw) continue
-    const lower = raw.toLowerCase()
-    if (seen.has(lower)) continue
-    seen.add(lower)
+    const key = raw.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
     await ensureAccount(context, raw, blockNumber, timestamp)
   }
 }
@@ -168,10 +171,9 @@ export async function recordUserProxy(
   timestamp: bigint,
 ): Promise<void> {
   await ensureAccount(context, user, blockNumber, timestamp)
-  const lower = user.toLowerCase()
-  if (KNOWN_NON_EOA_LOWER.has(lower)) return
+  if (KNOWN_NON_EOA_LOWER.has(user.toLowerCase())) return
   const normalized = getAddress(user) as Address
-  const proxyNormalized = getAddress(proxy) as Address
+  const proxyNormalized = (proxy.toLowerCase() as Address)
   await context.db.update(account, { address: normalized }).set({
     user_proxy: proxyNormalized,
     updated_at: timestamp,
