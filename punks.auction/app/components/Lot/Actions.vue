@@ -1,71 +1,82 @@
 <template>
   <ClientOnly>
     <section class="actions-panel">
-      <h2 class="block-title eyebrow">Action</h2>
-
-      <label class="amount-field">
-        <span class="label">Opening bid</span>
-        <input
-          v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          :placeholder="reserveEth"
-        />
-      </label>
+      <h2 class="block-title eyebrow">Actions</h2>
 
       <p
-        v-if="isPrivateLot && !canOpen"
-        class="warn"
+        v-if="preview"
+        class="block-note muted"
       >
-        This lot is reserved for
-        <NuxtLink :to="`/profile/${lot.onlySellTo}`">
-          <Account :address="lot.onlySellTo" />
-        </NuxtLink>
-        .
+        Wallet actions appear for live lot records.
       </p>
 
-      <div
-        v-if="!address"
-        class="connect-row"
-      >
-        <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
-        <span class="muted">Connect a wallet to open the auction.</span>
+      <div class="action-block">
+        <h3 class="action-title">Open as auction</h3>
+        <p class="block-note muted">
+          Start a 24-hour auction with an opening bid of
+          <EthAmount :wei="lot.reserveWei" />.
+        </p>
+
+        <p
+          v-if="!preview && isPrivateLot && !canOpen"
+          class="warn"
+        >
+          This lot is reserved for
+          <NuxtLink :to="`/profile/${lot.onlySellTo}`">
+            <Account :address="lot.onlySellTo" />
+          </NuxtLink>
+          .
+        </p>
+
+        <Button
+          v-if="preview"
+          class="primary"
+          disabled
+        >
+          Open auction <EthAmount :wei="lot.reserveWei" />
+        </Button>
+
+        <div
+          v-else-if="!address"
+          class="connect-row"
+        >
+          <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+          <span class="muted">Connect a wallet to open the auction.</span>
+        </div>
+
+        <EvmTransactionFlowDialog
+          v-else
+          chain="mainnet"
+          keep-open
+          :request="openAuction"
+          :text="dialogText"
+          @complete="onComplete"
+        >
+          <template #start="{ start }">
+            <Button
+              class="primary"
+              :disabled="!canOpen"
+              @click="start"
+            >
+              Open auction <EthAmount :wei="lot.reserveWei" />
+            </Button>
+          </template>
+        </EvmTransactionFlowDialog>
       </div>
 
-      <EvmTransactionFlowDialog
-        v-else
-        chain="mainnet"
-        keep-open
-        :request="openAuction"
-        :text="dialogText"
-        @complete="onComplete"
-      >
-        <template #start="{ start }">
-          <Button
-            class="primary"
-            :disabled="!canOpen"
-            @click="start"
-          >
-            Open auction <EthAmount :wei="bidButtonWei" />
-          </Button>
-        </template>
+      <div
+        class="action-divider"
+        aria-hidden="true"
+      />
 
-        <template #confirm>
-          <p class="confirm-note muted">
-            Reserve:
-            <EthAmount :wei="lot.reserveWei" />
-          </p>
-        </template>
-
-        <template #error>
-          <p class="confirm-note muted">
-            Reserve:
-            <EthAmount :wei="lot.reserveWei" />
-          </p>
-        </template>
-      </EvmTransactionFlowDialog>
+      <div class="action-block">
+        <h3 class="action-title">Accept an offer</h3>
+        <p class="block-note muted">
+          Pick a matching standing offer to settle this lot instantly.
+        </p>
+        <Button disabled>Accept offer</Button>
+        <p class="hint muted">Wallet flow coming soon.</p>
+      </div>
     </section>
   </ClientOnly>
 </template>
@@ -73,22 +84,23 @@
 <script setup lang="ts">
 import { ZERO_ADDRESS } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
-import { formatEther, parseEther, type Address, type Hash } from 'viem'
+import { formatEther, type Address, type Hash } from 'viem'
 import type { LotRecord } from '~/utils/auction'
 
-const props = defineProps<{
-  lot: LotRecord
-}>()
+const props = withDefaults(
+  defineProps<{
+    lot: LotRecord
+    preview?: boolean
+  }>(),
+  {
+    preview: false,
+  },
+)
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
-
-const reserveEth = computed(() => formatEther(props.lot.reserveWei))
-const bidEth = ref('')
-const parsedBidWei = computed(() => parseEthSafe(bidEth.value))
-const bidButtonWei = computed(() => parsedBidWei.value ?? props.lot.reserveWei)
 
 const isPrivateLot = computed(() => !sameAddress(props.lot.onlySellTo, ZERO_ADDRESS))
 const canOpen = computed(() => {
@@ -98,51 +110,27 @@ const canOpen = computed(() => {
   )
 })
 
-watch(
-  () => props.lot.id,
-  () => {
-    bidEth.value = reserveEth.value
-  },
-  { immediate: true },
-)
-
 const dialogText = computed(() => ({
   title: { confirm: `Open lot #${props.lot.id}` },
   lead: {
-    confirm: `Open this lot as a 24-hour auction with at least ${reserveEth.value} ETH.`,
+    confirm: `Open this lot as a 24-hour auction with an opening bid of ${formatEther(props.lot.reserveWei)} ETH.`,
   },
   action: { confirm: 'Open auction' },
 }))
 
 async function openAuction(): Promise<Hash> {
   if (!canOpen.value) throw new Error('This wallet cannot open the lot.')
-  const amountWei = parsedBidWei.value
-  if (!amountWei) throw new Error('Enter an opening bid greater than zero.')
-  if (amountWei < props.lot.reserveWei) {
-    throw new Error(`Enter at least ${reserveEth.value} ETH.`)
-  }
   return execute(
     sdk.value.auctions.prepareOpenAuction({
       lotId: props.lot.id,
       reserveWei: props.lot.reserveWei,
-      bidWei: amountWei,
+      bidWei: props.lot.reserveWei,
     }),
   )
 }
 
 function onComplete(receipt: { transactionHash: Hash }) {
   emit('changed', receipt.transactionHash)
-}
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
 }
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
@@ -161,25 +149,35 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 }
 
 .block-title,
-.confirm-note,
+.block-note,
+.hint,
 .warn {
   margin: 0;
 }
 
-.confirm-note,
+.block-note,
 .connect-row,
+.hint,
 .warn {
   font-size: var(--font-sm);
 }
 
-.amount-field {
+.action-block {
   display: flex;
   flex-direction: column;
-  gap: var(--size-1);
+  gap: var(--size-2);
 }
 
-.amount-field input {
-  width: 100%;
+.action-title {
+  margin: 0;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.action-divider {
+  height: 1px;
+  background: var(--border-color, currentColor);
+  opacity: 0.15;
 }
 
 .connect-row {
@@ -195,6 +193,10 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .warn a {
   border: 0;
+}
+
+.hint {
+  font-size: var(--font-xs);
 }
 
 .actions-panel :deep(button .eth-amount) {

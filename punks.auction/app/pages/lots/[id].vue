@@ -33,8 +33,8 @@
     </dl>
 
     <LotActions
-      v-if="!isMock"
       :lot="displayLot"
+      :preview="isMock"
       @changed="onChanged"
     />
 
