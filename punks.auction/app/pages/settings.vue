@@ -32,7 +32,7 @@
       </section>
 
       <section class="settings-section">
-        <h2 class="section-title eyebrow">Rendering</h2>
+        <h2 class="section-title eyebrow">Context</h2>
         <FormCheckbox
           v-model="renderV1"
           class="setting-row"
