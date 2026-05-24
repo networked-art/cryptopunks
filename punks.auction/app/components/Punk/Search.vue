@@ -21,6 +21,12 @@
             aria-hidden="true"
             >{{ underlineText }}</span
           >
+          <kbd
+            class="search-shortcut"
+            aria-hidden="true"
+            title="Press / to focus search"
+            >/</kbd
+          >
           <span class="search-actions">
             <span class="muted result-count">
               <template v-if="counts.filtered === counts.total">
@@ -496,11 +502,17 @@ function unionIds(...groups: Iterable<number>[]) {
   min-width: 0;
   width: 100%;
   min-height: var(--search-control-height);
+  padding-inline-start: calc(var(--ui-padding-inline) + 22px);
   padding-inline-end: 176px;
   border-radius: 0 !important;
   font-size: var(--font-sm);
   text-transform: uppercase;
   box-shadow: none;
+}
+
+.search-field:focus-within .search-input,
+.search-field.has-text .search-input {
+  padding-inline-start: var(--ui-padding-inline);
 }
 
 .search-input:hover,
@@ -561,6 +573,35 @@ function unionIds(...groups: Iterable<number>[]) {
   white-space: nowrap;
   pointer-events: none;
   padding-inline: var(--size-1);
+}
+
+.search-shortcut {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: var(--ui-padding-inline);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 18px;
+  height: 18px;
+  padding-inline: var(--size-1);
+  border: var(--border-width) solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: var(--surface-muted, transparent);
+  font-family: var(--ui-font-family);
+  font-size: 11px;
+  line-height: 1;
+  text-transform: none;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity var(--speed);
+}
+
+.search-field.has-text .search-shortcut,
+.search-field:focus-within .search-shortcut {
+  display: none;
 }
 
 .clear-search {
