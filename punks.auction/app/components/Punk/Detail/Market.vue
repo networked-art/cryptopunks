@@ -136,6 +136,7 @@
               <PunkDetailMarketBidForm
                 :punk-id="punkId"
                 :current-bid="activeBid"
+                :primary="!liveListing"
                 @placed="onChanged"
               />
               <Button

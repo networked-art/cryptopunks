@@ -8,7 +8,7 @@
   >
     <template #start="{ start }">
       <Button
-        class="primary"
+        :class="{ primary }"
         :disabled="!address"
         @click="start"
       >
@@ -51,10 +51,14 @@ import { formatEther, parseEther, type Address, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 import type { PunkMarketBid } from '@networked-art/punks-sdk'
 
-const props = defineProps<{
-  punkId: number
-  currentBid: PunkMarketBid | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    punkId: number
+    currentBid: PunkMarketBid | null
+    primary?: boolean
+  }>(),
+  { primary: true },
+)
 const emit = defineEmits<{ placed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
