@@ -60,7 +60,6 @@
           </Button>
         </ClientOnly>
       </FormInputGroup>
-
     </header>
 
     <LazyPunkGrid
@@ -552,7 +551,7 @@ function unionIds(...groups: Iterable<number>[]) {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: var(--size-2);
+  gap: var(--size-0);
   transform: translateY(-50%);
 }
 
@@ -561,6 +560,7 @@ function unionIds(...groups: Iterable<number>[]) {
   line-height: var(--line-height);
   white-space: nowrap;
   pointer-events: none;
+  padding-inline: var(--size-1);
 }
 
 .clear-search {
