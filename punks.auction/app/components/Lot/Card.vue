@@ -1,5 +1,8 @@
 <template>
-  <LotCardShell>
+  <LotCardShell
+    :to="`/auctions/${lot.id}`"
+    :aria-label="`View lot ${lot.id}`"
+  >
     <LotPreview :items="lot.items" />
 
     <LotCardSummary :wei="lot.reserveWei">
