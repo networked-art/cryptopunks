@@ -19,7 +19,14 @@
             :size="48"
             :link="false"
           />
-          <span class="item-label">{{ formatLotItemLabel(item) }}</span>
+          <span class="item-label">
+            Punk #{{ item.punkId }}
+            <span
+              v-if="item.standard === TokenStandard.CryptoPunksV1"
+              class="item-standard"
+              >(V1)</span
+            >
+          </span>
         </NuxtLink>
         <span v-if="showWeights" class="weight">{{ formatWeight(item.weightBps) }}</span>
       </li>
@@ -29,9 +36,9 @@
 
 <script setup lang="ts">
 import {
-  formatLotItemLabel,
   lotItemBackground,
   punkHref,
+  TokenStandard,
   type LotItem,
 } from '~/utils/auction'
 
@@ -113,6 +120,10 @@ function itemBackground(item: LotItem) {
   white-space: nowrap;
   font-size: var(--font-sm);
   font-weight: var(--font-weight-bold);
+}
+
+.item-standard {
+  color: var(--text-muted);
 }
 
 .weight {
