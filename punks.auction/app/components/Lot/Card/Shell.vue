@@ -20,6 +20,7 @@ defineProps<{
 <style scoped>
 .lot-card-shell {
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: var(--size-2);
