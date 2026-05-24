@@ -173,13 +173,22 @@
         </section>
       </div>
 
+      <EvmTransactionFlowDialog
+        ref="transactionDialogRef"
+        chain="mainnet"
+        :request="transactionRequest"
+        :text="transactionText"
+        skip-confirmation
+        @complete="onTransactionComplete"
+      />
+
       <EvmMultiTransactionFlowDialog
-        ref="dialogRef"
+        ref="multiDialogRef"
         chain="mainnet"
         :steps="flowSteps"
-        :text="dialogText"
+        :text="multiDialogText"
         skip-confirmation
-        @complete="onComplete"
+        @complete="onMultiTransactionComplete"
         @error="onFlowError"
       />
     </section>
@@ -190,6 +199,7 @@
 import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
+  TransactionFlowText,
 } from '@1001-digital/components.evm'
 import {
   cryptoPunksMarketAbi,
@@ -198,7 +208,7 @@ import {
   punkVaultFactoryAbi,
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
-import type { Address, TransactionReceipt } from 'viem'
+import type { Address, Hash, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
 
 const props = defineProps<{
@@ -335,20 +345,52 @@ watch([() => props.account, publicClient], () => void refresh(), {
   immediate: true,
 })
 
-type DialogRef = {
+type TransactionDialogRef = {
+  initializeRequest: () => void
+} | null
+type MultiDialogRef = {
   start: () => void
 } | null
-const dialogRef = ref<DialogRef>(null)
+const transactionDialogRef = ref<TransactionDialogRef>(null)
+const transactionRequest = ref<(() => Promise<Hash>) | undefined>()
+const transactionText = ref<TransactionFlowText>({})
+const multiDialogRef = ref<MultiDialogRef>(null)
 const flowSteps = ref<MultiTransactionFlowStep[]>([])
-const dialogText = ref<MultiTransactionFlowText>({})
+const multiDialogText = ref<MultiTransactionFlowText>({})
 
 async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
   try {
     const plan = await planInput
-    await runSteps([stepFromPlan(planId(plan.description), plan)])
+    await runPlan(plan)
   } catch (e) {
     error.value = (e as Error).message
   }
+}
+
+async function runPlan(
+  plan: ContractWritePlan,
+  text: TransactionFlowText = {
+    title: { complete: 'Transaction complete' },
+    lead: { complete: 'Transaction confirmed.' },
+  },
+) {
+  error.value = null
+  transactionRequest.value = () => execute(plan)
+  transactionText.value = {
+    ...text,
+    title: {
+      confirm: plan.description,
+      requesting: plan.description,
+      waiting: plan.description,
+      ...text.title,
+    },
+    lead: {
+      confirm: plan.description,
+      ...text.lead,
+    },
+  }
+  await nextTick()
+  transactionDialogRef.value?.initializeRequest()
 }
 
 function stepFromPlan(
@@ -374,16 +416,20 @@ async function runSteps(
 
   error.value = null
   flowSteps.value = steps
-  dialogText.value = text
+  multiDialogText.value = text
   await nextTick()
-  dialogRef.value?.start()
+  multiDialogRef.value?.start()
 }
 
 function planId(description: string) {
   return description.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 }
 
-function onComplete(_receipts: TransactionReceipt[]) {
+function onTransactionComplete(_receipt: TransactionReceipt) {
+  refresh()
+}
+
+function onMultiTransactionComplete(_receipts: TransactionReceipt[]) {
   refresh()
 }
 
