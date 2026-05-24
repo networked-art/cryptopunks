@@ -13,85 +13,62 @@
     </header>
 
     <section class="section">
-      <h2 class="section-title">Running auctions</h2>
       <div
-        v-if="auctionsPending && !activeAuctions.length"
-        class="state muted"
-      >
-        Loading auctions…
-      </div>
-      <div
-        v-else-if="!deployed"
+        v-if="!deployed"
         class="state empty muted"
       >
-        Auctions appear here once <code>PunksAuction</code> is deployed.
+        Auctions and lots appear here once <code>PunksAuction</code> is
+        deployed.
       </div>
-      <div
-        v-else-if="auctionsError"
-        class="error"
-      >
-        Failed to load auctions: {{ auctionsError }}
-      </div>
-      <div
-        v-else-if="!activeAuctions.length"
-        class="state empty muted"
-      >
-        No active auctions.
-      </div>
-      <div
-        v-else
-        class="card-grid"
-      >
-        <LazyAuctionCard
-          v-for="auction in activeAuctions"
-          :key="String(auction.id)"
-          :auction="auction"
-        />
-      </div>
-    </section>
 
-    <section class="section">
-      <h2 class="section-title">Open lots</h2>
-      <div
-        v-if="lotsPending && !sortedLots.length"
-        class="state muted"
-      >
-        Loading lots…
-      </div>
-      <div
-        v-else-if="!deployed"
-        class="state empty muted"
-      >
-        Lots appear here once <code>PunksAuction</code> is deployed.
-      </div>
-      <div
-        v-else-if="lotsError"
-        class="error"
-      >
-        Failed to load lots: {{ lotsError }}
-      </div>
-      <div
-        v-else-if="!sortedLots.length"
-        class="state empty muted"
-      >
-        No open lots.
-      </div>
-      <div
-        v-else
-        class="card-grid"
-      >
-        <LazyLotCard
-          v-for="lot in sortedLots"
-          :key="String(lot.id)"
-          :lot="lot"
-        />
-      </div>
+      <template v-else>
+        <div
+          v-if="loadError"
+          class="error"
+        >
+          Failed to load {{ loadError }}
+        </div>
+        <div
+          v-if="pending && !marketEntries.length"
+          class="state muted"
+        >
+          Loading auctions and lots…
+        </div>
+        <div
+          v-else-if="!loadError && !marketEntries.length"
+          class="state empty muted"
+        >
+          No auctions or open lots.
+        </div>
+        <div
+          v-else-if="marketEntries.length"
+          class="card-grid"
+        >
+          <template
+            v-for="entry in marketEntries"
+            :key="entry.key"
+          >
+            <LazyAuctionCard
+              v-if="entry.kind === 'auction'"
+              :auction="entry.auction"
+            />
+            <LazyLotCard
+              v-else
+              :lot="entry.lot"
+            />
+          </template>
+        </div>
+      </template>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { auctionStatus } from '~/utils/auction'
+import {
+  auctionStatus,
+  type AuctionRecord,
+  type LotRecord,
+} from '~/utils/auction'
 
 useSeoMeta({
   title: 'Auctions · Punks Auction',
@@ -102,23 +79,97 @@ useSeoMeta({
 // MOCK DATA — `PunksAuction` has no live lots yet, so the list pages run on
 // fixtures while the card UI is built. Swap back to `useAuctions()` /
 // `useLots()` (from `useAuctionData.ts`) once there is on-chain data.
+// TODO(indexer): Refactor this unified list as soon as live indexer integration
+// lands so the API owns filtering and ordering.
 const {
   auctions,
   pending: auctionsPending,
   error: auctionsError,
-  deployed,
+  deployed: auctionsDeployed,
 } = useMockAuctions()
-const { lots, pending: lotsPending, error: lotsError } = useMockLots()
+const {
+  lots,
+  pending: lotsPending,
+  error: lotsError,
+  deployed: lotsDeployed,
+} = useMockLots()
 
-const activeAuctions = computed(() =>
-  auctions.value
-    .filter((auction) => auctionStatus(auction) === 'live')
-    .sort((a, b) => a.endTimestamp - b.endTimestamp),
+type MarketEntry =
+  | {
+      kind: 'auction'
+      key: string
+      auction: AuctionRecord
+    }
+  | {
+      kind: 'lot'
+      key: string
+      lot: LotRecord
+    }
+
+const now = useSeconds()
+const deployed = auctionsDeployed && lotsDeployed
+const pending = computed(() => auctionsPending.value || lotsPending.value)
+const loadError = computed(() =>
+  [
+    auctionsError.value ? `auctions: ${auctionsError.value}` : '',
+    lotsError.value ? `lots: ${lotsError.value}` : '',
+  ]
+    .filter(Boolean)
+    .join('; '),
+)
+
+const sortedAuctions = computed(() =>
+  [...auctions.value].sort(compareAuctionsByEndingSoon),
 )
 
 const sortedLots = computed(() =>
-  [...lots.value].sort((a, b) => Number(b.id - a.id)),
+  [...lots.value].sort(compareLotsByAverageReserve),
 )
+
+const marketEntries = computed<MarketEntry[]>(() => [
+  ...sortedAuctions.value.map((auction) => ({
+    kind: 'auction' as const,
+    key: `auction-${auction.id}`,
+    auction,
+  })),
+  ...sortedLots.value.map((lot) => ({
+    kind: 'lot' as const,
+    key: `lot-${lot.id}`,
+    lot,
+  })),
+])
+
+function compareAuctionsByEndingSoon(
+  a: AuctionRecord,
+  b: AuctionRecord,
+): number {
+  const aStatus = auctionStatus(a, now.value)
+  const bStatus = auctionStatus(b, now.value)
+  const aLive = aStatus === 'live'
+  const bLive = bStatus === 'live'
+
+  if (aLive !== bLive) return aLive ? -1 : 1
+  if (aLive && bLive) {
+    return a.endTimestamp - b.endTimestamp || compareBigint(a.id, b.id)
+  }
+
+  return b.endTimestamp - a.endTimestamp || compareBigint(b.id, a.id)
+}
+
+function compareLotsByAverageReserve(a: LotRecord, b: LotRecord): number {
+  const aCount = BigInt(Math.max(1, a.items.length))
+  const bCount = BigInt(Math.max(1, b.items.length))
+  const aScaled = a.reserveWei * bCount
+  const bScaled = b.reserveWei * aCount
+
+  return compareBigint(aScaled, bScaled) || compareBigint(a.id, b.id)
+}
+
+function compareBigint(a: bigint, b: bigint): number {
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
+}
 </script>
 
 <style scoped>
@@ -134,14 +185,6 @@ const sortedLots = computed(() =>
   flex-direction: column;
   gap: var(--size-4);
   min-width: 0;
-}
-
-.section-title {
-  margin: 0;
-  font-size: var(--font-2xl);
-  font-weight: var(--font-weight-bolder);
-  letter-spacing: 0;
-  line-height: var(--line-height-tight);
 }
 
 .card-grid {
