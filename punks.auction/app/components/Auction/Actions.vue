@@ -4,7 +4,16 @@
       <h2 class="block-title eyebrow">Action</h2>
 
       <div
-        v-if="isLive"
+        v-if="preview"
+        class="action-stack"
+      >
+        <p class="block-note muted">
+          Wallet actions appear for live auction records.
+        </p>
+      </div>
+
+      <div
+        v-else-if="isLive"
         class="action-stack"
       >
         <label class="amount-field">
@@ -99,10 +108,16 @@ import {
   type AuctionStatus,
 } from '~/utils/auction'
 
-const props = defineProps<{
-  auction: AuctionRecord
-  minimumBidWei: bigint
-}>()
+const props = withDefaults(
+  defineProps<{
+    auction: AuctionRecord
+    minimumBidWei: bigint
+    preview?: boolean
+  }>(),
+  {
+    preview: false,
+  },
+)
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
