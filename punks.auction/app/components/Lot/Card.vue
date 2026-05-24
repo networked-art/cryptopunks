@@ -2,10 +2,7 @@
   <LotCardShell>
     <LotPreview :items="lot.items" />
 
-    <LotCardSummary
-      label="reserve"
-      :wei="lot.reserveWei"
-    >
+    <LotCardSummary :wei="lot.reserveWei">
       {{ itemCountLabel }}
     </LotCardSummary>
   </LotCardShell>
