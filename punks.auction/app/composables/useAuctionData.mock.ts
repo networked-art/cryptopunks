@@ -104,7 +104,7 @@ const mockLots: LotRecord[] = [
     seller: ACCOUNTS.fern,
     reserveWei: parseEther('12'),
     onlySellTo: ZERO_ADDRESS,
-    items: [item(604, 5_000), item(6965, 5_000)],
+    items: [item(604, 1_000), item(6965, 9_000)],
   },
   // Public · single Punk.
   {
