@@ -1,14 +1,14 @@
 <template>
-  <Card class="lot-card-shell">
+  <div class="lot-card-shell">
     <slot />
-  </Card>
+  </div>
 </template>
 
 <style scoped>
 .lot-card-shell {
   display: flex;
   flex-direction: column;
-  gap: var(--size-4);
+  gap: var(--size-2);
   block-size: 100%;
 }
 </style>
