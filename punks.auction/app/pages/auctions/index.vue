@@ -1,18 +1,15 @@
 <template>
   <div class="container auctions-page">
-    <header class="auction-hero">
-      <div class="hero-copy">
-        <span class="eyebrow">Punks Auction House</span>
-        <h1>Auctions</h1>
-        <p class="muted">
-          CryptoPunks lots with native-ETH settlement through
-          <a
-            href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
-            >PunksAuction</a
-          >. Open lots become 24-hour auctions the moment the first qualifying
-          bid lands.
-        </p>
-      </div>
+    <header class="page-head">
+      <h1>Auctions</h1>
+      <p class="muted">
+        CryptoPunks lots with native-ETH settlement through
+        <a
+          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
+          >PunksAuction</a
+        >. Open lots become 24-hour auctions the moment the first qualifying bid
+        lands.
+      </p>
     </header>
 
     <section class="section">
@@ -126,35 +123,10 @@ const sortedLots = computed(() =>
 
 <style scoped>
 .auctions-page {
-  padding: var(--size-7) var(--size-4) var(--size-9);
+  padding: var(--size-6) var(--size-4);
   display: flex;
   flex-direction: column;
-  gap: var(--size-7);
-}
-
-.auction-hero {
-  min-width: 0;
-  padding-bottom: var(--size-6);
-  border-bottom: var(--border);
-}
-
-.hero-copy {
-  min-width: 0;
-}
-
-.hero-copy h1 {
-  margin: var(--size-1) 0 var(--size-3);
-  font-size: var(--font-3xl);
-  font-weight: var(--font-weight-bolder);
-  letter-spacing: 0;
-  line-height: var(--line-height-tight);
-}
-
-.hero-copy p {
-  margin: 0;
-  font-size: var(--font-base);
-  line-height: var(--line-height-loose);
-  overflow-wrap: anywhere;
+  gap: var(--size-4);
 }
 
 .section {
