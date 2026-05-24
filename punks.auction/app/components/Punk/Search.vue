@@ -467,6 +467,10 @@ function unionIds(...groups: Iterable<number>[]) {
   box-shadow: none;
 }
 
+.search-field:focus-within .search-input {
+  background: white;
+}
+
 .search-field.with-profile-link .search-input {
   border-start-end-radius: 0 !important;
   border-end-end-radius: 0 !important;
