@@ -102,7 +102,7 @@ function next() {
   inline-size: 100%;
   aspect-ratio: 1 / 1.24;
   padding: 9%;
-  background: var(--background);
+  background: white;
   border: var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
