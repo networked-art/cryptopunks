@@ -11,7 +11,7 @@
 }
 
 .container {
-  max-width: 960px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 0 var(--size-4);
   width: 100%;
