@@ -15,7 +15,7 @@ import {
 } from '~/utils/auction'
 
 const HOUR = 60 * 60
-const NOW = Math.floor(Date.now() / 1000)
+const MOCK_TIME_STEP = 5 * 60
 
 /// Throwaway accounts — ENS won't resolve, so the UI shows truncated hex.
 const ACCOUNTS = {
@@ -35,63 +35,68 @@ function item(
   return { standard, punkId, weightBps }
 }
 
-const mockAuctions: AuctionRecord[] = [
-  // Live · single-Punk lot · the bold one-tile hero.
-  {
-    id: 7n,
-    seller: ACCOUNTS.ada,
-    latestBidder: ACCOUNTS.blue,
-    latestBidWei: parseEther('6.4'),
-    endTimestamp: NOW + 7 * HOUR + 12 * 60,
-    settled: false,
-    items: [item(3100, 10_000)],
-  },
-  // Live · four-Punk lot · one of them a V1.
-  {
-    id: 6n,
-    seller: ACCOUNTS.cyrus,
-    latestBidder: ACCOUNTS.dot,
-    latestBidWei: parseEther('14.25'),
-    endTimestamp: NOW + 19 * HOUR,
-    settled: false,
-    items: [
-      item(2924, 2_500),
-      item(8348, 2_500, TokenStandard.CryptoPunksV1),
-      item(5217, 2_500),
-      item(1190, 2_500),
-    ],
-  },
-  // Live · ending soon · big lot that overflows into a `+N` chip.
-  {
-    id: 5n,
-    seller: ACCOUNTS.echo,
-    latestBidder: ACCOUNTS.fern,
-    latestBidWei: parseEther('3.08'),
-    endTimestamp: NOW + 38 * 60,
-    settled: false,
-    items: [
-      item(1234, 1_111),
-      item(4567, 1_111),
-      item(9981, 1_111),
-      item(222, 1_111),
-      item(7777, 1_111),
-      item(6529, 1_111),
-      item(404, 1_111),
-      item(8888, 1_111),
-      item(31, 1_112),
-    ],
-  },
-  // Past its end but not yet settled — the "Awaiting settlement" state.
-  {
-    id: 4n,
-    seller: ACCOUNTS.ada,
-    latestBidder: ACCOUNTS.dot,
-    latestBidWei: parseEther('9'),
-    endTimestamp: NOW - (2 * HOUR + 30 * 60),
-    settled: false,
-    items: [item(512, 5_000), item(4242, 5_000)],
-  },
-]
+function createMockAuctions(): AuctionRecord[] {
+  const now =
+    Math.floor(Date.now() / (MOCK_TIME_STEP * 1000)) * MOCK_TIME_STEP
+
+  return [
+    // Live · single-Punk lot · the bold one-tile hero.
+    {
+      id: 7n,
+      seller: ACCOUNTS.ada,
+      latestBidder: ACCOUNTS.blue,
+      latestBidWei: parseEther('6.4'),
+      endTimestamp: now + 7 * HOUR + 12 * 60,
+      settled: false,
+      items: [item(3100, 10_000)],
+    },
+    // Live · four-Punk lot · one of them a V1.
+    {
+      id: 6n,
+      seller: ACCOUNTS.cyrus,
+      latestBidder: ACCOUNTS.dot,
+      latestBidWei: parseEther('14.25'),
+      endTimestamp: now + 19 * HOUR,
+      settled: false,
+      items: [
+        item(2924, 2_500),
+        item(8348, 2_500, TokenStandard.CryptoPunksV1),
+        item(5217, 2_500),
+        item(1190, 2_500),
+      ],
+    },
+    // Live · ending soon · big lot that overflows into a `+N` chip.
+    {
+      id: 5n,
+      seller: ACCOUNTS.echo,
+      latestBidder: ACCOUNTS.fern,
+      latestBidWei: parseEther('3.08'),
+      endTimestamp: now + 38 * 60,
+      settled: false,
+      items: [
+        item(1234, 1_111),
+        item(4567, 1_111),
+        item(9981, 1_111),
+        item(222, 1_111),
+        item(7777, 1_111),
+        item(6529, 1_111),
+        item(404, 1_111),
+        item(8888, 1_111),
+        item(31, 1_112),
+      ],
+    },
+    // Past its end but not yet settled — the "Awaiting settlement" state.
+    {
+      id: 4n,
+      seller: ACCOUNTS.ada,
+      latestBidder: ACCOUNTS.dot,
+      latestBidWei: parseEther('9'),
+      endTimestamp: now - (2 * HOUR + 30 * 60),
+      settled: false,
+      items: [item(512, 5_000), item(4242, 5_000)],
+    },
+  ]
+}
 
 const mockLots: LotRecord[] = [
   // Public · single Punk.
@@ -128,7 +133,7 @@ const mockLots: LotRecord[] = [
 
 export function useMockAuctions() {
   return {
-    auctions: ref<AuctionRecord[]>(mockAuctions),
+    auctions: ref<AuctionRecord[]>(createMockAuctions()),
     pending: ref(false),
     error: ref<string | null>(null),
     deployed: true,
