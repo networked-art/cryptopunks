@@ -11,6 +11,7 @@ export default defineNuxtPlugin(() => {
   return {
     provide: {
       punksOffline: offline,
+      punksDataset: bundledOfflinePunksDataWithPixels,
     },
   }
 })
