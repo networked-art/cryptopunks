@@ -132,6 +132,6 @@ const isContextEmpty = computed(
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--size-6);
+  gap: var(--size-7);
 }
 </style>
