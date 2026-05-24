@@ -1,109 +1,25 @@
 <template>
-  <Card class="lot-card">
-    <div class="card-head">
-      <span class="card-id">Lot #{{ lot.id }}</span>
-      <Tag
-        v-if="isPrivate"
-        small
-        >Private</Tag
-      >
-    </div>
+  <LotCardShell>
+    <LotPreview :items="lot.items" />
 
-    <LotItems
-      :items="lot.items"
-      :size="52"
-    />
-
-    <dl class="facts">
-      <div class="fact">
-        <dt class="eyebrow">Reserve</dt>
-        <dd>
-          <EthAmount :wei="lot.reserveWei" />
-        </dd>
-      </div>
-      <div class="fact">
-        <dt class="eyebrow">Seller</dt>
-        <dd>
-          <NuxtLink :to="`/profile/${lot.seller}`">
-            <Account :address="lot.seller" />
-          </NuxtLink>
-        </dd>
-      </div>
-      <div
-        v-if="isPrivate"
-        class="fact"
-      >
-        <dt class="eyebrow">Buyer</dt>
-        <dd>
-          <NuxtLink :to="`/profile/${lot.onlySellTo}`">
-            <Account :address="lot.onlySellTo" />
-          </NuxtLink>
-        </dd>
-      </div>
-    </dl>
-
-    <p class="muted note">
-      Open for auction — the first bid at or above the reserve starts a 24-hour
-      auction.
-    </p>
-  </Card>
+    <LotCardSummary
+      label="Reserve"
+      :wei="lot.reserveWei"
+    >
+      {{ itemCountLabel }}
+    </LotCardSummary>
+  </LotCardShell>
 </template>
 
 <script setup lang="ts">
-import { ZERO_ADDRESS } from '@networked-art/punks-sdk'
 import type { LotRecord } from '~/utils/auction'
 
 defineOptions({ name: 'LotCard' })
 
 const props = defineProps<{ lot: LotRecord }>()
 
-const isPrivate = computed(
-  () => props.lot.onlySellTo.toLowerCase() !== ZERO_ADDRESS.toLowerCase(),
-)
+const itemCountLabel = computed(() => {
+  const count = props.lot.items.length
+  return `${count.toLocaleString()} Punk${count === 1 ? '' : 's'}`
+})
 </script>
-
-<style scoped>
-.lot-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-3);
-}
-
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--size-2);
-}
-
-.card-id {
-  font-size: var(--font-md);
-  font-weight: var(--font-weight-bold);
-}
-
-.facts {
-  margin: 0;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  column-gap: var(--size-4);
-  row-gap: var(--size-1);
-  font-size: var(--font-sm);
-}
-
-.fact {
-  display: contents;
-}
-
-.fact dt {
-  align-self: center;
-}
-
-.fact dd {
-  margin: 0;
-}
-
-.note {
-  font-size: var(--font-xs);
-  margin: 0;
-}
-</style>
