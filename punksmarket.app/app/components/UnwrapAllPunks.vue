@@ -30,18 +30,22 @@
     </div>
   </div>
 
-  <EvmTransactionFlowDialog
+  <EvmMultiTransactionFlowDialog
     ref="dialogRef"
     chain="mainnet"
+    :steps="flowSteps"
     :text="dialogText"
-    keep-open
     skip-confirmation
     @complete="onComplete"
   />
 </template>
 
 <script setup lang="ts">
-import { type Address, type Hash, type TransactionReceipt } from 'viem'
+import type {
+  MultiTransactionFlowStep,
+  MultiTransactionFlowText,
+} from '@1001-digital/components.evm'
+import { type Address, type TransactionReceipt } from 'viem'
 
 const props = defineProps<{
   owner: Address
@@ -75,68 +79,59 @@ watchEffect(refreshApproval)
 // ─── Dialog wiring ────────────────────────────────────────────────────────────
 
 type DialogRef = {
-  initializeRequest: (request?: () => Promise<Hash>) => void
+  start: () => void
 } | null
 const dialogRef = ref<DialogRef>(null)
-
-const approveText = {
-  title: { confirm: 'Approve unwrap helper', waiting: 'Approving helper…' },
-  lead: {
-    confirm:
-      'One-time approval so unwrap.punksmarket.eth can burn wrapper tokens on your behalf.',
-  },
+const flowSteps = ref<MultiTransactionFlowStep[]>([])
+const dialogText: MultiTransactionFlowText = {
+  title: { complete: 'Unwrap complete' },
+  lead: { complete: 'Wrapped punks were unwrapped.' },
 }
-const unwrapText = computed(() => {
-  const n = batchIds.length || wrappedOwned.value.length
-  return {
-    title: {
-      confirm: `Unwrap ${n} punks`,
-      waiting: `Unwrapping ${n} punks…`,
-    },
-    lead: {
-      confirm: `Releasing ${n} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ in a single transaction.`,
-    },
-  }
-})
-const dialogText = ref<{
-  title?: Record<string, string>
-  lead?: Record<string, string>
-}>({})
 
 /// Snapshot the wrapped ids at the moment of the click. `wrappedOwned` may
 /// shift between approval and unwrap as other tabs / the indexer catch up,
 /// and the batch should match what the user agreed to.
 let batchIds: number[] = []
 
-function start() {
+async function start() {
   if (wrappedOwned.value.length === 0) return
   batchIds = [...wrappedOwned.value]
-  if (!isApproved.value) {
-    dialogText.value = approveText
-    dialogRef.value?.initializeRequest(() =>
-      execute(sdk.value.v1Wrapper.prepareApproveBatchUnwrap()),
-    )
-  } else {
-    dialogText.value = unwrapText.value
-    dialogRef.value?.initializeRequest(() =>
-      execute(sdk.value.v1Wrapper.prepareUnwrapBatch(batchIds)),
-    )
-  }
+  flowSteps.value = createUnwrapSteps()
+  await nextTick()
+  dialogRef.value?.start()
 }
 
-function onComplete(_receipt: TransactionReceipt) {
+function createUnwrapSteps(): MultiTransactionFlowStep[] {
+  const n = batchIds.length
+  const steps: MultiTransactionFlowStep[] = []
+
   if (!isApproved.value) {
-    /// Approval confirmed — chain straight into the unwrap signature so the
-    /// user only clicks once. `keep-open` keeps the dialog mounted across
-    /// the two phases.
-    isApproved.value = true
-    dialogText.value = unwrapText.value
-    dialogRef.value?.initializeRequest(() =>
-      execute(sdk.value.v1Wrapper.prepareUnwrapBatch(batchIds)),
-    )
-  } else {
-    markUnwrapped(batchIds)
+    steps.push({
+      id: 'approve-unwrap-helper',
+      title: 'Approve unwrap helper',
+      lead: 'One-time approval so unwrap.punksmarket.eth can burn wrapper tokens on your behalf.',
+      action: 'Approve helper',
+      request: () => execute(sdk.value.v1Wrapper.prepareApproveBatchUnwrap()),
+      result: () => {
+        isApproved.value = true
+      },
+    })
   }
+
+  steps.push({
+    id: 'unwrap-batch',
+    title: `Unwrap ${n} punks`,
+    lead: `Releasing ${n} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ in a single transaction.`,
+    action: 'Unwrap',
+    request: () => execute(sdk.value.v1Wrapper.prepareUnwrapBatch(batchIds)),
+  })
+
+  return steps
+}
+
+function onComplete(_receipts: TransactionReceipt[]) {
+  markUnwrapped(batchIds)
+  void refreshApproval()
 }
 </script>
 

@@ -115,13 +115,24 @@
         <section class="manager-section">
           <div class="section-head">
             <h3>Claimable ETH</h3>
-            <Tag
-              small
-              class="status-tag"
-              :class="{ active: hasClaimableBalance }"
-            >
-              {{ hasClaimableBalance ? 'Available' : 'None' }}
-            </Tag>
+            <div class="section-actions">
+              <Button
+                v-if="hasMultipleClaimableBalances"
+                class="primary small icon-button"
+                :disabled="pending"
+                @click="actWithdrawClaimable"
+              >
+                <Icon name="lucide:download" />
+                <span>Withdraw all</span>
+              </Button>
+              <Tag
+                small
+                class="status-tag"
+                :class="{ active: hasClaimableBalance }"
+              >
+                {{ hasClaimableBalance ? 'Available' : 'None' }}
+              </Tag>
+            </div>
           </div>
 
           <dl class="balance-list">
@@ -180,19 +191,24 @@
         </section>
       </div>
 
-      <EvmTransactionFlowDialog
+      <EvmMultiTransactionFlowDialog
         ref="dialogRef"
         chain="mainnet"
+        :steps="flowSteps"
         :text="dialogText"
-        keep-open
         skip-confirmation
         @complete="onComplete"
+        @error="onFlowError"
       />
     </section>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
+import type {
+  MultiTransactionFlowStep,
+  MultiTransactionFlowText,
+} from '@1001-digital/components.evm'
 import {
   cryptoPunksMarketAbi,
   punksAuctionAbi,
@@ -200,7 +216,7 @@ import {
   punkVaultFactoryAbi,
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
-import type { Address, Hash, TransactionReceipt } from 'viem'
+import type { Address, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
 import { addressUrl } from '~/utils/explorer'
 
@@ -237,6 +253,9 @@ const vaultStatusLabel = computed(() =>
 )
 const hasClaimableBalance = computed(
   () => canonicalMarketBalance.value > 0n || auctionBalance.value > 0n,
+)
+const hasMultipleClaimableBalances = computed(
+  () => canonicalMarketBalance.value > 0n && auctionBalance.value > 0n,
 )
 
 async function refresh() {
@@ -336,33 +355,92 @@ watch([() => props.account, publicClient], () => void refresh(), {
 })
 
 type DialogRef = {
-  initializeRequest: (request?: () => Promise<Hash>) => void
+  start: () => void
 } | null
 const dialogRef = ref<DialogRef>(null)
-const dialogText = ref<{
-  title?: Record<string, string>
-  lead?: Record<string, string>
-}>({})
+const flowSteps = ref<MultiTransactionFlowStep[]>([])
+const dialogText = ref<MultiTransactionFlowText>({})
 
 async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
   try {
     const plan = await planInput
-    dialogText.value = {
-      title: { confirm: plan.description, waiting: plan.description },
-      lead: { confirm: plan.description },
-    }
-    dialogRef.value?.initializeRequest(() => execute(plan))
+    await runSteps([stepFromPlan(planId(plan.description), plan)])
   } catch (e) {
     error.value = (e as Error).message
   }
 }
 
-function onComplete(_receipt: TransactionReceipt) {
+function stepFromPlan(
+  id: string,
+  plan: ContractWritePlan,
+): MultiTransactionFlowStep {
+  return {
+    id,
+    title: plan.description,
+    lead: plan.description,
+    request: () => execute(plan),
+  }
+}
+
+async function runSteps(
+  steps: MultiTransactionFlowStep[],
+  text: MultiTransactionFlowText = {
+    title: { complete: 'Transaction complete' },
+    lead: { complete: 'Transaction confirmed.' },
+  },
+) {
+  if (!steps.length) return
+
+  error.value = null
+  flowSteps.value = steps
+  dialogText.value = text
+  await nextTick()
+  dialogRef.value?.start()
+}
+
+function planId(description: string) {
+  return description.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+}
+
+function onComplete(_receipts: TransactionReceipt[]) {
   refresh()
+}
+
+function onFlowError(message: string) {
+  error.value = message
 }
 
 function actSetupVault() {
   void run(sdk.value.auctions.prepareEnsureMyVault([PUNKS_AUCTION_ADDRESS]))
+}
+
+async function actWithdrawClaimable() {
+  try {
+    const steps: MultiTransactionFlowStep[] = []
+    if (canonicalMarketBalance.value > 0n) {
+      steps.push(
+        stepFromPlan(
+          'withdraw-cryptopunks-market',
+          sdk.value.market.prepareWithdraw(),
+        ),
+      )
+    }
+    if (auctionBalance.value > 0n) {
+      steps.push(
+        stepFromPlan(
+          'withdraw-punks-auction',
+          sdk.value.auctions.prepareWithdraw(),
+        ),
+      )
+    }
+
+    await runSteps(steps, {
+      title: { complete: 'Withdrawals complete' },
+      lead: { complete: 'Claimable ETH withdrawn.' },
+    })
+  } catch (e) {
+    error.value = (e as Error).message
+  }
 }
 
 function actWithdrawCanonicalMarket() {
@@ -429,6 +507,14 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .section-head h3 {
   font-size: var(--font-md);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--size-2);
+  flex-wrap: wrap;
 }
 
 .status-list,

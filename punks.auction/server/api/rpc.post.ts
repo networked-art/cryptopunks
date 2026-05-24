@@ -30,6 +30,15 @@ interface JsonRpcRequest {
   params?: unknown
 }
 
+type UpstreamFetch = (
+  request: string,
+  options: {
+    method: 'POST'
+    headers: Record<string, string>
+    body: unknown
+  },
+) => Promise<unknown>
+
 function isAllowedCall(req: unknown): req is JsonRpcRequest {
   if (!req || typeof req !== 'object') return false
   const method = (req as { method?: unknown }).method
@@ -59,7 +68,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return await $fetch(upstream, {
+  const fetchUpstream = $fetch as UpstreamFetch
+  return await fetchUpstream(upstream, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body,
