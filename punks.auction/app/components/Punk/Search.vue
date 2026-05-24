@@ -23,11 +23,22 @@
           >
           <span class="search-actions">
             <span class="muted result-count">
-              {{ counts.filtered.toLocaleString()
-              }}<span class="result-total">
-                / {{ counts.total.toLocaleString() }}</span
-              >
+              <template v-if="counts.filtered === counts.total">
+                {{ counts.total.toLocaleString() }}
+              </template>
+              <template v-else>
+                {{ counts.filtered.toLocaleString()
+                }}<span class="result-total">
+                  / {{ counts.total.toLocaleString() }}</span
+                >
+              </template>
             </span>
+            <FormCheckbox
+              :model-value="listedActive"
+              class="for-sale-toggle"
+              aria-label="Sort by listed price"
+              @update:model-value="toggleListed = !toggleListed"
+            />
             <button
               v-if="text"
               type="button"
@@ -50,18 +61,6 @@
         </ClientOnly>
       </FormInputGroup>
 
-      <div
-        class="search-sublines"
-        :class="{ 'is-stuck': isScrolled }"
-      >
-        <FormCheckbox
-          :model-value="listedActive"
-          class="for-sale-toggle"
-          @update:model-value="toggleListed = !toggleListed"
-        >
-          For sale
-        </FormCheckbox>
-      </div>
     </header>
 
     <LazyPunkGrid
@@ -72,12 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  onKeyStroke,
-  refDebounced,
-  useMediaQuery,
-  useWindowScroll,
-} from '@vueuse/core'
+import { onKeyStroke, refDebounced, useMediaQuery } from '@vueuse/core'
 import { isAddress, type Address } from 'viem'
 import type { PunkQuery } from '@networked-art/punks-sdk'
 
@@ -106,12 +100,9 @@ const MODERN_WRAPPED_QUALIFIER =
 const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
 
 const text = ref(typeof route.query.q === 'string' ? route.query.q : '')
-const toggleListed = ref(false)
+const toggleListed = ref(route.query.sale === '1')
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
 const underlineMeasure = useTemplateRef<HTMLElement>('underlineMeasure')
-
-const { y: scrollY } = useWindowScroll()
-const isScrolled = computed(() => scrollY.value > 0)
 
 /// `/` is a global shortcut for "focus the search". Skip when the user is
 /// already typing into an editable element so the slash lands as a character.
@@ -158,6 +149,25 @@ watch(
     if (next === lastSyncedQ) return
     lastSyncedQ = next
     text.value = next
+  },
+)
+
+let lastSyncedSale = route.query.sale === '1'
+
+watch(toggleListed, (on) => {
+  if (on === lastSyncedSale) return
+  lastSyncedSale = on
+  const { sale: _omit, ...rest } = route.query
+  router.replace({ query: on ? { ...rest, sale: '1' } : rest })
+})
+
+watch(
+  () => route.query.sale,
+  (s) => {
+    const next = s === '1'
+    if (next === lastSyncedSale) return
+    lastSyncedSale = next
+    toggleListed.value = next
   },
 )
 
@@ -577,49 +587,39 @@ function unionIds(...groups: Iterable<number>[]) {
   height: 16px;
 }
 
-.search-sublines {
-  flex-basis: 100%;
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--size-2) var(--size-3);
-  background: transparent;
-  transition:
-    background var(--speed),
-    box-shadow var(--speed);
-}
-
-.search-sublines.is-stuck {
-  background: white;
-  box-shadow: 0 10px 24px rgb(10 10 18 / 12%);
-}
-
 .for-sale-toggle.form-checkbox {
-  --for-sale-checkbox-active-color: var(--accent);
-  --for-sale-checkbox-border-color: var(--text-muted);
-  --for-sale-checkbox-check-color: var(--button-primary-color);
-  --primary: var(--for-sale-checkbox-active-color);
-  --muted: var(--for-sale-checkbox-border-color);
-  --background: var(--for-sale-checkbox-check-color);
+  /* Override the layer's checkbox tokens: square corners + listed-punk
+     colourway, with the unchecked state shown at half opacity. */
+  --border-radius: 0;
+  --primary: var(--punk-bg-listed);
 
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-2);
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: var(--ui-letter-spacing);
-  cursor: pointer;
-  user-select: none;
-  transition: color var(--speed);
-}
-
-.for-sale-toggle:hover,
-.for-sale-toggle:focus-within {
-  color: var(--text);
+  gap: 0;
+  margin-inline: var(--size-2);
 }
 
 .for-sale-toggle :deep(.form-checkbox-button) {
-  cursor: pointer;
+  inline-size: 16px;
+  block-size: 16px;
+  border: 0;
+  background: var(--primary);
+  opacity: 0.5;
+  transition: opacity var(--speed);
+}
+
+.for-sale-toggle:hover :deep(.form-checkbox-button),
+.for-sale-toggle:focus-within :deep(.form-checkbox-button) {
+  opacity: 0.75;
+}
+
+.for-sale-toggle :deep(.form-checkbox-button[data-state='checked']),
+.for-sale-toggle:hover :deep(.form-checkbox-button[data-state='checked']),
+.for-sale-toggle:focus-within
+  :deep(.form-checkbox-button[data-state='checked']) {
+  opacity: 1;
+}
+
+.for-sale-toggle :deep(.form-checkbox-indicator .icon) {
+  font-size: 12px;
 }
 
 @media (max-width: 640px) {
