@@ -36,16 +36,17 @@ defineProps<{
   align-items: center;
   gap: var(--size-4);
   min-width: 0;
-  font-size: var(--font-base);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  line-height: var(--line-height-loose);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
 }
 
 .summary-subject,
 .summary-meta {
   min-width: 0;
-  color: var(--text-muted);
+  color: var(--text-dim);
   white-space: nowrap;
 }
 
