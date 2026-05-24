@@ -8,6 +8,7 @@
       :key="`${item.standard}-${item.punkId}`"
       :punk-id="item.punkId"
       :standard="item.standard"
+      :background="itemBackground(item)"
       fluid
     />
     <span
@@ -19,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import type { LotItem } from '~/utils/auction'
+import { lotItemBackground, type LotItem } from '~/utils/auction'
 
 const props = withDefaults(
   defineProps<{
@@ -47,6 +48,10 @@ const columns = computed(() => {
   const cells = shown.value.length + (overflow.value > 0 ? 1 : 0)
   return Math.min(props.maxColumns, Math.max(1, cells))
 })
+
+function itemBackground(item: LotItem) {
+  return lotItemBackground(item.standard)
+}
 </script>
 
 <style scoped>

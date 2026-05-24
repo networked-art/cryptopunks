@@ -9,6 +9,7 @@ import {
   PUNKS_AUCTION_START_BLOCK,
   isAuctionDeployed,
 } from '~/utils/addresses'
+import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 // ──────────────────────────────── Constants ────────────────────────────────
 
@@ -55,6 +56,12 @@ export function formatLotItemsLabel(items: readonly LotItem[]) {
   const [item] = items
   if (items.length === 1 && item) return formatLotItemLabel(item)
   return `${items.length.toLocaleString()} Punks`
+}
+
+export function lotItemBackground(standard: TokenStandardValue): string {
+  return standard === TokenStandard.CryptoPunksV1
+    ? PUNK_BACKGROUNDS.v1
+    : PUNK_BACKGROUNDS.default
 }
 
 export type LotRecord = {

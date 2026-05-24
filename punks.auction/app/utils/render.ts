@@ -5,4 +5,5 @@ export const PUNK_BACKGROUNDS = {
   activeBid: '#8970b1',
   legacyWrapped: '#c7deca',
   wrapped: '#66a670',
+  v1: '#66A670',
 } as const

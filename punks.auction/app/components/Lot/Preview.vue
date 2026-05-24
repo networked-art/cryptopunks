@@ -12,6 +12,7 @@
           class="mosaic-punk"
           :punk-id="item.punkId"
           :standard="item.standard"
+          :background="itemBackground(item)"
           :link="false"
           fluid
         />
@@ -23,6 +24,7 @@
           class="backing-punk"
           :punk-id="backingItem.punkId"
           :standard="backingItem.standard"
+          :background="itemBackground(backingItem)"
           :link="false"
           fluid
         />
@@ -30,6 +32,7 @@
           class="main-punk"
           :punk-id="activeItem.punkId"
           :standard="activeItem.standard"
+          :background="itemBackground(activeItem)"
           :link="false"
           fluid
         />
@@ -70,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import type { LotItem } from '~/utils/auction'
+import { lotItemBackground, type LotItem } from '~/utils/auction'
 
 const props = defineProps<{
   items: LotItem[]
@@ -111,6 +114,10 @@ function next() {
   const length = props.items.length
   if (!isCarousel.value) return
   activeIndex.value = (activeIndex.value + 1) % length
+}
+
+function itemBackground(item: LotItem) {
+  return lotItemBackground(item.standard)
 }
 </script>
 

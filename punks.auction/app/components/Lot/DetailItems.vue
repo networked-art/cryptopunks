@@ -15,6 +15,7 @@
           <PunkThumb
             :punk-id="item.punkId"
             :standard="item.standard"
+            :background="itemBackground(item)"
             :size="48"
             :link="false"
           />
@@ -29,6 +30,7 @@
 <script setup lang="ts">
 import {
   formatLotItemLabel,
+  lotItemBackground,
   punkHref,
   type LotItem,
 } from '~/utils/auction'
@@ -50,6 +52,10 @@ const sortedItems = computed(() =>
 function formatWeight(weightBps: number) {
   const percent = weightBps / 100
   return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(2)}%`
+}
+
+function itemBackground(item: LotItem) {
+  return lotItemBackground(item.standard)
 }
 </script>
 

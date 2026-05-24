@@ -5,6 +5,7 @@
       :key="`${item.standard}-${item.punkId}`"
       :punk-id="item.punkId"
       :standard="item.standard"
+      :background="itemBackground(item)"
       :size="size"
     />
     <span
@@ -17,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import type { LotItem } from '~/utils/auction'
+import { lotItemBackground, type LotItem } from '~/utils/auction'
 
 const props = withDefaults(
   defineProps<{
@@ -30,6 +31,10 @@ const props = withDefaults(
 
 const shown = computed(() => props.items.slice(0, props.max))
 const remaining = computed(() => Math.max(0, props.items.length - props.max))
+
+function itemBackground(item: LotItem) {
+  return lotItemBackground(item.standard)
+}
 </script>
 
 <style scoped>

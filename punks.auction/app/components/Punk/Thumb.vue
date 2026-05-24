@@ -28,6 +28,7 @@ const props = withDefaults(
     punkId: number
     size?: number
     standard?: TokenStandardValue
+    background?: string
     link?: boolean
     /// Scale to the container (let a CSS grid size the tile) instead of a
     /// fixed pixel `size` — see `LotGrid`.
@@ -59,7 +60,8 @@ const style = computed(() => {
   const row = Math.floor(props.punkId / SPRITE_COLS)
   const col = props.punkId % SPRITE_COLS
   const sheet = {
-    backgroundColor: backgroundForPunk(props.punkId, props.standard),
+    backgroundColor:
+      props.background ?? backgroundForPunk(props.punkId, props.standard),
     backgroundImage: "url('/punks.png')",
   }
 
