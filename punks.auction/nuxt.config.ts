@@ -75,25 +75,27 @@ export default defineNuxtConfig({
   },
 
   hooks: {
-    // The layer ships its own wagmi plugin; we replace it with
-    // `app/plugins/wagmi.ts` to swap the read RPC per environment.
+    // Drop the layer's wagmi plugin so `app/plugins/wagmi.ts` is the only one
+    // that registers — the throw catches a layer rename that would otherwise
+    // leave both plugins running.
     'app:resolve'(app) {
-      app.plugins = app.plugins.filter(
-        (p) => !/layers\.evm[/\\]app[/\\]plugins[/\\]wagmi\./.test(p.src),
-      )
+      const layerWagmiRe = /layers\.evm[/\\]app[/\\]plugins[/\\]wagmi\./
+      const before = app.plugins.length
+      app.plugins = app.plugins.filter((p) => !layerWagmiRe.test(p.src))
+      if (app.plugins.length === before) {
+        throw new Error(
+          "[nuxt.config] Layer's wagmi plugin not found; update the regex to match the installed @1001-digital/layers.evm path.",
+        )
+      }
     },
   },
 
   vite: {
-    // The app plugin imports `EvmConfigKey` from `@1001-digital/components.evm`
-    // and the layer-shipped dialog imports `useEvmConfig` from the same package
-    // via a relative path inside the package. Vite's dep optimizer pre-bundles
-    // the app's bare-specifier import into `.cache/vite/.../components__evm.js`
-    // while the dialog's relative import stays as source — two module instances,
-    // two `Symbol('EvmConfig')` values, and `inject` falls back to
-    // `defaultEvmConfig` (mainnet-only), so the wallet ends up prompted for
-    // chain 1 on every write. `dedupe` picks the same physical file; `exclude`
-    // stops Vite from pre-bundling it so both sides import the source.
+    // Force a single instance of `@1001-digital/components.evm` so the dialog's
+    // `inject(EvmConfigKey)` matches the wagmi plugin's `provide`. Without
+    // these, Vite pre-bundles the app's bare-specifier import as a separate
+    // chunk from the layer's relative-path import — two `Symbol('EvmConfig')`,
+    // and `inject` silently falls back to a mainnet-only default.
     resolve: {
       dedupe: ['@1001-digital/components.evm'],
     },

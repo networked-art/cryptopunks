@@ -70,7 +70,7 @@ export default defineNuxtPlugin({
     })
 
     if (import.meta.client) {
-      applyRpcUrlsToChains(wagmiConfig.chains, evmConfig.rpcUrls ?? {})
+      applyRpcUrlsToChains(wagmiConfig.chains as Chain[], evmConfig.rpcUrls ?? {})
     }
 
     nuxtApp.vueApp
@@ -86,19 +86,37 @@ export default defineNuxtPlugin({
   },
 })
 
+/// Front-loads the configured RPC URL onto each chain so the injected
+/// connector's `wallet_addEthereumChain` payload points at our proxy. Wagmi's
+/// read transports are built from `runtimeChains` upstream, so this is only
+/// for the wallet-add path. Clones the chain instead of mutating — for known
+/// ids `resolveChain` returns the `viem/chains` singleton, and mutating it
+/// would leak the proxy URL to every other consumer in the bundle.
 function applyRpcUrlsToChains(
-  chains: readonly Chain[],
+  chains: Chain[],
   rpcUrls: Record<number, string>,
 ) {
-  for (const chain of chains) {
+  for (let i = 0; i < chains.length; i++) {
+    const chain = chains[i]
+    if (!chain) continue
     const rpcUrl = rpcUrls[chain.id]
-    if (!rpcUrl || !/^https?:\/\//.test(rpcUrl)) continue
+    if (!rpcUrl) continue
+    const isHttp = /^https?:\/\//i.test(rpcUrl)
+    const isWebSocket = /^wss?:\/\//i.test(rpcUrl)
+    if (!isHttp && !isWebSocket) continue
 
-    chain.rpcUrls = {
-      ...chain.rpcUrls,
-      default: {
-        ...chain.rpcUrls.default,
-        http: [rpcUrl],
+    const existingHttp = chain.rpcUrls.default.http ?? []
+    const existingWs = chain.rpcUrls.default.webSocket ?? []
+
+    chains[i] = {
+      ...chain,
+      rpcUrls: {
+        ...chain.rpcUrls,
+        default: {
+          ...chain.rpcUrls.default,
+          http: isHttp ? [rpcUrl, ...existingHttp] : existingHttp,
+          webSocket: isWebSocket ? [rpcUrl, ...existingWs] : existingWs,
+        },
       },
     }
   }
