@@ -61,15 +61,15 @@
         </div>
 
         <div class="addr-row">
-          <dt>User proxy</dt>
+          <dt>Wrapper proxy</dt>
           <dd>
             <a
-              v-if="userProxy"
-              :href="addressUrl(userProxy)"
+              v-if="wrapperProxy"
+              :href="addressUrl(wrapperProxy)"
               target="_blank"
               rel="noopener"
             >
-              <Account :address="userProxy" />
+              <Account :address="wrapperProxy" />
             </a>
             <span
               v-else
@@ -77,7 +77,7 @@
               >Not registered</span
             >
             <Tag
-              v-if="userProxy"
+              v-if="wrapperProxy"
               small
               class="status-tag active"
             >
@@ -100,7 +100,7 @@ defineProps<{
   account: Address | undefined
   vault: Address | null
   stash: Address | null
-  userProxy: Address | null
+  wrapperProxy: Address | null
   vaultDeployed: boolean
   stashDeployed: boolean
 }>()

@@ -27,7 +27,7 @@ export const PUNKS_VAULT_FACTORY_ADDRESS = SDK_PUNKS_VAULT_FACTORY_ADDRESS
 /** Yuga Labs `StashFactory` — deploys deterministic per-user `Stash` clones. */
 export const STASH_FACTORY_ADDRESS = SDK_STASH_FACTORY_ADDRESS
 
-/** Original `WrappedCryptopunks` — also the per-user `UserProxy` registry. */
+/** Original `WrappedCryptopunks` — also the per-user `WrapperProxy` registry. */
 export const WRAPPED_PUNKS_ADDRESS = SDK_WRAPPED_PUNKS_ADDRESS
 
 /** True once `PUNKS_AUCTION_ADDRESS` points at a real deployment. */

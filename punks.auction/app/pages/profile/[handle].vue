@@ -68,7 +68,7 @@
           :account="resolvedAddress"
           :vault="vault"
           :stash="stash"
-          :user-proxy="userProxy"
+          :wrapper-proxy="wrapperProxy"
           :vault-deployed="vaultDeployed"
           :stash-deployed="stashDeployed"
         />
@@ -225,7 +225,7 @@ watchEffect(async () => {
     if (t !== resolveToken) return
   }
 
-  // Canonicalize URLs of the form `/profile/<vault|stash|userProxy>` to
+  // Canonicalize URLs of the form `/profile/<vault|stash|wrapperProxy>` to
   // `/profile/<owner>` so a single profile is always reachable via the same
   // address. Only attempted when the handle is already an address — ENS
   // handles are user-chosen and stay verbatim.
@@ -278,7 +278,7 @@ const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 const {
   vault,
   stash,
-  userProxy,
+  wrapperProxy,
   vaultDeployed,
   stashDeployed,
 } = useAccountAddresses(profileAddress)
@@ -304,8 +304,8 @@ const { lots } = useLots()
 const { offers } = useOffers()
 
 // Lots/offers the profile owns are filtered by `seller`/`offerer` matching
-// any of the user's custody addresses: EOA, vault, or stash. (UserProxy is
-// excluded — it's a transient wrap-flow intermediary, never an at-rest
+// any of the user's custody addresses: EOA, vault, or stash. (Wrapper proxy
+// is excluded — it's a transient wrap-flow intermediary, never an at-rest
 // seller.)
 const ownerAddresses = computed(() => {
   const set = new Set<string>()

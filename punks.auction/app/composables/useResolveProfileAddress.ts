@@ -22,7 +22,7 @@ type ResolveResult = {
   /** The canonical EOA to display the profile for. */
   canonical: Address
   /**
-   * True when `address` was a known `PunksVault`/`Stash`/`UserProxy` and the
+   * True when `address` was a known `PunksVault`/`Stash`/`WrapperProxy` and the
    * profile page should redirect to the owner EOA via
    * `navigateTo('/profile/' + canonical, { replace: true })`.
    */
@@ -31,7 +31,7 @@ type ResolveResult = {
 
 /**
  * Given a resolved EOA-or-contract address, asks the indexer whether it is a
- * known per-user contract (PunksVault / Stash / UserProxy). If so, returns
+ * known per-user contract (PunksVault / Stash / WrapperProxy). If so, returns
  * the owning EOA and `redirect: true`. Otherwise returns the input address
  * as-is.
  *

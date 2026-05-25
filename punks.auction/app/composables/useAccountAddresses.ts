@@ -19,9 +19,9 @@ const ZERO = '0x0000000000000000000000000000000000000000'
  * functions on their respective factories, so the chain is the cheapest
  * source of truth and never wrong.
  *
- *   - `vault`     — `PunksVaultFactory.predictVault(user)`
- *   - `stash`     — `StashFactory.stashAddressFor(user)`
- *   - `userProxy` — `WrappedPunks.proxyInfo(user)` (null when unregistered)
+ *   - `vault`        — `PunksVaultFactory.predictVault(user)`
+ *   - `stash`        — `StashFactory.stashAddressFor(user)`
+ *   - `wrapperProxy` — `WrappedPunks.proxyInfo(user)` (null when unregistered)
  *
  * `*Deployed` flags reflect bytecode presence at the predicted address.
  */
@@ -32,7 +32,7 @@ export function useAccountAddresses(
 
   const vault = ref<Address | null>(null)
   const stash = ref<Address | null>(null)
-  const userProxy = ref<Address | null>(null)
+  const wrapperProxy = ref<Address | null>(null)
   const vaultDeployed = ref(false)
   const stashDeployed = ref(false)
   const loading = ref(false)
@@ -42,7 +42,7 @@ export function useAccountAddresses(
   function reset() {
     vault.value = null
     stash.value = null
-    userProxy.value = null
+    wrapperProxy.value = null
     vaultDeployed.value = false
     stashDeployed.value = false
   }
@@ -109,7 +109,7 @@ export function useAccountAddresses(
 
       vault.value = nextVault
       stash.value = nextStash
-      userProxy.value = nextProxy
+      wrapperProxy.value = nextProxy
       vaultDeployed.value = !!vaultCode && vaultCode !== '0x'
       stashDeployed.value = !!stashCode && stashCode !== '0x'
     } catch (e) {
@@ -125,7 +125,7 @@ export function useAccountAddresses(
   return {
     vault,
     stash,
-    userProxy,
+    wrapperProxy,
     vaultDeployed,
     stashDeployed,
     loading,
