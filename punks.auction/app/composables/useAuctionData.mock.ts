@@ -23,15 +23,16 @@ import {
 const HOUR = 60 * 60
 const MOCK_TIME_STEP = 5 * 60
 
-/// Throwaway accounts — ENS won't resolve, so the UI shows truncated hex.
+/// Mainnet accounts with reverse ENS records, so mock rows exercise ENS display.
 const ACCOUNTS = {
-  ada: '0x6b3a9f1c2d8e4a7b0c5d2e9f1a8b7c6d5e4f3a2b',
-  blue: '0xa17f4c9e2b6d8a3f0c1e5d7b9a2c4e6f8d0b1a3c',
-  cyrus: '0x2e9d7c5a3f1b8e6d4c2a0f9e7d5c3b1a9f8e7d6c',
-  dot: '0xf04b8a2c6e1d9f3b7a5c0e2d8b4a6c1f3e9d7b5a',
-  echo: '0x91c3e7a5d2f0b8c6a4e2d0f9b7c5a3e1d8f6b4a2',
-  fern: '0x4d8b2f6a0c9e3d7b1a5f8c2e6d0b4a9c3f7e1d5b',
+  jalil: '0xe11Da9560b51f8918295edC5ab9c0a90E9ADa20B',
+  visualizevalue: '0xc8f8e2F59Dd95fF67c3d39109ecA2e2A017D4c8a',
+  yougogirl: '0x90f64E01FfAE16490aeFe03C8ED7Dab6c66198C3',
 } satisfies Record<string, Address>
+
+const TRAITS = {
+  beanie: 26,
+} as const
 
 function item(
   punkId: number,
@@ -43,6 +44,10 @@ function item(
 
 function criteria(overrides: Partial<PunksFilter> = {}): PunksFilter {
   return { ...emptyPunksFilter(), ...overrides }
+}
+
+function traitCriteria(traitId: number): PunksFilter {
+  return criteria({ requiredTraitMask: 1n << BigInt(traitId) })
 }
 
 function slot(
@@ -65,8 +70,8 @@ function createMockAuctions(): AuctionRecord[] {
     // Live · single-Punk lot · the bold one-tile hero.
     {
       id: 7n,
-      seller: ACCOUNTS.ada,
-      latestBidder: ACCOUNTS.blue,
+      seller: ACCOUNTS.jalil,
+      latestBidder: ACCOUNTS.yougogirl,
       latestBidWei: parseEther('6.4'),
       endTimestamp: now + 7 * HOUR + 12 * 60,
       settled: false,
@@ -75,8 +80,8 @@ function createMockAuctions(): AuctionRecord[] {
     // Live · four-Punk lot · one of them a V1.
     {
       id: 6n,
-      seller: ACCOUNTS.cyrus,
-      latestBidder: ACCOUNTS.dot,
+      seller: ACCOUNTS.visualizevalue,
+      latestBidder: ACCOUNTS.jalil,
       latestBidWei: parseEther('14.25'),
       endTimestamp: now + 19 * HOUR,
       settled: false,
@@ -90,8 +95,8 @@ function createMockAuctions(): AuctionRecord[] {
     // Live · ending soon · big lot that overflows into a `+N` chip.
     {
       id: 5n,
-      seller: ACCOUNTS.echo,
-      latestBidder: ACCOUNTS.fern,
+      seller: ACCOUNTS.yougogirl,
+      latestBidder: ACCOUNTS.visualizevalue,
       latestBidWei: parseEther('3.08'),
       endTimestamp: now + 38 * 60,
       settled: false,
@@ -110,8 +115,8 @@ function createMockAuctions(): AuctionRecord[] {
     // Past its end but not yet settled — the "Awaiting settlement" state.
     {
       id: 4n,
-      seller: ACCOUNTS.ada,
-      latestBidder: ACCOUNTS.dot,
+      seller: ACCOUNTS.jalil,
+      latestBidder: ACCOUNTS.visualizevalue,
       latestBidWei: parseEther('9'),
       endTimestamp: now - (2 * HOUR + 30 * 60),
       settled: false,
@@ -124,7 +129,7 @@ const mockLots: LotRecord[] = [
   // Public · two-Punk pair.
   {
     id: 13n,
-    seller: ACCOUNTS.fern,
+    seller: ACCOUNTS.visualizevalue,
     reserveWei: parseEther('12'),
     onlySellTo: ZERO_ADDRESS,
     items: [item(604, 1_000), item(6965, 9_000)],
@@ -132,7 +137,7 @@ const mockLots: LotRecord[] = [
   // Public · single Punk.
   {
     id: 12n,
-    seller: ACCOUNTS.cyrus,
+    seller: ACCOUNTS.jalil,
     reserveWei: parseEther('5'),
     onlySellTo: ZERO_ADDRESS,
     items: [item(7804, 10_000)],
@@ -140,7 +145,7 @@ const mockLots: LotRecord[] = [
   // Public · five-Punk bundle.
   {
     id: 11n,
-    seller: ACCOUNTS.echo,
+    seller: ACCOUNTS.yougogirl,
     reserveWei: parseEther('22'),
     onlySellTo: ZERO_ADDRESS,
     items: [
@@ -154,9 +159,9 @@ const mockLots: LotRecord[] = [
   // Private · reserved for a specific buyer.
   {
     id: 10n,
-    seller: ACCOUNTS.ada,
+    seller: ACCOUNTS.jalil,
     reserveWei: parseEther('8.5'),
-    onlySellTo: ACCOUNTS.blue,
+    onlySellTo: ACCOUNTS.yougogirl,
     items: [item(99, 3_333), item(1971, 3_333), item(8021, 3_334)],
   },
 ]
@@ -165,21 +170,21 @@ const mockOffers: OfferRecord[] = [
   // Matches lot #13 and demonstrates a two-slot bundle.
   {
     id: 4n,
-    offerer: ACCOUNTS.blue,
+    offerer: ACCOUNTS.yougogirl,
     amountWei: parseEther('15'),
     slots: [slot([604]), slot([6965])],
   },
   // Matches the single-Punk lot #12.
   {
     id: 3n,
-    offerer: ACCOUNTS.ada,
+    offerer: ACCOUNTS.jalil,
     amountWei: parseEther('5.5'),
     slots: [slot([7804])],
   },
   // Matches the five-Punk public bundle #11.
   {
     id: 2n,
-    offerer: ACCOUNTS.fern,
+    offerer: ACCOUNTS.visualizevalue,
     amountWei: parseEther('24'),
     slots: [
       slot([1000]),
@@ -192,26 +197,25 @@ const mockOffers: OfferRecord[] = [
   // Matches the private lot #10 because the offerer is the allowed buyer.
   {
     id: 1n,
-    offerer: ACCOUNTS.blue,
+    offerer: ACCOUNTS.yougogirl,
     amountWei: parseEther('9'),
     slots: [slot([99]), slot([1971]), slot([8021])],
   },
-  // Criteria-style offer with includes and excludes for the open book.
+  // Trait-style offer for the open book.
   {
     id: 5n,
-    offerer: ACCOUNTS.dot,
+    offerer: ACCOUNTS.jalil,
     amountWei: parseEther('2.75'),
     slots: [
       slot([], TokenStandard.CryptoPunks, {
-        criteria: criteria({ minColorCount: 1, maxColorCount: 4 }),
-        excludeIds: [3100, 7804],
+        criteria: traitCriteria(TRAITS.beanie),
       }),
     ],
   },
   // V1-specific single-slot offer.
   {
     id: 6n,
-    offerer: ACCOUNTS.cyrus,
+    offerer: ACCOUNTS.visualizevalue,
     amountWei: parseEther('1.8'),
     slots: [slot([8348], TokenStandard.CryptoPunksV1)],
   },
