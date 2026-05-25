@@ -34,6 +34,11 @@ const TRAITS = {
   beanie: 26,
 } as const
 
+const LARGE_OFFER_PUNK_IDS = [
+  24, 89, 143, 242, 333, 415, 603, 721, 808, 999, 1112, 1290, 1401, 1555,
+  1777, 2020, 2222, 2442, 2600, 2808, 3101, 3333, 3555, 3777,
+] as const
+
 function item(
   punkId: number,
   weightBps: number,
@@ -167,6 +172,13 @@ const mockLots: LotRecord[] = [
 ]
 
 const mockOffers: OfferRecord[] = [
+  // Large exact bundle offer — exercises `+N` previews and long slot lists.
+  {
+    id: 7n,
+    offerer: ACCOUNTS.yougogirl,
+    amountWei: parseEther('88'),
+    slots: LARGE_OFFER_PUNK_IDS.map((punkId) => slot([punkId])),
+  },
   // Matches lot #13 and demonstrates a two-slot bundle.
   {
     id: 4n,
