@@ -1,18 +1,15 @@
-import { formatSearchText } from '@networked-art/punks-sdk'
+import type { OfferRecord } from '~/utils/auction'
 import {
-  filterIsEmpty,
-  offerSlotToQuery,
-  standardLabel,
-  TokenStandard,
-  type OfferRecord,
-  type OfferSlot,
-  type TokenStandardValue,
-} from '~/utils/auction'
+  countOfferSlotMatches,
+  offerSlotDetail,
+  offerSlotExactItem,
+  offerSlotIncludedItems,
+  offerSlotTitle,
+  standardQualifier,
+  type OfferSlotPreviewItem,
+} from '~/composables/useOfferSlotDisplay'
 
-export type OfferCardThumb = {
-  punkId: number
-  standard: TokenStandardValue
-}
+export type OfferCardThumb = OfferSlotPreviewItem
 
 export type OfferCardTarget = {
   title: string
@@ -36,18 +33,15 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
       if (exact) {
         return {
           title: `Punk #${exact.punkId}`,
-          detail: standardQualifier(slot.standard),
+          detail: standardQualifier(exact.standard),
           thumbs: [exact],
         }
       }
 
       return {
-        title: slotTitle(slot, offline),
-        detail: slotDetail(slot, countSlotMatches(slot)),
-        thumbs: slot.includeIds.map((punkId) => ({
-          punkId,
-          standard: slot.standard,
-        })),
+        title: offerSlotTitle(slot, offline),
+        detail: offerSlotDetail(slot, countOfferSlotMatches(slot, offline)),
+        thumbs: offerSlotIncludedItems(slot),
       }
     }
 
@@ -58,14 +52,6 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
     }
   })
 
-  function countSlotMatches(slot: OfferSlot) {
-    try {
-      return offline.count(offerSlotToQuery(slot))
-    } catch {
-      return undefined
-    }
-  }
-
   return {
     detailHref,
     target,
@@ -73,74 +59,15 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
 }
 
 function exactOfferItems(offer: OfferRecord): OfferCardThumb[] {
-  return offer.slots.flatMap((slot) => {
-    if (!isSpecificPunkSlot(slot)) return []
-    return [{ punkId: slot.includeIds[0]!, standard: slot.standard }]
-  })
+  return offer.slots
+    .map((slot) => offerSlotExactItem(slot))
+    .filter((item): item is OfferCardThumb => !!item)
 }
 
-function isSpecificPunkSlot(slot: OfferSlot) {
-  return filterIsEmpty(slot.criteria) && slot.includeIds.length === 1
-}
-
-function slotTitle(
-  slot: OfferSlot,
-  offline: ReturnType<typeof usePunksOffline>,
-) {
-  if (!filterIsEmpty(slot.criteria)) return criteriaTitle(slot, offline)
-  if (slot.includeIds.length > 1) {
-    return `${slot.includeIds.length.toLocaleString()} included Punks`
-  }
-  return 'Any Punk'
-}
-
-function criteriaTitle(
-  slot: OfferSlot,
-  offline: ReturnType<typeof usePunksOffline>,
-) {
-  try {
-    const label = formatSearchText(offline.dataset.source, {
-      criteria: slot.criteria,
-    })
-    const humanLabel = humanizeCriteriaLabel(label)
-    return humanLabel ? `Trait criteria: ${humanLabel}` : 'Trait criteria'
-  } catch {
-    return 'Trait criteria'
-  }
-}
-
-function humanizeCriteriaLabel(label: string) {
-  const parts: string[] = []
-  const rest = label
-    .replace(/"([^"]+)"/g, (_match, term: string) => {
-      parts.push(term)
-      return ' '
-    })
-    .trim()
-
-  if (rest) parts.push(rest)
-  return parts.join(' · ')
-}
-
-function slotDetail(slot: OfferSlot, matchCount: number | undefined) {
-  return [standardQualifier(slot.standard), matchCountLabel(matchCount)]
-    .filter(Boolean)
-    .join(' · ')
-}
-
-function slotStandardsLabel(slots: OfferSlot[]) {
+function slotStandardsLabel(slots: OfferRecord['slots']) {
   const standards = new Set(slots.map((slot) => slot.standard))
   if (standards.size > 1) return 'Mixed standards'
 
   const [standard] = standards
   return standard === undefined ? '' : standardQualifier(standard)
-}
-
-function standardQualifier(standard: TokenStandardValue) {
-  return standard === TokenStandard.CryptoPunks ? '' : standardLabel(standard)
-}
-
-function matchCountLabel(count: number | undefined) {
-  if (count === undefined) return ''
-  return `${count.toLocaleString()} matching`
 }
