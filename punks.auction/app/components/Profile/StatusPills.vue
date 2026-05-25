@@ -30,8 +30,10 @@
           </template>
 
           <div class="tooltip-body">
-            <strong>{{ pill.title }}</strong>
-            <p class="status">{{ pill.statusLabel }}</p>
+            <header class="tooltip-header">
+              <h4 class="title eyebrow">{{ pill.title }}</h4>
+              <span class="status eyebrow">{{ pill.statusLabel }}</span>
+            </header>
             <a
               v-if="pill.address"
               :href="addressUrl(pill.address)"
@@ -113,7 +115,7 @@ const pills = computed<Pill[]>(() => [
 .status-pills {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: var(--size-1) 0;
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-1);
@@ -142,19 +144,20 @@ const pills = computed<Pill[]>(() => [
 .tooltip-body {
   display: flex;
   flex-direction: column;
-  gap: var(--size-1);
+  gap: var(--size-3);
   min-width: 12rem;
   max-width: 20rem;
 }
 
-.tooltip-body strong {
-  font-size: var(--font-sm);
+.tooltip-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-2);
 }
 
-.status {
+.title {
   margin: 0;
-  font-size: var(--font-xs);
-  color: var(--text-dim);
 }
 
 .explorer {
