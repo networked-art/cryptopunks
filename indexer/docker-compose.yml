@@ -1,7 +1,7 @@
 services:
-  postgres16_indexer:
-    image: postgres:16
-    container_name: postgres16_indexer
+  postgres:
+    image: postgres:17-alpine
+    container_name: punks-indexer-db
     environment:
       POSTGRES_USER: punks
       POSTGRES_PASSWORD: punks
@@ -9,7 +9,7 @@ services:
     ports:
       - '5412:5432'
     volumes:
-      - postgres16_indexer:/var/lib/postgresql/data
+      - punks_indexer_db:/var/lib/postgresql/data
 
 volumes:
-  postgres16_indexer:
+  punks_indexer_db:

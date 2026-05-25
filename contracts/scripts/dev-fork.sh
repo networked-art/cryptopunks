@@ -31,7 +31,10 @@ trap cleanup EXIT INT TERM
 
 echo "Starting hardhat node — fork of mainnet @ block 25171056"
 echo "  log: $NODE_LOG"
-pnpm exec hardhat node --network hardhatMainnet \
+# --chain-id 1 makes the fork identify as mainnet (Hardhat's default 31337
+# would otherwise be returned to `eth_chainId`), so the indexer in `../indexer`
+# accepts it as the same chain as `ponder.config.ts` is configured for.
+pnpm exec hardhat node --network hardhatMainnet --chain-id 1 \
   >"$NODE_LOG" 2>&1 &
 NODE_PID=$!
 

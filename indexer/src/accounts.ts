@@ -173,7 +173,7 @@ export async function recordUserProxy(
   await ensureAccount(context, user, blockNumber, timestamp)
   if (KNOWN_NON_EOA_LOWER.has(user.toLowerCase())) return
   const normalized = getAddress(user) as Address
-  const proxyNormalized = (proxy.toLowerCase() as Address)
+  const proxyNormalized = proxy.toLowerCase() as Address
   await context.db.update(account, { address: normalized }).set({
     user_proxy: proxyNormalized,
     updated_at: timestamp,

@@ -106,9 +106,95 @@ Copy `.env.local.example` to `.env.local` and set:
 
 ## Local Postgres
 
-`docker-compose.yml` ships a Postgres 16 instance on port `5412` for local
-development. Start it with `docker compose up -d` and point `DATABASE_URL`
-at `postgresql://punks:punks@localhost:5412/punks`.
+`docker-compose.yml` ships a Postgres 17 instance on port `5412` for local
+development (matches the prod accessory version so dumps restore cleanly).
+Start it with `pnpm postgres:up` and point `DATABASE_URL` at
+`postgresql://punks:punks@localhost:5412/punks`.
+
+| Command               | What it does                                     |
+| --------------------- | ------------------------------------------------ |
+| `pnpm postgres:up`    | Start the container in the background.           |
+| `pnpm postgres:down`  | Stop the container, keep the volume.             |
+| `pnpm postgres:reset` | Wipe the volume and re-create an empty Postgres. |
+
+## Local fork mode
+
+Run a fully populated indexer against a local mainnet fork — no RPC bills,
+no waiting for backfill. The fork node lives in the `contracts` package
+(`pnpm dev:fork`) at block `25171056`; this Ponder instance restores a
+production snapshot taken at the same block, then live-tails the fork for
+new events.
+
+### 1. Get a production snapshot
+
+The snapshot is a `pg_dump -Fc` of the prod `ponder` database wrapped in a
+zip, kept under `dumps/` (gitignored). To generate one from the deploy host:
+
+```sh
+ssh root@<deploy-host> 'docker exec -i indexer-db pg_dump -U ponder -d ponder \
+  -Fc -Z 6 --no-owner --no-acl' \
+  > dumps/ponder-prod-block-<latest_safe_checkpoint>.dump
+zip -0 dumps/ponder-prod-block-<block>.zip dumps/ponder-prod-block-<block>.dump
+rm dumps/ponder-prod-block-<block>.dump
+```
+
+Look up `<latest_safe_checkpoint>` with:
+
+```sh
+ssh root@<deploy-host> 'docker exec -i indexer-db psql -U ponder -d ponder \
+  -tA -c "SELECT split_part(safe_checkpoint::text, ''9'', 1)::bigint % 10000000000 \
+          FROM ponder_<schema>._ponder_checkpoint"'
+```
+
+(Or just `SELECT MAX(number) FROM ponder_sync.blocks`.)
+
+### 2. Restore into local Postgres
+
+```sh
+pnpm postgres:up        # boots Postgres 17 on :5412
+pnpm restore:fork       # finds the latest dumps/ponder-prod-block-*.zip and restores
+```
+
+The script prints the active schema name (e.g.
+`ponder_c896f90a9aa189f5`). Copy it into `.env.local`:
+
+```
+DATABASE_URL=postgresql://punks:punks@localhost:5412/punks
+DATABASE_SCHEMA=<schema printed by restore:fork>
+PONDER_VIEWS_SCHEMA=punks
+```
+
+### 3. Boot the fork and run the indexer
+
+In the `contracts` package:
+
+```sh
+pnpm dev:fork           # long-running hardhat node @ http://127.0.0.1:8545 (chainId 1)
+```
+
+In this package, with `.env.local` already pointing `PONDER_RPC_URLS_1` at
+`http://127.0.0.1:8545`:
+
+```sh
+pnpm dev                # ponder dev — picks up the restored state, live-tails the fork
+```
+
+Ponder will validate the restored sync cache, see the fork head a few
+blocks past the snapshot's `safe_checkpoint`, and incrementally apply the
+20 seeded transfers (and any subsequent transactions you run on the fork).
+
+### Caveats
+
+- **Build hash sensitivity.** Ponder stamps `_ponder_meta.build_id` with a
+  hash of indexing functions + schema. If you modify `src/` or
+  `ponder.schema.ts` after restoring, Ponder treats the restored schema as
+  stale and creates a fresh one (re-indexing from scratch). Re-`restore:fork`
+  to get back to a populated baseline.
+- **Schema name pins to the snapshot.** `DATABASE_SCHEMA` must match the
+  hash from the dump. Update it whenever you take a new snapshot.
+- **Fork chainId.** `pnpm dev:fork` passes `--chain-id 1` so the fork
+  matches `ponder.config.ts`. Without that override Hardhat would default
+  to 31337 and Ponder would refuse to connect.
 
 ## Deployment (Kamal)
 

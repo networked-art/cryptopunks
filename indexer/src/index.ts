@@ -88,7 +88,12 @@ ponder.on('CryptoPunksV2:PunkTransfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
-  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
+  await ensureAccounts(
+    context,
+    [from, to],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -185,7 +190,12 @@ ponder.on('CryptoPunksV2:PunkNoLongerForSale', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
-  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
+  await ensureAccounts(
+    context,
+    [bidder],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -210,7 +220,12 @@ ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidWithdrawn', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
-  await ensureAccounts(context, [bidder], event.block.number, event.block.timestamp)
+  await ensureAccounts(
+    context,
+    [bidder],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   await insertActivity(context, {
     id: eventId(event),
@@ -237,7 +252,12 @@ ponder.on('CryptoPunksV2:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
-  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
+  await ensureAccounts(
+    context,
+    [from, to],
+    event.block.number,
+    event.block.timestamp,
+  )
   const activeBid = await context.db.find(punkBid, { punk_id: punkId })
   const saleWei =
     event.args.value === 0n ? (activeBid?.value_wei ?? 0n) : event.args.value
@@ -366,7 +386,12 @@ async function handleWrapperTransfer(opts: {
   const to = normalize(args.to)
   const punkId = (args.tokenId ?? args.id) as bigint
   const meta = eventMeta(event)
-  await ensureAccounts(context, [from, to], event.block.number, event.block.timestamp)
+  await ensureAccounts(
+    context,
+    [from, to],
+    event.block.number,
+    event.block.timestamp,
+  )
 
   if (from === ZERO_ADDRESS) {
     await insertActivity(context, {
