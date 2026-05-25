@@ -61,12 +61,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .spinner {
-  --spinner-pixel: 0.5rem;
-  --spinner-gap: 0.125rem;
+  --spinner-pixel: 6px;
+  --spinner-gap: 3px;
   display: inline-grid;
   grid-template-columns: repeat(3, var(--spinner-pixel));
   grid-template-rows: repeat(3, var(--spinner-pixel));
   gap: var(--spinner-gap);
+  width: 24px;
+  height: 24px;
   vertical-align: middle;
 }
 
