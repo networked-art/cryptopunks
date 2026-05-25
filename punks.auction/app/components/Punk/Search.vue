@@ -14,6 +14,7 @@
             class="search-input"
             :placeholder="placeholder"
             @keydown.enter="onEnter"
+            @keydown.esc.prevent="searchInput?.blur()"
           />
           <span
             ref="underlineMeasure"
