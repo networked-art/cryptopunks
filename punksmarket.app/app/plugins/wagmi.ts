@@ -23,28 +23,42 @@ export default defineNuxtPlugin({
       ens?: { indexers?: string }
     }
     const publicUrl = (runtimeConfig.public as { publicUrl?: string }).publicUrl
-    const clientRpcPath = publicEvm.chains.mainnet?.rpcs ?? ''
-    const clientRpcUrl = publicUrl
-      ? new URL(clientRpcPath, publicUrl).toString()
-      : clientRpcPath
+    const serverRpcUrl =
+      (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? ''
+    const toAbsolute = (path: string) =>
+      publicUrl ? new URL(path, publicUrl).toString() : path
 
-    const runtimeChains: Record<string, { rpcs?: string }> = import.meta.server
-      ? {
-          ...publicEvm.chains,
-          mainnet: {
-            ...publicEvm.chains.mainnet,
-            rpcs: (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? '',
-          },
-        }
-      : {
-          ...publicEvm.chains,
-          mainnet: {
-            ...publicEvm.chains.mainnet,
-            // viem and walletconnect both need an absolute URL; the
-            // configured value is a same-origin path like `/api/rpc`.
-            rpcs: clientRpcUrl,
-          },
-        }
+    // Dev-only `localhost` chain so a browser wallet on the hardhat fork
+    // (chainId 31337) can issue writes. Gated on `import.meta.dev` so it
+    // never reaches production builds. Both reads still flow through the
+    // same `/api/rpc` proxy — what the proxy forwards to is controlled by
+    // `NUXT_RPC_URL` in the .env.
+    const baseAppChains = appConfig.evm?.chains ?? {}
+    const baseRuntimeChains = publicEvm.chains
+    const finalAppChains = import.meta.dev
+      ? { ...baseAppChains, localhost: { id: 31337 } }
+      : baseAppChains
+    const finalPublicChains = import.meta.dev
+      ? { ...baseRuntimeChains, localhost: { rpcs: '/api/rpc' } }
+      : baseRuntimeChains
+
+    // All configured chains route their reads through the same upstream RPC.
+    // Server: hit `rpcUrl` directly (Node fetch can't resolve relative URLs
+    // and self-roundtripping `/api/rpc` is pointless). Client: hit the
+    // same-origin `/api/rpc` proxy (absolute, so viem and walletconnect
+    // accept it). Wallet writes are routed by wagmi's connector transport,
+    // not by these entries.
+    const runtimeChains: Record<string, { rpcs?: string }> = Object.fromEntries(
+      Object.entries(finalPublicChains).map(([key, cfg]) => [
+        key,
+        {
+          ...cfg,
+          rpcs: import.meta.server
+            ? serverRpcUrl
+            : toAbsolute(cfg.rpcs ?? ''),
+        },
+      ]),
+    )
 
     const indexers = publicEvm.ens?.indexers?.split(/\s+/).filter(Boolean) || []
 
@@ -52,7 +66,7 @@ export default defineNuxtPlugin({
       title: appConfig.evm?.title || 'EVM Layer',
       appLogoUrl: appConfig.evm?.appLogoUrl,
       defaultChain: appConfig.evm?.defaultChain || 'mainnet',
-      chains: appConfig.evm?.chains || {},
+      chains: finalAppChains,
       runtimeChains,
       walletConnectProjectId: publicEvm.walletConnectProjectId || undefined,
       ensMode: appConfig.evm?.ens?.mode || 'indexer',
