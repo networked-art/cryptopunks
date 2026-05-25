@@ -30,7 +30,7 @@ fail() { printf '\n\033[1;31m✗\033[0m %s\n' "$1" >&2; exit 1; }
 
 psql_in() { docker exec -i "$PG_CONTAINER" psql -U punks -d punks "$@"; }
 
-# 1. Fork reachable + serving chainId 1
+# 1. Fork reachable + recognizably a hardhat node
 step "Checking fork at $FORK_URL"
 CHAIN_ID_HEX=$(curl -fsS -X POST -H 'Content-Type: application/json' \
   --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
@@ -38,13 +38,16 @@ CHAIN_ID_HEX=$(curl -fsS -X POST -H 'Content-Type: application/json' \
 if [[ -z "$CHAIN_ID_HEX" ]]; then
   fail "No JSON-RPC on $FORK_URL. Start the fork: cd ../contracts && pnpm dev:fork"
 fi
-if [[ "$CHAIN_ID_HEX" != "0x1" ]]; then
-  fail "Fork is reporting chainId=$CHAIN_ID_HEX (expected 0x1). Restart with the updated dev-fork.sh (it now passes --chain-id 1): cd ../contracts && pnpm dev:fork"
+# Probe a hardhat-specific RPC so we don't accidentally mutate a real node.
+if ! curl -fsS -X POST -H 'Content-Type: application/json' \
+     --data '{"jsonrpc":"2.0","method":"hardhat_metadata","params":[],"id":1}' \
+     "$FORK_URL" 2>/dev/null | grep -q '"result"'; then
+  fail "RPC at $FORK_URL doesn't respond to hardhat_metadata — refusing to proceed against a non-hardhat node."
 fi
 BLOCK_HEX=$(curl -fsS -X POST -H 'Content-Type: application/json' \
   --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
   "$FORK_URL" | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
-info "fork chainId=1, head=$((BLOCK_HEX))"
+info "fork chainId=$((CHAIN_ID_HEX)), head=$((BLOCK_HEX))"
 
 # 2. Postgres reachable
 step "Checking Postgres"

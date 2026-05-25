@@ -31,11 +31,12 @@ trap cleanup EXIT INT TERM
 
 echo "Starting hardhat node — fork of mainnet @ block 25171056"
 echo "  log: $NODE_LOG"
-# `hardhatFork` (defined in hardhat.config.ts) sets chainId=1 so the indexer
-# accepts the fork as mainnet. The `--chain-id` CLI flag would be the more
-# obvious lever but it is a dead variable in hardhat 3.4.5 — only the network
-# config takes effect.
-pnpm exec hardhat node --network hardhatFork \
+# Serves the fork on the default Hardhat chainId (31337) so RainbowKit and
+# other browser wallets will add it without rejecting it as a malicious
+# "mainnet" claim. The indexer (`ponder.config.ts` declares `chains.mainnet.id
+# = 1`) logs a one-line warning about the mismatch but keys all DB writes off
+# the configured chainId, so it stays consistent with the restored snapshot.
+pnpm exec hardhat node --network hardhatMainnet \
   >"$NODE_LOG" 2>&1 &
 NODE_PID=$!
 

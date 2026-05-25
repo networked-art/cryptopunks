@@ -38,20 +38,6 @@ export default defineConfig({
         blockNumber: 25171056,
       },
     },
-    // Used by `pnpm dev:fork` for the long-running JSON-RPC server. Pins
-    // chainId to 1 so the local indexer (which expects `chains.mainnet.id = 1`)
-    // accepts the fork. Kept separate from `hardhatMainnet` because the
-    // `--chain-id` CLI flag is a no-op in hardhat 3.4.5 (dead variable in
-    // `node/task-action.js`), and changing `hardhatMainnet` would shift tests.
-    hardhatFork: {
-      type: 'edr-simulated',
-      chainType: 'l1',
-      chainId: 1,
-      forking: {
-        url: configVariable('MAINNET_RPC_URL'),
-        blockNumber: 25171056,
-      },
-    },
     localhost: {
       type: 'http',
       chainType: 'l1',
