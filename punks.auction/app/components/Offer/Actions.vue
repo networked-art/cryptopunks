@@ -885,6 +885,10 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   text-align: right;
 }
 
+.slot-weight-field .label {
+  text-align: right;
+}
+
 .field-note {
   font-size: var(--font-xs);
 }
