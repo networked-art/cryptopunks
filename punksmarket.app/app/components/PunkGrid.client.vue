@@ -138,7 +138,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     width: `${px}px`,
     height: `${props.size + priceRowHeight.value}px`,
     '--price-label-height': `${PRICE_LABEL_HEIGHT}px`,
-    backgroundImage: "url('/punks-glitched.png')",
+    backgroundImage: "url('https://cdn.punksmarket.app/punks-glitched.png')",
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
   }

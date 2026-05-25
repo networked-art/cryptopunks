@@ -106,7 +106,7 @@ const spriteStyle = computed(() => {
   const style: Record<string, string> = {
     width: `${SPRITE_SIZE}px`,
     height: `${SPRITE_SIZE}px`,
-    backgroundImage: "url('/punks-glitched.png')",
+    backgroundImage: "url('https://cdn.punksmarket.app/punks-glitched.png')",
     backgroundSize: `${SPRITE_COLS * SPRITE_SIZE}px ${SPRITE_COLS * SPRITE_SIZE}px`,
     backgroundPosition: `-${spriteCol * SPRITE_SIZE}px -${spriteRow * SPRITE_SIZE}px`,
   }
