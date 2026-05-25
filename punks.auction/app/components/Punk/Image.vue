@@ -30,6 +30,8 @@
 </template>
 
 <script lang="ts">
+import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
+
 const PUNK_SOURCE_SIZE = 24
 const PUNK_HIGHLIGHT_SCALE = 4
 const PUNK_HIGHLIGHT_SIZE = PUNK_SOURCE_SIZE * PUNK_HIGHLIGHT_SCALE
@@ -56,7 +58,7 @@ function loadPunkSprite(): Promise<HTMLImageElement> {
     img.decoding = 'async'
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Failed to load punk sprite'))
-    img.src = '/punks.png'
+    img.src = PUNK_SPRITE_URL
   })
   return spriteImagePromise
 }
@@ -99,7 +101,12 @@ async function highlightedPunkDataUrl(
     PUNK_SOURCE_SIZE,
   )
 
-  const source = sourceCtx.getImageData(0, 0, PUNK_SOURCE_SIZE, PUNK_SOURCE_SIZE)
+  const source = sourceCtx.getImageData(
+    0,
+    0,
+    PUNK_SOURCE_SIZE,
+    PUNK_SOURCE_SIZE,
+  )
   const outputCanvas = document.createElement('canvas')
   outputCanvas.width = PUNK_HIGHLIGHT_SIZE
   outputCanvas.height = PUNK_HIGHLIGHT_SIZE
@@ -235,7 +242,7 @@ const spriteStyle = computed(() => {
   const row = Math.floor(props.punkId / SPRITE_COLS)
   const col = props.punkId % SPRITE_COLS
   return {
-    backgroundImage: "url('/punks.png')",
+    backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * 100}% ${SPRITE_COLS * 100}%`,
     backgroundPosition: `${(col / SPRITE_SPAN) * 100}% ${(row / SPRITE_SPAN) * 100}%`,
   }

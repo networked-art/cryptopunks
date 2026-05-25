@@ -22,6 +22,7 @@ import {
   punkHref,
   type TokenStandardValue,
 } from '~/utils/auction'
+import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
 
 const props = withDefaults(
   defineProps<{
@@ -62,7 +63,7 @@ const style = computed(() => {
   const sheet = {
     backgroundColor:
       props.background ?? backgroundForPunk(props.punkId, props.standard),
-    backgroundImage: "url('/punks.png')",
+    backgroundImage: `url('${PUNK_SPRITE_URL}')`,
   }
 
   // Fluid tiles place the sprite in percentages so they scale to whatever

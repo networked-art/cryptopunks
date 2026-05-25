@@ -40,8 +40,9 @@ transactions are wired yet.
 - **Contract address** — `PunksAuction` is not deployed yet. The address is a
   placeholder constant in `app/utils/addresses.ts`; until it is set the
   list/detail pages render an empty "not deployed" state.
-- **Rendering** uses the 100×100 sprite sheet (`public/punks.png`) for grid
-  cells; detail views render through the SDK's offline renderer.
+- **Rendering** uses the CDN-hosted optimized 100×100 sprite sheet
+  (`punks.optimized.png`) for grid cells; detail views render through the SDK's
+  offline renderer.
 - **UI primitives** (`Button`, `Card`, `BottomNav`, …) are auto-registered by
   `@1001-digital/layers.evm` → `@1001-digital/components.evm`. Don't re-author
   them locally; variants are class-based.

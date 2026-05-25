@@ -27,6 +27,8 @@
 </template>
 
 <script setup lang="ts">
+import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
+
 const props = withDefaults(
   defineProps<{
     ids: number[]
@@ -122,7 +124,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     width: `${px}px`,
     height: `${px}px`,
     backgroundColor: backgroundForPunk(c.id),
-    backgroundImage: "url('/punks.png')",
+    backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
   }
