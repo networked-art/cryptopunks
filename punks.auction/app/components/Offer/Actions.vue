@@ -854,7 +854,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .slot-input-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.5fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
   align-items: end;
   gap: var(--size-2);
   padding: var(--size-2);
@@ -882,6 +882,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 }
 
 .slot-weight-field input {
+  width: 8ch;
   text-align: right;
 }
 
