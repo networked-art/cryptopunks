@@ -19,6 +19,7 @@ import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
 import { getAbiItem, getAddress, toEventSelector, toHex } from 'viem'
 
 import { CryptoPunksV1Abi } from '../abis/CryptoPunksV1Abi'
+import { V1WrapperAbi } from '../abis/V1WrapperAbi'
 import {
   CRYPTOPUNKS_V1_ADDRESS,
   PUNKS_MARKET_ADDRESS,
@@ -52,6 +53,10 @@ const SOURCE_MARKET = 'punks_market'
 const PUNK_BOUGHT_TOPIC = toEventSelector(
   getAbiItem({ abi: CryptoPunksV1Abi, name: 'PunkBought' }),
 )
+const V1_WRAPPER_TRANSFER_TOPIC = toEventSelector(
+  getAbiItem({ abi: V1WrapperAbi, name: 'Transfer' }),
+)
+const ZERO_TOPIC = toHex(0n, { size: 32 })
 
 // Sentinel name for the punks-dataset backfill. Bump suffix if the bundled
 // dataset hash ever changes (it should not — PunksData is sealed onchain).
@@ -154,17 +159,23 @@ ponder.on('CryptoPunksV1:PunkTransfer', async ({ event, context }) => {
     event.block.timestamp,
   )
 
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V1,
-    source_event: 'PunkTransfer',
-    type: 'transfer',
-    punk_id: punkId,
-    actor: from,
-    from,
-    to,
-    ...meta,
-  })
+  const unwrapByproduct =
+    from === V1_WRAPPER_ADDRESS &&
+    (await isV1UnwrapByproduct(context, meta.tx_hash, punkId))
+
+  if (!unwrapByproduct) {
+    await insertActivity(context, {
+      id: eventId(event),
+      source: SOURCE_V1,
+      source_event: 'PunkTransfer',
+      type: 'transfer',
+      punk_id: punkId,
+      actor: from,
+      from,
+      to,
+      ...meta,
+    })
+  }
 
   const current = await context.db.find(v1Punk, { punk_id: punkId })
   if (current?.is_wrapped) {
@@ -947,6 +958,25 @@ async function isBuyPunkByproduct(
       normalize(log.address) === CRYPTOPUNKS_V1_ADDRESS &&
       log.topics[0] === PUNK_BOUGHT_TOPIC &&
       log.topics[1] === punkTopic,
+  )
+}
+
+// `PunksV1Wrapper.unwrap` burns the ERC-721 token, then transfers the native
+// V1 Punk from the wrapper contract to the caller. The burn is the user-facing
+// unwrap row; the native PunkTransfer is bookkeeping needed only for state.
+async function isV1UnwrapByproduct(
+  context: Context,
+  txHash: Address,
+  punkId: bigint,
+): Promise<boolean> {
+  const receipt = await context.client.getTransactionReceipt({ hash: txHash })
+  const punkTopic = toHex(punkId, { size: 32 })
+  return receipt.logs.some(
+    (log) =>
+      normalize(log.address) === V1_WRAPPER_ADDRESS &&
+      log.topics[0] === V1_WRAPPER_TRANSFER_TOPIC &&
+      log.topics[2] === ZERO_TOPIC &&
+      log.topics[3] === punkTopic,
   )
 }
 
