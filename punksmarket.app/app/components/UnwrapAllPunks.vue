@@ -103,30 +103,27 @@ async function start() {
 
 function createUnwrapSteps(): MultiTransactionFlowStep[] {
   const n = batchIds.length
-  const steps: MultiTransactionFlowStep[] = []
 
-  if (!isApproved.value) {
-    steps.push({
+  return [
+    {
       id: 'approve-unwrap-helper',
       title: 'Approve unwrap helper',
       lead: 'One-time approval so unwrap.punksmarket.eth can burn wrapper tokens on your behalf.',
       action: 'Approve helper',
+      skip: () => isApproved.value,
       request: () => execute(sdk.value.v1Wrapper.prepareApproveBatchUnwrap()),
       result: () => {
         isApproved.value = true
       },
-    })
-  }
-
-  steps.push({
-    id: 'unwrap-batch',
-    title: `Unwrap ${n} punks`,
-    lead: `Releasing ${n} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ in a single transaction.`,
-    action: 'Unwrap',
-    request: () => execute(sdk.value.v1Wrapper.prepareUnwrapBatch(batchIds)),
-  })
-
-  return steps
+    },
+    {
+      id: 'unwrap-batch',
+      title: `Unwrap ${n} punks`,
+      lead: `Releasing ${n} wrapped C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎ in a single transaction.`,
+      action: 'Unwrap',
+      request: () => execute(sdk.value.v1Wrapper.prepareUnwrapBatch(batchIds)),
+    },
+  ]
 }
 
 function onComplete(_receipts: TransactionReceipt[]) {
