@@ -67,6 +67,7 @@
 import { mockOfferById, useMockLots } from '~/composables/useAuctionData.mock'
 import {
   equalLotWeights,
+  filterIsEmpty,
   lotMatchesOffer,
   offerSlotToQuery,
   type LotItem,
@@ -87,6 +88,7 @@ const {
 } = useOffer(() => (validId.value ? id.value : undefined))
 const { lots, pending: lotsPending, refresh: refreshLots } = useLots()
 const { lots: mockLots, deployed: mockLotsDeployed } = useMockLots()
+const { criteriaMatchesPunk, searchCriteriaMatches } = useOfferSlotMatching()
 
 const mockOffer = computed(() =>
   validId.value ? mockOfferById(id.value) : null,
@@ -105,12 +107,34 @@ const slotCountLabel = computed(() => {
   return `${count.toLocaleString()} slot${count === 1 ? '' : 's'}`
 })
 
+type SlotMatchCache = {
+  previewMatches: number[]
+  criteriaMatches?: Set<number>
+}
+
+const slotMatchCache = computed(() => {
+  const cache = new WeakMap<OfferSlot, SlotMatchCache>()
+  const offer = displayOffer.value
+  if (!offer) return cache
+
+  for (const slot of offer.slots) {
+    cache.set(slot, {
+      previewMatches: searchSlotMatches(slot),
+      criteriaMatches: filterIsEmpty(slot.criteria)
+        ? undefined
+        : new Set(searchCriteriaMatches(slot)),
+    })
+  }
+
+  return cache
+})
+
 const previewItems = computed<LotItem[]>(() => {
   const offer = displayOffer.value
   if (!offer) return []
   const candidates = offer.slots
     .map((slot) => {
-      const punkId = slot.includeIds[0] ?? slotMatches(slot)[0]
+      const punkId = slot.includeIds[0] ?? slotPreviewMatches(slot)[0]
       return punkId === undefined ? null : { standard: slot.standard, punkId }
     })
     .filter((item): item is Pick<LotItem, 'standard' | 'punkId'> => !!item)
@@ -128,7 +152,7 @@ const matchingLots = computed(() => {
   return displayLots.value
     .filter((lot) =>
       lotMatchesOffer(offer, lot, (slot, punkId) =>
-        slotMatches(slot).includes(punkId),
+        slotCriteriaMatchesPunk(slot, punkId),
       ),
     )
     .sort((a, b) => compareBigint(b.reserveWei, a.reserveWei))
@@ -139,7 +163,19 @@ function onChanged() {
   void refreshLots()
 }
 
-function slotMatches(slot: OfferSlot) {
+function slotPreviewMatches(slot: OfferSlot) {
+  return (
+    slotMatchCache.value.get(slot)?.previewMatches ?? searchSlotMatches(slot)
+  )
+}
+
+function slotCriteriaMatchesPunk(slot: OfferSlot, punkId: number) {
+  const cached = slotMatchCache.value.get(slot)
+  if (cached?.criteriaMatches) return cached.criteriaMatches.has(punkId)
+  return criteriaMatchesPunk(slot, punkId)
+}
+
+function searchSlotMatches(slot: OfferSlot) {
   try {
     return offline.search(offerSlotToQuery(slot))
   } catch {
