@@ -156,45 +156,83 @@ pnpm restore:fork       # finds the latest dumps/ponder-prod-block-*.zip and res
 ```
 
 The script prints the active schema name (e.g.
-`ponder_c896f90a9aa189f5`). Copy it into `.env.local`:
+`ponder_c896f90a9aa189f5`). Set `.env.local`:
 
 ```
+PONDER_RPC_URLS_1=http://127.0.0.1:8545
 DATABASE_URL=postgresql://punks:punks@localhost:5412/punks
 DATABASE_SCHEMA=<schema printed by restore:fork>
 PONDER_VIEWS_SCHEMA=punks
 ```
 
-### 3. Boot the fork and run the indexer
+### 3. Boot the fork and start the indexer
 
-In the `contracts` package:
+Terminal A — in `../contracts`:
 
 ```sh
 pnpm dev:fork           # long-running hardhat node @ http://127.0.0.1:8545 (chainId 1)
 ```
 
-In this package, with `.env.local` already pointing `PONDER_RPC_URLS_1` at
-`http://127.0.0.1:8545`:
+Terminal B — in this package:
 
 ```sh
-pnpm dev                # ponder dev — picks up the restored state, live-tails the fork
+pnpm start:fork
 ```
 
-Ponder will validate the restored sync cache, see the fork head a few
-blocks past the snapshot's `safe_checkpoint`, and incrementally apply the
-20 seeded transfers (and any subsequent transactions you run on the fork).
+That single command checks the fork is up and serving chainId 1, ensures
+Postgres is running, restores the snapshot if it isn't already loaded,
+probes Ponder's local `buildId`, stamps it into `_ponder_meta`, normalizes
+the sync intervals + checkpoint state to the fork's view of the chain, and
+then `exec`s `ponder start`. Ponder reports `Detected crash recovery`,
+serves cached blocks at 100% hit rate, and live-indexes the 20 seed
+transfers within a second.
+
+### Why we don't use `pnpm dev`
+
+Ponder 0.16.6's `dev` command unconditionally rejects any pre-existing
+schema (it's wired for hot-reload over a fresh schema), so it errors with
+`Schema "…" was previously used by a different Ponder app.` regardless of
+build_id. Only `ponder start` reuses the schema, and that's what
+`start:fork` runs.
+
+### What `start:fork` is patching, and why
+
+`start:fork` mutates three things to bridge prod state onto a pinned fork:
+
+1. **`_ponder_meta.build_id`** — replaced with whatever the locally
+   installed indexer computes (probed by booting Ponder against a throwaway
+   `ponder_probe` schema for a few seconds). Otherwise the snapshot's
+   build_id from the deploy commit can't match local source.
+2. **`_ponder_checkpoint`** — `finalized_checkpoint` is zeroed and
+   `latest_checkpoint` is set to `safe_checkpoint`. Without this Ponder
+   errors with `Finalized block for chain "1" cannot move backwards`,
+   because the snapshot was taken with the prod chain's finalization
+   running ahead of our pinned fork head.
+3. **`ponder_sync.intervals`** — each multirange is intersected with
+   `[lo, safe_block]` and rewritten to `[a,b]` (inclusive-end) form. The
+   intersection drops cached intervals past the fork point (prod kept
+   syncing while we were pinned), so Ponder doesn't ask the fork for
+   blocks it doesn't have. The `[a,b]` rewrite is needed because Ponder's
+   `getIntervals` does `JSON.parse('[' + mr.slice(1,-1) + ']')` which
+   chokes on PostgreSQL's default `[a,b)` rendering.
+
+These are all in-place SQL mutations against the local DB. The original
+snapshot zip is untouched, so you can always `pnpm restore:fork` to start
+over.
 
 ### Caveats
 
-- **Build hash sensitivity.** Ponder stamps `_ponder_meta.build_id` with a
-  hash of indexing functions + schema. If you modify `src/` or
-  `ponder.schema.ts` after restoring, Ponder treats the restored schema as
-  stale and creates a fresh one (re-indexing from scratch). Re-`restore:fork`
-  to get back to a populated baseline.
-- **Schema name pins to the snapshot.** `DATABASE_SCHEMA` must match the
-  hash from the dump. Update it whenever you take a new snapshot.
-- **Fork chainId.** `pnpm dev:fork` passes `--chain-id 1` so the fork
-  matches `ponder.config.ts`. Without that override Hardhat would default
-  to 31337 and Ponder would refuse to connect.
+- **Schema name pins to the snapshot.** `DATABASE_SCHEMA` in `.env.local`
+  must match the hash from the dump (e.g. `ponder_c896f90a9aa189f5`).
+  Update it whenever you take a new snapshot.
+- **Fork chainId.** `contracts/hardhat.config.ts` defines a separate
+  `hardhatFork` network with `chainId: 1` so the fork matches
+  `ponder.config.ts`. The `--chain-id` CLI flag is a no-op in
+  hardhat 3.4.5 — only the config field takes effect.
+- **Code drift.** If you make schema or handler changes that diverge from
+  the snapshot's deploy commit, Ponder will happily re-stamp the build_id
+  and run, but new logic against old rows can drift. Re-run
+  `pnpm restore:fork` to reset.
 
 ## Deployment (Kamal)
 
