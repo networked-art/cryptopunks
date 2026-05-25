@@ -291,7 +291,7 @@
         </div>
 
         <p
-          v-if="newLotPunkIds.some(Boolean) && !newLotPunksMatch"
+          v-if="showNewLotPunkMismatchWarning"
           class="warn"
         >
           One or more Punks do not match their offer slots.
@@ -543,6 +543,9 @@ const newLotPunksMatch = computed(() => {
     })
   })
 })
+const showNewLotPunkMismatchWarning = computed(
+  () => newLotPunksComplete.value && !newLotPunksMatch.value,
+)
 const canCreateLotFromOffer = computed(
   () =>
     !!address.value &&
