@@ -9,19 +9,15 @@ import {
   type TokenStandardValue,
 } from '~/utils/auction'
 
-export type OfferCardKind = 'specific' | 'criteria' | 'bundle'
-
 export type OfferCardThumb = {
   punkId: number
   standard: TokenStandardValue
 }
 
 export type OfferCardTarget = {
-  kind: OfferCardKind
   title: string
   detail: string
   thumbs: OfferCardThumb[]
-  extraCount: number
 }
 
 export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
@@ -39,32 +35,26 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
 
       if (exact) {
         return {
-          kind: 'specific',
           title: `Punk #${exact.punkId}`,
           detail: standardQualifier(slot.standard),
           thumbs: [exact],
-          extraCount: 0,
         }
       }
 
       return {
-        kind: 'criteria',
         title: slotTitle(slot, offline),
         detail: slotDetail(slot, countSlotMatches(slot)),
-        thumbs: slot.includeIds.slice(0, 3).map((punkId) => ({
+        thumbs: slot.includeIds.map((punkId) => ({
           punkId,
           standard: slot.standard,
         })),
-        extraCount: Math.max(0, slot.includeIds.length - 3),
       }
     }
 
     return {
-      kind: 'bundle',
       title: `${record.slots.length.toLocaleString()} Punks`,
       detail: slotStandardsLabel(record.slots),
-      thumbs: exactItems.slice(0, 3),
-      extraCount: Math.max(0, exactItems.length - 3),
+      thumbs: exactItems,
     }
   })
 
