@@ -164,7 +164,7 @@ const ownAccount = computed(() =>
 const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
 const profileAvatarUri = computed(() =>
   resolvedAddress.value
-    ? accountAvvatarDataUri(resolvedAddress.value, 72)
+    ? accountAvvatarDataUri(resolvedAddress.value, 90)
     : undefined,
 )
 
@@ -176,13 +176,8 @@ useSeoMeta({
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
-const {
-  vault,
-  stash,
-  wrapperProxy,
-  vaultDeployed,
-  stashDeployed,
-} = useAccountAddresses(profileAddress)
+const { vault, stash, wrapperProxy, vaultDeployed, stashDeployed } =
+  useAccountAddresses(profileAddress)
 
 provide(ProfileContextKey, {
   resolvedAddress,
@@ -212,7 +207,7 @@ provide(ProfileContextKey, {
 }
 
 .profile-avvatar {
-  width: clamp(48px, 10.5vw, 72px);
+  width: clamp(56px, 12vw, 90px);
   aspect-ratio: 1;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;
