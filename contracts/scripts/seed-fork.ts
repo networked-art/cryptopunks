@@ -1,5 +1,6 @@
 import { network } from 'hardhat'
-import { getAddress, parseAbi, type Address, type Hex } from 'viem'
+import { getAddress, isAddress, parseAbi, type Address, type Hex } from 'viem'
+import { normalize } from 'viem/ens'
 
 const CRYPTOPUNKS_V1 = getAddress(
   '0x6Ba6f2207e343923BA692e5Cae646Fb0F566DB8D',
@@ -11,7 +12,18 @@ const PUNKS_V1_WRAPPER = getAddress(
   '0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D',
 )
 
-const JALIL = getAddress('0xe11Da9560b51f8918295edC5ab9c0a90E9ADa20B')
+// Mainnet ENS universal resolver, deployed well before the fork block. Passed
+// explicitly so we don't need viem's `chain.contracts` config.
+const ENS_UNIVERSAL_RESOLVER = getAddress(
+  '0xce01f8eee7E479C928F8919abD53E553a36CeF67',
+)
+
+// jalil.eth — used both as the default recipient and as the fallback if ENS
+// resolution returns nothing (shouldn't happen on a healthy mainnet fork).
+const DEFAULT_RECIPIENT_NAME = 'jalil.eth'
+const DEFAULT_RECIPIENT_ADDRESS = getAddress(
+  '0xe11Da9560b51f8918295edC5ab9c0a90E9ADa20B',
+)
 
 const SOURCE_A = getAddress('0xaf7cf5910510b7cf912c156f91244487632e5fb6')
 const A_V1_UNWRAPPED: readonly bigint[] = [6225n]
@@ -37,12 +49,43 @@ const ONE_ETH_HEX = '0xDE0B6B3A7640000'
 
 const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
+async function resolveRecipient(
+  publicClient: Awaited<
+    ReturnType<Awaited<ReturnType<typeof network.create>>['viem']['getPublicClient']>
+  >,
+  raw: string,
+): Promise<{ address: Address; label: string }> {
+  if (isAddress(raw)) {
+    return { address: getAddress(raw), label: getAddress(raw) }
+  }
+  const name = normalize(raw)
+  const address = await publicClient.getEnsAddress({
+    name,
+    universalResolverAddress: ENS_UNIVERSAL_RESOLVER,
+  })
+  if (!address) {
+    if (raw === DEFAULT_RECIPIENT_NAME) return {
+      address: DEFAULT_RECIPIENT_ADDRESS,
+      label: `${DEFAULT_RECIPIENT_NAME} (${DEFAULT_RECIPIENT_ADDRESS}, hardcoded fallback)`,
+    }
+    throw new Error(`SEED_RECIPIENT "${raw}" did not resolve to an address.`)
+  }
+  return { address, label: `${name} (${address})` }
+}
+
 async function main() {
   const { viem } = await network.create()
   const publicClient = await viem.getPublicClient()
 
   const block = await publicClient.getBlockNumber()
   console.log(`Connected at block ${block}`)
+
+  const recipientInput = process.env.SEED_RECIPIENT ?? DEFAULT_RECIPIENT_NAME
+  const { address: recipient, label: recipientLabel } = await resolveRecipient(
+    publicClient,
+    recipientInput,
+  )
+  console.log(`Recipient: ${recipientLabel}`)
 
   // viem's typed `request` rejects hardhat_* methods; route through `any`.
   const rpc = <T = unknown>(method: string, params: unknown[]): Promise<T> =>
@@ -65,16 +108,16 @@ async function main() {
     fn: 'punkIndexToAddress' | 'ownerOf',
     id: bigint,
     expected: Address,
-  ): Promise<'jalil' | 'expected' | 'other'> => {
+  ): Promise<'recipient' | 'expected' | 'other'> => {
     const owner = (await publicClient.readContract({
       address: contract,
       abi: abi as typeof PUNK_NATIVE_ABI,
       functionName: fn as 'punkIndexToAddress',
       args: [id],
     })) as Address
-    if (eq(owner, JALIL)) {
-      console.log(`  ${label} #${id}: already jalil — skip`)
-      return 'jalil'
+    if (eq(owner, recipient)) {
+      console.log(`  ${label} #${id}: already recipient — skip`)
+      return 'recipient'
     }
     if (!eq(owner, expected)) {
       console.warn(
@@ -93,10 +136,10 @@ async function main() {
   ) => {
     const hash = await write()
     await publicClient.waitForTransactionReceipt({ hash })
-    console.log(`  ${label} #${id} ${from} → jalil  ${hash}`)
+    console.log(`  ${label} #${id} ${from} → recipient  ${hash}`)
   }
 
-  console.log(`\n${SOURCE_A} → ${JALIL}`)
+  console.log(`\n${SOURCE_A} → ${recipient}`)
   await impersonate(SOURCE_A)
   const walletA = await viem.getWalletClient(SOURCE_A)
   for (const id of A_V1_UNWRAPPED) {
@@ -114,7 +157,7 @@ async function main() {
         address: CRYPTOPUNKS_V1,
         abi: PUNK_NATIVE_ABI,
         functionName: 'transferPunk',
-        args: [JALIL, id],
+        args: [recipient, id],
       }) as Promise<Hex>,
     )
   }
@@ -133,7 +176,7 @@ async function main() {
         address: PUNKS_V1_WRAPPER,
         abi: ERC721_ABI,
         functionName: 'transferFrom',
-        args: [SOURCE_A, JALIL, id],
+        args: [SOURCE_A, recipient, id],
       }) as Promise<Hex>,
     )
   }
