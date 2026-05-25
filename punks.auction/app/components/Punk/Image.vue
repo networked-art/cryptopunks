@@ -12,12 +12,15 @@
       :style="spriteStyle"
       aria-hidden="true"
     />
-    <span
-      v-if="highlightedImageUrl"
-      class="punk-highlight"
-      :style="highlightStyle"
-      aria-hidden="true"
-    />
+    <Transition name="punk-highlight">
+      <span
+        v-if="highlightedImageUrl"
+        :key="highlightedImageUrl"
+        class="punk-highlight"
+        :style="highlightStyle"
+        aria-hidden="true"
+      />
+    </Transition>
     <span
       v-if="showId"
       class="punk-image-id"
@@ -176,7 +179,7 @@ const resolvedBackground = computed(
 const rootStyle = computed(() => ({
   width: typeof props.size === 'number' ? `${props.size}px` : props.size,
   height: typeof props.size === 'number' ? `${props.size}px` : props.size,
-  background: props.highlightedColor
+  backgroundColor: props.highlightedColor
     ? cssColorWithAlpha(resolvedBackground.value, DIMMED_BACKGROUND_OPACITY)
     : resolvedBackground.value,
 }))
@@ -227,6 +230,7 @@ const spriteStyle = computed(() => {
   overflow: hidden;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  transition: background-color 0.18s ease;
 }
 
 .punk-base {
@@ -238,6 +242,7 @@ const spriteStyle = computed(() => {
   user-select: none;
   background-repeat: no-repeat;
   z-index: 1;
+  transition: opacity 0.18s ease;
 }
 
 .punk-base.is-highlighted {
@@ -256,6 +261,21 @@ const spriteStyle = computed(() => {
   background-size: 100% 100%;
   pointer-events: none;
   z-index: 2;
+}
+
+.punk-highlight-enter-active,
+.punk-highlight-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.punk-highlight-enter-from,
+.punk-highlight-leave-to {
+  opacity: 0;
+}
+
+.punk-highlight-enter-to,
+.punk-highlight-leave-from {
+  opacity: 1;
 }
 
 .punk-image-id {
