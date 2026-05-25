@@ -47,8 +47,8 @@ defineProps<{
   position: relative;
   display: grid;
   place-items: center;
-  inline-size: var(--size-9);
-  block-size: var(--size-9);
+  inline-size: var(--size-8);
+  block-size: var(--size-8);
   --punk-mosaic-inset: 19%;
   background: var(--bg-elevated);
   overflow: hidden;
