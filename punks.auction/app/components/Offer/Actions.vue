@@ -362,6 +362,7 @@ import {
 import {
   MAX_INSTANT_ITEMS,
   equalLotWeights,
+  filterIsEmpty,
   offerSlotMatchesPunk,
   offerSlotSummary,
   offerSlotToQuery,
@@ -394,6 +395,7 @@ const amountEth = ref('')
 const listedPunkId = ref('')
 const expectedListingEth = ref('')
 const newLotPunkIds = ref<string[]>([])
+const newLotWeightPercents = ref<string[]>([])
 const minimumEth = ref('')
 
 watch(
@@ -406,6 +408,9 @@ watch(
     minimumEth.value = formatEther(offer.amountWei)
     newLotPunkIds.value = offer.slots.map((slot) =>
       slot.includeIds[0] === undefined ? '' : String(slot.includeIds[0]),
+    )
+    newLotWeightPercents.value = equalLotWeights(offer.slots.length).map(
+      formatWeightPercent,
     )
   },
   { immediate: true },
@@ -449,13 +454,34 @@ const canAcceptListed = computed(
 const isOfferer = computed(() =>
   sameAddress(address.value, props.offer.offerer),
 )
+const newLotWeightBps = computed<(number | null)[]>(() =>
+  props.offer.slots.map((_slot, index) =>
+    parseWeightPercent(newLotWeightPercents.value[index]),
+  ),
+)
+const newLotWeightTotalBps = computed<number>(() =>
+  newLotWeightBps.value.reduce<number>(
+    (sum, weight) => sum + (weight ?? 0),
+    0,
+  ),
+)
+const newLotWeightsValid = computed(
+  () =>
+    newLotWeightBps.value.length === props.offer.slots.length &&
+    newLotWeightBps.value.every((weight) => weight !== null) &&
+    newLotWeightTotalBps.value === 10_000,
+)
+const newLotWeightTotalLabel = computed(() =>
+  formatWeightPercent(newLotWeightTotalBps.value),
+)
 const newLotItems = computed<LotItem[]>(() => {
-  const weights = equalLotWeights(props.offer.slots.length)
   return props.offer.slots
     .map((slot, index) => {
       const punkId = parsePunkId(newLotPunkIds.value[index])
-      const weightBps = weights[index]
-      if (punkId === null || weightBps === undefined) return null
+      const weightBps = newLotWeightBps.value[index]
+      if (punkId === null || weightBps === null || weightBps === undefined) {
+        return null
+      }
       return { standard: slot.standard, punkId, weightBps }
     })
     .filter((item): item is LotItem => !!item)
@@ -487,6 +513,7 @@ const canCreateLotFromOffer = computed(
     !!address.value &&
     newLotItemsComplete.value &&
     newLotItemsMatch.value &&
+    newLotWeightsValid.value &&
     !!minimumWei.value &&
     props.offer.amountWei >= minimumWei.value &&
     v1ActionsAllowed.value,
@@ -678,6 +705,31 @@ function parsePositiveEth(input: unknown): bigint | null {
 function parsePunkId(input: unknown): number | null {
   const id = Number(String(input ?? '').trim())
   return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
+}
+
+function parseWeightPercent(input: unknown): number | null {
+  const trimmed = String(input ?? '')
+    .trim()
+    .replace(/%$/, '')
+  if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) return null
+  const [whole = '0', fractional = ''] = trimmed.split('.')
+  const weightBps =
+    Number(whole) * 100 + Number(fractional.padEnd(2, '0'))
+  return Number.isInteger(weightBps) && weightBps > 0 && weightBps <= 10_000
+    ? weightBps
+    : null
+}
+
+function formatWeightPercent(weightBps: number) {
+  const percent = weightBps / 100
+  return Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(2)
+}
+
+function fixedSlotPunkId(slot: OfferSlot) {
+  if (!filterIsEmpty(slot.criteria) || slot.includeIds.length !== 1) {
+    return null
+  }
+  return slot.includeIds[0] ?? null
 }
 
 function slotMatchesItem(slot: OfferSlot, item: LotItem) {
