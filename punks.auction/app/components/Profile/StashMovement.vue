@@ -80,7 +80,6 @@
 
       <EvmTransactionFlowDialog
         ref="dialogRef"
-        chain="mainnet"
         :request="transactionRequest"
         :text="transactionText"
         skip-confirmation

@@ -235,7 +235,6 @@
 
       <EvmTransactionFlowDialog
         ref="dialogRef"
-        chain="mainnet"
         :text="dialogText"
         keep-open
         skip-confirmation

@@ -182,7 +182,6 @@
 
     <EvmTransactionFlowDialog
       ref="dialogRef"
-      chain="mainnet"
       :text="dialogText"
       keep-open
       skip-confirmation
@@ -190,7 +189,6 @@
     />
     <EvmMultiTransactionFlowDialog
       ref="wrapDialogRef"
-      chain="mainnet"
       :steps="wrapFlowSteps"
       :text="wrapDialogText"
       skip-confirmation

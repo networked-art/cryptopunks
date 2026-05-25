@@ -38,7 +38,6 @@
 
         <EvmTransactionFlowDialog
           v-else
-          chain="mainnet"
           keep-open
           :request="bid"
           :text="bidDialogText"
@@ -71,7 +70,6 @@
 
       <EvmTransactionFlowDialog
         v-else-if="canSettle"
-        chain="mainnet"
         keep-open
         skip-confirmation
         :request="settle"

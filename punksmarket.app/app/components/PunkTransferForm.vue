@@ -1,6 +1,5 @@
 <template>
   <EvmTransactionFlowDialog
-    chain="mainnet"
     keep-open
     :request="transfer"
     :text="dialogText"

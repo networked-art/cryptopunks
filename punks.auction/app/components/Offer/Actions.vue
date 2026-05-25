@@ -63,7 +63,6 @@
 
       <EvmTransactionFlowDialog
         ref="transactionDialogRef"
-        chain="mainnet"
         :request="transactionRequest"
         :text="transactionText"
         keep-open
@@ -72,7 +71,6 @@
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
-        chain="mainnet"
         :steps="flowSteps"
         :text="multiDialogText"
         @complete="onMultiTransactionComplete"

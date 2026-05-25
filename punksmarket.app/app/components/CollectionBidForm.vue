@@ -1,6 +1,5 @@
 <template>
   <EvmTransactionFlowDialog
-    chain="mainnet"
     keep-open
     :request="placeBid"
     :text="dialogText"

@@ -32,7 +32,6 @@
 
   <EvmMultiTransactionFlowDialog
     ref="dialogRef"
-    chain="mainnet"
     :steps="flowSteps"
     :text="dialogText"
     skip-confirmation

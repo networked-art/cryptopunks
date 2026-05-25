@@ -82,7 +82,6 @@
 
       <EvmTransactionFlowDialog
         ref="dialogRef"
-        chain="mainnet"
         :request="transactionRequest"
         :text="transactionText"
         skip-confirmation
@@ -90,7 +89,6 @@
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
-        chain="mainnet"
         :steps="flowSteps"
         :text="multiDialogText"
         skip-confirmation

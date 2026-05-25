@@ -54,7 +54,6 @@
         @adjusted="onAdjusted"
       />
       <EvmTransactionFlowDialog
-        chain="mainnet"
         keep-open
         skip-confirmation
         :request="withdraw"

@@ -65,12 +65,7 @@ export default defineNuxtPlugin({
     const { wagmiConfig, evmConfig } = createWagmiConfig({
       title: appConfig.evm?.title || 'EVM Layer',
       appLogoUrl: appConfig.evm?.appLogoUrl,
-      // In dev we promote `localhost` to the primary chain so wagmi defaults
-      // writes (`useWriteContract`, etc.) to the fork. `createWagmiConfig`
-      // sorts `chains` by this key to land it at `chains[0]`.
-      defaultChain: import.meta.dev
-        ? 'localhost'
-        : appConfig.evm?.defaultChain || 'mainnet',
+      defaultChain: appConfig.evm?.defaultChain || 'mainnet',
       chains: finalAppChains,
       runtimeChains,
       walletConnectProjectId: publicEvm.walletConnectProjectId || undefined,
