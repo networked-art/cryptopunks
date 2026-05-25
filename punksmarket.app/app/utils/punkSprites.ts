@@ -1,5 +1,6 @@
 export const PUNK_SPRITE_COLS = 100
-export const PUNK_SPRITE_URL = 'https://cdn.punksmarket.app/punks.png'
+export const PUNK_SPRITE_URL =
+  'https://cdn.punksmarket.app/punks.optimized.png?v=20260525-2'
 export const PUNK_GLITCH_OUTLINE_SPRITE_URL =
   'https://cdn.punksmarket.app/punks-glitch-outline.png?v=20260525-2'
 export const PUNK_GLITCH_STRIPES_SPRITE_URL =

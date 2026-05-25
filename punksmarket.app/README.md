@@ -29,11 +29,12 @@ auto-registered UI primitives.
   so Nitro SSR hits the upstream without a self-loop.
 - **Indexer reads** hit `NUXT_PUBLIC_INDEXER_URL` (Ponder/Postgres SQL +
   custom routes) — see [`indexer/`](../indexer/README.md).
-- **Rendering** uses a CDN-hosted 100×100 sprite sheet (`punks.png`) for the
-  base image plus pre-baked transparent outline and stripe glitch overlays
-  (`public/punks-glitch-outline.png`, `public/punks-glitch-stripes.png`) for
-  dense sprite views. `PunkImage` composites its layers in CSS; for detail
-  views the SDK's offline renderer is used.
+- **Rendering** uses a CDN-hosted optimized 100×100 sprite sheet
+  (`punks.optimized.png`) for the base image plus pre-baked transparent outline
+  and stripe glitch overlays (`public/punks-glitch-outline.png`,
+  `public/punks-glitch-stripes.png`) for dense sprite views. `PunkImage`
+  composites its layers in CSS; for detail views the SDK's offline renderer is
+  used.
 - **UI primitives** (`Button`, `Card`, `BottomNav`, …) are auto-registered by
   `@1001-digital/layers.evm` → `@1001-digital/components.evm`. Don't re-author
   them locally; variants are class-based.
@@ -51,14 +52,15 @@ Mainnet-only — the wagmi config does not declare any other chain.
 
 ## Scripts
 
-| Script             | Purpose                                                                                                                                                                                        |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`         | Nuxt dev server on `:3000`.                                                                                                                                                                    |
-| `pnpm build`       | Production Nitro build (node-cluster preset).                                                                                                                                                  |
-| `pnpm generate`    | Static prerender (where applicable).                                                                                                                                                           |
-| `pnpm preview`     | Preview the built app.                                                                                                                                                                         |
-| `pnpm typecheck`   | `nuxt typecheck` (vue-tsc).                                                                                                                                                                    |
-| `pnpm bake:glitch` | Regenerate the transparent outline and stripe glitch overlays from `punks.png` using the deterministic per-tile glitch (`scripts/bake-glitch.mjs`). Run after the source sprite sheet changes. |
+| Script                | Purpose                                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`            | Nuxt dev server on `:3000`.                                                                                                                                                                    |
+| `pnpm build`          | Production Nitro build (node-cluster preset).                                                                                                                                                  |
+| `pnpm generate`       | Static prerender (where applicable).                                                                                                                                                           |
+| `pnpm preview`        | Preview the built app.                                                                                                                                                                         |
+| `pnpm typecheck`      | `nuxt typecheck` (vue-tsc).                                                                                                                                                                    |
+| `pnpm optimize:punks` | Losslessly write `public/punks.optimized.png` as an indexed PNG after verifying decoded RGBA pixels match `public/punks.png`.                                                                  |
+| `pnpm bake:glitch`    | Regenerate the transparent outline and stripe glitch overlays from `punks.png` using the deterministic per-tile glitch (`scripts/bake-glitch.mjs`). Run after the source sprite sheet changes. |
 
 ## Deployment (Kamal)
 
