@@ -1,25 +1,35 @@
 <template>
   <ClientOnly>
-    <section
+    <div
       v-if="ownAccount"
-      class="tab-placeholder muted"
+      class="wrappers-tab"
     >
-      Wrapper management tools (Vault, Stash, Legacy Wrapper) land here in
-      the next pass.
-    </section>
+      <ProfileVaultMovement :account="ownAccount" />
+
+      <ProfileStashMovement
+        :account="ownAccount"
+        :stash="stash"
+        :stash-deployed="stashDeployed"
+      />
+
+      <ProfileLegacyWrapper
+        :account="ownAccount"
+        :wrapper-proxy="wrapperProxy"
+      />
+    </div>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
 useOwnProfileGuard()
-const { ownAccount } = useProfileContext()
+
+const { ownAccount, stash, stashDeployed, wrapperProxy } = useProfileContext()
 </script>
 
 <style scoped>
-.tab-placeholder {
-  padding: var(--size-6);
-  border: var(--border);
-  text-align: center;
-  font-size: var(--font-sm);
+.wrappers-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4);
 }
 </style>
