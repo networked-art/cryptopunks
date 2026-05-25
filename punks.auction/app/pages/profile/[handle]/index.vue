@@ -84,7 +84,7 @@
           v-if="activity.length"
           class="event-list"
         >
-          <LazyActivityRow
+          <ActivityRow
             v-for="event in activity"
             :key="event.id"
             :event="event"
