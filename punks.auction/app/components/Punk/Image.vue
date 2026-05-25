@@ -30,7 +30,10 @@
 </template>
 
 <script lang="ts">
-import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
+import {
+  PUNK_SPRITE_CANVAS_FALLBACK_URL,
+  PUNK_SPRITE_URL,
+} from '~/utils/punkSprites'
 
 const PUNK_SOURCE_SIZE = 24
 const PUNK_HIGHLIGHT_SCALE = 4
@@ -51,15 +54,25 @@ type RgbaParts = {
   hex: string
 }
 
-function loadPunkSprite(): Promise<HTMLImageElement> {
-  if (spriteImagePromise) return spriteImagePromise
-  spriteImagePromise = new Promise((resolve, reject) => {
+function loadImage(
+  src: string,
+  crossOrigin?: HTMLImageElement['crossOrigin'],
+): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
     const img = new Image()
     img.decoding = 'async'
+    if (crossOrigin) img.crossOrigin = crossOrigin
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Failed to load punk sprite'))
-    img.src = PUNK_SPRITE_URL
+    img.src = src
   })
+}
+
+function loadPunkSprite(): Promise<HTMLImageElement> {
+  if (spriteImagePromise) return spriteImagePromise
+  spriteImagePromise = loadImage(PUNK_SPRITE_URL, 'anonymous').catch(() =>
+    loadImage(PUNK_SPRITE_CANVAS_FALLBACK_URL),
+  )
   return spriteImagePromise
 }
 
