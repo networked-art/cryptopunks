@@ -126,7 +126,9 @@ export function auctionStatus(
 /// Rebuilds an offline `PunkQuery` from an offer slot so the UI can count
 /// matches and link to the search page. `max === 0` means "no constraint" in
 /// the on-chain `PunksFilter`.
-export function offerSlotToQuery(slot: OfferSlot): PunkQuery {
+export function offerSlotCriteriaToQuery(
+  slot: Pick<OfferSlot, 'criteria'>,
+): PunkQuery {
   const c = slot.criteria
   const query: PunkQuery = {}
   if (
@@ -157,6 +159,11 @@ export function offerSlotToQuery(slot: OfferSlot): PunkQuery {
   if (c.maxColorCount > 0) {
     query.colorCount = { min: c.minColorCount, max: c.maxColorCount }
   }
+  return query
+}
+
+export function offerSlotToQuery(slot: OfferSlot): PunkQuery {
+  const query = offerSlotCriteriaToQuery(slot)
   if (slot.includeIds.length) query.ids = slot.includeIds
   if (slot.excludeIds.length) query.excludeIds = slot.excludeIds
   return query

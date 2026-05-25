@@ -1,6 +1,5 @@
 import {
   auctionStatus,
-  offerSlotToQuery,
   type LotItem,
   type TokenStandardValue,
 } from '~/utils/auction'
@@ -19,7 +18,7 @@ export function usePunkAuctionContext(
   const { auctions, pending: auctionsPending, deployed } = useMockAuctions()
   const { lots, pending: lotsPending } = useMockLots()
   const { offers, pending: offersPending } = useOffers()
-  const offline = usePunksOffline()
+  const { matchesItem: offerSlotMatchesItem } = useOfferSlotMatching()
   const now = useSeconds()
 
   function matchesItem(item: LotItem): boolean {
@@ -43,12 +42,10 @@ export function usePunkAuctionContext(
   const punkOffers = computed(() =>
     offers.value.filter((offer) =>
       offer.slots.some((slot) => {
-        if (slot.standard !== toValue(standard)) return false
-        try {
-          return offline.search(offerSlotToQuery(slot)).includes(toValue(punkId))
-        } catch {
-          return false
-        }
+        return offerSlotMatchesItem(slot, {
+          standard: toValue(standard),
+          punkId: toValue(punkId),
+        })
       }),
     ),
   )

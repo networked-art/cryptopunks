@@ -70,7 +70,6 @@ import {
   auctionStatus,
   formatLotItemsLabel,
   lotMatchesOffer,
-  offerSlotToQuery,
   readAuctionForLot,
 } from '~/utils/auction'
 
@@ -103,20 +102,12 @@ const isMock = computed(() => !lot.value && !!displayLot.value)
 const itemCountLabel = computed(() =>
   displayLot.value ? formatLotItemsLabel(displayLot.value.items) : '',
 )
-const offline = usePunksOffline()
+const { criteriaMatchesPunk } = useOfferSlotMatching()
 const matchingOffers = computed(() => {
   const current = displayLot.value
   if (!current) return []
   return displayOffers.value
-    .filter((offer) =>
-      lotMatchesOffer(offer, current, (slot, punkId) => {
-        try {
-          return offline.search(offerSlotToQuery(slot)).includes(punkId)
-        } catch {
-          return false
-        }
-      }),
-    )
+    .filter((offer) => lotMatchesOffer(offer, current, criteriaMatchesPunk))
     .sort((a, b) =>
       a.amountWei === b.amountWei ? 0 : a.amountWei > b.amountWei ? -1 : 1,
     )

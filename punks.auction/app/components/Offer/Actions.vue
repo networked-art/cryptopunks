@@ -388,8 +388,6 @@ import {
   MAX_INSTANT_ITEMS,
   equalLotWeights,
   filterIsEmpty,
-  offerSlotMatchesPunk,
-  offerSlotToQuery,
   TokenStandard,
   type LotItem,
   type LotRecord,
@@ -414,6 +412,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const offline = usePunksOffline()
+const { matchesItem: slotMatchesItem } = useOfferSlotMatching()
 const renderV1 = useV1Rendering()
 
 const amountEth = ref('')
@@ -459,11 +458,10 @@ const listedPunkMatches = computed(() => {
   const slot = props.offer.slots[0]
   const punkId = listedPunk.value
   if (!slot || punkId === null) return false
-  try {
-    return offline.search(offerSlotToQuery(slot)).includes(punkId)
-  } catch {
-    return false
-  }
+  return slotMatchesItem(slot, {
+    standard: slot.standard,
+    punkId,
+  })
 })
 const canAcceptListed = computed(
   () =>
@@ -483,10 +481,7 @@ const newLotWeightBps = computed<(number | null)[]>(() =>
   ),
 )
 const newLotWeightTotalBps = computed<number>(() =>
-  newLotWeightBps.value.reduce<number>(
-    (sum, weight) => sum + (weight ?? 0),
-    0,
-  ),
+  newLotWeightBps.value.reduce<number>((sum, weight) => sum + (weight ?? 0), 0),
 )
 const newLotWeightsValid = computed(
   () =>
@@ -539,7 +534,6 @@ const newLotPunksMatch = computed(() => {
     return slotMatchesItem(slot, {
       standard: slot.standard,
       punkId,
-      weightBps: 1,
     })
   })
 })
@@ -747,8 +741,7 @@ function parseWeightPercent(input: unknown): number | null {
     .replace(/%$/, '')
   if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) return null
   const [whole = '0', fractional = ''] = trimmed.split('.')
-  const weightBps =
-    Number(whole) * 100 + Number(fractional.padEnd(2, '0'))
+  const weightBps = Number(whole) * 100 + Number(fractional.padEnd(2, '0'))
   return Number.isInteger(weightBps) && weightBps > 0 && weightBps <= 10_000
     ? weightBps
     : null
@@ -764,16 +757,6 @@ function fixedSlotPunkId(slot: OfferSlot) {
     return null
   }
   return slot.includeIds[0] ?? null
-}
-
-function slotMatchesItem(slot: OfferSlot, item: LotItem) {
-  return offerSlotMatchesPunk(slot, item, (criteriaSlot, punkId) => {
-    try {
-      return offline.search(offerSlotToQuery(criteriaSlot)).includes(punkId)
-    } catch {
-      return false
-    }
-  })
 }
 
 function slotLabel(slot: OfferSlot) {
