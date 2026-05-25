@@ -15,7 +15,15 @@
   </div>
 
   <span class="slot-copy">
-    <span class="slot-title">{{ row.title }}</span>
+    <span class="slot-title">
+      {{ row.title }}
+      <span
+        v-if="row.titleStandard"
+        class="slot-title-standard"
+      >
+        {{ row.titleStandard }}
+      </span>
+    </span>
     <span
       v-if="row.detailParts.length"
       class="slot-detail"
@@ -94,6 +102,10 @@ defineProps<{
   color: var(--text);
   font-size: var(--font-sm);
   font-weight: var(--font-weight-bold);
+}
+
+.slot-title-standard {
+  color: var(--text-muted);
 }
 
 .slot-detail {

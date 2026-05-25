@@ -28,6 +28,7 @@ export type OfferSlotDetailPart = {
 export type OfferSlotDisplay = {
   label: string
   title: string
+  titleStandard?: string
   detail: string
   detailParts: OfferSlotDetailPart[]
   href?: string
@@ -49,6 +50,7 @@ export function offerSlotDisplay(
   return {
     label: `Slot ${index + 1}`,
     title: offerSlotTitle(slot, offline),
+    titleStandard: offerSlotTitleStandard(slot),
     detail: offerSlotDetail(slot, matchCount),
     detailParts: offerSlotDetailParts(slot, matchCount, offline),
     href: offerSlotHref(slot),
@@ -94,11 +96,7 @@ export function countOfferSlotMatches(
 
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   const exact = offerSlotExactItem(slot)
-  if (exact) {
-    return `Punk #${exact.punkId}${
-      exact.standard === TokenStandard.CryptoPunksV1 ? ' (V1)' : ''
-    }`
-  }
+  if (exact) return `Punk #${exact.punkId}`
   if (!filterIsEmpty(slot.criteria)) return criteriaTitle(slot, offline)
   if (slot.includeIds.length > 1) {
     return `${slot.includeIds.length.toLocaleString()} included Punks`
@@ -113,6 +111,12 @@ export function offerSlotDetail(
   return offerSlotPlainDetailParts(slot, matchCount)
     .map((part) => part.text)
     .join(' · ')
+}
+
+function offerSlotTitleStandard(slot: OfferSlot) {
+  const exact = offerSlotExactItem(slot)
+  if (!exact || exact.standard !== TokenStandard.CryptoPunksV1) return undefined
+  return '(V1)'
 }
 
 export function standardQualifier(standard: TokenStandardValue) {
