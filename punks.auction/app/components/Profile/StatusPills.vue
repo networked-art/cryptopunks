@@ -162,5 +162,3 @@ const pills = computed<Pill[]>(() => [
   font-size: var(--font-xs);
 }
 </style>
-</content>
-</invoke>
