@@ -26,27 +26,34 @@ type PunkOwnerRow = {
   v1Punk: { owner: Address | null; is_wrapped: boolean } | null
 }
 
+type Source = 'indexer' | 'onchain' | null
+type PunkOwnerState = {
+  owner: Address | null
+  isWrapped: boolean
+  source: Source
+}
+
+/// `useAsyncData` so Nuxt blocks SSR until the wrap status resolves —
+/// otherwise `isWrapped` stays `false` through the initial render and the
+/// "(Wrapped)" label / wrapped background only appear after client hydration.
 export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
   const { sdk } = usePunksSdk()
+  const id = computed(() => toValue(punkId))
 
-  const owner = ref<Address | null>(null)
-  const isWrapped = ref(false)
-  const pending = ref(false)
-  const source = ref<'indexer' | 'onchain' | null>(null)
-
-  async function load() {
-    const id = toValue(punkId)
-    pending.value = true
-    try {
+  const { data, pending, refresh } = useAsyncData<PunkOwnerState>(
+    () => `punk-owner-${id.value}`,
+    async () => {
+      const punkIdNum = id.value
       try {
-        const data = await queryIndexer<PunkOwnerRow>(PUNK_OWNER_QUERY, {
-          id: String(id),
+        const result = await queryIndexer<PunkOwnerRow>(PUNK_OWNER_QUERY, {
+          id: String(punkIdNum),
         })
-        if (data.v1Punk) {
-          owner.value = data.v1Punk.owner
-          isWrapped.value = data.v1Punk.is_wrapped
-          source.value = 'indexer'
-          return
+        if (result.v1Punk) {
+          return {
+            owner: result.v1Punk.owner,
+            isWrapped: result.v1Punk.is_wrapped,
+            source: 'indexer',
+          }
         }
         // Punk row missing — fall through to onchain.
       } catch {
@@ -54,26 +61,30 @@ export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
       }
 
       try {
-        const raw = (await sdk.value.market.ownerOf(id)) as Address | null
+        const raw = (await sdk.value.market.ownerOf(punkIdNum)) as
+          | Address
+          | null
         if (raw && isAddressEqual(raw, sdk.value.v1Wrapper.address)) {
-          owner.value = await sdk.value.v1Wrapper.ownerOf(id)
-          isWrapped.value = true
-        } else {
-          owner.value = raw
-          isWrapped.value = false
+          return {
+            owner: await sdk.value.v1Wrapper.ownerOf(punkIdNum),
+            isWrapped: true,
+            source: 'onchain',
+          }
         }
-        source.value = 'onchain'
+        return { owner: raw, isWrapped: false, source: 'onchain' }
       } catch {
-        owner.value = null
-        isWrapped.value = false
-        source.value = null
+        return { owner: null, isWrapped: false, source: null }
       }
-    } finally {
-      pending.value = false
-    }
-  }
+    },
+    {
+      watch: [id],
+      default: () => ({ owner: null, isWrapped: false, source: null }),
+    },
+  )
 
-  watch(() => toValue(punkId), load, { immediate: true })
+  const owner = computed(() => data.value?.owner ?? null)
+  const isWrapped = computed(() => data.value?.isWrapped ?? false)
+  const source = computed(() => data.value?.source ?? null)
 
-  return { owner, isWrapped, pending, source, refresh: load }
+  return { owner, isWrapped, pending, source, refresh }
 }
