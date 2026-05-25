@@ -21,9 +21,9 @@
       <section class="section">
         <div
           v-if="pending && !displayOffers.length"
-          class="state muted"
+          class="loading"
         >
-          Loading offers…
+          <Spinner label="Loading offers" />
         </div>
         <div
           v-else-if="!deployed"
@@ -147,6 +147,11 @@ const sortedOffers = computed(() =>
 .block-note,
 .state {
   margin: 0;
+}
+
+.loading {
+  padding: var(--size-8);
+  text-align: center;
 }
 
 .empty {

@@ -36,9 +36,9 @@
         </div>
         <div
           v-if="pending && !marketEntries.length"
-          class="state muted"
+          class="loading"
         >
-          Loading auctions and lots…
+          <Spinner label="Loading auctions and lots" />
         </div>
         <div
           v-else-if="!loadError && !marketEntries.length"
@@ -255,6 +255,11 @@ function compareBigint(a: bigint, b: bigint): number {
 .state,
 .block-note {
   margin: 0;
+}
+
+.loading {
+  padding: var(--size-8);
+  text-align: center;
 }
 
 .empty {
