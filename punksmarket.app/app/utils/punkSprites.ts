@@ -1,7 +1,9 @@
 export const PUNK_SPRITE_COLS = 100
 export const PUNK_SPRITE_URL = 'https://cdn.punksmarket.app/punks.png'
-export const PUNK_GLITCH_SPRITE_URL =
-  'https://cdn.punksmarket.app/punks-glitched.png'
+export const PUNK_GLITCH_OUTLINE_SPRITE_URL =
+  'https://cdn.punksmarket.app/punks-glitch-outline.png?v=20260525'
+export const PUNK_GLITCH_STRIPES_SPRITE_URL =
+  'https://cdn.punksmarket.app/punks-glitch-stripes.png?v=20260525'
 
 export function punkSpriteBackgroundStyle(
   punkId: number,
@@ -13,8 +15,12 @@ export function punkSpriteBackgroundStyle(
   const spritePosition = `-${spriteCol * size}px -${spriteRow * size}px`
 
   return {
-    backgroundImage: `url('${PUNK_GLITCH_SPRITE_URL}'), url('${PUNK_SPRITE_URL}')`,
-    backgroundSize: `${spriteSize}, ${spriteSize}`,
-    backgroundPosition: `${spritePosition}, ${spritePosition}`,
+    backgroundImage: [
+      `url('${PUNK_GLITCH_STRIPES_SPRITE_URL}')`,
+      `url('${PUNK_GLITCH_OUTLINE_SPRITE_URL}')`,
+      `url('${PUNK_SPRITE_URL}')`,
+    ].join(', '),
+    backgroundSize: `${spriteSize}, ${spriteSize}, ${spriteSize}`,
+    backgroundPosition: `${spritePosition}, ${spritePosition}, ${spritePosition}`,
   }
 }

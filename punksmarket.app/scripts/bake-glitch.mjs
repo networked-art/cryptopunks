@@ -5,7 +5,8 @@ import { dirname, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const SRC_PATH = resolve(here, '..', 'public', 'punks.png')
-const DST_PATH = resolve(here, '..', 'public', 'punks-glitched.png')
+const OUTLINE_PATH = resolve(here, '..', 'public', 'punks-glitch-outline.png')
+const STRIPES_PATH = resolve(here, '..', 'public', 'punks-glitch-stripes.png')
 
 const SPRITE_COLS = 100
 const TILE = 24
@@ -136,6 +137,8 @@ if (src.width !== SIZE || src.height !== SIZE) {
   )
 }
 
+const outlined = new PNG({ width: SIZE, height: SIZE })
+outlined.data.fill(0)
 const glitched = new PNG({ width: SIZE, height: SIZE })
 glitched.data.fill(0)
 
@@ -165,6 +168,7 @@ for (let row = 0; row < SPRITE_COLS; row++) {
           if (nx < baseX || nx >= baseX + TILE) continue
           if (ny < baseY || ny >= baseY + TILE) continue
           const oIdx = (ny * SIZE + nx) * 4
+          paintOver(outlined.data, oIdx, f.r, f.g, f.b, (sa / 255) * f.a)
           paintOver(glitched.data, oIdx, f.r, f.g, f.b, (sa / 255) * f.a)
         }
       }
@@ -177,6 +181,14 @@ for (let row = 0; row < SPRITE_COLS; row++) {
         const sa = src.data[sIdx + 3]
         if (sa === 0) continue
         const oIdx = sIdx
+        paintOver(
+          outlined.data,
+          oIdx,
+          src.data[sIdx],
+          src.data[sIdx + 1],
+          src.data[sIdx + 2],
+          sa / 255,
+        )
         paintOver(
           glitched.data,
           oIdx,
@@ -224,12 +236,25 @@ for (let row = 0; row < SPRITE_COLS; row++) {
   }
 }
 
-const overlay = new PNG({ width: SIZE, height: SIZE })
-overlay.data.fill(0)
+const outlineOverlay = new PNG({ width: SIZE, height: SIZE })
+outlineOverlay.data.fill(0)
+const stripesOverlay = new PNG({ width: SIZE, height: SIZE })
+stripesOverlay.data.fill(0)
+
 for (let idx = 0; idx < src.data.length; idx += 4) {
-  writeOverlayPixel(src.data, glitched.data, overlay.data, idx)
+  writeOverlayPixel(src.data, outlined.data, outlineOverlay.data, idx)
+  writeOverlayPixel(outlined.data, glitched.data, stripesOverlay.data, idx)
 }
 
-const buf = PNG.sync.write(overlay)
-await writeFile(DST_PATH, buf)
-console.log(`Wrote ${DST_PATH} glitch overlay (${buf.byteLength} bytes)`)
+const outlineBuf = PNG.sync.write(outlineOverlay)
+const stripesBuf = PNG.sync.write(stripesOverlay)
+await Promise.all([
+  writeFile(OUTLINE_PATH, outlineBuf),
+  writeFile(STRIPES_PATH, stripesBuf),
+])
+console.log(
+  `Wrote ${OUTLINE_PATH} glitch outline overlay (${outlineBuf.byteLength} bytes)`,
+)
+console.log(
+  `Wrote ${STRIPES_PATH} glitch stripes overlay (${stripesBuf.byteLength} bytes)`,
+)
