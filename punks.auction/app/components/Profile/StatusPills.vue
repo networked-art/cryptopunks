@@ -114,7 +114,7 @@ const pills = computed<Pill[]>(() => [
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: var(--size-1);
+  gap: var(--size-2);
   cursor: default;
 }
 
@@ -127,7 +127,7 @@ const pills = computed<Pill[]>(() => [
 }
 
 .dot.active {
-  background: var(--accent);
+  background: var(--button-primary-color);
 }
 
 .tooltip-body {
