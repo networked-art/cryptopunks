@@ -8,8 +8,16 @@
         to="/"
         class="brand"
         aria-label="Punks Auction"
+        @click="playBrandIcon"
       >
-        <Logo class="brand-mark" />
+        <Spinner
+          class="brand-mark"
+          style="--spinner-pixel: 4px; --spinner-gap: 2px; width: 16px; height: 16px"
+          :loop="false"
+          :play-key="brandIconPlayKey"
+          idle-pattern="full"
+          decorative
+        />
       </NuxtLink>
 
       <nav
@@ -68,6 +76,11 @@ const ensProfile = useEnsWithAvatar(() => address.value)
 const profileHandle = computed(
   () => ensProfile.data.value?.ens ?? address.value ?? null,
 )
+
+const brandIconPlayKey = ref(0)
+const playBrandIcon = () => {
+  brandIconPlayKey.value += 1
+}
 
 const navItems = [
   { to: '/punks', label: 'Punks' },

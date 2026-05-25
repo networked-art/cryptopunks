@@ -1,8 +1,9 @@
 <template>
   <span
     class="spinner"
-    role="status"
-    :aria-label="label"
+    :role="decorative ? undefined : 'status'"
+    :aria-label="decorative ? undefined : label"
+    :aria-hidden="decorative ? 'true' : undefined"
   >
     <span
       v-for="(on, i) in pattern"
@@ -18,10 +19,18 @@ const props = withDefaults(
   defineProps<{
     label?: string
     interval?: number
+    loop?: boolean
+    playKey?: number | string
+    idlePattern?: 'full' | 'first'
+    decorative?: boolean
   }>(),
   {
     label: 'Loading',
     interval: 180,
+    loop: true,
+    playKey: 0,
+    idlePattern: 'first',
+    decorative: false,
   },
 )
 
@@ -43,19 +52,70 @@ const FRAMES: readonly (readonly number[])[] = [
   [1, 0, 1, 1, 1, 1, 1, 0, 1], // N
 ]
 
-const frame = ref(0)
-const pattern = computed(() => FRAMES[frame.value]!)
+const FULL_FRAME: readonly number[] = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+const frame = ref<number | null>(props.loop ? 0 : null)
+const idleFrame = computed(() =>
+  props.idlePattern === 'full' ? FULL_FRAME : FRAMES[0]!,
+)
+const pattern = computed(() =>
+  frame.value === null ? idleFrame.value : FRAMES[frame.value]!,
+)
 
 let timer: ReturnType<typeof setInterval> | undefined
 
-onMounted(() => {
+const stopTimer = () => {
+  if (!timer) return
+  clearInterval(timer)
+  timer = undefined
+}
+
+const startLoop = () => {
+  stopTimer()
+  frame.value = 0
   timer = setInterval(() => {
-    frame.value = (frame.value + 1) % FRAMES.length
+    frame.value = ((frame.value ?? 0) + 1) % FRAMES.length
   }, props.interval)
+}
+
+const playOnce = () => {
+  stopTimer()
+  frame.value = 0
+  timer = setInterval(() => {
+    if (frame.value === null || frame.value >= FRAMES.length - 1) {
+      stopTimer()
+      frame.value = null
+      return
+    }
+    frame.value += 1
+  }, props.interval)
+}
+
+watch(
+  () => props.playKey,
+  () => {
+    if (!props.loop) playOnce()
+  },
+)
+
+watch(
+  () => props.loop,
+  (loop) => {
+    if (loop) {
+      startLoop()
+    } else {
+      stopTimer()
+      frame.value = null
+    }
+  },
+)
+
+onMounted(() => {
+  if (props.loop) startLoop()
 })
 
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+  stopTimer()
 })
 </script>
 
@@ -73,11 +133,12 @@ onBeforeUnmount(() => {
 }
 
 .spinner-pixel {
-  background: transparent;
-  transition: background-color 80ms linear;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 140ms ease-out;
 }
 
 .spinner-pixel.on {
-  background: var(--accent);
+  opacity: 1;
 }
 </style>
