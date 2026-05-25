@@ -123,6 +123,7 @@
             :punk-id="punkId"
             @transferred="onTransferred"
           />
+          <Button @click="startWrap"> Wrap </Button>
         </template>
 
         <template v-else>
@@ -187,12 +188,24 @@
       skip-confirmation
       @complete="onComplete"
     />
+    <EvmMultiTransactionFlowDialog
+      ref="wrapDialogRef"
+      chain="mainnet"
+      :steps="wrapFlowSteps"
+      :text="wrapDialogText"
+      skip-confirmation
+      @complete="onWrapComplete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { type Address, type Hash, type TransactionReceipt } from 'viem'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import type {
+  MultiTransactionFlowStep,
+  MultiTransactionFlowText,
+} from '@1001-digital/components.evm'
 import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
@@ -213,6 +226,7 @@ const {
   pending: ownerPending,
   refresh: refreshOwner,
 } = usePunkOwner(() => props.punkId)
+const { markWrapped, markUnwrapped } = useWrappedPunks()
 const listing = ref<{
   isForSale: boolean
   seller: Address
@@ -265,6 +279,18 @@ const isTopBidder = computed(
     topBid.value.bidder.toLowerCase() === address.value.toLowerCase(),
 )
 const canBuy = computed(() => isDirectedToPunksMarket.value)
+const wrapperAddress = computed(() => sdk.value.v1Wrapper.address)
+const isListedForWrapping = computed(() => {
+  const listing = liveListing.value
+  const me = address.value
+  if (!listing || !me) return false
+  const onlySellTo = listing.onlySellTo.toLowerCase()
+  return (
+    listing.seller.toLowerCase() === me.toLowerCase() &&
+    listing.priceWei === 0n &&
+    onlySellTo === wrapperAddress.value.toLowerCase()
+  )
+})
 
 async function refresh() {
   otherPending.value = true
@@ -296,13 +322,24 @@ watchEffect(refresh)
 type DialogRef = {
   initializeRequest: (request?: () => Promise<Hash>) => void
 } | null
+type MultiDialogRef = {
+  start: () => void
+} | null
 const dialogRef = ref<DialogRef>(null)
+const wrapDialogRef = ref<MultiDialogRef>(null)
 const dialogText = ref<{
   title?: Record<string, string>
   lead?: Record<string, string>
 }>({})
+const wrapFlowSteps = ref<MultiTransactionFlowStep[]>([])
+const wrapDialogText: MultiTransactionFlowText = {
+  title: { complete: 'Wrap complete' },
+  lead: { complete: 'Punk is now wrapped.' },
+}
+let singleAction: 'unwrap' | null = null
 
-function run(plan: ContractWritePlan) {
+function run(plan: ContractWritePlan, action: 'unwrap' | null = null) {
+  singleAction = action
   dialogText.value = {
     title: { confirm: plan.description, waiting: plan.description },
     lead: { confirm: plan.description },
@@ -311,9 +348,52 @@ function run(plan: ContractWritePlan) {
 }
 
 function onComplete(receipt: TransactionReceipt) {
+  if (singleAction === 'unwrap') markUnwrapped([props.punkId])
+  singleAction = null
   refresh()
   refreshOwner()
   emit('changed', receipt.transactionHash as Hash)
+}
+
+async function startWrap() {
+  wrapFlowSteps.value = createWrapSteps()
+  await nextTick()
+  wrapDialogRef.value?.start()
+}
+
+function createWrapSteps(): MultiTransactionFlowStep[] {
+  return [
+    {
+      id: 'list-to-wrapper',
+      title: 'Prepare wrapper listing',
+      lead: 'This replaces any current V1 listing with a zero-price listing directed only to the V1 wrapper.',
+      action: 'Prepare',
+      skip: () => isListedForWrapping.value,
+      request: () =>
+        execute(
+          sdk.value.market.prepareList({
+            punkId: props.punkId,
+            priceWei: 0n,
+            onlySellTo: sdk.value.v1Wrapper.address,
+          }),
+        ),
+    },
+    {
+      id: 'wrap-punk',
+      title: `Wrap Punk ${props.punkId}`,
+      lead: 'Mint the ERC-721 wrapper token backed one-to-one by this V1 punk.',
+      action: 'Wrap',
+      request: () => execute(sdk.value.v1Wrapper.prepareWrap(props.punkId)),
+    },
+  ]
+}
+
+function onWrapComplete(receipts: TransactionReceipt[]) {
+  markWrapped([props.punkId])
+  refresh()
+  refreshOwner()
+  const receipt = receipts[receipts.length - 1]
+  if (receipt) emit('changed', receipt.transactionHash as Hash)
 }
 
 // ─── Action handlers ──────────────────────────────────────────────────────────
@@ -374,7 +454,7 @@ function actWithdrawProceeds() {
 }
 
 function actUnwrap() {
-  run(sdk.value.v1Wrapper.prepareUnwrap(props.punkId))
+  run(sdk.value.v1Wrapper.prepareUnwrap(props.punkId), 'unwrap')
 }
 </script>
 

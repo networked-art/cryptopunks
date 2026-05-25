@@ -92,10 +92,21 @@ export function useWrappedPunks() {
     void loadOnce(true)
   }
 
+  /// Optimistic local addition after an onchain wrap. The indexer is still the
+  /// source of truth, but the UI can immediately reflect the completed write.
+  function markWrapped(ids: number[]) {
+    if (ids.length === 0) return
+    const next = new Set(wrappedIds.value)
+    for (const id of ids) next.add(id)
+    wrappedIds.value = next
+    void loadOnce(true)
+  }
+
   return {
     wrappedIds,
     isWrapped,
     markUnwrapped,
+    markWrapped,
     pending,
     error,
     loaded,
