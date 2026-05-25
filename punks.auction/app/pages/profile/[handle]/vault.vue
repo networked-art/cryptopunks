@@ -2,23 +2,39 @@
   <ClientOnly>
     <section
       v-if="ownAccount"
-      class="tab-placeholder muted"
+      class="vault-tab"
     >
-      Vault management tools land here in the next pass.
+      <ProfileVaultControls :account="ownAccount" />
+
+      <LazyProfileAddresses
+        :account="ownAccount"
+        :vault="vault"
+        :stash="stash"
+        :wrapper-proxy="wrapperProxy"
+        :vault-deployed="vaultDeployed"
+        :stash-deployed="stashDeployed"
+      />
     </section>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
 useOwnProfileGuard()
-const { ownAccount } = useProfileContext()
+
+const {
+  ownAccount,
+  vault,
+  stash,
+  wrapperProxy,
+  vaultDeployed,
+  stashDeployed,
+} = useProfileContext()
 </script>
 
 <style scoped>
-.tab-placeholder {
-  padding: var(--size-6);
-  border: var(--border);
-  text-align: center;
-  font-size: var(--font-sm);
+.vault-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4);
 }
 </style>
