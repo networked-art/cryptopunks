@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Boots a long-running `hardhat node` using the `hardhatMainnet` fork config
 # from `hardhat.config.ts`, waits for JSON-RPC, then runs `seed-fork.ts` to
-# transfer Punks from the test seller wallets to jalil.eth. The node keeps
+# transfer Punks from the test seller wallets to the recipient. The node keeps
 # running until Ctrl-C; re-run `pnpm seed:fork` against the live node to
-# re-seed (idempotent — already-transferred Punks are skipped).
+# re-seed (idempotent — Punks already owned by the recipient are skipped).
+#
+# Recipient: set `SEED_RECIPIENT` to an address or ENS name. Defaults to
+# `jalil.eth`. ENS names are resolved against the fork via the mainnet ENS
+# universal resolver.
 set -euo pipefail
 
 PKG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

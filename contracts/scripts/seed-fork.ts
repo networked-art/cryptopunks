@@ -13,14 +13,14 @@ const PUNKS_V1_WRAPPER = getAddress(
 )
 
 // Mainnet ENS universal resolver, deployed well before the fork block. Passed
-// explicitly so we don't need viem's `chain.contracts` config.
+// explicitly so we don't need viem's `chain.contracts` config. Only used when
+// `SEED_RECIPIENT` is set to an ENS name.
 const ENS_UNIVERSAL_RESOLVER = getAddress(
   '0xce01f8eee7E479C928F8919abD53E553a36CeF67',
 )
 
-// jalil.eth — used both as the default recipient and as the fallback if ENS
-// resolution returns nothing (shouldn't happen on a healthy mainnet fork).
-const DEFAULT_RECIPIENT_NAME = 'jalil.eth'
+// jalil.eth, used when `SEED_RECIPIENT` is unset. Hardcoded rather than
+// resolved each run so the default path makes no ENS calls.
 const DEFAULT_RECIPIENT_ADDRESS = getAddress(
   '0xe11Da9560b51f8918295edC5ab9c0a90E9ADa20B',
 )
@@ -53,8 +53,14 @@ async function resolveRecipient(
   publicClient: Awaited<
     ReturnType<Awaited<ReturnType<typeof network.create>>['viem']['getPublicClient']>
   >,
-  raw: string,
 ): Promise<{ address: Address; label: string }> {
+  const raw = process.env.SEED_RECIPIENT
+  if (!raw) {
+    return {
+      address: DEFAULT_RECIPIENT_ADDRESS,
+      label: `jalil.eth (${DEFAULT_RECIPIENT_ADDRESS}, default)`,
+    }
+  }
   if (isAddress(raw)) {
     return { address: getAddress(raw), label: getAddress(raw) }
   }
@@ -64,10 +70,6 @@ async function resolveRecipient(
     universalResolverAddress: ENS_UNIVERSAL_RESOLVER,
   })
   if (!address) {
-    if (raw === DEFAULT_RECIPIENT_NAME) return {
-      address: DEFAULT_RECIPIENT_ADDRESS,
-      label: `${DEFAULT_RECIPIENT_NAME} (${DEFAULT_RECIPIENT_ADDRESS}, hardcoded fallback)`,
-    }
     throw new Error(`SEED_RECIPIENT "${raw}" did not resolve to an address.`)
   }
   return { address, label: `${name} (${address})` }
@@ -80,10 +82,8 @@ async function main() {
   const block = await publicClient.getBlockNumber()
   console.log(`Connected at block ${block}`)
 
-  const recipientInput = process.env.SEED_RECIPIENT ?? DEFAULT_RECIPIENT_NAME
   const { address: recipient, label: recipientLabel } = await resolveRecipient(
     publicClient,
-    recipientInput,
   )
   console.log(`Recipient: ${recipientLabel}`)
 
@@ -182,7 +182,7 @@ async function main() {
   }
   await stop(SOURCE_A)
 
-  console.log(`\n${SOURCE_B} → ${JALIL}`)
+  console.log(`\n${SOURCE_B} → ${recipient}`)
   await impersonate(SOURCE_B)
   const walletB = await viem.getWalletClient(SOURCE_B)
   for (const id of B_V2_NATIVE) {
@@ -200,7 +200,7 @@ async function main() {
         address: CRYPTOPUNKS_V2,
         abi: PUNK_NATIVE_ABI,
         functionName: 'transferPunk',
-        args: [JALIL, id],
+        args: [recipient, id],
       }) as Promise<Hex>,
     )
   }
