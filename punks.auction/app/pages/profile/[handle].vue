@@ -56,6 +56,15 @@
             Could not resolve {{ handle }}
           </p>
         </ClientOnly>
+
+        <LazyProfileStatusPills
+          v-if="resolvedAddress"
+          :vault="vault"
+          :stash="stash"
+          :wrapper-proxy="wrapperProxy"
+          :vault-deployed="vaultDeployed"
+          :stash-deployed="stashDeployed"
+        />
       </div>
     </header>
 
