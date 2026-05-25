@@ -248,21 +248,51 @@
         </p>
 
         <div class="slot-inputs">
-          <label
+          <div
             v-for="(slot, index) in offer.slots"
             :key="index"
-            class="amount-field"
+            class="slot-input-row"
+            :class="{ 'without-weight': !showHammerAllocations }"
           >
-            <span class="label">Slot {{ index + 1 }} Punk</span>
-            <input
-              v-model="newLotPunkIds[index]"
-              type="text"
-              inputmode="numeric"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <span class="field-note muted">{{ slotLabel(slot) }}</span>
-          </label>
+            <span class="slot-info">
+              <span class="slot-name">{{ slotLabel(slot) }}</span>
+              <span class="field-note muted">Slot {{ index + 1 }}</span>
+            </span>
+
+            <label
+              v-if="fixedSlotPunkId(slot) === null"
+              class="amount-field"
+            >
+              <span class="label">Matching Punk</span>
+              <input
+                v-model="newLotPunkIds[index]"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+            <span
+              v-else
+              class="fixed-slot muted"
+            >
+              Fixed by offer
+            </span>
+
+            <label
+              v-if="showHammerAllocations"
+              class="amount-field slot-weight-field"
+            >
+              <span class="label">Hammer %</span>
+              <input
+                v-model="newLotWeightPercents[index]"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+          </div>
         </div>
 
         <label class="amount-field">
@@ -277,10 +307,21 @@
         </label>
 
         <p
-          v-if="newLotPunkIds.some(Boolean) && !newLotItemsMatch"
+          v-if="newLotPunkIds.some(Boolean) && !newLotPunksMatch"
           class="warn"
         >
           One or more Punks do not match their offer slots.
+        </p>
+        <p
+          v-else-if="
+            showHammerAllocations &&
+            newLotWeightPercents.some(Boolean) &&
+            !newLotWeightsValid
+          "
+          class="warn"
+        >
+          Hammer allocations must total 100%; currently
+          {{ newLotWeightTotalLabel }}%.
         </p>
         <p
           v-else-if="!v1ActionsAllowed"
@@ -364,7 +405,6 @@ import {
   equalLotWeights,
   filterIsEmpty,
   offerSlotMatchesPunk,
-  offerSlotSummary,
   offerSlotToQuery,
   TokenStandard,
   type LotItem,
@@ -372,6 +412,7 @@ import {
   type OfferRecord,
   type OfferSlot,
 } from '~/utils/auction'
+import { offerSlotTitle } from '~/composables/useOfferSlotDisplay'
 
 const props = withDefaults(
   defineProps<{
@@ -426,6 +467,7 @@ const listedPunk = computed(() => {
   return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
 })
 const singleSlot = computed(() => props.offer.slots.length === 1)
+const showHammerAllocations = computed(() => props.offer.slots.length > 1)
 const offerUsesV1 = computed(() =>
   props.offer.slots.some(
     (slot) => slot.standard === TokenStandard.CryptoPunksV1,
@@ -501,18 +543,30 @@ const newLotItemsComplete = computed(
     props.offer.slots.length > 0 &&
     newLotItems.value.length === props.offer.slots.length,
 )
-const newLotItemsMatch = computed(() => {
-  if (!newLotItemsComplete.value) return false
+const newLotPunksComplete = computed(
+  () =>
+    props.offer.slots.length > 0 &&
+    props.offer.slots.every(
+      (_slot, index) => parsePunkId(newLotPunkIds.value[index]) !== null,
+    ),
+)
+const newLotPunksMatch = computed(() => {
+  if (!newLotPunksComplete.value) return false
   return props.offer.slots.every((slot, index) => {
-    const item = newLotItems.value[index]
-    return !!item && slotMatchesItem(slot, item)
+    const punkId = parsePunkId(newLotPunkIds.value[index])
+    if (punkId === null) return false
+    return slotMatchesItem(slot, {
+      standard: slot.standard,
+      punkId,
+      weightBps: 1,
+    })
   })
 })
 const canCreateLotFromOffer = computed(
   () =>
     !!address.value &&
     newLotItemsComplete.value &&
-    newLotItemsMatch.value &&
+    newLotPunksMatch.value &&
     newLotWeightsValid.value &&
     !!minimumWei.value &&
     props.offer.amountWei >= minimumWei.value &&
@@ -743,7 +797,13 @@ function slotMatchesItem(slot: OfferSlot, item: LotItem) {
 }
 
 function slotLabel(slot: OfferSlot) {
-  return offerSlotSummary(slot)
+  const fixedPunkId = fixedSlotPunkId(slot)
+  if (fixedPunkId !== null) {
+    return `Punk #${fixedPunkId}${
+      slot.standard === TokenStandard.CryptoPunksV1 ? ' (V1)' : ''
+    }`
+  }
+  return offerSlotTitle(slot, offline)
 }
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
@@ -810,9 +870,47 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 }
 
 .slot-inputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--size-2);
+}
+
+.slot-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.5fr);
+  align-items: end;
+  gap: var(--size-2);
+  padding: var(--size-2);
+  border: var(--border);
+  background: var(--bg);
+}
+
+.slot-input-row.without-weight {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.slot-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.fixed-slot {
+  align-self: center;
+  font-size: var(--font-xs);
+}
+
+.slot-weight-field input {
+  text-align: right;
 }
 
 .field-note {
@@ -873,7 +971,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 @media (max-width: 540px) {
   .listed-fields,
-  .slot-inputs {
+  .slot-input-row {
     grid-template-columns: 1fr;
   }
 }
