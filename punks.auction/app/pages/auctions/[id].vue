@@ -38,19 +38,18 @@
       </div>
 
       <div class="fact">
-        <dt>High bid</dt>
+        <dt>Current Bidder</dt>
         <dd>
-          <EthAmount :wei="displayAuction.latestBidWei" />
+          <NuxtLink :to="`/profile/${displayAuction.latestBidder}`">
+            <Account :address="displayAuction.latestBidder" />
+          </NuxtLink>
         </dd>
       </div>
 
-      <div
-        v-if="displayMinimumBidWei"
-        class="fact"
-      >
-        <dt>Next bid</dt>
+      <div class="fact">
+        <dt>Curent bid</dt>
         <dd>
-          <EthAmount :wei="displayMinimumBidWei" />
+          <EthAmount :wei="displayAuction.latestBidWei" />
         </dd>
       </div>
 
@@ -63,12 +62,13 @@
         </dd>
       </div>
 
-      <div class="fact">
-        <dt>High Bidder</dt>
+      <div
+        v-if="displayMinimumBidWei"
+        class="fact"
+      >
+        <dt>Next bid</dt>
         <dd>
-          <NuxtLink :to="`/profile/${displayAuction.latestBidder}`">
-            <Account :address="displayAuction.latestBidder" />
-          </NuxtLink>
+          <EthAmount :wei="displayMinimumBidWei" />
         </dd>
       </div>
     </dl>
@@ -136,10 +136,7 @@ const secondsUntilEnd = computed(() => {
   const current = displayAuction.value
   return current ? Math.max(0, current.endTimestamp - now.value) : 0
 })
-const endCountdown = useCountDown(
-  secondsUntilEnd,
-  COUNTDOWN_WINDOW_SECONDS + 1,
-)
+const endCountdown = useCountDown(secondsUntilEnd, COUNTDOWN_WINDOW_SECONDS + 1)
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Live'
   if (status.value === 'ended') return 'Awaiting settlement'
