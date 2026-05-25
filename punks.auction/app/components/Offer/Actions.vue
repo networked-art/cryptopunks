@@ -4,8 +4,6 @@
       v-if="showActionsPanel"
       class="actions-panel"
     >
-      <h2 class="block-title eyebrow">Actions</h2>
-
       <template v-if="showSellerActions">
         <div class="button-row">
           <Button
@@ -297,19 +295,12 @@ function hasUniqueCandidateAssignment(
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-  padding: var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
 }
 
-.block-title,
 .warn {
   margin: 0;
-}
-
-.connect-row,
-.warn {
   font-size: var(--font-sm);
+  color: var(--accent-strong);
 }
 
 .action-divider {
@@ -328,16 +319,11 @@ function hasUniqueCandidateAssignment(
   width: 100%;
 }
 
-.button-row,
-.connect-row {
+.button-row {
   display: flex;
   align-items: center;
   gap: var(--size-2);
   flex-wrap: wrap;
-}
-
-.warn {
-  color: var(--accent-strong);
 }
 
 .actions-panel :deep(button .eth-amount) {

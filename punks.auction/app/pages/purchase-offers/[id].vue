@@ -8,6 +8,11 @@
       <h1 class="title">
         <EthAmount :wei="displayOffer.amountWei" />
       </h1>
+      <p class="byline muted">
+        <NuxtLink :to="`/profile/${displayOffer.offerer}`">
+          <Account :address="displayOffer.offerer" />
+        </NuxtLink>
+      </p>
       <p
         v-if="isMock"
         class="block-note muted"
@@ -15,27 +20,6 @@
         Preview data. Wallet actions appear for live offer records.
       </p>
     </header>
-
-    <dl class="facts">
-      <div class="fact">
-        <dt>Offerer</dt>
-        <dd>
-          <NuxtLink :to="`/profile/${displayOffer.offerer}`">
-            <Account :address="displayOffer.offerer" />
-          </NuxtLink>
-        </dd>
-      </div>
-
-      <div class="fact">
-        <dt>Slots</dt>
-        <dd>{{ slotCountLabel }}</dd>
-      </div>
-
-      <div class="fact">
-        <dt>Matching lots</dt>
-        <dd>{{ matchingLots.length.toLocaleString() }}</dd>
-      </div>
-    </dl>
 
     <OfferActions
       :offer="displayOffer"
@@ -102,11 +86,6 @@ const displayLots = computed(() =>
   lots.value.length || lotsPending.value ? lots.value : mockLots.value,
 )
 const deployed = computed(() => offerDeployed || mockLotsDeployed)
-
-const slotCountLabel = computed(() => {
-  const count = displayOffer.value?.slots.length ?? 0
-  return `${count.toLocaleString()} slot${count === 1 ? '' : 's'}`
-})
 
 type SlotMatchCache = {
   previewMatches: number[]
@@ -216,41 +195,21 @@ useSeoMeta({
   gap: var(--size-2);
 }
 
+.byline {
+  display: flex;
+  align-items: center;
+  gap: var(--size-1);
+  margin: 0;
+  font-size: var(--font-sm);
+}
+
+.byline a {
+  border: 0;
+}
+
 .block-note {
   margin: 0;
   font-size: var(--font-sm);
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--size-3);
-  margin: 0;
-}
-
-.fact {
-  min-width: 0;
-  padding: var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
-}
-
-.fact dt {
-  margin-bottom: var(--size-1);
-  color: var(--text-dim);
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
-  text-transform: uppercase;
-}
-
-.fact dd {
-  margin: 0;
-  min-width: 0;
-  font-size: var(--font-sm);
-}
-
-.fact a {
-  border: 0;
 }
 
 .state {
@@ -262,10 +221,6 @@ useSeoMeta({
 }
 
 @media (max-width: 540px) {
-  .facts {
-    grid-template-columns: 1fr;
-  }
-
   .title {
     font-size: var(--font-2xl);
   }
