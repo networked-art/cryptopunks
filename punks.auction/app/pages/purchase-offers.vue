@@ -47,19 +47,13 @@
           v-else
           class="offer-stack"
         >
-          <p
-            v-if="isMock"
-            class="block-note muted"
-          >
-            Preview data. Wallet actions appear for live offer records.
-          </p>
-          <div class="card-grid">
+          <OfferList>
             <LazyOfferCard
               v-for="offer in sortedOffers"
               :key="String(offer.id)"
               :offer="offer"
             />
-          </div>
+          </OfferList>
         </div>
       </section>
     </ClientOnly>
@@ -75,20 +69,11 @@ useSeoMeta({
   twitterTitle: 'Purchase offers · Punks Auction',
 })
 
-const {
-  offers,
-  pending,
-  error,
-  deployed: offersDeployed,
-  refresh,
-} = useOffers()
+const { offers, pending, error, deployed: offersDeployed } = useOffers()
 const { offers: mockOffers, deployed: mockOffersDeployed } = useMockOffers()
 
 const displayOffers = computed(() =>
   offers.value.length || pending.value ? offers.value : mockOffers.value,
-)
-const isMock = computed(
-  () => !offers.value.length && displayOffers.value.length,
 )
 const deployed = computed(() => offersDeployed || mockOffersDeployed)
 
@@ -124,27 +109,6 @@ const sortedOffers = computed(() =>
   flex-wrap: wrap;
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(
-      min(
-        100%,
-        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-8))
-      ),
-      1fr
-    )
-  );
-  gap: var(--size-8);
-  min-width: 0;
-}
-
-.card-grid > * {
-  min-width: 0;
-}
-
-.block-note,
 .state {
   margin: 0;
 }
