@@ -1,10 +1,9 @@
 export const PUNK_SPRITE_COLS = 100
-export const PUNK_SPRITE_URL =
-  'https://cdn.punksmarket.app/punks.optimized.png?v=20260525-3'
+export const PUNK_SPRITE_URL = 'https://cdn.punksmarket.app/punks.optimized.png'
 export const PUNK_GLITCH_OUTLINE_SPRITE_URL =
-  'https://cdn.punksmarket.app/punks-glitch-outline.png?v=20260525-3'
+  'https://cdn.punksmarket.app/punks-glitch-outline.png'
 export const PUNK_GLITCH_STRIPES_SPRITE_URL =
-  'https://cdn.punksmarket.app/punks-glitch-stripes.png?v=20260525-3'
+  'https://cdn.punksmarket.app/punks-glitch-stripes.png'
 
 export type PunkSpriteLayerOptions = {
   stripes?: boolean
