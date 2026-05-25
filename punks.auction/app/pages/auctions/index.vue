@@ -1,14 +1,20 @@
 <template>
   <div class="container auctions-page">
     <header class="page-head">
-      <h1>Auctions</h1>
+      <div class="page-head-row">
+        <h1>Auctions</h1>
+        <div class="head-actions">
+          <Button
+            class="primary icon-button"
+            to="/lots/new"
+          >
+            <Icon name="lucide:plus" />
+            <span>Create lot</span>
+          </Button>
+        </div>
+      </div>
       <p class="muted">
-        CryptoPunks lots with native-ETH settlement through
-        <a
-          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
-          >PunksAuction</a
-        >. Open lots become 24-hour auctions the moment the first qualifying bid
-        lands.
+        Open lots become 24 hour auctions when their initial reserve is met.
       </p>
     </header>
 
@@ -42,21 +48,23 @@
         </div>
         <div
           v-else-if="marketEntries.length"
-          class="card-grid"
+          class="market-stack"
         >
-          <template
-            v-for="entry in marketEntries"
-            :key="entry.key"
-          >
-            <LazyAuctionCard
-              v-if="entry.kind === 'auction'"
-              :auction="entry.auction"
-            />
-            <LazyLotCard
-              v-else
-              :lot="entry.lot"
-            />
-          </template>
+          <div class="card-grid">
+            <template
+              v-for="entry in marketEntries"
+              :key="entry.key"
+            >
+              <LazyAuctionCard
+                v-if="entry.kind === 'auction'"
+                :auction="entry.auction"
+              />
+              <LazyLotCard
+                v-else
+                :lot="entry.lot"
+              />
+            </template>
+          </div>
         </div>
       </template>
     </section>
@@ -76,23 +84,23 @@ useSeoMeta({
   twitterTitle: 'Auctions · Punks Auction',
 })
 
-// MOCK DATA — `PunksAuction` has no live lots yet, so the list pages run on
-// fixtures while the card UI is built. Swap back to `useAuctions()` /
-// `useLots()` (from `useAuctionData.ts`) once there is on-chain data.
-// TODO(indexer): Refactor this unified list as soon as live indexer integration
-// lands so the API owns filtering and ordering.
 const {
   auctions,
   pending: auctionsPending,
   error: auctionsError,
   deployed: auctionsDeployed,
-} = useMockAuctions()
+  refresh: refreshAuctions,
+} = useAuctions()
 const {
   lots,
   pending: lotsPending,
   error: lotsError,
   deployed: lotsDeployed,
-} = useMockLots()
+  refresh: refreshLots,
+} = useLots()
+const { auctions: mockAuctions, deployed: mockAuctionsDeployed } =
+  useMockAuctions()
+const { lots: mockLots, deployed: mockLotsDeployed } = useMockLots()
 
 type MarketEntry =
   | {
@@ -107,7 +115,24 @@ type MarketEntry =
     }
 
 const now = useSeconds()
-const deployed = auctionsDeployed && lotsDeployed
+const displayAuctions = computed(() =>
+  auctions.value.length || auctionsPending.value
+    ? auctions.value
+    : mockAuctions.value,
+)
+const displayLots = computed(() =>
+  lots.value.length || lotsPending.value ? lots.value : mockLots.value,
+)
+const isMock = computed(
+  () =>
+    (!auctions.value.length && displayAuctions.value.length) ||
+    (!lots.value.length && displayLots.value.length),
+)
+const deployed = computed(
+  () =>
+    (auctionsDeployed && lotsDeployed) ||
+    (mockAuctionsDeployed && mockLotsDeployed),
+)
 const pending = computed(() => auctionsPending.value || lotsPending.value)
 const loadError = computed(() =>
   [
@@ -119,11 +144,11 @@ const loadError = computed(() =>
 )
 
 const sortedAuctions = computed(() =>
-  [...auctions.value].sort(compareAuctionsByEndingSoon),
+  [...displayAuctions.value].sort(compareAuctionsByEndingSoon),
 )
 
 const sortedLots = computed(() =>
-  [...lots.value].sort(compareLotsByAverageReserve),
+  [...displayLots.value].sort(compareLotsByAverageReserve),
 )
 
 const marketEntries = computed<MarketEntry[]>(() => [
@@ -156,6 +181,11 @@ function compareAuctionsByEndingSoon(
   return b.endTimestamp - a.endTimestamp || compareBigint(b.id, a.id)
 }
 
+function refreshMarket() {
+  void refreshAuctions()
+  void refreshLots()
+}
+
 function compareLotsByAverageReserve(a: LotRecord, b: LotRecord): number {
   const aCount = BigInt(Math.max(1, a.items.length))
   const bCount = BigInt(Math.max(1, b.items.length))
@@ -174,17 +204,37 @@ function compareBigint(a: bigint, b: bigint): number {
 
 <style scoped>
 .auctions-page {
-  padding: var(--size-6) var(--size-4);
+  padding: var(--size-8) var(--size-4);
   display: flex;
   flex-direction: column;
-  gap: var(--size-4);
+  gap: var(--size-8);
 }
 
-.section {
+.section,
+.market-stack {
   display: flex;
   flex-direction: column;
   gap: var(--size-4);
   min-width: 0;
+}
+
+.page-head-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
+  align-items: start;
+  gap: var(--size-4);
+}
+
+.head-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-3);
+  min-width: 0;
+}
+
+.head-actions > .button {
+  align-self: flex-end;
 }
 
 .card-grid {
@@ -194,12 +244,12 @@ function compareBigint(a: bigint, b: bigint): number {
     minmax(
       min(
         100%,
-        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-9))
+        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-8))
       ),
       1fr
     )
   );
-  gap: var(--size-7);
+  gap: var(--size-8);
   min-width: 0;
 }
 
@@ -207,7 +257,8 @@ function compareBigint(a: bigint, b: bigint): number {
   min-width: 0;
 }
 
-.state {
+.state,
+.block-note {
   margin: 0;
 }
 
@@ -219,5 +270,11 @@ function compareBigint(a: bigint, b: bigint): number {
 
 .error {
   color: var(--accent);
+}
+
+@media (max-width: 860px) {
+  .page-head-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

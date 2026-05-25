@@ -158,10 +158,10 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 
 <style scoped>
 .activity-page {
-  padding: var(--size-6) var(--size-4);
+  padding: var(--size-8) var(--size-4);
   display: flex;
   flex-direction: column;
-  gap: var(--size-4);
+  gap: var(--size-8);
 }
 
 .filters {

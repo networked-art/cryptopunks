@@ -34,6 +34,7 @@
 
     <LotActions
       :lot="displayLot"
+      :matching-offers="matchingOffers"
       :preview="isMock"
       @changed="onChanged"
     />
@@ -64,10 +65,12 @@
 </template>
 
 <script setup lang="ts">
-import { mockLotById } from '~/composables/useAuctionData.mock'
+import { mockLotById, useMockOffers } from '~/composables/useAuctionData.mock'
 import {
   auctionStatus,
   formatLotItemsLabel,
+  lotMatchesOffer,
+  offerSlotToQuery,
   readAuctionForLot,
 } from '~/utils/auction'
 
@@ -86,15 +89,38 @@ if (validId.value) {
 const { lot, sourceAuction, pending, error, deployed, refresh } = useLot(() =>
   validId.value ? id.value : undefined,
 )
+const { offers, pending: offersPending, refresh: refreshOffers } = useOffers()
+const { offers: mockOffers } = useMockOffers()
 
 const mockLot = computed(() => (validId.value ? mockLotById(id.value) : null))
 const displayLot = computed(
   () => lot.value ?? (!pending.value ? mockLot.value : null),
 )
+const displayOffers = computed(() =>
+  offers.value.length || offersPending.value ? offers.value : mockOffers.value,
+)
 const isMock = computed(() => !lot.value && !!displayLot.value)
 const itemCountLabel = computed(() =>
   displayLot.value ? formatLotItemsLabel(displayLot.value.items) : '',
 )
+const offline = usePunksOffline()
+const matchingOffers = computed(() => {
+  const current = displayLot.value
+  if (!current) return []
+  return displayOffers.value
+    .filter((offer) =>
+      lotMatchesOffer(offer, current, (slot, punkId) => {
+        try {
+          return offline.search(offerSlotToQuery(slot)).includes(punkId)
+        } catch {
+          return false
+        }
+      }),
+    )
+    .sort((a, b) =>
+      a.amountWei === b.amountWei ? 0 : a.amountWei > b.amountWei ? -1 : 1,
+    )
+})
 
 watch(
   sourceAuction,
@@ -108,6 +134,7 @@ watch(
 
 function onChanged() {
   void refresh()
+  void refreshOffers()
 }
 
 async function activeAuctionForLot(lotId: number) {

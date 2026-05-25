@@ -91,6 +91,22 @@ export { PunksDataset, createPunksDataset } from './dataset'
 export { PunkSimilarityIndex, createPunksSimilarity } from './similarity'
 export { PunkImageRenderer, createPunkImageRenderer } from './render'
 export { PunksAuctionClient, PunksMarketClient } from './actions'
+export {
+  PUNKS_AUCTION_BIDDING_GRACE_SECONDS,
+  PUNKS_AUCTION_BID_INCREASE_BPS,
+  PUNKS_AUCTION_BPS,
+  PUNKS_AUCTION_DURATION_SECONDS,
+  PUNKS_AUCTION_MAX_INSTANT_ITEMS,
+  PUNKS_AUCTION_MAX_LOT_ITEMS,
+  PUNKS_AUCTION_MAX_OFFER_SLOTS,
+  PUNKS_AUCTION_MAX_SLOT_IDS,
+  PUNKS_AUCTION_TOTAL_WEIGHT_BPS,
+  isPunksFilterEmpty,
+  minPunksAuctionBidWei,
+  punksAuctionLotMatchesOffer,
+  punksAuctionOfferSlotMatchesPunk,
+  splitPunksAuctionLotWeights,
+} from './auction'
 export { PunksV1MarketClient } from './v1-market'
 export type {
   BidsMatchingPunkPage,
@@ -259,6 +275,7 @@ export type {
   TransactionHash,
   WalletConfig,
 } from './actions'
+export type { PunksAuctionLotLike, PunksAuctionOfferLike } from './auction'
 export type { LegacyCryptoPunksDataClientConfig } from './legacy-data'
 export type {
   C721BatchWrapFlowInput,

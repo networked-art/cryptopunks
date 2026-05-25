@@ -96,6 +96,56 @@
 
         <section class="manager-section">
           <div class="section-head">
+            <h3>Vault movement</h3>
+          </div>
+
+          <div class="vault-fields">
+            <label class="vault-field">
+              <span class="label">Standard</span>
+              <select v-model="vaultMoveStandard">
+                <option value="cryptopunks">CryptoPunks</option>
+                <option
+                  v-if="renderV1"
+                  value="cryptopunks-v1"
+                >
+                  V1
+                </option>
+              </select>
+            </label>
+            <label class="vault-field">
+              <span class="label">Punk id</span>
+              <input
+                v-model="vaultMovePunkId"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+          </div>
+
+          <div class="actions">
+            <Button
+              class="primary icon-button"
+              :disabled="!canMoveVaultPunk || pending"
+              @click="actDepositToVault"
+            >
+              <Icon name="lucide:archive" />
+              <span>Deposit</span>
+            </Button>
+            <Button
+              class="icon-button"
+              :disabled="!canMoveVaultPunk || pending"
+              @click="actReclaimFromVault"
+            >
+              <Icon name="lucide:undo-2" />
+              <span>Reclaim</span>
+            </Button>
+          </div>
+        </section>
+
+        <section class="manager-section">
+          <div class="section-head">
             <h3>Claimable ETH</h3>
             <div class="section-actions">
               <Button
@@ -207,6 +257,7 @@ import {
   punkVaultAbi,
   punkVaultFactoryAbi,
   type ContractWritePlan,
+  type PunkStandardRef,
 } from '@networked-art/punks-sdk'
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
@@ -217,6 +268,7 @@ const props = defineProps<{
 
 const { sdk, publicClient } = usePunksSdk()
 const { execute } = useWritePlan()
+const renderV1 = useV1Rendering()
 
 const pending = ref(false)
 const error = ref<string | null>(null)
@@ -227,6 +279,8 @@ const auctionApproved = ref(false)
 const vaultBalance = ref<bigint>(0n)
 const canonicalMarketBalance = ref<bigint>(0n)
 const auctionBalance = ref<bigint>(0n)
+const vaultMoveStandard = ref<'cryptopunks' | 'cryptopunks-v1'>('cryptopunks')
+const vaultMovePunkId = ref('')
 let refreshToken = 0
 
 const vaultOwnerMatches = computed(
@@ -248,6 +302,21 @@ const hasClaimableBalance = computed(
 const hasMultipleClaimableBalances = computed(
   () => canonicalMarketBalance.value > 0n && auctionBalance.value > 0n,
 )
+const vaultMovePunk = computed(() => {
+  const id = Number(vaultMovePunkId.value.trim())
+  return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
+})
+const canMoveVaultPunk = computed(
+  () =>
+    vaultMovePunk.value !== null &&
+    (renderV1.value || vaultMoveStandard.value !== 'cryptopunks-v1'),
+)
+
+watch(renderV1, (enabled) => {
+  if (!enabled && vaultMoveStandard.value === 'cryptopunks-v1') {
+    vaultMoveStandard.value = 'cryptopunks'
+  }
+})
 
 async function refresh() {
   const token = ++refreshToken
@@ -441,6 +510,29 @@ function actSetupVault() {
   void run(sdk.value.auctions.prepareEnsureMyVault([PUNKS_AUCTION_ADDRESS]))
 }
 
+function actDepositToVault() {
+  const punkId = vaultMovePunk.value
+  if (punkId === null) return
+  void run(
+    sdk.value.auctions.prepareDeposit({
+      owner: props.account,
+      punkId,
+      standard: vaultMoveStandard.value as PunkStandardRef,
+    }),
+  )
+}
+
+function actReclaimFromVault() {
+  const punkId = vaultMovePunk.value
+  if (punkId === null) return
+  void run(
+    sdk.value.auctions.prepareReclaim({
+      punkId,
+      standard: vaultMoveStandard.value as PunkStandardRef,
+    }),
+  )
+}
+
 async function actWithdrawClaimable() {
   try {
     const steps: MultiTransactionFlowStep[] = []
@@ -564,6 +656,24 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   align-items: baseline;
 }
 
+.vault-fields {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1fr);
+  gap: var(--size-2);
+}
+
+.vault-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.vault-field input,
+.vault-field select {
+  width: 100%;
+}
+
 .balance-row {
   padding-top: var(--size-2);
 }
@@ -625,7 +735,8 @@ a {
 }
 
 @media (max-width: 760px) {
-  .manager-grid {
+  .manager-grid,
+  .vault-fields {
     grid-template-columns: 1fr;
   }
 }

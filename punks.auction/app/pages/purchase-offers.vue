@@ -1,65 +1,100 @@
 <template>
   <div class="container offers-page">
     <header class="page-head">
-      <h1>Purchase offers</h1>
+      <div class="page-head-row">
+        <h1>Purchase offers</h1>
+        <Button
+          class="primary icon-button"
+          to="/purchase-offers/new"
+        >
+          <Icon name="lucide:plus" />
+          <span>Place offer</span>
+        </Button>
+      </div>
       <p class="muted">
-        Open native-ETH offers on <code>PunksAuction</code>. Each offer locks
-        ETH against one or more slots of trait/colour criteria; a seller can
-        accept it instantly or open it as an auction.
+        Standing bids that can be immediately settled or resolved into an
+        auction.
       </p>
     </header>
 
     <ClientOnly>
-      <div
-        v-if="pending && !sortedOffers.length"
-        class="muted"
-      >
-        Loading offers…
-      </div>
-      <div
-        v-else-if="!deployed"
-        class="empty muted"
-      >
-        Offers appear here once <code>PunksAuction</code> is deployed.
-      </div>
-      <div
-        v-else-if="error"
-        class="error"
-      >
-        Failed to load offers: {{ error }}
-      </div>
-      <div
-        v-else-if="!sortedOffers.length"
-        class="empty muted"
-      >
-        No open purchase offers.
-      </div>
-      <div
-        v-else
-        class="card-grid"
-      >
-        <LazyOfferCard
-          v-for="offer in sortedOffers"
-          :key="String(offer.id)"
-          :offer="offer"
-        />
-      </div>
+      <section class="section">
+        <div
+          v-if="pending && !displayOffers.length"
+          class="state muted"
+        >
+          Loading offers…
+        </div>
+        <div
+          v-else-if="!deployed"
+          class="state empty muted"
+        >
+          Offers appear here once <code>PunksAuction</code> is deployed.
+        </div>
+        <div
+          v-else-if="error"
+          class="error"
+        >
+          Failed to load offers: {{ error }}
+        </div>
+        <div
+          v-else-if="!sortedOffers.length"
+          class="state empty muted"
+        >
+          No open purchase offers.
+        </div>
+        <div
+          v-else
+          class="offer-stack"
+        >
+          <p
+            v-if="isMock"
+            class="block-note muted"
+          >
+            Preview data. Wallet actions appear for live offer records.
+          </p>
+          <div class="card-grid">
+            <LazyOfferCard
+              v-for="offer in sortedOffers"
+              :key="String(offer.id)"
+              :offer="offer"
+            />
+          </div>
+        </div>
+      </section>
     </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useMockOffers } from '~/composables/useAuctionData.mock'
+
 useSeoMeta({
   title: 'Purchase offers · Punks Auction',
   ogTitle: 'Purchase offers · Punks Auction',
   twitterTitle: 'Purchase offers · Punks Auction',
 })
 
-const { offers, pending, error, deployed } = useOffers()
+const {
+  offers,
+  pending,
+  error,
+  deployed: offersDeployed,
+  refresh,
+} = useOffers()
+const { offers: mockOffers, deployed: mockOffersDeployed } = useMockOffers()
+
+const displayOffers = computed(() =>
+  offers.value.length || pending.value ? offers.value : mockOffers.value,
+)
+const isMock = computed(
+  () => !offers.value.length && displayOffers.value.length,
+)
+const deployed = computed(() => offersDeployed || mockOffersDeployed)
 
 /// Highest offer first.
 const sortedOffers = computed(() =>
-  [...offers.value].sort((a, b) =>
+  [...displayOffers.value].sort((a, b) =>
     a.amountWei === b.amountWei ? 0 : a.amountWei > b.amountWei ? -1 : 1,
   ),
 )
@@ -67,22 +102,57 @@ const sortedOffers = computed(() =>
 
 <style scoped>
 .offers-page {
-  padding: var(--size-6) var(--size-4);
+  padding: var(--size-8) var(--size-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-8);
+}
+
+.section,
+.offer-stack {
   display: flex;
   flex-direction: column;
   gap: var(--size-4);
+  min-width: 0;
+}
+
+.page-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4);
+  flex-wrap: wrap;
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--size-3);
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      min(
+        100%,
+        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-8))
+      ),
+      1fr
+    )
+  );
+  gap: var(--size-8);
+  min-width: 0;
+}
+
+.card-grid > * {
+  min-width: 0;
+}
+
+.block-note,
+.state {
+  margin: 0;
 }
 
 .empty {
   padding: var(--size-8);
   text-align: center;
-  border: 1px dashed var(--border-color);
+  border: var(--border);
 }
 
 .error {

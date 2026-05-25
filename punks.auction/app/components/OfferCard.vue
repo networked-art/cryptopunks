@@ -1,7 +1,12 @@
 <template>
   <Card class="offer-card">
     <div class="card-head">
-      <span class="card-id">Offer #{{ offer.id }}</span>
+      <NuxtLink
+        class="card-id"
+        :to="detailHref"
+      >
+        Offer #{{ offer.id }}
+      </NuxtLink>
       <EthAmount
         class="amount"
         :wei="offer.amountWei"
@@ -50,6 +55,15 @@
         </div>
       </li>
     </ul>
+
+    <div class="card-footer">
+      <NuxtLink
+        class="details-link"
+        :to="detailHref"
+      >
+        View offer
+      </NuxtLink>
+    </div>
   </Card>
 </template>
 
@@ -61,9 +75,12 @@ import {
   type OfferRecord,
 } from '~/utils/auction'
 
+defineOptions({ name: 'OfferCard' })
+
 const props = defineProps<{ offer: OfferRecord }>()
 
 const offline = usePunksOffline()
+const detailHref = computed(() => `/purchase-offers/${props.offer.id}`)
 
 const slots = computed(() =>
   props.offer.slots.map((slot) => {
@@ -102,6 +119,7 @@ const slots = computed(() =>
 .card-id {
   font-size: var(--font-md);
   font-weight: var(--font-weight-bold);
+  border: 0;
 }
 
 .amount {
@@ -127,6 +145,10 @@ const slots = computed(() =>
 
 .fact dd {
   margin: 0;
+}
+
+.fact a {
+  border: 0;
 }
 
 .slots {
@@ -166,5 +188,11 @@ const slots = computed(() =>
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-1);
+}
+
+.details-link {
+  border: 0;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
 }
 </style>

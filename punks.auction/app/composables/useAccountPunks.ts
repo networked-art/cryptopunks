@@ -64,8 +64,8 @@ export type AccountPunkBreakdown = {
  * Yuga `Stash`. Returns a deduplicated sorted union plus a per-custody
  * breakdown for the count sublabel.
  *
- * Pages through V1 and V2 with one `owner_in` predicate per collection.
- * Re-fires whenever the inputs change.
+ * Pages through V2 and, when V1 rendering is enabled, V1 with one `owner_in`
+ * predicate per collection. Re-fires whenever the inputs change.
  */
 export function useAccountPunks(opts: {
   account: MaybeRefOrGetter<Address | undefined>
@@ -83,6 +83,7 @@ export function useAccountPunks(opts: {
   })
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const renderV1 = useV1Rendering()
   let token = 0
 
   function reset() {
@@ -97,6 +98,7 @@ export function useAccountPunks(opts: {
     const acct = toValue(opts.account)
     const vlt = toValue(opts.vault)
     const stsh = toValue(opts.stash)
+    const includeV1 = renderV1.value
     // Clear stale prior-profile data before any await, so navigating A → B
     // never shows A's grid + breakdown under B's header.
     reset()
@@ -115,7 +117,14 @@ export function useAccountPunks(opts: {
     try {
       const [punks, v1Punks] = await Promise.all([
         fetchAllPunkRows(PUNKS_QUERY, 'punks', addrs, () => t === token),
-        fetchAllPunkRows(V1_PUNKS_QUERY, 'v1Punks', addrs, () => t === token),
+        includeV1
+          ? fetchAllPunkRows(
+              V1_PUNKS_QUERY,
+              'v1Punks',
+              addrs,
+              () => t === token,
+            )
+          : Promise.resolve([]),
       ])
       if (t !== token) return
 
@@ -168,7 +177,12 @@ export function useAccountPunks(opts: {
   }
 
   watch(
-    [() => toValue(opts.account), () => toValue(opts.vault), () => toValue(opts.stash)],
+    [
+      () => toValue(opts.account),
+      () => toValue(opts.vault),
+      () => toValue(opts.stash),
+      renderV1,
+    ],
     () => void load(),
     { immediate: true },
   )

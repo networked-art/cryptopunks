@@ -22,6 +22,13 @@ import {
   normalizePunkStandard,
 } from './query'
 import {
+  PUNKS_AUCTION_MAX_LOT_ITEMS,
+  PUNKS_AUCTION_MAX_OFFER_SLOTS,
+  PUNKS_AUCTION_MAX_SLOT_IDS,
+  PUNKS_AUCTION_TOTAL_WEIGHT_BPS,
+  splitPunksAuctionLotWeights,
+} from './auction'
+import {
   PunksDataValidationError,
   assertIntegerInRange,
   validatePunkId,
@@ -710,6 +717,26 @@ export class PunksAuctionClient {
     ]
     if (slots.length === 0)
       throw new PunksDataValidationError('offer must contain at least one slot')
+    assertIntegerInRange(
+      'slot count',
+      slots.length,
+      1,
+      PUNKS_AUCTION_MAX_OFFER_SLOTS,
+    )
+    for (const slot of slots) {
+      assertIntegerInRange(
+        'includeIds count',
+        slot.includeIds.length,
+        0,
+        PUNKS_AUCTION_MAX_SLOT_IDS,
+      )
+      assertIntegerInRange(
+        'excludeIds count',
+        slot.excludeIds.length,
+        0,
+        PUNKS_AUCTION_MAX_SLOT_IDS,
+      )
+    }
     return {
       description: 'Place CryptoPunks offer',
       request: {
@@ -975,6 +1002,12 @@ export class PunksAuctionClient {
 function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
   if (items.length === 0)
     throw new PunksDataValidationError('lot must contain at least one item')
+  assertIntegerInRange(
+    'item count',
+    items.length,
+    1,
+    PUNKS_AUCTION_MAX_LOT_ITEMS,
+  )
   const anyWeight = items.some((item) => item.weightBps !== undefined)
   const allWeight = items.every((item) => item.weightBps !== undefined)
   if (anyWeight && !allWeight) {
@@ -983,7 +1016,7 @@ function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
     )
   }
 
-  const defaultWeights = splitWeights(items.length)
+  const defaultWeights = splitPunksAuctionLotWeights(items.length)
   const normalized = items.map((item, index) => {
     validatePunkId(item.punkId)
     const weightBps = item.weightBps ?? defaultWeights[index]
@@ -995,22 +1028,12 @@ function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
     }
   })
   const totalWeight = normalized.reduce((sum, item) => sum + item.weightBps, 0)
-  if (totalWeight !== 10_000) {
+  if (totalWeight !== PUNKS_AUCTION_TOTAL_WEIGHT_BPS) {
     throw new PunksDataValidationError(
-      'lot item weights must sum to 10000 basis points',
+      `lot item weights must sum to ${PUNKS_AUCTION_TOTAL_WEIGHT_BPS} basis points`,
     )
   }
   return normalized
-}
-
-function splitWeights(count: number): number[] {
-  assertIntegerInRange('item count', count, 1, 100)
-  const base = Math.floor(10_000 / count)
-  const remainder = 10_000 - base * count
-  return Array.from(
-    { length: count },
-    (_, index) => base + (index === 0 ? remainder : 0),
-  )
 }
 
 function simpleAuctionWrite(

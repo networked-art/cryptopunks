@@ -1,8 +1,25 @@
 import { parseAbiItem, type Address, type PublicClient } from 'viem'
 import {
+  PUNKS_AUCTION_BIDDING_GRACE_SECONDS,
+  PUNKS_AUCTION_BID_INCREASE_BPS,
+  PUNKS_AUCTION_BPS,
+  PUNKS_AUCTION_DURATION_SECONDS,
+  PUNKS_AUCTION_MAX_INSTANT_ITEMS,
+  PUNKS_AUCTION_MAX_LOT_ITEMS,
+  PUNKS_AUCTION_TOTAL_WEIGHT_BPS,
+  PunkStandard as TokenStandard,
+  ZERO_ADDRESS,
+  isPunksFilterEmpty as filterIsEmpty,
+  minPunksAuctionBidWei as minNextBidWei,
+  punksAuctionLotMatchesOffer as lotMatchesOffer,
+  punksAuctionOfferSlotMatchesPunk as offerSlotMatchesPunk,
   punksAuctionAbi,
+  splitPunksAuctionLotWeights as equalLotWeights,
+  type CompiledOfferSlot,
+  type LotItem as SdkLotItem,
   type PunkQuery,
   type PunksFilter,
+  type PunkStandardValue,
 } from '@networked-art/punks-sdk'
 import {
   PUNKS_AUCTION_ADDRESS,
@@ -13,21 +30,27 @@ import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 // ──────────────────────────────── Constants ────────────────────────────────
 
-/// Mirrors `PunksAuction`'s on-chain constants.
-export const BID_INCREASE_BPS = 1_000n
-export const BPS = 10_000n
-export const AUCTION_DURATION_SECONDS = 24 * 60 * 60
-export const BIDDING_GRACE_SECONDS = 15 * 60
+export {
+  PUNKS_AUCTION_BIDDING_GRACE_SECONDS as BIDDING_GRACE_SECONDS,
+  PUNKS_AUCTION_BID_INCREASE_BPS as BID_INCREASE_BPS,
+  PUNKS_AUCTION_BPS as BPS,
+  PUNKS_AUCTION_DURATION_SECONDS as AUCTION_DURATION_SECONDS,
+  PUNKS_AUCTION_MAX_INSTANT_ITEMS as MAX_INSTANT_ITEMS,
+  PUNKS_AUCTION_MAX_LOT_ITEMS as MAX_LOT_ITEMS,
+  PUNKS_AUCTION_TOTAL_WEIGHT_BPS as TOTAL_WEIGHT_BPS,
+  TokenStandard,
+  ZERO_ADDRESS,
+  equalLotWeights,
+  filterIsEmpty,
+  lotMatchesOffer,
+  minNextBidWei,
+  offerSlotMatchesPunk,
+}
 
 // ────────────────────────────────── Types ──────────────────────────────────
 
 /// Punk standards an auction lot/offer item can reference.
-export const TokenStandard = {
-  CryptoPunks: 0,
-  CryptoPunksV1: 1,
-} as const
-export type TokenStandardValue =
-  (typeof TokenStandard)[keyof typeof TokenStandard]
+export type TokenStandardValue = PunkStandardValue
 
 export function standardLabel(standard: TokenStandardValue): string {
   return standard === TokenStandard.CryptoPunksV1 ? 'V1' : 'CryptoPunks'
@@ -40,11 +63,7 @@ export function punkHref(standard: TokenStandardValue, punkId: number): string {
     : `/punks/${punkId}`
 }
 
-export type LotItem = {
-  standard: TokenStandardValue
-  punkId: number
-  weightBps: number
-}
+export type LotItem = SdkLotItem
 
 export function formatLotItemLabel(item: Pick<LotItem, 'standard' | 'punkId'>) {
   return `Punk #${item.punkId}${
@@ -83,12 +102,7 @@ export type AuctionRecord = {
   items: LotItem[]
 }
 
-export type OfferSlot = {
-  criteria: PunksFilter
-  standard: TokenStandardValue
-  includeIds: number[]
-  excludeIds: number[]
-}
+export type OfferSlot = CompiledOfferSlot
 
 export type OfferRecord = {
   id: bigint
@@ -107,27 +121,6 @@ export function auctionStatus(
 ): AuctionStatus {
   if (auction.settled) return 'settled'
   return nowSec > auction.endTimestamp ? 'ended' : 'live'
-}
-
-/// Minimum next bid: the previous bid raised by `BID_INCREASE_BPS`, rounded up
-/// — identical to `PunksAuction._currentMinBidWei`.
-export function minNextBidWei(previousWei: bigint): bigint {
-  return (previousWei * (BPS + BID_INCREASE_BPS) + BPS - 1n) / BPS
-}
-
-/// Whether a slot pins a single Punk (one include id, no criteria, no
-/// excludes) — the only shape `acceptOffer` settles directly.
-function filterIsEmpty(filter: PunksFilter): boolean {
-  return (
-    filter.requiredTraitMask === 0n &&
-    filter.forbiddenTraitMask === 0n &&
-    filter.anyOfTraitMask === 0n &&
-    filter.requiredColorMask === 0n &&
-    filter.forbiddenColorMask === 0n &&
-    filter.anyOfColorMask === 0n &&
-    filter.maxPixelCount === 0 &&
-    filter.maxColorCount === 0
-  )
 }
 
 /// Rebuilds an offline `PunkQuery` from an offer slot so the UI can count
@@ -219,15 +212,12 @@ function decodeItems(
 async function readLotCore(
   client: PublicClient,
   id: bigint,
-): Promise<
-  | {
-      id: bigint
-      seller: Address
-      reserveWei: bigint
-      onlySellTo: Address
-    }
-  | null
-> {
+): Promise<{
+  id: bigint
+  seller: Address
+  reserveWei: bigint
+  onlySellTo: Address
+} | null> {
   const result = await client.readContract({
     ...auctionContract,
     functionName: 'lots',
@@ -312,17 +302,14 @@ export async function readLots(client: PublicClient): Promise<LotRecord[]> {
 async function readAuctionCore(
   client: PublicClient,
   id: bigint,
-): Promise<
-  | {
-      id: bigint
-      seller: Address
-      latestBidder: Address
-      latestBidWei: bigint
-      endTimestamp: number
-      settled: boolean
-    }
-  | null
-> {
+): Promise<{
+  id: bigint
+  seller: Address
+  latestBidder: Address
+  latestBidWei: bigint
+  endTimestamp: number
+  settled: boolean
+} | null> {
   const result = await client.readContract({
     ...auctionContract,
     functionName: 'auctions',
@@ -385,7 +372,15 @@ export async function readAuctions(
       (row) =>
         row.core?.status === 'success' &&
         Number(
-          (row.core.result as readonly [Address, Address, bigint, number, boolean])[3],
+          (
+            row.core.result as readonly [
+              Address,
+              Address,
+              bigint,
+              number,
+              boolean,
+            ]
+          )[3],
         ) !== 0,
     )
   if (!present.length) return []
@@ -400,8 +395,8 @@ export async function readAuctions(
   const sourceLotIds = await readAuctionSourceLotIds(client)
 
   return present.map((row, i) => {
-    const [seller, latestBidder, latestBidWei, endTimestamp, settled] = row.core!
-      .result as readonly [Address, Address, bigint, number, boolean]
+    const [seller, latestBidder, latestBidWei, endTimestamp, settled] = row
+      .core!.result as readonly [Address, Address, bigint, number, boolean]
     const itemsRes = itemsResults[i]
     return {
       id: row.id,
@@ -464,7 +459,9 @@ async function readAuctionSourceLotIds(
   return new Map(
     logs
       .filter(
-        (log): log is typeof log & {
+        (
+          log,
+        ): log is typeof log & {
           args: { auctionId: bigint; lotId: bigint }
         } => log.args.auctionId !== undefined && log.args.lotId !== undefined,
       )
@@ -515,6 +512,35 @@ export async function readOffers(client: PublicClient): Promise<OfferRecord[]> {
           : [],
     }
   })
+}
+
+export async function readOffer(
+  client: PublicClient,
+  id: bigint | number,
+): Promise<OfferRecord | null> {
+  if (!isAuctionDeployed()) return null
+  const offerId = BigInt(id)
+  const result = await client.readContract({
+    ...auctionContract,
+    functionName: 'offers',
+    args: [offerId],
+  })
+  const [amountWei, offerer] = result as readonly [bigint, Address]
+  if (offerer === '0x0000000000000000000000000000000000000000') {
+    return null
+  }
+
+  const slots = await client.readContract({
+    ...auctionContract,
+    functionName: 'getOfferSlots',
+    args: [offerId],
+  })
+  return {
+    id: offerId,
+    offerer,
+    amountWei,
+    slots: decodeSlots(slots as never),
+  }
 }
 
 type RawSlot = {
