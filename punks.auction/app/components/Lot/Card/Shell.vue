@@ -25,7 +25,7 @@ defineProps<{
   flex-direction: column;
   gap: var(--size-2);
   block-size: 100%;
-  transition: transform 180ms ease;
+  transition: transform var(--speed) ease;
 }
 
 .lot-card-shell:hover,
