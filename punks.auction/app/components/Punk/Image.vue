@@ -30,10 +30,13 @@
 </template>
 
 <script lang="ts">
-const PUNK_CANVAS_SIZE = 24
+const PUNK_SOURCE_SIZE = 24
+const PUNK_HIGHLIGHT_SCALE = 4
+const PUNK_HIGHLIGHT_SIZE = PUNK_SOURCE_SIZE * PUNK_HIGHLIGHT_SCALE
 const PUNK_SPRITE_COLS = 100
 const DIMMED_PIXEL_OPACITY = 0.25
 const DIMMED_BACKGROUND_OPACITY = 0.18
+const INACTIVE_PIXEL_SCALE = 0.5
 
 let spriteImagePromise: Promise<HTMLImageElement> | null = null
 const highlightImageCache = new Map<string, string>()
@@ -70,21 +73,21 @@ async function highlightedPunkDataUrl(
   if (cached) return cached
 
   const sprite = await loadPunkSprite()
-  const canvas = document.createElement('canvas')
-  canvas.width = PUNK_CANVAS_SIZE
-  canvas.height = PUNK_CANVAS_SIZE
+  const sourceCanvas = document.createElement('canvas')
+  sourceCanvas.width = PUNK_SOURCE_SIZE
+  sourceCanvas.height = PUNK_SOURCE_SIZE
 
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return null
+  const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true })
+  if (!sourceCtx) return null
 
   const col = punkId % PUNK_SPRITE_COLS
   const row = Math.floor(punkId / PUNK_SPRITE_COLS)
   const sourceWidth = sprite.naturalWidth / PUNK_SPRITE_COLS
   const sourceHeight = sprite.naturalHeight / PUNK_SPRITE_COLS
 
-  ctx.imageSmoothingEnabled = false
-  ctx.clearRect(0, 0, PUNK_CANVAS_SIZE, PUNK_CANVAS_SIZE)
-  ctx.drawImage(
+  sourceCtx.imageSmoothingEnabled = false
+  sourceCtx.clearRect(0, 0, PUNK_SOURCE_SIZE, PUNK_SOURCE_SIZE)
+  sourceCtx.drawImage(
     sprite,
     col * sourceWidth,
     row * sourceHeight,
@@ -92,32 +95,48 @@ async function highlightedPunkDataUrl(
     sourceHeight,
     0,
     0,
-    PUNK_CANVAS_SIZE,
-    PUNK_CANVAS_SIZE,
+    PUNK_SOURCE_SIZE,
+    PUNK_SOURCE_SIZE,
   )
 
-  const source = ctx.getImageData(0, 0, PUNK_CANVAS_SIZE, PUNK_CANVAS_SIZE)
-  const highlighted = ctx.createImageData(PUNK_CANVAS_SIZE, PUNK_CANVAS_SIZE)
+  const source = sourceCtx.getImageData(0, 0, PUNK_SOURCE_SIZE, PUNK_SOURCE_SIZE)
+  const outputCanvas = document.createElement('canvas')
+  outputCanvas.width = PUNK_HIGHLIGHT_SIZE
+  outputCanvas.height = PUNK_HIGHLIGHT_SIZE
 
-  for (let i = 0; i < source.data.length; i += 4) {
-    const r = source.data[i] ?? 0
-    const g = source.data[i + 1] ?? 0
-    const b = source.data[i + 2] ?? 0
-    const a = source.data[i + 3] ?? 0
-    const isSelected =
-      r === rgba.r && g === rgba.g && b === rgba.b && a === rgba.a
+  const outputCtx = outputCanvas.getContext('2d')
+  if (!outputCtx) return null
 
-    highlighted.data[i] = r
-    highlighted.data[i + 1] = g
-    highlighted.data[i + 2] = b
-    highlighted.data[i + 3] = isSelected
-      ? a
-      : Math.round(a * DIMMED_PIXEL_OPACITY)
+  outputCtx.imageSmoothingEnabled = false
+  outputCtx.clearRect(0, 0, PUNK_HIGHLIGHT_SIZE, PUNK_HIGHLIGHT_SIZE)
+
+  for (let y = 0; y < PUNK_SOURCE_SIZE; y++) {
+    for (let x = 0; x < PUNK_SOURCE_SIZE; x++) {
+      const offset = (y * PUNK_SOURCE_SIZE + x) * 4
+      const r = source.data[offset] ?? 0
+      const g = source.data[offset + 1] ?? 0
+      const b = source.data[offset + 2] ?? 0
+      const a = source.data[offset + 3] ?? 0
+      const isSelected =
+        r === rgba.r && g === rgba.g && b === rgba.b && a === rgba.a
+      const pixelSize = isSelected
+        ? PUNK_HIGHLIGHT_SCALE
+        : Math.max(1, Math.round(PUNK_HIGHLIGHT_SCALE * INACTIVE_PIXEL_SCALE))
+      const pixelInset = Math.floor((PUNK_HIGHLIGHT_SCALE - pixelSize) / 2)
+
+      outputCtx.fillStyle = isSelected
+        ? `rgba(${r}, ${g}, ${b}, ${a / 255})`
+        : `rgba(${r}, ${g}, ${b}, ${(a / 255) * DIMMED_PIXEL_OPACITY})`
+      outputCtx.fillRect(
+        x * PUNK_HIGHLIGHT_SCALE + pixelInset,
+        y * PUNK_HIGHLIGHT_SCALE + pixelInset,
+        pixelSize,
+        pixelSize,
+      )
+    }
   }
 
-  ctx.putImageData(highlighted, 0, 0)
-
-  const dataUrl = canvas.toDataURL('image/png')
+  const dataUrl = outputCanvas.toDataURL('image/png')
   highlightImageCache.set(cacheKey, dataUrl)
   return dataUrl
 }
