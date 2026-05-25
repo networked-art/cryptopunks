@@ -22,6 +22,45 @@ Typecheck the TypeScript tests and config:
 pnpm typecheck
 ```
 
+## Local mainnet fork
+
+`pnpm dev:fork` boots a long-running `hardhat node` forked from mainnet at block `25171056` (matching `hardhatMainnet.forking.blockNumber` in `hardhat.config.ts`), then seeds it with Punks so a recipient wallet has things to play with. The node keeps running on `http://127.0.0.1:8545` until Ctrl-C.
+
+```sh
+pnpm dev:fork
+```
+
+The fork block matches the `indexer/dumps/ponder-prod-block-25171056.zip` Postgres snapshot, so the indexer and the fork can be brought up against the same state.
+
+Re-run the seed against an already-running fork:
+
+```sh
+pnpm seed:fork
+```
+
+The seed is idempotent — Punks already owned by the recipient are skipped.
+
+### Seeded transfers
+
+| Source                                       | Collection        | Mechanism                       | Punks                                                                                |
+| -------------------------------------------- | ----------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
+| `0xaf7cf5910510b7cf912c156f91244487632e5fb6` | `CryptoPunks`     | native `transferPunk`           | 6225                                                                                 |
+| `0xaf7cf5910510b7cf912c156f91244487632e5fb6` | `PunksV1Wrapper`  | ERC-721 `transferFrom`          | 1139, 1623, 1714, 1806, 2816, 3360, 4724, 4736, 5449, 5728, 6120, 8753, 9109         |
+| `0xc6400A5584db71e41B0E5dFbdC769b54B91256CD` | `CryptoPunksMarket` | native `transferPunk`         | 1325, 4093, 4372, 5177, 6529, 9082                                                   |
+
+The seed impersonates each source via `hardhat_impersonateAccount` + `hardhat_setBalance`, then submits the transfer transactions through viem's wallet client.
+
+### Configuring the recipient
+
+| Variable         | Default     | Purpose                                                                                                                                     |
+| ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SEED_RECIPIENT` | `jalil.eth` | Destination for the seeded transfers. Accepts an `0x…` address (used as-is) or an ENS name (resolved against the fork via the universal resolver). The default resolves to `0xe11Da9560b51f8918295edC5ab9c0a90E9ADa20B` without an ENS lookup. |
+
+```sh
+SEED_RECIPIENT=0xabc...123 pnpm dev:fork
+SEED_RECIPIENT=vitalik.eth pnpm seed:fork
+```
+
 ## Deploying `PunksData`
 
 Deployment of `PunksData` is split into two phases: a one-shot Ignition deploy, then a resumable script that loads the dataset blobs and seals the contract.
