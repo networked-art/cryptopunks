@@ -10,11 +10,13 @@
         <div class="button-row">
           <Button
             class="primary"
-            @click="startFulfillment('accept')"
+            @click="startFulfillment('start')"
           >
+            Start auction
+          </Button>
+          <Button @click="startFulfillment('accept')">
             Accept <EthAmount :wei="offer.amountWei" />
           </Button>
-          <Button @click="startFulfillment('start')"> Start auction </Button>
         </div>
       </template>
 
