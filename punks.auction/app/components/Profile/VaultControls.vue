@@ -593,6 +593,7 @@ dd {
   display: flex;
   gap: var(--size-2);
   flex-wrap: wrap;
+  margin-top: auto;
 }
 
 .icon-button {
