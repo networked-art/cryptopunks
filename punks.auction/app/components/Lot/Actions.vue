@@ -47,9 +47,9 @@
             </label>
             <label class="amount-field">
               <span class="label">Initial buyer</span>
-              <input
+              <EvmAddressInput
                 v-model="onlySellTo"
-                type="text"
+                placeholder="0x... or name.eth"
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -65,7 +65,9 @@
 
           <div class="button-row">
             <Button
-              :disabled="!canManage || !parsedReserveWei || !parsedOnlySellTo"
+              :disabled="
+                !canManage || !parsedReserveWei || !buyerInputSubmittable
+              "
               @click="actUpdateLot"
             >
               Update lot
@@ -245,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { useConnection } from '@wagmi/vue'
+import { useConfig, useConnection } from '@wagmi/vue'
 import {
   formatEther,
   isAddress,
@@ -262,6 +264,7 @@ import {
   type LotRecord,
   type OfferRecord,
 } from '~/utils/auction'
+import { resolveAddressInput } from '~/utils/addressInput'
 
 const props = withDefaults(
   defineProps<{
@@ -278,6 +281,7 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const config = useConfig()
 const { address } = useConnection()
 const renderV1 = useV1Rendering()
 
@@ -313,10 +317,9 @@ const instantEligible = computed(
   () => props.lot.items.length <= MAX_INSTANT_ITEMS,
 )
 const parsedReserveWei = computed(() => parsePositiveEth(reserveEth.value))
-const parsedOnlySellTo = computed<Address | null>(() => {
+const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
-  if (!trimmed) return ZERO_ADDRESS
-  return isAddress(trimmed) ? (trimmed as Address) : null
+  return !trimmed || isAddress(trimmed) || trimmed.includes('.')
 })
 
 type DialogRef = {
@@ -329,16 +332,28 @@ const dialogText = ref<{
   action?: Record<string, string>
 }>({})
 
+async function resolveOnlySellTo(): Promise<Address> {
+  const trimmed = onlySellTo.value.trim()
+  if (!trimmed) return ZERO_ADDRESS
+  return resolveAddressInput(config, trimmed, {
+    invalidMessage: 'Enter a valid initial buyer address or ENS name.',
+  })
+}
+
 function actUpdateLot() {
   const reserveWei = parsedReserveWei.value
-  const buyer = parsedOnlySellTo.value
-  if (!canManage.value || !reserveWei || !buyer) return
-  runPlan(
-    sdk.value.auctions.prepareUpdateLot({
-      lotId: props.lot.id,
-      reserveWei,
-      onlySellTo: buyer,
-    }),
+  if (!canManage.value || !reserveWei || !buyerInputSubmittable.value) return
+  runRequest(
+    async () => {
+      const buyer = await resolveOnlySellTo()
+      return execute(
+        sdk.value.auctions.prepareUpdateLot({
+          lotId: props.lot.id,
+          reserveWei,
+          onlySellTo: buyer,
+        }),
+      )
+    },
     `Update lot #${props.lot.id}`,
     `Set this lot reserve to ${reserveEth.value.trim()} ETH.`,
     'Update',
@@ -414,12 +429,21 @@ function runPlan(
   lead: string,
   action = 'Confirm',
 ) {
+  runRequest(() => execute(plan), title, lead, action)
+}
+
+function runRequest(
+  request: () => Promise<Hash>,
+  title: string,
+  lead: string,
+  action = 'Confirm',
+) {
   dialogText.value = {
     title: { confirm: title, waiting: title },
     lead: { confirm: lead },
     action: { confirm: action },
   }
-  dialogRef.value?.initializeRequest(() => execute(plan))
+  dialogRef.value?.initializeRequest(request)
 }
 
 function onComplete(receipt: TransactionReceipt) {
@@ -490,8 +514,19 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   gap: var(--size-1);
 }
 
-.amount-field input {
+.amount-field input,
+.amount-field :deep(.evm-address-input) {
   width: 100%;
+}
+
+.amount-field :deep(.evm-address-input) {
+  min-width: 0;
+}
+
+.amount-field :deep(.evm-address-input > small) {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .manage-fields {

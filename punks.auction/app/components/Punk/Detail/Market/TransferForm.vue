@@ -41,32 +41,19 @@
 </template>
 
 <script setup lang="ts">
-import { isAddress, type Address, type Hash } from 'viem'
-import { useConnection } from '@wagmi/vue'
+import type { Hash } from 'viem'
+import { useConfig, useConnection } from '@wagmi/vue'
+import { resolveAddressInput } from '~/utils/addressInput'
 
 const props = defineProps<{ punkId: number }>()
 const emit = defineEmits<{ transferred: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const config = useConfig()
 const { address } = useConnection()
 
 const to = ref('')
-const trimmedInput = computed(() => to.value.trim())
-const ensIdentifier = computed(() => {
-  const v = trimmedInput.value
-  if (!v) return undefined
-  if (isAddress(v) || v.includes('.')) return v
-  return undefined
-})
-const { data: ensData, pending: ensPending } = useEns(ensIdentifier)
-
-const resolvedAddress = computed<Address | null>(() => {
-  const v = trimmedInput.value
-  if (isAddress(v)) return v as Address
-  const resolved = ensData.value?.address
-  return resolved && isAddress(resolved) ? (resolved as Address) : null
-})
 
 const dialogText = {
   title: { confirm: 'Transfer Punk' },
@@ -75,13 +62,9 @@ const dialogText = {
 }
 
 async function transfer(): Promise<Hash> {
-  if (ensPending.value) {
-    throw new Error('Still resolving ENS name. Try again in a moment.')
-  }
-  const recipient = resolvedAddress.value
-  if (!recipient) {
-    throw new Error('Enter a valid recipient address or ENS name.')
-  }
+  const recipient = await resolveAddressInput(config, to.value, {
+    invalidMessage: 'Enter a valid recipient address or ENS name.',
+  })
   return execute(
     sdk.value.market.prepareTransfer({
       punkId: props.punkId,

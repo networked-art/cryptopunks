@@ -42,34 +42,19 @@
 
 <script setup lang="ts">
 import { isAddress, type Address, type Hash } from 'viem'
-import { useConnection } from '@wagmi/vue'
+import { normalize } from 'viem/ens'
+import { getPublicClient } from '@wagmi/core'
+import { useConfig, useConnection } from '@wagmi/vue'
 
 const props = defineProps<{ punkId: number }>()
 const emit = defineEmits<{ transferred: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const config = useConfig()
 const { address } = useConnection()
 
 const to = ref('')
-
-/// `EvmAddressInput` keeps the raw input (address *or* ENS name) in `to`.
-/// Resolve to a concrete address before submitting so `name.eth` works.
-const trimmedInput = computed(() => to.value.trim())
-const ensIdentifier = computed(() => {
-  const v = trimmedInput.value
-  if (!v) return undefined
-  if (isAddress(v) || v.includes('.')) return v
-  return undefined
-})
-const { data: ensData, pending: ensPending } = useEns(ensIdentifier)
-
-const resolvedAddress = computed<Address | null>(() => {
-  const v = trimmedInput.value
-  if (isAddress(v)) return v as Address
-  const resolved = ensData.value?.address
-  return resolved && isAddress(resolved) ? (resolved as Address) : null
-})
 
 const dialogText = {
   title: { confirm: 'Transfer punk' },
@@ -77,14 +62,41 @@ const dialogText = {
   action: { confirm: 'Transfer' },
 }
 
+function transferError(message: string): Error & { shortMessage: string } {
+  const error = new Error(message) as Error & { shortMessage: string }
+  error.shortMessage = message
+  return error
+}
+
+async function resolveRecipient(): Promise<Address> {
+  const recipient = to.value.trim()
+  if (isAddress(recipient)) return recipient as Address
+  if (!recipient || !recipient.includes('.')) {
+    throw transferError('Enter a valid recipient address or ENS name.')
+  }
+
+  const publicClient = getPublicClient(config, { chainId: 1 })
+  if (!publicClient) {
+    throw transferError('ENS resolution is unavailable.')
+  }
+
+  let name: string
+  try {
+    name = normalize(recipient)
+  } catch {
+    throw transferError('Enter a valid recipient address or ENS name.')
+  }
+
+  const resolved = await publicClient.getEnsAddress({ name })
+  if (!resolved || !isAddress(resolved)) {
+    throw transferError(`Could not resolve ${recipient}.`)
+  }
+
+  return resolved as Address
+}
+
 async function transfer(): Promise<Hash> {
-  if (ensPending.value) {
-    throw new Error('Still resolving ENS name — try again in a moment.')
-  }
-  const to = resolvedAddress.value
-  if (!to) {
-    throw new Error('Enter a valid recipient address or ENS name.')
-  }
+  const to = await resolveRecipient()
   return execute(sdk.value.market.prepareTransfer({ punkId: props.punkId, to }))
 }
 

@@ -38,9 +38,9 @@
         </label>
         <label class="field">
           <span class="label">Initial buyer</span>
-          <input
+          <EvmAddressInput
             v-model="onlySellTo"
-            type="text"
+            placeholder="0x... or name.eth"
             autocomplete="off"
             spellcheck="false"
           />
@@ -88,7 +88,7 @@ import type {
   LotItemInput,
   PunkStandardRef,
 } from '@networked-art/punks-sdk'
-import { useConnection } from '@wagmi/vue'
+import { useConfig, useConnection } from '@wagmi/vue'
 import {
   isAddress,
   parseEther,
@@ -97,6 +97,7 @@ import {
   type TransactionReceipt,
 } from 'viem'
 import { MAX_LOT_ITEMS, ZERO_ADDRESS, equalLotWeights } from '~/utils/auction'
+import { resolveAddressInput } from '~/utils/addressInput'
 
 type StandardDraft = 'cryptopunks' | 'cryptopunks-v1'
 
@@ -104,6 +105,7 @@ const emit = defineEmits<{ created: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const config = useConfig()
 const { address } = useConnection()
 const renderV1 = useV1Rendering()
 
@@ -129,17 +131,16 @@ const items = computed<LotItemInput[]>(() =>
   })),
 )
 const reserveWei = computed(() => parsePositiveEth(reserveEth.value))
-const buyer = computed<Address | null>(() => {
+const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
-  if (!trimmed) return ZERO_ADDRESS
-  return isAddress(trimmed) ? (trimmed as Address) : null
+  return !trimmed || isAddress(trimmed) || trimmed.includes('.')
 })
 const canCreate = computed(
   () =>
     items.value.length > 0 &&
     items.value.length <= MAX_LOT_ITEMS &&
     !!reserveWei.value &&
-    !!buyer.value &&
+    buyerInputSubmittable.value &&
     (renderV1.value || standard.value !== 'cryptopunks-v1'),
 )
 
@@ -153,14 +154,22 @@ const dialogText = ref<{
   action?: Record<string, string>
 }>({})
 
-function actCreate() {
+async function resolveOnlySellTo(): Promise<Address> {
+  const trimmed = onlySellTo.value.trim()
+  if (!trimmed) return ZERO_ADDRESS
+  return resolveAddressInput(config, trimmed, {
+    invalidMessage: 'Enter a valid initial buyer address or ENS name.',
+  })
+}
+
+async function actCreate() {
   error.value = null
   const reserve = reserveWei.value
-  const onlyBuyer = buyer.value
-  if (!reserve || !onlyBuyer) return
+  if (!reserve || !buyerInputSubmittable.value) return
 
   let plan: ContractWritePlan
   try {
+    const onlyBuyer = await resolveOnlySellTo()
     plan = sdk.value.auctions.prepareCreateLot({
       items: items.value,
       reserveWei: reserve,
@@ -236,6 +245,16 @@ function parseIds(input: string): number[] {
 .field input,
 .field select {
   width: 100%;
+}
+
+.field :deep(.evm-address-input) {
+  min-width: 0;
+}
+
+.field :deep(.evm-address-input > small) {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .connect-row {
