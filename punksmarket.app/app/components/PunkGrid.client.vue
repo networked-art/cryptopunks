@@ -54,6 +54,7 @@ const props = withDefaults(
 const PRICE_LABEL_HEIGHT = 16
 
 const { isWrapped } = useWrappedPunks()
+const spriteLayers = usePunkSpriteLayers()
 const hasPriceRow = computed(() => !!props.pricesById)
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -136,7 +137,10 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     width: `${px}px`,
     height: `${props.size + priceRowHeight.value}px`,
     '--price-label-height': `${PRICE_LABEL_HEIGHT}px`,
-    ...punkSpriteBackgroundStyle(c.id, px),
+    ...punkSpriteBackgroundStyle(c.id, px, {
+      stripes: spriteLayers.stripesLoaded.value,
+      outline: spriteLayers.outlineLoaded.value,
+    }),
   }
   style.backgroundColor = isWrapped(c.id) ? WRAPPED_BG : UNWRAPPED_BG
   return style

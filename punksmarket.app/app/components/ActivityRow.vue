@@ -97,6 +97,7 @@ const sameParties = computed(
 )
 
 const SPRITE_SIZE = 44
+const spriteLayers = usePunkSpriteLayers()
 
 const spriteStyle = computed(() => {
   const id = punkId.value
@@ -104,7 +105,10 @@ const spriteStyle = computed(() => {
   const style: Record<string, string> = {
     width: `${SPRITE_SIZE}px`,
     height: `${SPRITE_SIZE}px`,
-    ...punkSpriteBackgroundStyle(id, SPRITE_SIZE),
+    ...punkSpriteBackgroundStyle(id, SPRITE_SIZE, {
+      stripes: spriteLayers.stripesLoaded.value,
+      outline: spriteLayers.outlineLoaded.value,
+    }),
   }
   /// `event.wrapped` is false for `wrap`/`unwrap` rows (the kind label
   /// already says so); tint `wrap` rows too since the punk is now wrapped.

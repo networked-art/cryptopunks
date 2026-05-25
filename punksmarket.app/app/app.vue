@@ -36,6 +36,21 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
+
+useHead({
+  link: [
+    {
+      rel: 'preload',
+      as: 'image',
+      href: PUNK_SPRITE_URL,
+      fetchpriority: 'high',
+    },
+  ],
+})
+</script>
+
 <style scoped>
 .shell {
   min-block-size: 100dvh;
