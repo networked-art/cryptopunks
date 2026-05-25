@@ -39,6 +39,7 @@
 
     <OfferActions
       :offer="displayOffer"
+      :lots="displayLots"
       :matching-lots="matchingLots"
       :preview="isMock"
       @changed="onChanged"
