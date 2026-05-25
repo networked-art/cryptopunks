@@ -272,12 +272,7 @@
                 spellcheck="false"
               />
             </label>
-            <span
-              v-else
-              class="fixed-slot muted"
-            >
-              Fixed by offer
-            </span>
+            <span v-else />
 
             <label
               v-if="showHammerAllocations"
@@ -902,11 +897,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   white-space: nowrap;
   font-size: var(--font-sm);
   font-weight: var(--font-weight-bold);
-}
-
-.fixed-slot {
-  align-self: center;
-  font-size: var(--font-xs);
 }
 
 .slot-weight-field input {
