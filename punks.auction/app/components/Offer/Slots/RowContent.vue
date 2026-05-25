@@ -1,0 +1,123 @@
+<template>
+  <div
+    class="slot-preview"
+    aria-hidden="true"
+  >
+    <PunkMosaic
+      v-if="row.previewItems.length"
+      :items="row.previewItems"
+    />
+    <Icon
+      v-else
+      class="slot-icon"
+      name="lucide:list-filter"
+    />
+  </div>
+
+  <span class="slot-copy">
+    <span class="slot-title">{{ row.title }}</span>
+    <span
+      v-if="row.detailParts.length"
+      class="slot-detail"
+    >
+      <template
+        v-for="(part, index) in row.detailParts"
+        :key="`${part.text}-${index}`"
+      >
+        <NuxtLink
+          v-if="part.href"
+          class="slot-detail-link"
+          :to="part.href"
+        >
+          {{ part.text }}
+        </NuxtLink>
+        <span v-else>{{ part.text }}</span>
+        <span
+          v-if="index < row.detailParts.length - 1"
+          class="slot-detail-separator"
+        >
+          ·
+        </span>
+      </template>
+    </span>
+  </span>
+
+  <span class="slot-label">{{ row.label }}</span>
+</template>
+
+<script setup lang="ts">
+import type { OfferSlotDisplay } from '~/composables/useOfferSlotDisplay'
+
+defineProps<{
+  row: OfferSlotDisplay
+}>()
+</script>
+
+<style scoped>
+.slot-preview {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-8);
+  block-size: var(--size-8);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.slot-icon {
+  color: var(--text-muted);
+  font-size: var(--font-lg);
+}
+
+.slot-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.slot-label,
+.slot-title,
+.slot-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-label {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+}
+
+.slot-title {
+  color: var(--text);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.slot-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.slot-detail-link {
+  color: inherit;
+  border: 0;
+}
+
+.slot-detail-link:hover,
+.slot-detail-link:focus-visible {
+  color: var(--accent);
+}
+
+.slot-detail-separator {
+  color: var(--text-dim);
+}
+</style>

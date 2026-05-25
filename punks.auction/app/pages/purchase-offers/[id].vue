@@ -44,73 +44,7 @@
       @changed="onChanged"
     />
 
-    <section class="slots-block">
-      <h2 class="block-title eyebrow">Slots</h2>
-      <ul class="slots">
-        <li
-          v-for="slot in slotDetails"
-          :key="slot.key"
-          class="slot"
-        >
-          <div class="slot-head">
-            <Tag small>{{ slot.standardLabel }}</Tag>
-            <span class="slot-title">Slot {{ slot.index + 1 }}</span>
-            <span class="muted slot-count">{{ slot.countLabel }}</span>
-          </div>
-
-          <p class="slot-summary">{{ slot.summary }}</p>
-
-          <div
-            v-if="slot.previewIds.length"
-            class="slot-thumbs"
-          >
-            <PunkThumb
-              v-for="punkId in slot.previewIds"
-              :key="punkId"
-              :punk-id="punkId"
-              :standard="slot.standard"
-              :size="42"
-            />
-          </div>
-
-          <dl
-            v-if="slot.includeIds.length || slot.excludeIds.length"
-            class="id-lists"
-          >
-            <div
-              v-if="slot.includeIds.length"
-              class="id-list"
-            >
-              <dt>Included</dt>
-              <dd>
-                <NuxtLink
-                  v-for="punkId in slot.includeIds"
-                  :key="punkId"
-                  :to="punkHref(slot.standard, punkId)"
-                >
-                  #{{ punkId }}
-                </NuxtLink>
-              </dd>
-            </div>
-            <div
-              v-if="slot.excludeIds.length"
-              class="id-list"
-            >
-              <dt>Excluded</dt>
-              <dd>
-                <NuxtLink
-                  v-for="punkId in slot.excludeIds"
-                  :key="punkId"
-                  :to="punkHref(slot.standard, punkId)"
-                >
-                  #{{ punkId }}
-                </NuxtLink>
-              </dd>
-            </div>
-          </dl>
-        </li>
-      </ul>
-    </section>
+    <OfferSlots :slots="displayOffer.slots" />
   </LotDetailShell>
 
   <div
@@ -134,10 +68,7 @@ import { mockOfferById, useMockLots } from '~/composables/useAuctionData.mock'
 import {
   equalLotWeights,
   lotMatchesOffer,
-  offerSlotSummary,
   offerSlotToQuery,
-  punkHref,
-  standardLabel,
   type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
@@ -172,27 +103,6 @@ const deployed = computed(() => offerDeployed || mockLotsDeployed)
 const slotCountLabel = computed(() => {
   const count = displayOffer.value?.slots.length ?? 0
   return `${count.toLocaleString()} slot${count === 1 ? '' : 's'}`
-})
-
-const slotDetails = computed(() => {
-  const offer = displayOffer.value
-  if (!offer) return []
-  return offer.slots.map((slot, index) => {
-    const matches = slotMatches(slot)
-    return {
-      key: `${index}-${slot.standard}`,
-      index,
-      standard: slot.standard,
-      standardLabel: standardLabel(slot.standard),
-      summary: offerSlotSummary(slot),
-      countLabel: `${matches.length.toLocaleString()} match${
-        matches.length === 1 ? '' : 'es'
-      }`,
-      previewIds: previewIdsForSlot(slot, matches),
-      includeIds: slot.includeIds,
-      excludeIds: slot.excludeIds,
-    }
-  })
 })
 
 const previewItems = computed<LotItem[]>(() => {
@@ -235,11 +145,6 @@ function slotMatches(slot: OfferSlot) {
   } catch {
     return []
   }
-}
-
-function previewIdsForSlot(slot: OfferSlot, matches: number[]) {
-  const ids = slot.includeIds.length ? slot.includeIds : matches
-  return ids.slice(0, 12)
 }
 
 function compareBigint(a: bigint, b: bigint): number {
@@ -308,92 +213,6 @@ useSeoMeta({
 }
 
 .fact a {
-  border: 0;
-}
-
-.slots-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-3);
-}
-
-.block-title {
-  margin: 0;
-}
-
-.slots {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-3);
-  margin: 0;
-  padding: 0;
-}
-
-.slot {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  padding: var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
-}
-
-.slot-head {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2);
-  flex-wrap: wrap;
-}
-
-.slot-title {
-  font-size: var(--font-sm);
-  font-weight: var(--font-weight-bold);
-}
-
-.slot-count {
-  margin-left: auto;
-  font-size: var(--font-xs);
-}
-
-.slot-summary {
-  margin: 0;
-  font-size: var(--font-sm);
-}
-
-.slot-thumbs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-1);
-}
-
-.id-lists {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-  margin: 0;
-  font-size: var(--font-xs);
-}
-
-.id-list {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--size-2);
-}
-
-.id-list dt {
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
-.id-list dd {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-1);
-  margin: 0;
-}
-
-.id-list a {
   border: 0;
 }
 
