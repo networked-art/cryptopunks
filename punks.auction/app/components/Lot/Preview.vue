@@ -1,42 +1,32 @@
 <template>
   <div class="lot-preview">
+    <PunkMosaic
+      v-if="activeItem && isMosaic"
+      :items="mosaicItems"
+    />
     <div
-      v-if="activeItem"
+      v-else-if="activeItem"
       class="deck"
-      :class="deckClass"
+      :class="{ carousel: isCarousel }"
     >
-      <template v-if="isMosaic">
-        <PunkThumb
-          v-for="item in mosaicItems"
-          :key="`${item.standard}-${item.punkId}`"
-          class="mosaic-punk"
-          :punk-id="item.punkId"
-          :standard="item.standard"
-          :background="itemBackground(item)"
-          :link="false"
-          fluid
-        />
-      </template>
-      <template v-else>
-        <PunkThumb
-          v-if="backingItem"
-          :key="`${activeIndex}-${backingItem.standard}-${backingItem.punkId}`"
-          class="backing-punk"
-          :punk-id="backingItem.punkId"
-          :standard="backingItem.standard"
-          :background="itemBackground(backingItem)"
-          :link="false"
-          fluid
-        />
-        <PunkThumb
-          class="main-punk"
-          :punk-id="activeItem.punkId"
-          :standard="activeItem.standard"
-          :background="itemBackground(activeItem)"
-          :link="false"
-          fluid
-        />
-      </template>
+      <PunkThumb
+        v-if="backingItem"
+        :key="`${activeIndex}-${backingItem.standard}-${backingItem.punkId}`"
+        class="backing-punk"
+        :punk-id="backingItem.punkId"
+        :standard="backingItem.standard"
+        :background="itemBackground(backingItem)"
+        :link="false"
+        fluid
+      />
+      <PunkThumb
+        class="main-punk"
+        :punk-id="activeItem.punkId"
+        :standard="activeItem.standard"
+        :background="itemBackground(activeItem)"
+        :link="false"
+        fluid
+      />
     </div>
     <div
       v-else
@@ -94,10 +84,6 @@ const isMosaic = computed(
   () => props.items.length > 1 && props.items.length <= 4,
 )
 const mosaicItems = computed(() => props.items.slice(0, 4))
-const deckClass = computed(() => {
-  if (isMosaic.value) return `mosaic mosaic-${props.items.length}`
-  return 'carousel'
-})
 
 const backingItem = computed(() => {
   if (!isCarousel.value) return undefined
@@ -150,39 +136,6 @@ function itemBackground(item: LotItem) {
 .backing-punk,
 .main-punk {
   grid-area: 1 / 1;
-}
-
-.mosaic {
-  gap: var(--size-1);
-  place-content: center;
-  place-items: center;
-}
-
-.mosaic-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.mosaic-3 {
-  grid-template-columns:
-    minmax(0, calc((200% - var(--size-1)) / 3))
-    minmax(0, calc((100% - (2 * var(--size-1))) / 3));
-  grid-template-rows: repeat(
-    2,
-    minmax(0, calc((100% - (2 * var(--size-1))) / 3))
-  );
-}
-
-.mosaic-3 .mosaic-punk:first-child {
-  grid-row: 1 / -1;
-}
-
-.mosaic-4 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-}
-
-.mosaic-punk {
-  width: 100%;
 }
 
 .backing-punk {
