@@ -2,17 +2,6 @@ import type { Address } from 'viem'
 import { isAddressEqual } from 'viem'
 import { queryIndexer } from '~/utils/indexer'
 
-/**
- * Canonical owner of a V1 Punk. The indexer normalizes wrap state so a single
- * read returns the human holder regardless of wrap status (`owner` = native V1
- * owner when unwrapped, ERC-721 holder when wrapped — see
- * indexer/ponder.schema.ts).
- *
- * Falls back to onchain reads if the indexer is unreachable: V1
- * `punkIndexToAddress` first, then `wrapper.ownerOf` whenever the raw owner is
- * the wrapper itself.
- */
-
 const PUNK_OWNER_QUERY = `
   query PunkOwner($id: BigInt!) {
     v1Punk(punk_id: $id) {
@@ -33,11 +22,11 @@ type PunkOwnerState = {
   source: Source
 }
 
-/// `useAsyncData` so Nuxt blocks SSR until the wrap status resolves —
-/// otherwise `isWrapped` stays `false` through the initial render and the
-/// "(Wrapped)" label / wrapped background only appear after client hydration.
+/// `useAsyncData` blocks SSR until wrap state resolves; the shared
+/// `useWrappedPunks` fallback covers the brief client-nav pending window.
 export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
   const { sdk } = usePunksSdk()
+  const { isWrapped: isWrappedInSet } = useWrappedPunks()
   const id = computed(() => toValue(punkId))
 
   const { data, pending, refresh } = useAsyncData<PunkOwnerState>(
@@ -55,9 +44,8 @@ export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
             source: 'indexer',
           }
         }
-        // Punk row missing — fall through to onchain.
       } catch {
-        // Indexer down / unreachable / not configured — fall through.
+        // Indexer unreachable — fall through to onchain.
       }
 
       try {
@@ -83,7 +71,9 @@ export function usePunkOwner(punkId: MaybeRefOrGetter<number>) {
   )
 
   const owner = computed(() => data.value?.owner ?? null)
-  const isWrapped = computed(() => data.value?.isWrapped ?? false)
+  const isWrapped = computed(() =>
+    data.value?.source ? data.value.isWrapped : isWrappedInSet(id.value),
+  )
   const source = computed(() => data.value?.source ?? null)
 
   return { owner, isWrapped, pending, source, refresh }
