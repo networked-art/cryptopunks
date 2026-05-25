@@ -1,0 +1,6 @@
+.multi-transaction-flow__title {
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
