@@ -2,34 +2,39 @@
   <section class="items-block">
     <h2 class="block-title eyebrow">Items</h2>
     <ul class="items">
-      <li
+      <DetailRow
         v-for="item in sortedItems"
         :key="`${item.standard}-${item.punkId}`"
-        class="item"
-        :class="{ 'item-with-weight': showWeights }"
       >
-        <NuxtLink
-          class="item-link"
-          :to="punkHref(item.standard, item.punkId)"
+        <template #main>
+          <NuxtLink
+            class="item-link"
+            :to="punkHref(item.standard, item.punkId)"
+          >
+            <PunkThumb
+              :punk-id="item.punkId"
+              :standard="item.standard"
+              :background="itemBackground(item)"
+              :size="48"
+              :link="false"
+            />
+            <span class="item-label">
+              Punk #{{ item.punkId }}
+              <span
+                v-if="item.standard === TokenStandard.CryptoPunksV1"
+                class="item-standard"
+                >(V1)</span
+              >
+            </span>
+          </NuxtLink>
+        </template>
+        <template
+          v-if="showWeights"
+          #aside
         >
-          <PunkThumb
-            :punk-id="item.punkId"
-            :standard="item.standard"
-            :background="itemBackground(item)"
-            :size="48"
-            :link="false"
-          />
-          <span class="item-label">
-            Punk #{{ item.punkId }}
-            <span
-              v-if="item.standard === TokenStandard.CryptoPunksV1"
-              class="item-standard"
-              >(V1)</span
-            >
-          </span>
-        </NuxtLink>
-        <span v-if="showWeights" class="weight">{{ formatWeight(item.weightBps) }}</span>
-      </li>
+          <span class="weight">{{ formatWeight(item.weightBps) }}</span>
+        </template>
+      </DetailRow>
     </ul>
   </section>
 </template>
@@ -84,21 +89,6 @@ function itemBackground(item: LotItem) {
   gap: var(--size-2);
   margin: 0;
   padding: 0;
-}
-
-.item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: var(--size-3);
-  padding: var(--size-2);
-  border: var(--border);
-  background: var(--bg-elevated);
-}
-
-.item-with-weight {
-  grid-template-columns: minmax(0, 1fr) max-content;
-  padding-right: var(--size-3);
 }
 
 .item-link {

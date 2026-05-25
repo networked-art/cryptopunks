@@ -1,19 +1,25 @@
 <template>
-  <li class="slot-row">
-    <NuxtLink
-      v-if="row.href"
-      class="slot-content slot-link"
-      :to="row.href"
-    >
-      <OfferSlotsRowContent :row="row" />
-    </NuxtLink>
-    <span
-      v-else
-      class="slot-content"
-    >
-      <OfferSlotsRowContent :row="row" />
-    </span>
-  </li>
+  <DetailRow>
+    <template #main>
+      <NuxtLink
+        v-if="row.href"
+        class="slot-main slot-link"
+        :to="row.href"
+      >
+        <OfferSlotsRowContent :row="row" />
+      </NuxtLink>
+      <span
+        v-else
+        class="slot-main"
+      >
+        <OfferSlotsRowContent :row="row" />
+      </span>
+    </template>
+
+    <template #aside>
+      <span class="slot-label">{{ row.label }}</span>
+    </template>
+  </DetailRow>
 </template>
 
 <script setup lang="ts">
@@ -25,19 +31,20 @@ defineProps<{
 </script>
 
 <style scoped>
-.slot-row {
-  list-style: none;
-}
-
-.slot-content {
+.slot-main {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: var(--size-3);
-  padding: var(--size-2);
+  min-width: 0;
   color: inherit;
-  border: var(--border);
-  background: var(--bg-elevated);
+  border: 0;
+}
+
+.slot-label {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .slot-link:hover :deep(.slot-title),

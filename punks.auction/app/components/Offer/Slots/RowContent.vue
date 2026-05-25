@@ -49,8 +49,6 @@
       </template>
     </span>
   </span>
-
-  <span class="slot-label">{{ row.label }}</span>
 </template>
 
 <script setup lang="ts">
@@ -83,19 +81,11 @@ defineProps<{
   min-width: 0;
 }
 
-.slot-label,
 .slot-title,
 .slot-detail {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.slot-label {
-  color: var(--text-muted);
-  font-size: var(--font-xs);
-  font-variant-numeric: tabular-nums;
-  justify-self: end;
 }
 
 .slot-title {
