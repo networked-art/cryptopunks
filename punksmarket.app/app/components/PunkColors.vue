@@ -24,15 +24,19 @@ const summary = computed(() =>
   offline.get(props.punkId, { includeColors: true }),
 )
 
-/// Rare-first: the lowest-supply color comes first so distinctive palette
-/// entries are surfaced ahead of common ones like skin and background.
+/// Rare-first: the color used by the fewest punks comes first so distinctive
+/// palette entries are surfaced ahead of common ones like skin and background.
 /// SDK hex values are `0x…`-prefixed; CSS needs `#…`. Fully-opaque entries
 /// link/label with the 6-hex form; semi-transparent ones keep the alpha
 /// byte so the search query resolves to the right palette color (a bare
 /// 6-hex is treated as `…ff` by the SDK).
 const colors = computed(() =>
-  [...(summary.value.colors ?? [])]
-    .sort((a, b) => (a.supply ?? Infinity) - (b.supply ?? Infinity))
+  (summary.value.colors ?? [])
+    .map((c) => ({
+      ...c,
+      punkCount: offline.count({ colors: { required: [c.id] } }),
+    }))
+    .sort((a, b) => a.punkCount - b.punkCount)
     .map((c) => {
       const rgba = stripHexPrefix(c.rgba)
       const hex = rgba.endsWith('ff') ? rgba.slice(0, 6) : rgba
@@ -40,11 +44,7 @@ const colors = computed(() =>
         ...c,
         hex,
         css: `#${rgba}`,
-        label: `#${hex}${
-          c.supply !== undefined
-            ? ` · used by ${c.supply.toLocaleString()} punks`
-            : ''
-        }`,
+        label: `#${hex} · used by ${c.punkCount.toLocaleString()} punks`,
       }
     }),
 )
