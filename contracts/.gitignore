@@ -28,6 +28,9 @@
 # Script output
 /scripts/output
 
+# Local fork node logs
+/.dev-fork
+
 # Slither / Python venv
 /.venv
 /slither-report.*

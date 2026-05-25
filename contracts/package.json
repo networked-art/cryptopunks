@@ -8,6 +8,8 @@
     "snapshot:source": "hardhat run scripts/snapshot-source.ts",
     "load:punks-data": "hardhat run scripts/load-punks-data.ts --network mainnet",
     "seal:punks-data": "PUNKS_DATA_SEAL=1 hardhat run scripts/load-punks-data.ts --network mainnet",
+    "dev:fork": "bash scripts/dev-fork.sh",
+    "seed:fork": "hardhat run scripts/seed-fork.ts --network localhost",
     "test": "hardhat test",
     "test:gas": "hardhat --gas-stats test",
     "typecheck": "tsc --noEmit"

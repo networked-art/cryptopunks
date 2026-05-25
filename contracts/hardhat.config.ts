@@ -35,8 +35,13 @@ export default defineConfig({
       chainType: 'l1',
       forking: {
         url: configVariable('MAINNET_RPC_URL'),
-        blockNumber: 24794242,
+        blockNumber: 25171056,
       },
+    },
+    localhost: {
+      type: 'http',
+      chainType: 'l1',
+      url: 'http://127.0.0.1:8545',
     },
     sepolia: {
       type: 'http',
