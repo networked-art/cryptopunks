@@ -85,6 +85,18 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    // The app plugin imports `EvmConfigKey` from `@1001-digital/components.evm`
+    // and the layer-shipped dialog imports `useEvmConfig` from the same package
+    // via a relative path inside the package. Vite's dep optimizer pre-bundles
+    // the app's bare-specifier import into `.cache/vite/.../components__evm.js`
+    // while the dialog's relative import stays as source — two module instances,
+    // two `Symbol('EvmConfig')` values, and `inject` falls back to
+    // `defaultEvmConfig` (mainnet-only), so the wallet ends up prompted for
+    // chain 1 on every write. `dedupe` picks the same physical file; `exclude`
+    // stops Vite from pre-bundling it so both sides import the source.
+    resolve: {
+      dedupe: ['@1001-digital/components.evm'],
+    },
     optimizeDeps: {
       include: [
         '@1001-digital/layers.evm > @metamask/connect-evm',
@@ -93,9 +105,9 @@ export default defineNuxtConfig({
         '@1001-digital/layers.evm > @walletconnect/ethereum-provider',
         '@1001-digital/layers.evm > @safe-global/safe-apps-sdk',
         '@1001-digital/layers.evm > @safe-global/safe-apps-provider',
-        '@1001-digital/layers.evm > @1001-digital/components.evm',
         '@tanstack/vue-query',
       ],
+      exclude: ['@1001-digital/components.evm'],
     },
   },
 })

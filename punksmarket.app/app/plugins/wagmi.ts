@@ -2,6 +2,7 @@ import { VueQueryPlugin } from '@tanstack/vue-query'
 import { WagmiPlugin } from '@wagmi/vue'
 import { EvmConfigKey } from '@1001-digital/components.evm'
 import { createWagmiConfig } from '@1001-digital/layers.evm/app/wagmi'
+import type { Chain } from 'viem'
 
 // Overrides the layer's wagmi plugin so the read RPC URL differs per env:
 //  - Server: hit the upstream RPC directly. Node's global fetch can't resolve
@@ -68,6 +69,10 @@ export default defineNuxtPlugin({
       isClient: import.meta.client,
     })
 
+    if (import.meta.client) {
+      applyRpcUrlsToChains(wagmiConfig.chains, evmConfig.rpcUrls ?? {})
+    }
+
     nuxtApp.vueApp
       .use(WagmiPlugin, { config: wagmiConfig })
       .use(VueQueryPlugin, {})
@@ -80,3 +85,21 @@ export default defineNuxtPlugin({
     }
   },
 })
+
+function applyRpcUrlsToChains(
+  chains: readonly Chain[],
+  rpcUrls: Record<number, string>,
+) {
+  for (const chain of chains) {
+    const rpcUrl = rpcUrls[chain.id]
+    if (!rpcUrl || !/^https?:\/\//.test(rpcUrl)) continue
+
+    chain.rpcUrls = {
+      ...chain.rpcUrls,
+      default: {
+        ...chain.rpcUrls.default,
+        http: [rpcUrl],
+      },
+    }
+  }
+}
