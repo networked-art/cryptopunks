@@ -239,18 +239,13 @@ function compareBigint(a: bigint, b: bigint): number {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(
-      min(
-        100%,
-        calc(var(--size-9) + var(--size-9) + var(--size-9) + var(--size-8))
-      ),
-      1fr
-    )
-  );
-  gap: var(--size-8);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--size-8) var(--size-4);
   min-width: 0;
+
+  @media (min-width: 960px) {
+    gap: var(--size-8);
+  }
 }
 
 .card-grid > * {
