@@ -290,17 +290,6 @@
           </div>
         </div>
 
-        <label class="amount-field">
-          <span class="label">Seller minimum ETH</span>
-          <input
-            v-model="minimumEth"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
-
         <p
           v-if="newLotPunkIds.some(Boolean) && !newLotPunksMatch"
           class="warn"
@@ -432,7 +421,6 @@ const listedPunkId = ref('')
 const expectedListingEth = ref('')
 const newLotPunkIds = ref<string[]>([])
 const newLotWeightPercents = ref<string[]>([])
-const minimumEth = ref('')
 
 watch(
   () => props.offer,
@@ -441,7 +429,6 @@ watch(
     const firstPinned = offer.slots[0]?.includeIds[0]
     listedPunkId.value = firstPinned === undefined ? '' : String(firstPinned)
     expectedListingEth.value = formatEther(offer.amountWei)
-    minimumEth.value = formatEther(offer.amountWei)
     newLotPunkIds.value = offer.slots.map((slot) =>
       slot.includeIds[0] === undefined ? '' : String(slot.includeIds[0]),
     )
@@ -453,7 +440,6 @@ watch(
 )
 
 const parsedAmountWei = computed(() => parsePositiveEth(amountEth.value))
-const minimumWei = computed(() => parsePositiveEth(minimumEth.value))
 const expectedListingWei = computed(() =>
   parsePositiveEth(expectedListingEth.value),
 )
@@ -563,8 +549,6 @@ const canCreateLotFromOffer = computed(
     newLotItemsComplete.value &&
     newLotPunksMatch.value &&
     newLotWeightsValid.value &&
-    !!minimumWei.value &&
-    props.offer.amountWei >= minimumWei.value &&
     v1ActionsAllowed.value,
 )
 const canCreateLotAndAccept = computed(
@@ -656,13 +640,12 @@ function actAcceptListed() {
 }
 
 function actCreateLotAndAccept() {
-  const minAmountWei = minimumWei.value
-  if (!canCreateLotAndAccept.value || !minAmountWei) return
+  if (!canCreateLotAndAccept.value) return
   runPlan(
     sdk.value.offers.prepareCreateLotAndAccept({
       items: newLotWriteItems.value,
       offerId: props.offer.id,
-      minAmountWei,
+      minAmountWei: props.offer.amountWei,
     }),
     `Create lot and accept offer #${props.offer.id}`,
     `Create a matching lot and settle it instantly at ${formatEther(props.offer.amountWei)} ETH.`,
@@ -671,13 +654,12 @@ function actCreateLotAndAccept() {
 }
 
 function actCreateLotAndStartAuction() {
-  const minAmountWei = minimumWei.value
-  if (!canCreateLotFromOffer.value || !minAmountWei) return
+  if (!canCreateLotFromOffer.value) return
   runPlan(
     sdk.value.offers.prepareCreateLotAndStartAuction({
       items: newLotWriteItems.value,
       offerId: props.offer.id,
-      minAmountWei,
+      minAmountWei: props.offer.amountWei,
     }),
     `Create lot and start auction from offer #${props.offer.id}`,
     'Create a matching lot and start a 24-hour auction with this offer as the opening bid.',
