@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { WRAPPED_BG, UNWRAPPED_BG } from '~/composables/useWrappedPunks'
+import { punkSpriteBackgroundStyle } from '~/utils/punkSprites'
 
 const props = withDefaults(
   defineProps<{
@@ -50,7 +51,6 @@ const props = withDefaults(
   { size: 56, gap: 2, overscan: 6 },
 )
 
-const SPRITE_COLS = 100
 const PRICE_LABEL_HEIGHT = 16
 
 const { isWrapped } = useWrappedPunks()
@@ -129,8 +129,6 @@ const visible = computed(() => {
 })
 
 function cellStyle(c: { id: number; row: number; col: number }) {
-  const spriteRow = Math.floor(c.id / SPRITE_COLS)
-  const spriteCol = c.id % SPRITE_COLS
   const px = props.size
   const style: Record<string, string> = {
     top: `${c.row * rowStep.value}px`,
@@ -138,9 +136,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     width: `${px}px`,
     height: `${props.size + priceRowHeight.value}px`,
     '--price-label-height': `${PRICE_LABEL_HEIGHT}px`,
-    backgroundImage: "url('https://cdn.punksmarket.app/punks-glitched.png')",
-    backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
-    backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
+    ...punkSpriteBackgroundStyle(c.id, px),
   }
   style.backgroundColor = isWrapped(c.id) ? WRAPPED_BG : UNWRAPPED_BG
   return style

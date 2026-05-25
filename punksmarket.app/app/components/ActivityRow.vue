@@ -80,6 +80,7 @@
 import type { ActivityEvent } from '~/composables/useActivityFeed'
 import { WRAPPED_BG, UNWRAPPED_BG } from '~/composables/useWrappedPunks'
 import { txUrl } from '~/utils/explorer'
+import { punkSpriteBackgroundStyle } from '~/utils/punkSprites'
 
 const props = defineProps<{ event: ActivityEvent }>()
 
@@ -95,20 +96,15 @@ const sameParties = computed(
     props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
 
-const SPRITE_COLS = 100
 const SPRITE_SIZE = 44
 
 const spriteStyle = computed(() => {
   const id = punkId.value
   if (id === undefined) return undefined
-  const spriteRow = Math.floor(id / SPRITE_COLS)
-  const spriteCol = id % SPRITE_COLS
   const style: Record<string, string> = {
     width: `${SPRITE_SIZE}px`,
     height: `${SPRITE_SIZE}px`,
-    backgroundImage: "url('https://cdn.punksmarket.app/punks-glitched.png')",
-    backgroundSize: `${SPRITE_COLS * SPRITE_SIZE}px ${SPRITE_COLS * SPRITE_SIZE}px`,
-    backgroundPosition: `-${spriteCol * SPRITE_SIZE}px -${spriteRow * SPRITE_SIZE}px`,
+    ...punkSpriteBackgroundStyle(id, SPRITE_SIZE),
   }
   /// `event.wrapped` is false for `wrap`/`unwrap` rows (the kind label
   /// already says so); tint `wrap` rows too since the punk is now wrapped.

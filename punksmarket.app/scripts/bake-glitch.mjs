@@ -58,6 +58,76 @@ function overlayWhite(c255) {
   return c255 <= 127 ? 2 * c255 : 255
 }
 
+function clamp01(n) {
+  return Math.min(1, Math.max(0, n))
+}
+
+function requiredAlpha(base, final) {
+  const b = base / 255
+  const f = final / 255
+  if (f === b) return 0
+  if (f > b) return b >= 1 ? 1 : (f - b) / (1 - b)
+  return b <= 0 ? 1 : (b - f) / b
+}
+
+// Derive a source-over layer that reconstructs `glitched` above `base` while
+// leaving unchanged base-punk pixels out of the baked PNG.
+function writeOverlayPixel(base, glitched, overlay, idx) {
+  const bR = base[idx]
+  const bG = base[idx + 1]
+  const bB = base[idx + 2]
+  const bA = base[idx + 3] / 255
+  const gR = glitched[idx]
+  const gG = glitched[idx + 1]
+  const gB = glitched[idx + 2]
+  const gA = glitched[idx + 3] / 255
+
+  if (
+    bR === gR &&
+    bG === gG &&
+    bB === gB &&
+    base[idx + 3] === glitched[idx + 3]
+  ) {
+    overlay[idx] = 0
+    overlay[idx + 1] = 0
+    overlay[idx + 2] = 0
+    overlay[idx + 3] = 0
+    return
+  }
+
+  let oA
+  if (bA < 1) {
+    oA = (gA - bA) / (1 - bA)
+  } else {
+    oA = Math.max(
+      requiredAlpha(bR, gR),
+      requiredAlpha(bG, gG),
+      requiredAlpha(bB, gB),
+    )
+  }
+
+  oA = clamp01(oA)
+  if (oA <= 0) {
+    overlay[idx] = 0
+    overlay[idx + 1] = 0
+    overlay[idx + 2] = 0
+    overlay[idx + 3] = 0
+    return
+  }
+
+  const bPremul = bA * (1 - oA)
+  overlay[idx] = Math.round(
+    clamp01(((gR / 255) * gA - (bR / 255) * bPremul) / oA) * 255,
+  )
+  overlay[idx + 1] = Math.round(
+    clamp01(((gG / 255) * gA - (bG / 255) * bPremul) / oA) * 255,
+  )
+  overlay[idx + 2] = Math.round(
+    clamp01(((gB / 255) * gA - (bB / 255) * bPremul) / oA) * 255,
+  )
+  overlay[idx + 3] = Math.round(oA * 255)
+}
+
 const srcBuf = await readFile(SRC_PATH)
 const src = PNG.sync.read(srcBuf)
 if (src.width !== SIZE || src.height !== SIZE) {
@@ -66,8 +136,8 @@ if (src.width !== SIZE || src.height !== SIZE) {
   )
 }
 
-const out = new PNG({ width: SIZE, height: SIZE })
-out.data.fill(0)
+const glitched = new PNG({ width: SIZE, height: SIZE })
+glitched.data.fill(0)
 
 const SLICE_ALPHA = 0.19
 
@@ -95,7 +165,7 @@ for (let row = 0; row < SPRITE_COLS; row++) {
           if (nx < baseX || nx >= baseX + TILE) continue
           if (ny < baseY || ny >= baseY + TILE) continue
           const oIdx = (ny * SIZE + nx) * 4
-          paintOver(out.data, oIdx, f.r, f.g, f.b, (sa / 255) * f.a)
+          paintOver(glitched.data, oIdx, f.r, f.g, f.b, (sa / 255) * f.a)
         }
       }
     }
@@ -108,7 +178,7 @@ for (let row = 0; row < SPRITE_COLS; row++) {
         if (sa === 0) continue
         const oIdx = sIdx
         paintOver(
-          out.data,
+          glitched.data,
           oIdx,
           src.data[sIdx],
           src.data[sIdx + 1],
@@ -128,25 +198,25 @@ for (let row = 0; row < SPRITE_COLS; row++) {
         for (let tx = 0; tx < TILE; tx++) {
           const x = baseX + tx
           const oIdx = (y * SIZE + x) * 4
-          const bA = out.data[oIdx + 3] / 255
+          const bA = glitched.data[oIdx + 3] / 255
           if (bA > 0) {
-            const ovR = overlayWhite(out.data[oIdx])
-            const ovG = overlayWhite(out.data[oIdx + 1])
-            const ovB = overlayWhite(out.data[oIdx + 2])
-            out.data[oIdx] = Math.round(
-              out.data[oIdx] * (1 - SLICE_ALPHA) + ovR * SLICE_ALPHA,
+            const ovR = overlayWhite(glitched.data[oIdx])
+            const ovG = overlayWhite(glitched.data[oIdx + 1])
+            const ovB = overlayWhite(glitched.data[oIdx + 2])
+            glitched.data[oIdx] = Math.round(
+              glitched.data[oIdx] * (1 - SLICE_ALPHA) + ovR * SLICE_ALPHA,
             )
-            out.data[oIdx + 1] = Math.round(
-              out.data[oIdx + 1] * (1 - SLICE_ALPHA) + ovG * SLICE_ALPHA,
+            glitched.data[oIdx + 1] = Math.round(
+              glitched.data[oIdx + 1] * (1 - SLICE_ALPHA) + ovG * SLICE_ALPHA,
             )
-            out.data[oIdx + 2] = Math.round(
-              out.data[oIdx + 2] * (1 - SLICE_ALPHA) + ovB * SLICE_ALPHA,
+            glitched.data[oIdx + 2] = Math.round(
+              glitched.data[oIdx + 2] * (1 - SLICE_ALPHA) + ovB * SLICE_ALPHA,
             )
           } else {
-            out.data[oIdx] = 255
-            out.data[oIdx + 1] = 255
-            out.data[oIdx + 2] = 255
-            out.data[oIdx + 3] = Math.round(SLICE_ALPHA * 255)
+            glitched.data[oIdx] = 255
+            glitched.data[oIdx + 1] = 255
+            glitched.data[oIdx + 2] = 255
+            glitched.data[oIdx + 3] = Math.round(SLICE_ALPHA * 255)
           }
         }
       }
@@ -154,6 +224,12 @@ for (let row = 0; row < SPRITE_COLS; row++) {
   }
 }
 
-const buf = PNG.sync.write(out)
+const overlay = new PNG({ width: SIZE, height: SIZE })
+overlay.data.fill(0)
+for (let idx = 0; idx < src.data.length; idx += 4) {
+  writeOverlayPixel(src.data, glitched.data, overlay.data, idx)
+}
+
+const buf = PNG.sync.write(overlay)
 await writeFile(DST_PATH, buf)
-console.log(`Wrote ${DST_PATH} (${buf.byteLength} bytes)`)
+console.log(`Wrote ${DST_PATH} glitch overlay (${buf.byteLength} bytes)`)
