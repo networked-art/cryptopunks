@@ -23,5 +23,6 @@ WORKDIR /app
 COPY --from=build /app/punksmarket.app/.output/ ./
 
 ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node", "/app/server/index.mjs"]

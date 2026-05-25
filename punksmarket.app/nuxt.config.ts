@@ -1,11 +1,15 @@
 const siteDescription = 'Native-ETH market for the broken C̙ͦ͌ͣ̀ry̰͔̹̓̋̂pṫ̠͜ó̩͓Pͬ̋ù̓̽̂ͥ͟͝n_̹̜̳ͭ̀k͇̤̲̼͈̼̍s̸̨̗̍̀̎.'
 
+// Matches the gate in `app.config.ts` — dev-only entries only ship when
+// Nuxt explicitly sets NODE_ENV=development (via `overrideEnv` in `nuxt dev`).
+const isDev = process.env.NODE_ENV === 'development'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   extends: ['@1001-digital/layers.evm'],
   // ssr: false,
 
-  devtools: false,
+  devtools: { enabled: true },
 
   app: {
     head: {
@@ -57,6 +61,9 @@ export default defineNuxtConfig({
           // also prefixes this path with `publicUrl` to make it absolute,
           // since viem/walletconnect both require absolute URLs.
           mainnet: { rpcs: '/api/rpc' },
+          // Dev-only: hardhat fork RPC, same proxy. `NUXT_RPC_URL` in the
+          // local `.env` decides what the proxy forwards to.
+          ...(isDev ? { localhost: { rpcs: '/api/rpc' } } : {}),
         },
       },
     },

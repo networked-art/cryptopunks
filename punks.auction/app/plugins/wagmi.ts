@@ -28,28 +28,18 @@ export default defineNuxtPlugin({
     const toAbsolute = (path: string) =>
       publicUrl ? new URL(path, publicUrl).toString() : path
 
-    // Dev-only `localhost` chain so a browser wallet on the hardhat fork
-    // (chainId 31337) can issue writes. Gated on `import.meta.dev` so it
-    // never reaches production builds. Both reads still flow through the
-    // same `/api/rpc` proxy — what the proxy forwards to is controlled by
-    // `NUXT_RPC_URL` in the .env.
-    const baseAppChains = appConfig.evm?.chains ?? {}
-    const baseRuntimeChains = publicEvm.chains
-    const finalAppChains = import.meta.dev
-      ? { ...baseAppChains, localhost: { id: 31337 } }
-      : baseAppChains
-    const finalPublicChains = import.meta.dev
-      ? { ...baseRuntimeChains, localhost: { rpcs: '/api/rpc' } }
-      : baseRuntimeChains
-
-    // All configured chains route their reads through the same upstream RPC.
+    // Override each chain's reads to flow through the same upstream RPC.
     // Server: hit `rpcUrl` directly (Node fetch can't resolve relative URLs
     // and self-roundtripping `/api/rpc` is pointless). Client: hit the
     // same-origin `/api/rpc` proxy (absolute, so viem and walletconnect
     // accept it). Wallet writes are routed by wagmi's connector transport,
     // not by these entries.
+    //
+    // The chain list itself (including the dev-only `localhost` entry) is
+    // sourced from `app.config.ts` and `nuxt.config.ts`, gated there on
+    // `process.env.NODE_ENV === 'development'`.
     const runtimeChains: Record<string, { rpcs?: string }> = Object.fromEntries(
-      Object.entries(finalPublicChains).map(([key, cfg]) => [
+      Object.entries(publicEvm.chains).map(([key, cfg]) => [
         key,
         {
           ...cfg,
@@ -66,7 +56,7 @@ export default defineNuxtPlugin({
       title: appConfig.evm?.title || 'EVM Layer',
       appLogoUrl: appConfig.evm?.appLogoUrl,
       defaultChain: appConfig.evm?.defaultChain || 'mainnet',
-      chains: finalAppChains,
+      chains: appConfig.evm?.chains ?? {},
       runtimeChains,
       walletConnectProjectId: publicEvm.walletConnectProjectId || undefined,
       ensMode: appConfig.evm?.ens?.mode || 'indexer',

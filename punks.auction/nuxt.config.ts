@@ -1,12 +1,16 @@
 const siteDescription =
   'Zero-fee auction house for CryptoPunks — 24h auctions, multi-Punk lots, and native-ETH purchase offers.'
 
+// Matches the gate in `app.config.ts` — dev-only entries only ship when
+// Nuxt explicitly sets NODE_ENV=development (via `overrideEnv` in `nuxt dev`).
+const isDev = process.env.NODE_ENV === 'development'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   extends: ['@1001-digital/layers.evm'],
   // ssr: false,
 
-  devtools: false,
+  devtools: { enabled: true },
 
   app: {
     head: {
@@ -62,6 +66,9 @@ export default defineNuxtConfig({
           // also prefixes this path with `publicUrl` to make it absolute,
           // since viem/walletconnect both require absolute URLs.
           mainnet: { rpcs: '/api/rpc' },
+          // Dev-only: hardhat fork RPC, same proxy. `NUXT_RPC_URL` in the
+          // local `.env` decides what the proxy forwards to.
+          ...(isDev ? { localhost: { rpcs: '/api/rpc' } } : {}),
         },
       },
     },
