@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <section class="block market-block">
-      <h2 class="block-title eyebrow">Canonical market</h2>
+      <h2 class="block-title eyebrow">Marketplace Status</h2>
 
       <p
         v-if="pending && !listing && !bid"
