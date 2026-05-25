@@ -38,7 +38,6 @@
   }
 
   &.small {
-    padding: 0 var(--size-1);
     min-block-size: var(--size-4);
     font-size: var(--font-xs) !important;
     align-items: center;

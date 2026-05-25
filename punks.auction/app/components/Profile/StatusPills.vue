@@ -12,12 +12,20 @@
               class="pill"
               :class="{ active: pill.active }"
             >
-              <span
-                class="dot"
-                :class="{ active: pill.active }"
+              <Icon
+                v-if="pill.active"
+                name="lucide:check"
+                class="pill-icon check"
                 aria-hidden="true"
               />
-              {{ pill.label }}
+              <span
+                v-else
+                class="dot"
+                aria-hidden="true"
+              />
+              <span>
+                {{ pill.label }}
+              </span>
             </Tag>
           </template>
 
@@ -112,10 +120,11 @@ const pills = computed<Pill[]>(() => [
 }
 
 .pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-2);
   cursor: default;
+}
+
+.pill :deep(> span) {
+  gap: var(--size-2);
 }
 
 .dot {
@@ -126,8 +135,8 @@ const pills = computed<Pill[]>(() => [
   flex: 0 0 auto;
 }
 
-.dot.active {
-  background: var(--button-primary-color);
+.pill-icon.check {
+  flex: 0 0 auto;
 }
 
 .tooltip-body {
