@@ -9,6 +9,10 @@
           class="swatch"
           :to="{ path: '/punks', query: { q: `#${c.hex}` } }"
           :style="{ background: c.css }"
+          @pointerenter="highlightColor(c.css)"
+          @pointerleave="highlightColor(null)"
+          @focus="highlightColor(c.css)"
+          @blur="highlightColor(null)"
         />
       </template>
       {{ c.label }}
@@ -18,6 +22,9 @@
 
 <script setup lang="ts">
 const props = defineProps<{ punkId: number }>()
+const emit = defineEmits<{
+  highlightColor: [color: string | null]
+}>()
 
 const offline = usePunksOffline()
 const summary = computed(() =>
@@ -51,6 +58,10 @@ const colors = computed(() =>
 
 function stripHexPrefix(hex: string) {
   return hex.replace(/^0x/i, '')
+}
+
+function highlightColor(color: string | null) {
+  emit('highlightColor', color)
 }
 </script>
 

@@ -6,6 +6,7 @@
           <PunkImage
             :punk-id="punkId"
             :standard="standard"
+            :highlighted-color="highlightedColor"
             size="100%"
           />
         </div>
@@ -32,6 +33,7 @@ import type { TokenStandardValue } from '~/utils/auction'
 const props = defineProps<{
   punkId: number
   standard: TokenStandardValue
+  highlightedColor?: string | null
 }>()
 
 const { backgroundForPunk } = usePunkBackgrounds()

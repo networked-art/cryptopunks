@@ -37,7 +37,10 @@
       </li>
       <li class="colors-row">
         <span class="trait-kind eyebrow">Palette</span>
-        <PunkColors :punk-id="punkId" />
+        <PunkColors
+          :punk-id="punkId"
+          @highlight-color="emit('highlightColor', $event)"
+        />
       </li>
     </ul>
   </section>
@@ -52,6 +55,9 @@ const props = defineProps<{
   punkId: number
   summary: PunkSummary
   traits: PunkDisplayTrait[]
+}>()
+const emit = defineEmits<{
+  highlightColor: [color: string | null]
 }>()
 
 const offline = usePunksOffline()

@@ -3,6 +3,7 @@
     <PunkDetailStage
       :punk-id="punkId"
       :standard="standard"
+      :highlighted-color="highlightedColor"
     />
 
     <section class="panel">
@@ -15,6 +16,7 @@
           :punk-id="punkId"
           :summary="summary"
           :traits="displayTraits"
+          @highlight-color="setHighlightedColor"
         />
         <PunkDetailOwner
           :key="`owner-${marketChangeKey}`"
@@ -55,9 +57,14 @@ const summary = computed(() =>
 )
 const { displayTraits } = usePunkDisplayTraits(summary)
 const marketChangeKey = ref(0)
+const highlightedColor = ref<string | null>(null)
 
 function onMarketChanged() {
   marketChangeKey.value += 1
+}
+
+function setHighlightedColor(color: string | null) {
+  highlightedColor.value = color
 }
 </script>
 
