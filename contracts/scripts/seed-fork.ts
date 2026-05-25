@@ -1,5 +1,13 @@
 import { network } from 'hardhat'
-import { getAddress, isAddress, parseAbi, type Address, type Hex } from 'viem'
+import {
+  getAddress,
+  isAddress,
+  numberToHex,
+  parseAbi,
+  parseEther,
+  type Address,
+  type Hex,
+} from 'viem'
 import { normalize } from 'viem/ens'
 
 const CRYPTOPUNKS_V1 = getAddress(
@@ -93,6 +101,16 @@ async function main() {
       method: string
       params: unknown[]
     }) => Promise<T>)({ method, params })
+
+  // Fund the recipient with 200 ETH so they have spending room for any local
+  // testing (auctions, listings, gas) without juggling whatever balance
+  // mainnet happened to have at fork block.
+  const RECIPIENT_ETH = 200n
+  await rpc('hardhat_setBalance', [
+    recipient,
+    numberToHex(parseEther(RECIPIENT_ETH.toString())),
+  ])
+  console.log(`Funded recipient with ${RECIPIENT_ETH} ETH`)
 
   const impersonate = async (addr: Address) => {
     await rpc('hardhat_impersonateAccount', [addr])
