@@ -13,7 +13,7 @@
           :disabled="!canToggleCriteria"
           @click="selectCurrentCriteria"
         >
-          Set
+          Select all
         </button>
       </template>
     </OfferPlaceSearchToolbar>
