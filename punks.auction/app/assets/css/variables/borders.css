@@ -2,7 +2,7 @@
   --border-color: var(--gray-z-2);
   --border-color-highlight: var(--primary);
 
-  --border-radius-sm: 3px;
-  --border-radius: 3px;
-  --border-radius-lg: 6px;
+  --border-radius-sm: 0;
+  --border-radius: 0;
+  --border-radius-lg: 0;
 }
