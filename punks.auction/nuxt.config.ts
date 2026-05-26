@@ -1,41 +1,9 @@
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
-
 const siteDescription =
   'Zero-fee auction house for CryptoPunks — 24h auctions, multi-Punk lots, and native-ETH purchase offers.'
 
 // Matches the gate in `app.config.ts` — dev-only entries only ship when
 // Nuxt explicitly sets NODE_ENV=development (via `overrideEnv` in `nuxt dev`).
 const isDev = process.env.NODE_ENV === 'development'
-const require = createRequire(import.meta.url)
-const layerRequire = createRequire(
-  require.resolve('@1001-digital/layers.evm/package.json'),
-)
-const componentsOriginal = layerRequire.resolve('@1001-digital/components')
-const componentsShim = fileURLToPath(
-  new URL('./app/shims/1001-components.ts', import.meta.url),
-)
-const componentsAlias = '@1001-digital/components-original'
-const loadingOverrideAliases = [
-  { find: /^@1001-digital\/components$/, replacement: componentsShim },
-  {
-    find: /^@1001-digital\/components-original$/,
-    replacement: componentsOriginal,
-  },
-]
-
-type ViteAlias =
-  | Record<string, string>
-  | { find: string | RegExp; replacement: string }[]
-
-function normalizeViteAliases(alias: ViteAlias | undefined) {
-  return Array.isArray(alias)
-    ? alias
-    : Object.entries(alias ?? {}).map(([find, replacement]) => ({
-        find,
-        replacement,
-      }))
-}
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -43,10 +11,6 @@ export default defineNuxtConfig({
   // ssr: false,
 
   devtools: { enabled: true },
-
-  alias: {
-    [componentsAlias]: componentsOriginal,
-  },
 
   app: {
     head: {
@@ -122,23 +86,6 @@ export default defineNuxtConfig({
         throw new Error(
           "[nuxt.config] Layer's wagmi plugin not found; update the regex to match the installed @1001-digital/layers.evm path.",
         )
-      }
-    },
-    'vite:extendConfig'(config) {
-      const mutableConfig = config as {
-        resolve?: {
-          alias?: ViteAlias
-        }
-      }
-      mutableConfig.resolve = {
-        ...mutableConfig.resolve,
-        // EVM layer components import `Loading` from the package export, which
-        // bypasses Nuxt component shadowing. Keep this alias exact so deep
-        // imports like `@1001-digital/components/client-only` still resolve.
-        alias: [
-          ...loadingOverrideAliases,
-          ...normalizeViteAliases(mutableConfig.resolve?.alias),
-        ],
       }
     },
   },
