@@ -56,7 +56,7 @@ const targetOptions: {
   label: string
 }[] = [
   { value: 'exact', label: 'Specific Punk' },
-  { value: 'traits', label: 'Traits' },
+  { value: 'traits', label: 'Trait offer' },
   { value: 'any', label: 'Collection offer' },
 ]
 
