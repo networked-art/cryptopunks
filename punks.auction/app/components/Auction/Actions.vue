@@ -12,6 +12,13 @@
         </p>
       </div>
 
+      <p
+        v-else-if="isLive && isHighestBidder"
+        class="block-note"
+      >
+        You are the highest bidder.
+      </p>
+
       <div
         v-else-if="isLive"
         class="action-stack"
@@ -128,6 +135,12 @@ const status = computed<AuctionStatus>(() =>
 )
 const isLive = computed(() => status.value === 'live')
 const canSettle = computed(() => status.value === 'ended')
+const isHighestBidder = computed(() => {
+  const bidder = props.auction.latestBidder
+  const account = address.value
+  if (!account || !bidder) return false
+  return account.toLowerCase() === bidder.toLowerCase()
+})
 
 const minimumBidEth = computed(() => formatEther(props.minimumBidWei))
 const bidEth = ref('')
