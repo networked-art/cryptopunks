@@ -1,0 +1,351 @@
+import { refDebounced, useMediaQuery } from '@vueuse/core'
+import type { PunkQuery } from '@networked-art/punks-sdk'
+import { isAddress, type Address } from 'viem'
+import {
+  computed,
+  ref,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+} from 'vue'
+
+type PunkSearchOptions = {
+  baseQuery?: MaybeRefOrGetter<PunkQuery | undefined>
+  syncRoute?: boolean
+  enableListedFilter?: boolean
+  enableMarketQualifiers?: boolean
+  enableOwnerSearch?: boolean
+  enableEnterNavigation?: boolean
+  initialText?: string
+}
+
+const LISTED_QUALIFIER =
+  /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
+const BID_QUALIFIER =
+  /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
+const LEGACY_WRAPPED_QUALIFIER =
+  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+legacy)(?=$|[\s,])/gi
+const MODERN_WRAPPED_QUALIFIER =
+  /(^|[\s,])(?:modern\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+modern)(?=$|[\s,])/gi
+const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
+const ENS_HANDLE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i
+const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
+
+export function usePunkSearch(options: PunkSearchOptions = {}) {
+  const offline = usePunksOffline()
+  const route = options.syncRoute ? useRoute() : null
+  const router = useRouter()
+  const { marketStateLoaded, marketStateSets, listedPrices } =
+    usePunkMarketState()
+
+  const enableListedFilter = options.enableListedFilter ?? true
+  const enableMarketQualifiers = options.enableMarketQualifiers ?? true
+  const enableOwnerSearch = options.enableOwnerSearch ?? true
+  const enableEnterNavigation = options.enableEnterNavigation ?? true
+
+  const baseQuery = computed(() => toValue(options.baseQuery))
+  const text = ref(
+    options.initialText ??
+      (typeof route?.query.q === 'string' ? route.query.q : ''),
+  )
+  const toggleListed = ref(enableListedFilter && route?.query.sale === '1')
+
+  const debouncedText = refDebounced(text, 80)
+  const qualifiers = computed(() =>
+    extractQualifiers(debouncedText.value, {
+      enableMarketQualifiers,
+    }),
+  )
+  const listedActive = computed(
+    () =>
+      enableListedFilter &&
+      (qualifiers.value.listed || toggleListed.value),
+  )
+
+  if (route) {
+    let lastSyncedQ = typeof route.query.q === 'string' ? route.query.q : ''
+
+    watch(debouncedText, (next) => {
+      const q = next.trim()
+      if (q === lastSyncedQ) return
+      lastSyncedQ = q
+      const { q: _omit, ...rest } = route.query
+      router.replace({ query: q ? { ...rest, q } : rest })
+    })
+
+    watch(
+      () => route.query.q,
+      (q) => {
+        const next = typeof q === 'string' ? q : ''
+        if (next === lastSyncedQ) return
+        lastSyncedQ = next
+        text.value = next
+      },
+    )
+
+    if (enableListedFilter) {
+      let lastSyncedSale = route.query.sale === '1'
+
+      watch(toggleListed, (on) => {
+        if (on === lastSyncedSale) return
+        lastSyncedSale = on
+        const { sale: _omit, ...rest } = route.query
+        router.replace({ query: on ? { ...rest, sale: '1' } : rest })
+      })
+
+      watch(
+        () => route.query.sale,
+        (s) => {
+          const next = s === '1'
+          if (next === lastSyncedSale) return
+          lastSyncedSale = next
+          toggleListed.value = next
+        },
+      )
+    }
+  }
+
+  const isMobileSearch = useMediaQuery('(max-width: 640px)')
+  const placeholder = computed(() =>
+    isMobileSearch.value
+      ? 'HOODIE, 2 COLORS, ...'
+      : 'Try hoodie, 2 colors, vault.eth, #1234',
+  )
+
+  const ownerHandle = computed(() =>
+    enableOwnerSearch ? detectOwnerHandle(debouncedText.value) : null,
+  )
+  const ensIdentifier = computed(() => {
+    const handle = ownerHandle.value
+    if (!handle || isAddress(handle)) return undefined
+    return handle
+  })
+  const { data: ensData } = useEns(ensIdentifier)
+  const ownerAddress = computed<Address | undefined>(() => {
+    const handle = ownerHandle.value
+    if (!handle) return undefined
+    if (isAddress(handle)) return handle as Address
+    const resolved = ensData.value?.address
+    return resolved && isAddress(resolved) ? (resolved as Address) : undefined
+  })
+  const { ids: ownedIds, loading: ownedLoading } = useOwnedPunks(
+    () => ownerAddress.value,
+  )
+
+  const parsedText = computed(() => {
+    const raw = qualifiers.value.text.trim()
+    if (!raw) return { text: undefined, colors: undefined }
+    const colors = raw.match(HEX_COLOR_TOKEN)
+    const remaining = raw
+      .replace(HEX_COLOR_TOKEN, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return {
+      text: remaining || undefined,
+      colors: colors?.length ? colors : undefined,
+    }
+  })
+
+  const criteriaQuery = computed<PunkQuery>(() => {
+    const ownerMode = !!ownerHandle.value
+    return {
+      ...(baseQuery.value ?? {}),
+      text: ownerMode ? undefined : parsedText.value.text,
+      colors:
+        ownerMode || !parsedText.value.colors
+          ? undefined
+          : { required: parsedText.value.colors },
+    }
+  })
+
+  const offerQuery = computed<PunkQuery>(() =>
+    toOfferCompatibleQuery(criteriaQuery.value),
+  )
+
+  const query = computed<PunkQuery>(() => {
+    const ownerMode = !!ownerHandle.value
+
+    let ids: Iterable<number> | undefined = baseQuery.value?.ids
+    if (ownerMode) {
+      if (!ownerAddress.value || ownedLoading.value) {
+        ids = []
+      } else {
+        ids = intersectIds(ids, ownedIds.value)
+      }
+    }
+
+    if (enableMarketQualifiers && marketStateLoaded.value) {
+      if (qualifiers.value.listed) {
+        ids = intersectIds(ids, marketStateSets.value.listed)
+      }
+      if (qualifiers.value.activeBids) {
+        ids = intersectIds(ids, marketStateSets.value.active_bids)
+      }
+      if (qualifiers.value.legacyWrapped) {
+        ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
+      }
+      if (qualifiers.value.modernWrapped) {
+        ids = intersectIds(ids, marketStateSets.value.wrapped)
+      }
+      if (qualifiers.value.wrapped) {
+        ids = intersectIds(
+          ids,
+          unionIds(
+            marketStateSets.value.wrapped,
+            marketStateSets.value.legacy_wrapped,
+          ),
+        )
+      }
+    }
+
+    return {
+      ...criteriaQuery.value,
+      ids,
+      sort: 'id',
+    }
+  })
+
+  const ids = computed(() => {
+    let result: number[]
+    try {
+      result = offline.search(query.value)
+    } catch {
+      return []
+    }
+    if (!listedActive.value || !marketStateLoaded.value) return result
+    const prices = listedPrices.value
+    return [...result].sort(
+      (a, b) =>
+        (prices.get(a) ?? Number.POSITIVE_INFINITY) -
+        (prices.get(b) ?? Number.POSITIVE_INFINITY),
+    )
+  })
+
+  const counts = computed(() => ({
+    total: offline.dataset.count(baseQuery.value),
+    filtered: ids.value.length,
+  }))
+
+  function onEnter() {
+    if (!enableEnterNavigation) return
+    const handle = detectOwnerHandle(text.value)
+    if (handle) {
+      router.push(`/profile/${handle}`)
+      return
+    }
+    const id = Number(text.value.trim())
+    if (Number.isInteger(id) && id >= 0 && id <= 9999) {
+      router.push(`/punks/${id}`)
+      return
+    }
+    if (ids.value.length === 1) {
+      router.push(`/punks/${ids.value[0]}`)
+    }
+  }
+
+  function clearSearch() {
+    text.value = ''
+  }
+
+  return {
+    text,
+    debouncedText,
+    toggleListed,
+    listedActive,
+    placeholder,
+    ownerHandle,
+    ownerAddress,
+    query,
+    criteriaQuery,
+    offerQuery,
+    ids,
+    counts,
+    onEnter,
+    clearSearch,
+  }
+}
+
+function detectOwnerHandle(input: string): string | null {
+  const value = input.trim()
+  if (!value) return null
+  if (isAddress(value)) return value
+  if (ENS_HANDLE.test(value) && /\.eth$/i.test(value)) return value
+  return null
+}
+
+function extractQualifiers(
+  input: string,
+  options: { enableMarketQualifiers: boolean },
+) {
+  let listed = false
+  let activeBids = false
+  let wrapped = false
+  let legacyWrapped = false
+  let modernWrapped = false
+
+  const cleaned = options.enableMarketQualifiers
+    ? input
+        .replace(LEGACY_WRAPPED_QUALIFIER, (_match, prefix: string) => {
+          legacyWrapped = true
+          return prefix || ''
+        })
+        .replace(MODERN_WRAPPED_QUALIFIER, (_match, prefix: string) => {
+          modernWrapped = true
+          return prefix || ''
+        })
+        .replace(LISTED_QUALIFIER, (_match, prefix: string) => {
+          listed = true
+          return prefix || ''
+        })
+        .replace(BID_QUALIFIER, (_match, prefix: string) => {
+          activeBids = true
+          return prefix || ''
+        })
+        .replace(WRAPPED_QUALIFIER, (_match, prefix: string) => {
+          wrapped = true
+          return prefix || ''
+        })
+    : input
+
+  return {
+    text: normalizeQualifierText(cleaned),
+    listed,
+    activeBids,
+    wrapped,
+    legacyWrapped,
+    modernWrapped,
+  }
+}
+
+function normalizeQualifierText(input: string) {
+  return input
+    .replace(/\s*,\s*,+/g, ', ')
+    .replace(/(^[\s,]+|[\s,]+$)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function intersectIds(
+  baseIds: Iterable<number> | undefined,
+  filterIds: Iterable<number>,
+) {
+  if (!baseIds) return Array.from(filterIds)
+  const filter = new Set(filterIds)
+  return Array.from(baseIds).filter((id) => filter.has(id))
+}
+
+function unionIds(...groups: Iterable<number>[]) {
+  return new Set(groups.flatMap((group) => Array.from(group)))
+}
+
+function toOfferCompatibleQuery(query: PunkQuery): PunkQuery {
+  const {
+    ids: _ids,
+    excludeIds: _excludeIds,
+    offset: _offset,
+    limit: _limit,
+    sort: _sort,
+    ...offerQuery
+  } = query
+  return offerQuery
+}
