@@ -27,5 +27,8 @@ const model = defineModel<string>({ required: true })
   display: flex;
   flex-direction: column;
   gap: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
 }
 </style>

@@ -35,11 +35,13 @@ const model = defineModel<string>({ required: true })
   align-items: center;
   justify-self: end;
   gap: var(--size-3);
-  width: calc(var(--form-item-height) * 5);
-  min-height: var(--form-item-height);
+  width: calc(var(--form-item-height) * 3.5);
+  height: var(--form-item-height);
   padding-inline: var(--size-3);
-  border: var(--border);
-  background: var(--bg);
+  border: 0;
+  background: var(--tag-background);
+  box-shadow: 0 0 0 var(--border-width) var(--border-color);
+  box-sizing: border-box;
 }
 
 .amount-control input {
@@ -47,6 +49,7 @@ const model = defineModel<string>({ required: true })
   min-width: 0;
   border: 0;
   background: transparent;
+  color: var(--text);
   box-shadow: none;
   padding: 0;
   font-size: var(--font-sm);
@@ -59,7 +62,7 @@ const model = defineModel<string>({ required: true })
 }
 
 .amount-unit {
-  color: var(--text-muted);
+  color: var(--muted);
   font-size: var(--font-sm);
   text-transform: uppercase;
 }
