@@ -51,7 +51,9 @@
     <template v-if="!validId">
       Lot #{{ route.params.id }} does not exist. Lot ids start at 1.
     </template>
-    <template v-else-if="pending">Loading lot…</template>
+    <template v-else-if="pending">
+      <Spinner label="Loading lot" />
+    </template>
     <template v-else-if="!deployed">
       Lots appear once <code>PunksAuction</code> is deployed.
     </template>
