@@ -1,8 +1,6 @@
 <template>
   <ClientOnly>
     <section class="actions-panel">
-      <h2 class="block-title eyebrow">Actions</h2>
-
       <div class="action-block">
         <h3 class="action-title">Open as auction</h3>
         <p class="block-note muted">
@@ -274,7 +272,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   background: var(--bg-elevated);
 }
 
-.block-title,
 .block-note,
 .hint,
 .warn {

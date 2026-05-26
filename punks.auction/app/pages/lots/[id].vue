@@ -31,11 +31,15 @@
       @changed="onChanged"
     />
 
-    <LotActions
-      :lot="lot"
-      :matching-offers="matchingOffers"
-      @changed="onChanged"
-    />
+    <section class="actions-block">
+      <h2 class="block-title eyebrow">Actions</h2>
+
+      <LotActions
+        :lot="lot"
+        :matching-offers="matchingOffers"
+        @changed="onChanged"
+      />
+    </section>
 
     <LotDetailItems :items="lot.items" />
   </LotDetailShell>
@@ -152,6 +156,16 @@ useSeoMeta({
 .block-note {
   margin: 0;
   font-size: var(--font-sm);
+}
+
+.actions-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+
+.block-title {
+  margin: 0;
 }
 
 .facts {
