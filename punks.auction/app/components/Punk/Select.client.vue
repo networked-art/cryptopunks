@@ -257,13 +257,13 @@ onBeforeUnmount(() => {
 .cell.selected:hover,
 .cell.selected:focus-visible {
   z-index: 5;
-  box-shadow: inset 0 0 0 3px var(--accent-strong);
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
 
 .indicator {
   position: absolute;
-  inset-block-start: 4px;
-  inset-inline-end: 4px;
+  inset-block-start: 0px;
+  inset-inline-end: 0px;
   display: none;
   align-items: center;
   justify-content: center;
@@ -272,7 +272,6 @@ onBeforeUnmount(() => {
   background: var(--primary);
   color: white;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--background);
   font-size: 12px;
   line-height: 1;
   pointer-events: none;
