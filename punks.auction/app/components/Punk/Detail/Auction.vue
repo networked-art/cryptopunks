@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <section class="block">
-      <h2 class="block-title eyebrow">On the auction house</h2>
+      <h2 class="block-title eyebrow">Auction House Status</h2>
       <p
         v-if="!deployed"
         class="block-note muted"
