@@ -414,12 +414,22 @@ function actUnwrap() {
   min-width: 0;
 }
 
+.picker-preview :deep(.punk-thumb) {
+  border-radius: 0;
+}
+
 .picker-meta {
   display: flex;
   flex-direction: column;
   gap: var(--size-0);
   min-width: 0;
   font-size: var(--font-sm);
+}
+
+.picker-meta strong {
+  text-transform: uppercase;
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
 }
 
 .picker-meta .muted {
