@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="wrappedOwned.length"
+    v-if="wrappedOwned.length > 1"
     class="bulk-unwrap"
   >
     <p class="lead">
