@@ -232,7 +232,7 @@ function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
     input: { standard: slot.standard },
     summary: {
       label,
-      title: 'Any Punk',
+      title: 'Collection offer',
       detail: '',
       targetMode: 'any',
       previewIds: [],

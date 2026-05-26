@@ -30,11 +30,6 @@
       v-model:exclude-ids="traitExcludeIds"
       :size="size"
     />
-
-    <OfferPlaceAnyTarget
-      v-else
-      :size="size"
-    />
   </div>
 </template>
 
@@ -61,8 +56,8 @@ const targetOptions: {
   label: string
 }[] = [
   { value: 'exact', label: 'Specific Punk' },
-  { value: 'any', label: 'Any Punk' },
   { value: 'traits', label: 'Traits' },
+  { value: 'any', label: 'Collection offer' },
 ]
 
 const targetMode = computed({

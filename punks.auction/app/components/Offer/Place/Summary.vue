@@ -44,6 +44,7 @@
         </div>
 
         <LazyPunkGrid
+          v-if="slotPreviewIds(slot).length"
           class="slot-preview"
           :ids="slotPreviewIds(slot)"
           :size="slotPreviewSize"
@@ -77,7 +78,6 @@ import type {
   PlaceOfferDraft,
   PlaceOfferSlotSummary,
 } from '~/composables/usePlaceOfferDraft'
-import { ALL_PUNK_IDS } from '~/utils/punkIds'
 
 const props = withDefaults(
   defineProps<{
@@ -117,7 +117,7 @@ const summaryPreviewIds = computed(() =>
 )
 
 function slotPreviewIds(slot: PlaceOfferSlotSummary) {
-  return slot.targetMode === 'any' ? ALL_PUNK_IDS : slot.previewIds
+  return slot.previewIds
 }
 </script>
 
