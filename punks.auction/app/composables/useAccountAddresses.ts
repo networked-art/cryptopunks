@@ -1,35 +1,36 @@
-import {
-  punkVaultFactoryAbi,
-  stashFactoryAbi,
-  wrappedPunksAbi,
-} from '@networked-art/punks-sdk'
 import type { Address } from 'viem'
-import {
-  PUNKS_VAULT_FACTORY_ADDRESS,
-  STASH_FACTORY_ADDRESS,
-  WRAPPED_PUNKS_ADDRESS,
-} from '~/utils/addresses'
-
-const ZERO = '0x0000000000000000000000000000000000000000'
+import { queryIndexer } from '~/utils/indexer'
 
 /**
- * Resolves the per-user contract addresses associated with `account` by
- * reading the factories on-chain. We deliberately do **not** trust the
- * indexer here — the deterministic vault and stash addresses are pure view
- * functions on their respective factories, so the chain is the cheapest
- * source of truth and never wrong.
- *
- *   - `vault`        — `PunksVaultFactory.predictVault(user)`
- *   - `stash`        — `StashFactory.stashAddressFor(user)`
- *   - `wrapperProxy` — `WrappedPunks.proxyInfo(user)` (null when unregistered)
- *
- * `*Deployed` flags reflect bytecode presence at the predicted address.
+ * Per-EOA account state — vault, stash and wrapper-proxy addresses plus their
+ * deployment flags — sourced from the indexer's `account(address:)` GraphQL
+ * query. Components that *interact* with these contracts (e.g. the stash
+ * deposit/reclaim UI) should read chain state directly via the SDK so they
+ * keep working through indexer downtime; this composable is for display.
  */
+const ACCOUNT_QUERY = `
+  query AccountDetails($address: String!) {
+    account(address: $address) {
+      vault
+      stash
+      vault_deployed
+      stash_deployed
+      user_proxy
+    }
+  }
+`
+
+type AccountRow = {
+  vault: string | null
+  stash: string | null
+  vault_deployed: boolean
+  stash_deployed: boolean
+  user_proxy: string | null
+}
+
 export function useAccountAddresses(
   account: MaybeRefOrGetter<Address | undefined>,
 ) {
-  const client = useReadClient()
-
   const vault = ref<Address | null>(null)
   const stash = ref<Address | null>(null)
   const wrapperProxy = ref<Address | null>(null)
@@ -50,12 +51,11 @@ export function useAccountAddresses(
   async function load() {
     const t = ++token
     const addr = toValue(account)
-    const c = client.value
-    // Always clear stale prior-account refs at the start of a fresh run, so
-    // navigating profile A → B never renders A's vault/stash under B's
-    // header while the multicall is in flight.
+    // Clear stale prior-account refs at the start of a fresh run so navigating
+    // profile A → B never renders A's vault/stash under B's header while the
+    // request is in flight.
     reset()
-    if (!addr || !c) {
+    if (!addr) {
       loading.value = false
       error.value = null
       return
@@ -63,55 +63,17 @@ export function useAccountAddresses(
     loading.value = true
     error.value = null
     try {
-      const reads = await c.multicall({
-        allowFailure: true,
-        contracts: [
-          {
-            address: PUNKS_VAULT_FACTORY_ADDRESS,
-            abi: punkVaultFactoryAbi,
-            functionName: 'predictVault',
-            args: [addr],
-          },
-          {
-            address: STASH_FACTORY_ADDRESS,
-            abi: stashFactoryAbi,
-            functionName: 'stashAddressFor',
-            args: [addr],
-          },
-          {
-            address: WRAPPED_PUNKS_ADDRESS,
-            abi: wrappedPunksAbi,
-            functionName: 'proxyInfo',
-            args: [addr],
-          },
-        ],
-      })
+      const data = await queryIndexer<{ account: AccountRow | null }>(
+        ACCOUNT_QUERY,
+        { address: addr.toLowerCase() },
+      )
       if (t !== token) return
-
-      const nextVault =
-        reads[0]?.status === 'success' ? (reads[0].result as Address) : null
-      const nextStash =
-        reads[1]?.status === 'success' ? (reads[1].result as Address) : null
-      const rawProxy =
-        reads[2]?.status === 'success' ? (reads[2].result as Address) : null
-      const nextProxy =
-        rawProxy && rawProxy.toLowerCase() !== ZERO ? rawProxy : null
-
-      const [vaultCode, stashCode] = await Promise.all([
-        nextVault
-          ? c.getBytecode({ address: nextVault }).catch(() => undefined)
-          : undefined,
-        nextStash
-          ? c.getBytecode({ address: nextStash }).catch(() => undefined)
-          : undefined,
-      ])
-      if (t !== token) return
-
-      vault.value = nextVault
-      stash.value = nextStash
-      wrapperProxy.value = nextProxy
-      vaultDeployed.value = !!vaultCode && vaultCode !== '0x'
-      stashDeployed.value = !!stashCode && stashCode !== '0x'
+      const row = data.account
+      vault.value = (row?.vault ?? null) as Address | null
+      stash.value = (row?.stash ?? null) as Address | null
+      wrapperProxy.value = (row?.user_proxy ?? null) as Address | null
+      vaultDeployed.value = !!row?.vault_deployed
+      stashDeployed.value = !!row?.stash_deployed
     } catch (e) {
       if (t !== token) return
       error.value = (e as Error).message
@@ -120,7 +82,7 @@ export function useAccountAddresses(
     }
   }
 
-  watch([() => toValue(account), client], () => void load(), { immediate: true })
+  watch(() => toValue(account), () => void load(), { immediate: true })
 
   return {
     vault,

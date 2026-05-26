@@ -11,9 +11,9 @@
         <Tag
           small
           class="status-tag"
-          :class="{ active: stashDeployed }"
+          :class="{ active: deployed }"
         >
-          {{ stashDeployed ? 'Deployed' : 'Not deployed' }}
+          {{ deployed ? 'Deployed' : 'Not deployed' }}
         </Tag>
       </div>
 
@@ -25,7 +25,7 @@
       </p>
 
       <div
-        v-if="!stashDeployed"
+        v-if="!deployed"
         class="setup"
       >
         <p class="hint muted">
@@ -34,7 +34,7 @@
         </p>
         <Button
           class="primary icon-button"
-          :disabled="pending"
+          :disabled="pending || statusLoading"
           @click="actDeploy"
         >
           <Icon name="lucide:shield-plus" />
@@ -83,6 +83,7 @@
         :request="transactionRequest"
         :text="transactionText"
         skip-confirmation
+        @complete="onTransactionComplete"
       />
     </section>
   </ClientOnly>
@@ -91,16 +92,21 @@
 <script setup lang="ts">
 import type { TransactionFlowText } from '@1001-digital/components.evm'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
-import type { Address, Hash } from 'viem'
+import type { Address, Hash, TransactionReceipt } from 'viem'
 
-const props = defineProps<{
-  account: Address
-  stash: Address | null
-  stashDeployed: boolean
-}>()
+const props = defineProps<{ account: Address }>()
+const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+
+// Stash address + deployment flag come straight from `StashFactory` so this
+// card keeps working through indexer downtime — `stashAddressFor` is a pure
+// CREATE2 view and `ownerHasDeployed` is a single onchain bool.
+const stashAddress = ref<Address | null>(null)
+const deployed = ref(false)
+const statusLoading = ref(false)
+let statusToken = 0
 
 const punkIdInput = ref('')
 const pending = ref(false)
@@ -110,6 +116,24 @@ const parsedPunkId = computed(() => {
   const id = Number(punkIdInput.value.trim())
   return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
 })
+
+async function refreshStatus() {
+  const t = ++statusToken
+  statusLoading.value = true
+  try {
+    const status = await sdk.value.stash.statusForOwner(props.account)
+    if (t !== statusToken) return
+    stashAddress.value = status.address
+    deployed.value = status.deployed
+  } catch (e) {
+    if (t !== statusToken) return
+    error.value = (e as Error).message
+  } finally {
+    if (t === statusToken) statusLoading.value = false
+  }
+}
+
+watch(() => props.account, () => void refreshStatus(), { immediate: true })
 
 type DialogRef = { initializeRequest: () => void } | null
 const dialogRef = ref<DialogRef>(null)
@@ -148,6 +172,11 @@ function actDeploy() {
   void run(sdk.value.stash.prepareDeploy(props.account))
 }
 
+function onTransactionComplete(receipt: TransactionReceipt) {
+  void refreshStatus()
+  emit('changed', receipt.transactionHash as Hash)
+}
+
 function actDeposit() {
   const punkId = parsedPunkId.value
   if (punkId === null) return
@@ -155,17 +184,17 @@ function actDeposit() {
     sdk.value.wrappers.c721.prepareDepositToStash({
       owner: props.account,
       punkId,
-      stash: props.stash ?? undefined,
+      stash: stashAddress.value ?? undefined,
     }),
   )
 }
 
 function actReclaim() {
   const punkId = parsedPunkId.value
-  if (punkId === null || !props.stash) return
+  if (punkId === null || !stashAddress.value) return
   void run(
     Promise.resolve(
-      sdk.value.stash.at(props.stash).prepareWithdrawPunks([punkId]),
+      sdk.value.stash.at(stashAddress.value).prepareWithdrawPunks([punkId]),
     ),
   )
 }

@@ -8,8 +8,7 @@
 
       <ProfileStashMovement
         :account="ownAccount"
-        :stash="stash"
-        :stash-deployed="stashDeployed"
+        @changed="refreshAddresses"
       />
 
       <ProfileLegacyWrapper
@@ -23,7 +22,7 @@
 <script setup lang="ts">
 useOwnProfileGuard()
 
-const { ownAccount, stash, stashDeployed, wrapperProxy } = useProfileContext()
+const { ownAccount, wrapperProxy, refreshAddresses } = useProfileContext()
 </script>
 
 <style scoped>

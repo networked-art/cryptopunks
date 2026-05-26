@@ -176,8 +176,14 @@ useSeoMeta({
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
-const { vault, stash, wrapperProxy, vaultDeployed, stashDeployed } =
-  useAccountAddresses(profileAddress)
+const {
+  vault,
+  stash,
+  wrapperProxy,
+  vaultDeployed,
+  stashDeployed,
+  refresh: refreshAddresses,
+} = useAccountAddresses(profileAddress)
 
 provide(ProfileContextKey, {
   resolvedAddress,
@@ -188,6 +194,7 @@ provide(ProfileContextKey, {
   wrapperProxy,
   vaultDeployed,
   stashDeployed,
+  refreshAddresses,
 })
 </script>
 

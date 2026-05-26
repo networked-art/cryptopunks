@@ -12,6 +12,7 @@ export type ProfileContext = {
   wrapperProxy: Ref<Address | null>
   vaultDeployed: Ref<boolean>
   stashDeployed: Ref<boolean>
+  refreshAddresses: () => Promise<void>
 }
 
 export const ProfileContextKey: InjectionKey<ProfileContext> =

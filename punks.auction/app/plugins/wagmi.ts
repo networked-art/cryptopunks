@@ -70,7 +70,10 @@ export default defineNuxtPlugin({
     })
 
     if (import.meta.client) {
-      applyRpcUrlsToChains(wagmiConfig.chains as Chain[], evmConfig.rpcUrls ?? {})
+      applyRpcUrlsToChains(
+        wagmiConfig.chains as unknown as Chain[],
+        evmConfig.rpcUrls ?? {},
+      )
     }
 
     nuxtApp.vueApp
