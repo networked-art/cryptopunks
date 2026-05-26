@@ -12,9 +12,9 @@
         <Tag
           small
           class="status-tag"
-          :class="{ active: !!wrapperProxy }"
+          :class="{ active: !!activeWrapperProxy }"
         >
-          {{ wrapperProxy ? 'Registered' : 'Not registered' }}
+          {{ activeWrapperProxy ? 'Registered' : 'Not registered' }}
         </Tag>
       </div>
 
@@ -26,7 +26,7 @@
       </p>
 
       <div
-        v-if="!wrapperProxy"
+        v-if="!activeWrapperProxy"
         class="setup"
       >
         <p class="hint muted">
@@ -61,7 +61,7 @@
             :disabled="!parsedPunkId || pending"
             @click="actWrap"
           >
-            <Icon name="lucide:package"  />
+            <Icon name="lucide:package" />
             <span>Wrap (2 steps)</span>
           </Button>
           <Button
@@ -75,8 +75,8 @@
         </div>
 
         <p class="hint muted">
-          Wrapping deposits the Punk into your proxy then mints the
-          ERC-721. Unwrap burns it and returns the Punk to your wallet.
+          Wrapping deposits the Punk into your proxy then mints the ERC-721.
+          Unwrap burns it and returns the Punk to your wallet.
         </p>
       </template>
 
@@ -85,6 +85,7 @@
         :request="transactionRequest"
         :text="transactionText"
         skip-confirmation
+        @complete="onTransactionComplete"
       />
 
       <EvmMultiTransactionFlowDialog
@@ -105,24 +106,45 @@ import type {
   TransactionFlowText,
 } from '@1001-digital/components.evm'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
-import type { Address, Hash } from 'viem'
+import {
+  zeroAddress,
+  type Address,
+  type Hash,
+  type TransactionReceipt,
+} from 'viem'
 
 const props = defineProps<{
   account: Address
   wrapperProxy: Address | null
 }>()
+const emit = defineEmits<{
+  changed: [tx: Hash, wrapperProxy?: Address | null]
+}>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 
+const confirmedWrapperProxy = ref<Address | null>(props.wrapperProxy)
 const punkIdInput = ref('')
 const pending = ref(false)
 const error = ref<string | null>(null)
+
+const activeWrapperProxy = computed(
+  () => props.wrapperProxy ?? confirmedWrapperProxy.value,
+)
 
 const parsedPunkId = computed(() => {
   const id = Number(punkIdInput.value.trim())
   return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
 })
+
+watch(
+  () => [props.account, props.wrapperProxy] as const,
+  ([, wrapperProxy]) => {
+    confirmedWrapperProxy.value = wrapperProxy
+  },
+  { immediate: true },
+)
 
 type DialogRef = { initializeRequest: () => void } | null
 type MultiDialogRef = { start: () => void } | null
@@ -132,13 +154,18 @@ const transactionRequest = ref<(() => Promise<Hash>) | undefined>()
 const transactionText = ref<TransactionFlowText>({})
 const flowSteps = ref<MultiTransactionFlowStep[]>([])
 const multiDialogText = ref<MultiTransactionFlowText>({})
+const currentSingleAction = ref<'register' | null>(null)
 
-async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
+async function run(
+  planInput: ContractWritePlan | Promise<ContractWritePlan>,
+  action: 'register' | null = null,
+) {
   if (pending.value) return
   pending.value = true
   error.value = null
   try {
     const plan = await planInput
+    currentSingleAction.value = action
     transactionRequest.value = () => execute(plan)
     transactionText.value = {
       title: {
@@ -155,6 +182,7 @@ async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
     await nextTick()
     dialogRef.value?.initializeRequest()
   } catch (e) {
+    currentSingleAction.value = null
     error.value = (e as Error).message
   } finally {
     pending.value = false
@@ -193,18 +221,39 @@ function onFlowError(message: string) {
   error.value = message
 }
 
+async function onTransactionComplete(receipt: TransactionReceipt) {
+  const tx = receipt.transactionHash as Hash
+  if (currentSingleAction.value !== 'register') {
+    return
+  }
+
+  currentSingleAction.value = null
+  try {
+    const proxy = await sdk.value.wrappers.legacy.proxyFor(props.account)
+    const nextProxy =
+      proxy.toLowerCase() === zeroAddress ? null : (proxy as Address)
+
+    confirmedWrapperProxy.value = nextProxy
+    emit('changed', tx, nextProxy)
+  } catch (e) {
+    error.value = (e as Error).message
+    emit('changed', tx)
+  }
+}
+
 function actRegister() {
-  void run(sdk.value.wrappers.legacy.prepareRegisterProxy())
+  void run(sdk.value.wrappers.legacy.prepareRegisterProxy(), 'register')
 }
 
 function actWrap() {
   const punkId = parsedPunkId.value
-  if (punkId === null || !props.wrapperProxy) return
+  const proxy = activeWrapperProxy.value
+  if (punkId === null || !proxy) return
   void runSteps(
     sdk.value.wrappers.legacy.prepareWrapFlow({
       owner: props.account,
       punkId,
-      proxy: props.wrapperProxy,
+      proxy,
     }),
     {
       title: 'Wrap complete',
