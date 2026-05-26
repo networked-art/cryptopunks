@@ -29,7 +29,18 @@
       <div class="grid">
         <section class="card">
           <div class="card-head">
-            <h3>PunksVault</h3>
+            <div class="card-head-text">
+              <h3>PunksVault</h3>
+              <a
+                v-if="vaultAddress"
+                :href="addressUrl(vaultAddress)"
+                target="_blank"
+                rel="noopener"
+                class="addr-link"
+              >
+                <Account :address="vaultAddress" />
+              </a>
+            </div>
             <Tag
               small
               class="status-tag"
@@ -209,6 +220,7 @@ import {
 } from '@networked-art/punks-sdk'
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
+import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{
   account: Address
@@ -541,6 +553,19 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .card-head h3 {
   font-size: var(--font-md);
+}
+
+.card-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.addr-link {
+  border: 0;
+  font-size: var(--font-xs);
+  color: var(--text-dim);
 }
 
 .card-actions {

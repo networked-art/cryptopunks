@@ -3,9 +3,19 @@
     <section class="card">
       <div class="card-head">
         <div>
-          <h3>Stash movement</h3>
+          <h3>Stash</h3>
+          <a
+            v-if="stashAddress"
+            :href="addressUrl(stashAddress)"
+            target="_blank"
+            rel="noopener"
+            class="addr-link"
+          >
+            <Account :address="stashAddress" />
+          </a>
           <p class="hint muted">
-            Move CryptoPunks into the Yuga Stash or pull them back out.
+            Move CryptoPunks in and out of your Yuga Stash, or wrap them as
+            `CryptoPunks721` ERC-721 tokens.
           </p>
         </div>
         <Tag
@@ -30,7 +40,7 @@
       >
         <p class="hint muted">
           Deploy a Stash via `StashFactory` once and reuse it for every
-          transfer.
+          transfer or wrap.
         </p>
         <Button
           class="primary icon-button"
@@ -95,10 +105,27 @@
             <Icon name="lucide:undo-2" />
             <span>Reclaim</span>
           </Button>
+          <Button
+            class="icon-button"
+            :disabled="!canWrap"
+            @click="actWrap"
+          >
+            <Icon name="lucide:package" />
+            <span>{{ wrapLabel }}</span>
+          </Button>
+          <Button
+            class="icon-button"
+            :disabled="!canUnwrap"
+            @click="actUnwrap"
+          >
+            <Icon name="lucide:package-open" />
+            <span>Unwrap</span>
+          </Button>
         </div>
 
         <p class="hint muted">
-          Stash deposit and reclaim operate on canonical CryptoPunks.
+          Wrap mints an ERC-721 from a Punk held in your Stash; unwrap burns
+          it and leaves the Punk in the Stash.
         </p>
       </template>
 
@@ -107,8 +134,8 @@
         :ids="pickerIds"
         :initial="selectedPunkId === null ? [] : [selectedPunkId]"
         title="Select a CryptoPunk"
-        lead="Pick one of your CryptoPunks in the wallet (to deposit) or in the Stash (to reclaim)."
-        empty-message="No eligible CryptoPunks in your wallet or Stash."
+        lead="Pick one of your CryptoPunks in the wallet, the Stash, or wrapped as ERC-721."
+        empty-message="No eligible CryptoPunks in your wallet, Stash, or wrapper."
         @confirm="onPickerConfirm"
       />
 
@@ -119,21 +146,36 @@
         skip-confirmation
         @complete="onTransactionComplete"
       />
+
+      <EvmMultiTransactionFlowDialog
+        ref="multiDialogRef"
+        :steps="flowSteps"
+        :text="multiDialogText"
+        skip-confirmation
+        @complete="onFlowComplete"
+        @error="onFlowError"
+      />
     </section>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
-import type { TransactionFlowText } from '@1001-digital/components.evm'
+import type {
+  MultiTransactionFlowStep,
+  MultiTransactionFlowText,
+  TransactionFlowText,
+} from '@1001-digital/components.evm'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import { TokenStandard } from '~/utils/auction'
+import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{ account: Address }>()
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const { refreshMarketState } = usePunkMarketState()
 const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
   useAccountPunkInventory(() => props.account)
 
@@ -154,7 +196,10 @@ const eligibleItems = computed(() =>
   inventoryItems.value.filter(
     (item) =>
       item.standard === TokenStandard.CryptoPunks &&
-      (item.custody === 'wallet' || item.custody === 'stash'),
+      (item.custody === 'wallet' ||
+        item.custody === 'stash' ||
+        (item.custody === 'wrapped-wallet' &&
+          item.wrapper === 'cryptopunks_721')),
   ),
 )
 
@@ -163,7 +208,7 @@ const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
 const pickerHint = computed(() => {
   if (inventoryLoading.value) return 'Loading your Punks…'
   if (pickerIds.value.length === 0) return 'No eligible Punks found.'
-  return 'Pick a Punk to deposit or reclaim.'
+  return 'Pick a Punk to deposit, reclaim, wrap, or unwrap.'
 })
 
 const selectedItem = computed(() => {
@@ -189,12 +234,33 @@ const canReclaim = computed(
     !pending.value,
 )
 
+const canWrap = computed(
+  () =>
+    !!selectedItem.value &&
+    (selectedItem.value.custody === 'wallet' ||
+      selectedItem.value.custody === 'stash') &&
+    !pending.value,
+)
+
+const canUnwrap = computed(
+  () =>
+    !!selectedItem.value &&
+    selectedItem.value.custody === 'wrapped-wallet' &&
+    !pending.value,
+)
+
+const wrapLabel = computed(() =>
+  selectedItem.value?.custody === 'wallet' ? 'Wrap (2 steps)' : 'Wrap',
+)
+
 const custodyHint = computed(() => {
   switch (selectedItem.value?.custody) {
     case 'wallet':
-      return 'In your wallet — ready to deposit'
+      return 'In your wallet — ready to deposit or wrap'
     case 'stash':
-      return 'In your Stash — ready to reclaim'
+      return 'In your Stash — ready to reclaim or wrap'
+    case 'wrapped-wallet':
+      return 'Wrapped as ERC-721 — ready to unwrap'
     default:
       return ''
   }
@@ -228,7 +294,7 @@ watch(
 )
 
 // Clear the preview when the picked Punk leaves the eligible set (e.g. after
-// a successful deposit/reclaim swaps its custody bucket).
+// a successful deposit/reclaim/wrap/unwrap swaps its custody bucket).
 watch(eligibleItems, (items) => {
   if (selectedPunkId.value === null) return
   if (!items.some((item) => item.punkId === selectedPunkId.value)) {
@@ -241,16 +307,25 @@ function onPickerConfirm(ids: number[]) {
 }
 
 type DialogRef = { initializeRequest: () => void } | null
+type MultiDialogRef = { start: () => void } | null
 const dialogRef = ref<DialogRef>(null)
+const multiDialogRef = ref<MultiDialogRef>(null)
 const transactionRequest = ref<(() => Promise<Hash>) | undefined>()
 const transactionText = ref<TransactionFlowText>({})
+const flowSteps = ref<MultiTransactionFlowStep[]>([])
+const multiDialogText = ref<MultiTransactionFlowText>({})
+const currentSingleAction = ref<'deploy' | null>(null)
 
-async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
+async function run(
+  planInput: ContractWritePlan | Promise<ContractWritePlan>,
+  action: 'deploy' | null = null,
+) {
   if (pending.value) return
   pending.value = true
   error.value = null
   try {
     const plan = await planInput
+    currentSingleAction.value = action
     transactionRequest.value = () => execute(plan)
     transactionText.value = {
       title: {
@@ -273,14 +348,64 @@ async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
   }
 }
 
+async function runSteps(
+  plansInput: Promise<ContractWritePlan[]>,
+  completeText: { title: string; lead: string },
+) {
+  if (pending.value) return
+  pending.value = true
+  error.value = null
+  try {
+    const plans = await plansInput
+    flowSteps.value = plans.map((plan, i) => ({
+      id: `stash-step-${i}`,
+      title: plan.description,
+      lead: plan.description,
+      request: () => execute(plan),
+    }))
+    multiDialogText.value = {
+      title: { complete: completeText.title },
+      lead: { complete: completeText.lead },
+    }
+    await nextTick()
+    multiDialogRef.value?.start()
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    pending.value = false
+  }
+}
+
 function actDeploy() {
-  void run(sdk.value.stash.prepareDeploy(props.account))
+  void run(sdk.value.stash.prepareDeploy(props.account), 'deploy')
 }
 
 function onTransactionComplete(receipt: TransactionReceipt) {
+  const wasDeploy = currentSingleAction.value === 'deploy'
+  currentSingleAction.value = null
   void refreshStatus()
   void refreshInventory()
+  if (!wasDeploy) scheduleMarketRefresh()
   emit('changed', receipt.transactionHash as Hash)
+}
+
+function onFlowComplete() {
+  selectedPunkId.value = null
+  void refreshStatus()
+  void refreshInventory()
+  scheduleMarketRefresh()
+}
+
+function onFlowError(message: string) {
+  error.value = message
+}
+
+// `refreshMarketState` reflects the latest indexer snapshot but the indexer
+// itself can lag a few seconds behind a freshly mined wrap/unwrap. Fire one
+// refresh immediately and a follow-up to catch the indexer once it's caught up.
+function scheduleMarketRefresh() {
+  void refreshMarketState()
+  setTimeout(() => void refreshMarketState(), 15000)
 }
 
 function actDeposit() {
@@ -303,6 +428,33 @@ function actReclaim() {
       sdk.value.stash.at(stashAddress.value).prepareWithdrawPunks([punkId]),
     ),
   )
+}
+
+function actWrap() {
+  const punkId = selectedPunkId.value
+  const item = selectedItem.value
+  if (punkId === null || !item) return
+  if (item.custody === 'wallet') {
+    void runSteps(
+      sdk.value.wrappers.c721.prepareWrapFlow({
+        owner: props.account,
+        punkId,
+        stash: stashAddress.value ?? undefined,
+      }),
+      {
+        title: 'Wrap complete',
+        lead: 'Punk deposited and ERC-721 minted.',
+      },
+    )
+  } else if (item.custody === 'stash') {
+    void run(Promise.resolve(sdk.value.wrappers.c721.prepareWrapPunk(punkId)))
+  }
+}
+
+function actUnwrap() {
+  const punkId = selectedPunkId.value
+  if (punkId === null) return
+  void run(Promise.resolve(sdk.value.wrappers.c721.prepareUnwrapPunk(punkId)))
 }
 </script>
 
@@ -327,6 +479,14 @@ function actReclaim() {
 .card-head h3 {
   margin: 0;
   font-size: var(--font-md);
+}
+
+.addr-link {
+  display: inline-block;
+  margin-top: var(--size-1);
+  border: 0;
+  font-size: var(--font-xs);
+  color: var(--text-dim);
 }
 
 .hint {

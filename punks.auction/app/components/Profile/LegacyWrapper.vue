@@ -4,6 +4,15 @@
       <div class="card-head">
         <div>
           <h3>Legacy wrapper</h3>
+          <a
+            v-if="activeWrapperProxy"
+            :href="addressUrl(activeWrapperProxy)"
+            target="_blank"
+            rel="noopener"
+            class="addr-link"
+          >
+            <Account :address="activeWrapperProxy" />
+          </a>
           <p class="hint muted">
             Mint and burn original `WrappedPunks` ERC-721 tokens via your
             personal wrapper proxy.
@@ -148,6 +157,7 @@ import {
   type TransactionReceipt,
 } from 'viem'
 import { TokenStandard } from '~/utils/auction'
+import { addressUrl } from '~/utils/explorer'
 
 const props = defineProps<{
   account: Address
@@ -407,6 +417,14 @@ function actUnwrap() {
 .card-head h3 {
   margin: 0;
   font-size: var(--font-md);
+}
+
+.addr-link {
+  display: inline-block;
+  margin-top: var(--size-1);
+  border: 0;
+  font-size: var(--font-xs);
+  color: var(--text-dim);
 }
 
 .hint {

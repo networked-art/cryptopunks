@@ -7,15 +7,6 @@
       <ProfileVaultControls :account="ownAccount" />
 
       <ProfileVaultMovement :account="ownAccount" />
-
-      <LazyProfileAddresses
-        :account="ownAccount"
-        :vault="vault"
-        :stash="stash"
-        :wrapper-proxy="wrapperProxy"
-        :vault-deployed="vaultDeployed"
-        :stash-deployed="stashDeployed"
-      />
     </section>
   </ClientOnly>
 </template>
@@ -23,14 +14,7 @@
 <script setup lang="ts">
 useOwnProfileGuard()
 
-const {
-  ownAccount,
-  vault,
-  stash,
-  wrapperProxy,
-  vaultDeployed,
-  stashDeployed,
-} = useProfileContext()
+const { ownAccount } = useProfileContext()
 </script>
 
 <style scoped>
