@@ -169,7 +169,8 @@ const emit = defineEmits<{
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { refreshMarketState, applyPunkLocal } = usePunkMarketState()
+const { refreshMarketState } = usePunkMarketState()
+const optimistic = useOptimisticMarketPatch()
 const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
   useAccountPunkInventory(() => props.account)
 
@@ -264,17 +265,6 @@ const transactionText = ref<TransactionFlowText>({})
 const flowSteps = ref<MultiTransactionFlowStep[]>([])
 const multiDialogText = ref<MultiTransactionFlowText>({})
 const currentSingleAction = ref<'register' | null>(null)
-const pendingOptimistic = ref<
-  | { punkId: number; patch: import('~/composables/usePunkMarketState').PunkMarketLocalPatch }
-  | null
->(null)
-
-function flushOptimistic() {
-  const pending = pendingOptimistic.value
-  if (!pending) return
-  applyPunkLocal(pending.punkId, pending.patch)
-  pendingOptimistic.value = null
-}
 
 async function run(
   planInput: ContractWritePlan | Promise<ContractWritePlan>,
@@ -303,7 +293,7 @@ async function run(
     dialogRef.value?.initializeRequest()
   } catch (e) {
     currentSingleAction.value = null
-    pendingOptimistic.value = null
+    optimistic.discard()
     error.value = (e as Error).message
   } finally {
     pending.value = false
@@ -332,7 +322,7 @@ async function runSteps(
     await nextTick()
     multiDialogRef.value?.start()
   } catch (e) {
-    pendingOptimistic.value = null
+    optimistic.discard()
     error.value = (e as Error).message
   } finally {
     pending.value = false
@@ -340,14 +330,14 @@ async function runSteps(
 }
 
 function onFlowError(message: string) {
-  pendingOptimistic.value = null
+  optimistic.discard()
   error.value = message
 }
 
 async function onTransactionComplete(receipt: TransactionReceipt) {
   const tx = receipt.transactionHash as Hash
   if (currentSingleAction.value !== 'register') {
-    flushOptimistic()
+    optimistic.flush()
     selectedPunkId.value = null
     void refreshInventory()
     scheduleMarketRefresh()
@@ -370,7 +360,7 @@ async function onTransactionComplete(receipt: TransactionReceipt) {
 }
 
 function onFlowComplete() {
-  flushOptimistic()
+  optimistic.flush()
   selectedPunkId.value = null
   void refreshInventory()
   scheduleMarketRefresh()
@@ -392,7 +382,7 @@ function actWrap() {
   const punkId = selectedPunkId.value
   const proxy = activeWrapperProxy.value
   if (punkId === null || !proxy) return
-  pendingOptimistic.value = { punkId, patch: { legacy_wrapped: true } }
+  optimistic.stage(punkId, { legacy_wrapped: true })
   void runSteps(
     sdk.value.wrappers.legacy.prepareWrapFlow({
       owner: props.account,
@@ -409,7 +399,7 @@ function actWrap() {
 function actUnwrap() {
   const punkId = selectedPunkId.value
   if (punkId === null) return
-  pendingOptimistic.value = { punkId, patch: { legacy_wrapped: false } }
+  optimistic.stage(punkId, { legacy_wrapped: false })
   void run(sdk.value.wrappers.legacy.prepareBurn(punkId))
 }
 </script>

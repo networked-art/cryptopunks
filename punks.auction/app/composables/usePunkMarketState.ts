@@ -172,3 +172,30 @@ export function usePunkMarketState() {
     applyPunkLocal,
   }
 }
+
+/// Per-caller staging slot for an optimistic patch: stage it when the action
+/// starts, then either flush on success or discard on failure. Keeps the
+/// `apply-on-success` / `roll-back-on-error` wiring out of every action site.
+export function useOptimisticMarketPatch() {
+  const { applyPunkLocal } = usePunkMarketState()
+  const pending = ref<{ punkId: number; patch: PunkMarketLocalPatch } | null>(
+    null,
+  )
+
+  function stage(punkId: number, patch: PunkMarketLocalPatch) {
+    pending.value = { punkId, patch }
+  }
+
+  function flush() {
+    const next = pending.value
+    if (!next) return
+    applyPunkLocal(next.punkId, next.patch)
+    pending.value = null
+  }
+
+  function discard() {
+    pending.value = null
+  }
+
+  return { stage, flush, discard }
+}
