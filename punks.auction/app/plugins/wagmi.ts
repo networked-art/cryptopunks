@@ -66,6 +66,8 @@ export default defineNuxtPlugin({
       isClient: import.meta.client,
     })
 
+    backfillMulticall3(wagmiConfig.chains as unknown as Chain[])
+
     if (import.meta.client) {
       applyRpcUrlsToChains(
         wagmiConfig.chains as unknown as Chain[],
@@ -85,6 +87,26 @@ export default defineNuxtPlugin({
     }
   },
 })
+
+/// Canonical multicall3 deployment — same address on mainnet and every major
+/// fork/L2. Used to backfill chains that `resolveChain` (in `layers.evm`)
+/// returns without a `contracts.multicall3` entry — e.g. the dev fork at
+/// chainId 31337, which doesn't match viem's built-in `localhost` (id 1337).
+const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const
+
+function backfillMulticall3(chains: Chain[]) {
+  for (let i = 0; i < chains.length; i++) {
+    const chain = chains[i]
+    if (!chain || chain.contracts?.multicall3) continue
+    chains[i] = {
+      ...chain,
+      contracts: {
+        ...chain.contracts,
+        multicall3: { address: MULTICALL3_ADDRESS },
+      },
+    }
+  }
+}
 
 /// Front-loads the configured RPC URL onto each chain so the injected
 /// connector's `wallet_addEthereumChain` payload points at our proxy. Wagmi's
