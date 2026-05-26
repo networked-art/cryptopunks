@@ -15,26 +15,11 @@
       </p>
     </header>
 
-    <LazyLotCreateForm @created="onCreated" />
-
-    <p
-      v-if="lastTx"
-      class="success"
-    >
-      Lot creation submitted: <code>{{ lastTx }}</code>
-    </p>
+    <LazyLotCreateForm />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Hash } from 'viem'
-
-const lastTx = ref<Hash | null>(null)
-
-function onCreated(tx: Hash) {
-  lastTx.value = tx
-}
-
 useSeoMeta({
   title: 'Create lot · Punks Auction',
   ogTitle: 'Create lot · Punks Auction',
@@ -57,12 +42,6 @@ useSeoMeta({
   gap: var(--size-1);
   align-self: flex-start;
   border: 0;
-  font-size: var(--font-sm);
-}
-
-.success {
-  margin: 0;
-  color: var(--text);
   font-size: var(--font-sm);
 }
 </style>

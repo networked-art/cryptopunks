@@ -1,17 +1,11 @@
 <template>
   <LotDetailShell
-    v-if="validId && displayAuction"
-    :items="displayAuction.items"
+    v-if="validId && auction"
+    :items="auction.items"
   >
     <header class="head">
-      <span class="eyebrow">Auction #{{ displayAuction.id }}</span>
+      <span class="eyebrow">Auction #{{ auction.id }}</span>
       <h1 class="title">{{ itemCountLabel }}</h1>
-      <p
-        v-if="isMock"
-        class="block-note muted"
-      >
-        Preview data. Wallet actions appear for live auction records.
-      </p>
     </header>
 
     <dl class="facts">
@@ -40,8 +34,8 @@
       <div class="fact">
         <dt>Current Bidder</dt>
         <dd>
-          <NuxtLink :to="`/profile/${displayAuction.latestBidder}`">
-            <Account :address="displayAuction.latestBidder" />
+          <NuxtLink :to="`/profile/${auction.latestBidder}`">
+            <Account :address="auction.latestBidder" />
           </NuxtLink>
         </dd>
       </div>
@@ -49,39 +43,38 @@
       <div class="fact">
         <dt>Curent bid</dt>
         <dd>
-          <EthAmount :wei="displayAuction.latestBidWei" />
+          <EthAmount :wei="auction.latestBidWei" />
         </dd>
       </div>
 
       <div class="fact">
         <dt>Seller</dt>
         <dd>
-          <NuxtLink :to="`/profile/${displayAuction.seller}`">
-            <Account :address="displayAuction.seller" />
+          <NuxtLink :to="`/profile/${auction.seller}`">
+            <Account :address="auction.seller" />
           </NuxtLink>
         </dd>
       </div>
 
       <div
-        v-if="displayMinimumBidWei"
+        v-if="minimumBidWei"
         class="fact"
       >
         <dt>Next bid</dt>
         <dd>
-          <EthAmount :wei="displayMinimumBidWei" />
+          <EthAmount :wei="minimumBidWei" />
         </dd>
       </div>
     </dl>
 
     <AuctionActions
-      v-if="displayMinimumBidWei"
-      :auction="displayAuction"
-      :minimum-bid-wei="displayMinimumBidWei"
-      :preview="isMock"
+      v-if="minimumBidWei"
+      :auction="auction"
+      :minimum-bid-wei="minimumBidWei"
       @changed="onChanged"
     />
 
-    <LotDetailItems :items="displayAuction.items" />
+    <LotDetailItems :items="auction.items" />
   </LotDetailShell>
 
   <div
@@ -101,11 +94,9 @@
 </template>
 
 <script setup lang="ts">
-import { mockAuctionById } from '~/composables/useAuctionData.mock'
 import {
   auctionStatus,
   formatLotItemsLabel,
-  minNextBidWei,
   type AuctionStatus,
 } from '~/utils/auction'
 
@@ -118,22 +109,14 @@ const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const { auction, minimumBidWei, pending, error, deployed, refresh } =
   useAuction(() => (validId.value ? id.value : undefined))
 
-const mockAuction = computed(() =>
-  validId.value ? mockAuctionById(id.value) : null,
-)
-const displayAuction = computed(
-  () => auction.value ?? (!pending.value ? mockAuction.value : null),
-)
-const isMock = computed(() => !auction.value && !!displayAuction.value)
-
 const now = useSeconds()
 const status = computed<AuctionStatus>(() => {
-  const current = displayAuction.value
+  const current = auction.value
   if (!current) return 'settled'
   return auctionStatus(current, now.value)
 })
 const secondsUntilEnd = computed(() => {
-  const current = displayAuction.value
+  const current = auction.value
   return current ? Math.max(0, current.endTimestamp - now.value) : 0
 })
 const endCountdown = useCountDown(secondsUntilEnd, COUNTDOWN_WINDOW_SECONDS + 1)
@@ -144,20 +127,13 @@ const statusLabel = computed(() => {
 })
 
 const itemCountLabel = computed(() =>
-  displayAuction.value ? formatLotItemsLabel(displayAuction.value.items) : '',
+  auction.value ? formatLotItemsLabel(auction.value.items) : '',
 )
 const endLabel = computed(() => {
-  const current = displayAuction.value
+  const current = auction.value
   if (!current) return ''
   return formatDateTime(current.endTimestamp)
 })
-const actionMinimumBidWei = computed(() => {
-  const current = displayAuction.value
-  return current ? minNextBidWei(current.latestBidWei) : null
-})
-const displayMinimumBidWei = computed(
-  () => minimumBidWei.value ?? actionMinimumBidWei.value,
-)
 
 function onChanged() {
   void refresh()

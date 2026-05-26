@@ -98,9 +98,6 @@ const {
   deployed: lotsDeployed,
   refresh: refreshLots,
 } = useLots()
-const { auctions: mockAuctions, deployed: mockAuctionsDeployed } =
-  useMockAuctions()
-const { lots: mockLots, deployed: mockLotsDeployed } = useMockLots()
 
 type MarketEntry =
   | {
@@ -115,24 +112,7 @@ type MarketEntry =
     }
 
 const now = useSeconds()
-const displayAuctions = computed(() =>
-  auctions.value.length || auctionsPending.value
-    ? auctions.value
-    : mockAuctions.value,
-)
-const displayLots = computed(() =>
-  lots.value.length || lotsPending.value ? lots.value : mockLots.value,
-)
-const isMock = computed(
-  () =>
-    (!auctions.value.length && displayAuctions.value.length) ||
-    (!lots.value.length && displayLots.value.length),
-)
-const deployed = computed(
-  () =>
-    (auctionsDeployed && lotsDeployed) ||
-    (mockAuctionsDeployed && mockLotsDeployed),
-)
+const deployed = computed(() => auctionsDeployed && lotsDeployed)
 const pending = computed(() => auctionsPending.value || lotsPending.value)
 const loadError = computed(() =>
   [
@@ -144,11 +124,11 @@ const loadError = computed(() =>
 )
 
 const sortedAuctions = computed(() =>
-  [...displayAuctions.value].sort(compareAuctionsByEndingSoon),
+  [...auctions.value].sort(compareAuctionsByEndingSoon),
 )
 
 const sortedLots = computed(() =>
-  [...displayLots.value].sort(compareLotsByAverageReserve),
+  [...lots.value].sort(compareLotsByAverageReserve),
 )
 
 const marketEntries = computed<MarketEntry[]>(() => [

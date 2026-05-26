@@ -1,45 +1,38 @@
 <template>
   <LotDetailShell
-    v-if="validId && displayLot"
-    :items="displayLot.items"
+    v-if="validId && lot"
+    :items="lot.items"
   >
     <header class="head">
-      <span class="eyebrow">Lot #{{ displayLot.id }}</span>
+      <span class="eyebrow">Lot #{{ lot.id }}</span>
       <h1 class="title">{{ itemCountLabel }}</h1>
-      <p
-        v-if="isMock"
-        class="block-note muted"
-      >
-        Preview data. Wallet actions appear for live lot records.
-      </p>
     </header>
 
     <dl class="facts">
       <div class="fact">
         <dt>Reserve</dt>
         <dd>
-          <EthAmount :wei="displayLot.reserveWei" />
+          <EthAmount :wei="lot.reserveWei" />
         </dd>
       </div>
 
       <div class="fact">
         <dt>Seller</dt>
         <dd>
-          <NuxtLink :to="`/profile/${displayLot.seller}`">
-            <Account :address="displayLot.seller" />
+          <NuxtLink :to="`/profile/${lot.seller}`">
+            <Account :address="lot.seller" />
           </NuxtLink>
         </dd>
       </div>
     </dl>
 
     <LotActions
-      :lot="displayLot"
+      :lot="lot"
       :matching-offers="matchingOffers"
-      :preview="isMock"
       @changed="onChanged"
     />
 
-    <LotDetailItems :items="displayLot.items" />
+    <LotDetailItems :items="lot.items" />
   </LotDetailShell>
 
   <div
@@ -65,7 +58,6 @@
 </template>
 
 <script setup lang="ts">
-import { mockLotById, useMockOffers } from '~/composables/useAuctionData.mock'
 import {
   auctionStatus,
   formatLotItemsLabel,
@@ -88,25 +80,16 @@ if (validId.value) {
 const { lot, sourceAuction, pending, error, deployed, refresh } = useLot(() =>
   validId.value ? id.value : undefined,
 )
-const { offers, pending: offersPending, refresh: refreshOffers } = useOffers()
-const { offers: mockOffers } = useMockOffers()
+const { offers, refresh: refreshOffers } = useOffers()
 
-const mockLot = computed(() => (validId.value ? mockLotById(id.value) : null))
-const displayLot = computed(
-  () => lot.value ?? (!pending.value ? mockLot.value : null),
-)
-const displayOffers = computed(() =>
-  offers.value.length || offersPending.value ? offers.value : mockOffers.value,
-)
-const isMock = computed(() => !lot.value && !!displayLot.value)
 const itemCountLabel = computed(() =>
-  displayLot.value ? formatLotItemsLabel(displayLot.value.items) : '',
+  lot.value ? formatLotItemsLabel(lot.value.items) : '',
 )
 const { criteriaMatchesPunk } = useOfferSlotMatching()
 const matchingOffers = computed(() => {
-  const current = displayLot.value
+  const current = lot.value
   if (!current) return []
-  return displayOffers.value
+  return offers.value
     .filter((offer) => lotMatchesOffer(offer, current, criteriaMatchesPunk))
     .sort((a, b) =>
       a.amountWei === b.amountWei ? 0 : a.amountWei > b.amountWei ? -1 : 1,
