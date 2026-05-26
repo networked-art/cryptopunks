@@ -91,6 +91,14 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    // Force a single instance of `@1001-digital/components.evm` so the dialog's
+    // `inject(EvmConfigKey)` matches the wagmi plugin's `provide`. Without
+    // these, Vite pre-bundles the app's bare-specifier import as a separate
+    // chunk from the layer's relative-path import — two `Symbol('EvmConfig')`,
+    // and `inject` silently falls back to a mainnet-only default.
+    resolve: {
+      dedupe: ['@1001-digital/components.evm'],
+    },
     optimizeDeps: {
       include: [
         '@1001-digital/layers.evm > @metamask/connect-evm',
@@ -101,6 +109,7 @@ export default defineNuxtConfig({
         '@1001-digital/layers.evm > @safe-global/safe-apps-provider',
         '@tanstack/vue-query',
       ],
+      exclude: ['@1001-digital/components.evm'],
     },
   },
 })
