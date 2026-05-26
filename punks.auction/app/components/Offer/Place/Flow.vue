@@ -1,83 +1,67 @@
 <template>
   <ClientOnly>
-    <OfferPlaceActionCard
-      :title="stepTitle"
-      :primary-label="primaryLabel"
-      :primary-disabled="primaryDisabled"
-      :show-footer="step !== 'type'"
-      @primary="actPrimary"
-    >
-      <OfferPlaceTypeStep
-        v-if="step === 'type'"
-        v-model="kind"
-        @select="selectKind"
+    <div class="place-flow">
+      <OfferPlaceIntentControls
+        v-model:quantity-mode="quantityMode"
+        v-model:slot-count="slotCount"
+        :min-slots="PLACE_OFFER_MIN_MULTI_SLOTS"
+        :max-slots="PLACE_OFFER_MAX_SLOTS"
       />
 
-      <template v-else-if="step === 'target'">
-        <OfferPlaceSingleTarget
-          v-if="kind === 'single'"
-          v-model:text="singleText"
-          v-model:selected-id="singlePunkId"
-          :size="size"
-        />
-        <OfferPlaceTraitTarget
-          v-else-if="kind === 'trait'"
-          v-model:text="traitSearchText"
-          v-model:selected-text="traitText"
-          v-model:selected-query="traitQuery"
-          v-model:selected-match-ids="traitMatchIds"
-          v-model:include-ids="traitIncludeIds"
-          v-model:exclude-ids="traitExcludeIds"
-          :size="size"
-        />
-        <OfferPlaceMultiTarget
-          v-else-if="kind === 'multi'"
-          v-model:text="multiText"
-          v-model:selected-ids="multiPunkIds"
-          :size="size"
-        />
-      </template>
-
-      <OfferPlaceAmountStep
-        v-else-if="step === 'amount'"
-        v-model="amountEth"
-        :draft="draft"
-        :size="size"
-      />
-
-      <p
-        v-if="visibleError"
-        class="flow-error"
+      <OfferPlaceActionCard
+        v-if="hasActionCard"
+        :title="stepTitle"
+        :primary-label="primaryLabel"
+        :primary-disabled="primaryDisabled"
+        @primary="actPrimary"
       >
-        {{ visibleError }}
-      </p>
+        <OfferPlaceSlotTargetStep
+          v-if="actionStep === 'target'"
+          v-model="currentSlot"
+          :size="size"
+        />
 
-      <template #secondary>
-        <Button
-          v-if="step !== 'type'"
-          class="secondary"
-          @click="goBack"
+        <OfferPlaceAmountStep
+          v-else-if="actionStep === 'amount'"
+          v-model="amountEth"
+          :draft="draft"
+          :size="size"
+        />
+
+        <p
+          v-if="visibleError"
+          class="flow-error"
         >
-          Back
-        </Button>
-      </template>
+          {{ visibleError }}
+        </p>
 
-      <template #primary-prefix>
-        <span
-          v-if="footerSelection"
-          class="footer-selection"
+        <template #secondary>
+          <Button
+            v-if="showBackButton"
+            class="secondary"
+            @click="goBack"
+          >
+            Back
+          </Button>
+        </template>
+
+        <template #primary-prefix>
+          <span
+            v-if="footerSelection"
+            class="footer-selection"
+          >
+            {{ footerSelection }}
+          </span>
+        </template>
+
+        <template
+          v-if="actionStep === 'amount' && !address"
+          #primary
         >
-          {{ footerSelection }}
-        </span>
-      </template>
-
-      <template
-        v-if="step === 'amount' && !address"
-        #primary
-      >
-        <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
-      </template>
-    </OfferPlaceActionCard>
+          <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+        </template>
+      </OfferPlaceActionCard>
+    </div>
 
     <EvmTransactionFlowDialog
       ref="transactionDialogRef"
@@ -90,16 +74,21 @@
 </template>
 
 <script setup lang="ts">
-import type { ContractWritePlan, PunkQuery } from '@networked-art/punks-sdk'
+import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import { parseEther, type Hash, type TransactionReceipt } from 'viem'
 import {
-  PLACE_OFFER_KIND_TITLES,
+  PLACE_OFFER_MAX_SLOTS,
+  PLACE_OFFER_MIN_MULTI_SLOTS,
   buildPlaceOfferDraft,
-  type PlaceOfferKind,
+  createPlaceOfferSlotDraft,
+  slotLabel,
+  type PlaceOfferDraft,
+  type PlaceOfferQuantityMode,
+  type PlaceOfferSlotDraft,
 } from '~/composables/usePlaceOfferDraft'
 
-type Step = 'type' | 'target' | 'amount'
+type ActionStep = 'target' | 'amount'
 
 withDefaults(
   defineProps<{
@@ -115,21 +104,13 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const kind = ref<PlaceOfferKind | null>(null)
-const step = ref<Step>('type')
+const quantityMode = ref<PlaceOfferQuantityMode | null>(null)
+const actionStep = ref<ActionStep>('target')
 const amountEth = ref('')
 const error = ref<string | null>(null)
-
-const singleText = ref('')
-const singlePunkId = ref<number | null>(null)
-const traitSearchText = ref('')
-const traitText = ref('')
-const traitQuery = ref<PunkQuery | null>(null)
-const traitMatchIds = ref<number[]>([])
-const traitIncludeIds = ref<number[]>([])
-const traitExcludeIds = ref<number[]>([])
-const multiText = ref('')
-const multiPunkIds = ref<number[]>([])
+const slotCount = ref(PLACE_OFFER_MIN_MULTI_SLOTS)
+const activeSlotIndex = ref(0)
+const slotDrafts = ref<PlaceOfferSlotDraft[]>([createPlaceOfferSlotDraft()])
 
 const transactionText = ref<{
   title?: Record<string, string>
@@ -141,112 +122,154 @@ type TransactionDialogRef = {
 } | null
 const transactionDialogRef = ref<TransactionDialogRef>(null)
 
+const hasActionCard = computed(() => !!quantityMode.value)
+const activeSlotCount = computed(() =>
+  quantityMode.value === 'multiple' ? slotCount.value : 1,
+)
+const activeSlots = computed(() =>
+  slotDrafts.value.slice(0, activeSlotCount.value),
+)
 const draft = computed(() =>
   buildPlaceOfferDraft({
-    kind: kind.value,
-    singlePunkId: singlePunkId.value,
-    traitQuery: traitQuery.value ?? undefined,
-    traitText: traitText.value,
-    traitMatchIds: traitMatchIds.value,
-    traitIncludeIds: traitIncludeIds.value,
-    traitExcludeIds: traitExcludeIds.value,
-    multiPunkIds: multiPunkIds.value,
+    quantityMode: quantityMode.value,
+    slots: activeSlots.value,
   }),
 )
-const slotValidationError = computed(() => {
-  if (!draft.value.canPlaceOffer) return draft.value.error ?? null
-  try {
-    for (const slot of draft.value.slots) sdk.value.offers.slot(slot)
-    return null
-  } catch (e) {
-    return (e as Error).message
-  }
+const currentSlot = computed({
+  get: () =>
+    slotDrafts.value[activeSlotIndex.value] ?? createPlaceOfferSlotDraft(),
+  set: (slot: PlaceOfferSlotDraft) => {
+    const next = [...slotDrafts.value]
+    next[activeSlotIndex.value] = slot
+    slotDrafts.value = next
+  },
 })
-const steps = computed<Step[]>(() =>
-  kind.value === 'collection'
-    ? ['type', 'amount']
-    : ['type', 'target', 'amount'],
+const currentSlotDraft = computed(() =>
+  buildPlaceOfferDraft({
+    quantityMode: 'one',
+    slots: [currentSlot.value],
+  }),
 )
-const stepTitle = computed(() => {
-  switch (step.value) {
-    case 'type':
-      return 'Choose offer type'
-    case 'target':
-      return 'Choose target'
-    case 'amount':
-      return kind.value ? PLACE_OFFER_KIND_TITLES[kind.value] : 'Set amount'
-  }
-})
 const amountWei = computed(() => parsePositiveEth(amountEth.value))
-const primaryLabel = computed(() =>
-  step.value === 'amount' ? 'Place offer' : 'Continue',
+const slotValidationError = computed(() => validateDraftSlots(draft.value))
+const currentSlotValidationError = computed(() =>
+  validateDraftSlots(currentSlotDraft.value),
 )
-const primaryDisabled = computed(() => {
-  if (step.value === 'type') return !kind.value
-  if (step.value === 'target') return !canUseDraft.value
-  if (step.value === 'amount') return !canUseDraft.value || !amountWei.value
-  return false
-})
 const canUseDraft = computed(
   () => draft.value.canPlaceOffer && !slotValidationError.value,
 )
-const footerSelection = computed(() => {
-  if (step.value !== 'target' || !draft.value.title) return ''
-  if (draft.value.kind === 'trait') {
-    const adjustments = [
-      traitIncludeIds.value.length
-        ? `${traitIncludeIds.value.length.toLocaleString()} included`
-        : '',
-      traitExcludeIds.value.length
-        ? `${traitExcludeIds.value.length.toLocaleString()} excluded`
-        : '',
-    ].filter(Boolean)
-    return [draft.value.title, ...adjustments].join(' · ')
+const canUseCurrentSlot = computed(
+  () =>
+    currentSlotDraft.value.canPlaceOffer && !currentSlotValidationError.value,
+)
+const stepTitle = computed(() => {
+  if (actionStep.value === 'target') {
+    return quantityMode.value === 'multiple'
+      ? slotLabel(activeSlotIndex.value)
+      : 'Target'
   }
-  return draft.value.title
+  return amountStepTitle()
+})
+const primaryLabel = computed(() => {
+  if (actionStep.value === 'amount') return 'Place offer'
+  return activeSlotIndex.value >= activeSlotCount.value - 1
+    ? 'Set amount'
+    : 'Continue'
+})
+const isFinalTargetStep = computed(
+  () =>
+    actionStep.value === 'target' &&
+    activeSlotIndex.value >= activeSlotCount.value - 1,
+)
+const primaryDisabled = computed(() => {
+  if (actionStep.value === 'target') {
+    return (
+      !canUseCurrentSlot.value ||
+      (isFinalTargetStep.value && !canUseDraft.value)
+    )
+  }
+  if (actionStep.value === 'amount') {
+    return !canUseDraft.value || !amountWei.value
+  }
+  return false
+})
+const showBackButton = computed(() => {
+  return actionStep.value === 'amount' || activeSlotIndex.value > 0
+})
+const footerSelection = computed(() => {
+  if (actionStep.value !== 'target') return ''
+  return slotFooterSelection(currentSlotDraft.value)
 })
 const visibleError = computed(() => {
   if (error.value) return error.value
-  if (step.value === 'type') return null
-  if (step.value === 'target') return draft.value.error ?? slotValidationError.value
+  if (!hasActionCard.value) return null
+  if (actionStep.value === 'target') {
+    if (!currentSlotDraft.value.canPlaceOffer) {
+      return visibleSlotDraftError(currentSlotDraft.value.error)
+    }
+    if (currentSlotValidationError.value)
+      return currentSlotValidationError.value
+    if (isFinalTargetStep.value && !canUseDraft.value) {
+      return draft.value.error ?? slotValidationError.value
+    }
+    return null
+  }
   if (!canUseDraft.value) return draft.value.error ?? slotValidationError.value
   return null
 })
 
-function selectKind(next: PlaceOfferKind) {
-  kind.value = next
-  error.value = null
-  step.value = nextStepForKind(next)
-}
+watch(
+  quantityMode,
+  (quantity) => {
+    error.value = null
+    if (!quantity) return
+    ensureSlotDrafts(activeSlotCount.value, { trim: quantity === 'one' })
+    activeSlotIndex.value = 0
+    actionStep.value = 'target'
+  },
+  { flush: 'sync' },
+)
+
+watch(slotCount, (count) => {
+  if (quantityMode.value !== 'multiple') return
+  ensureSlotDrafts(count)
+  if (activeSlotIndex.value >= count) {
+    activeSlotIndex.value = Math.max(0, count - 1)
+  }
+})
 
 function actPrimary() {
   error.value = null
-  if (step.value === 'type') {
-    if (!kind.value) return
-    step.value = nextStepForKind(kind.value)
-    return
-  }
-  if (step.value === 'target') {
+
+  if (actionStep.value === 'target') {
+    if (!canUseCurrentSlot.value) return
+    if (activeSlotIndex.value < activeSlotCount.value - 1) {
+      activeSlotIndex.value += 1
+      return
+    }
     if (!canUseDraft.value) return
-    step.value = 'amount'
+    actionStep.value = 'amount'
     return
   }
-  if (step.value === 'amount') {
+
+  if (actionStep.value === 'amount') {
     if (!canUseDraft.value || !amountWei.value) return
     actPlace()
-    return
   }
-}
-
-function nextStepForKind(next: PlaceOfferKind): Step {
-  return next === 'collection' ? 'amount' : 'target'
 }
 
 function goBack() {
   error.value = null
-  const index = steps.value.indexOf(step.value)
-  if (index <= 0) return
-  step.value = steps.value[index - 1]!
+
+  if (actionStep.value === 'amount') {
+    activeSlotIndex.value = Math.max(0, activeSlotCount.value - 1)
+    actionStep.value = 'target'
+    return
+  }
+
+  if (actionStep.value === 'target' && activeSlotIndex.value > 0) {
+    activeSlotIndex.value -= 1
+  }
 }
 
 function actPlace() {
@@ -290,20 +313,59 @@ function onComplete(receipt: TransactionReceipt) {
 }
 
 function resetFlow() {
-  kind.value = null
-  step.value = 'type'
+  quantityMode.value = null
+  actionStep.value = 'target'
   amountEth.value = ''
   error.value = null
-  singleText.value = ''
-  singlePunkId.value = null
-  traitSearchText.value = ''
-  traitText.value = ''
-  traitQuery.value = null
-  traitMatchIds.value = []
-  traitIncludeIds.value = []
-  traitExcludeIds.value = []
-  multiText.value = ''
-  multiPunkIds.value = []
+  slotCount.value = PLACE_OFFER_MIN_MULTI_SLOTS
+  activeSlotIndex.value = 0
+  slotDrafts.value = [createPlaceOfferSlotDraft()]
+}
+
+function amountStepTitle() {
+  if (draft.value.title) return draft.value.title
+  if (quantityMode.value === 'multiple') return 'Multiple Punks'
+  return 'Set Amount'
+}
+
+function slotFooterSelection(value: PlaceOfferDraft) {
+  if (!value.title) return ''
+  const slot = value.slotSummaries[0]
+  return [value.title, slot?.detail ?? ''].filter(Boolean).join(' · ')
+}
+
+function visibleSlotDraftError(message: string | undefined) {
+  if (
+    !message ||
+    message.startsWith('Choose ') ||
+    message === 'Select trait criteria.'
+  ) {
+    return null
+  }
+  return message
+}
+
+function validateDraftSlots(value: PlaceOfferDraft) {
+  if (!value.canPlaceOffer) return value.error ?? null
+  try {
+    for (const slot of value.slots) sdk.value.offers.slot(slot)
+    return null
+  } catch (e) {
+    return (e as Error).message
+  }
+}
+
+function ensureSlotDrafts(count: number, options: { trim?: boolean } = {}) {
+  const nextCount = Math.min(
+    PLACE_OFFER_MAX_SLOTS,
+    Math.max(1, Math.trunc(count)),
+  )
+  if (!options.trim && slotDrafts.value.length >= nextCount) return
+  if (slotDrafts.value.length === nextCount) return
+  slotDrafts.value = Array.from(
+    { length: nextCount },
+    (_, index) => slotDrafts.value[index] ?? createPlaceOfferSlotDraft(),
+  )
 }
 
 function parsePositiveEth(input: unknown): bigint | null {
@@ -319,6 +381,11 @@ function parsePositiveEth(input: unknown): bigint | null {
 </script>
 
 <style scoped>
+.place-flow {
+  display: flex;
+  flex-direction: column;
+}
+
 .flow-error {
   margin: var(--size-3) 0 0;
   color: var(--accent);
