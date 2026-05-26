@@ -4,6 +4,19 @@
       v-if="ownAccount"
       class="settings-tab"
     >
+      <section
+        v-if="dev"
+        class="settings-section"
+      >
+        <h2 class="section-title eyebrow">Network</h2>
+        <EvmSwitchNetwork class-name="block">
+          <template #default="{ currentChain }">
+            <Icon name="wallet" />
+            <span>Switch Network ({{ currentChain?.name || 'Unknown' }})</span>
+          </template>
+        </EvmSwitchNetwork>
+      </section>
+
       <section class="settings-section">
         <h2 class="section-title eyebrow">Wallet</h2>
         <p class="muted setting-status">
@@ -30,6 +43,8 @@ useOwnProfileGuard()
 
 const { ownAccount } = useProfileContext()
 const { mutate: disconnect } = useDisconnect()
+
+const dev = import.meta.dev
 
 const shortAddr = computed(() =>
   ownAccount.value ? shortAddress(ownAccount.value) : '',
