@@ -36,8 +36,10 @@
           @changed="onMarketChanged"
         />
         <LazyPunkDetailAuction
+          :key="`auction-${marketChangeKey}`"
           :punk-id="punkId"
           :standard="standard"
+          @changed="onMarketChanged"
         />
         <LazyPunkDetailHistory
           v-if="!isV1"

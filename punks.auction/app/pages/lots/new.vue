@@ -10,8 +10,8 @@
       </NuxtLink>
       <h1>Create lot</h1>
       <p class="muted">
-        Reserve one or more vault-held CryptoPunks for auction or direct offer
-        settlement.
+        Pick up to 80 of your CryptoPunks. Any Punk that isn't vaulted yet will
+        be moved into your auction vault before the lot is created.
       </p>
     </header>
 

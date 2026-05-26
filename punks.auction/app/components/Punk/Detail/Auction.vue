@@ -8,73 +8,86 @@
       >
         <code>PunksAuction</code> is not deployed yet.
       </p>
-      <p
-        v-else-if="contextPending && isContextEmpty"
-        class="block-note muted"
-      >
-        Loading…
-      </p>
-      <p
-        v-else-if="isContextEmpty"
-        class="block-note muted"
-      >
-        This Punk is not in any active auction, listed lot, or offer.
-      </p>
-      <div
-        v-else
-        class="context"
-      >
-        <div
-          v-if="punkAuctions.length"
-          class="context-group"
+      <template v-else>
+        <p
+          v-if="contextPending && isContextEmpty"
+          class="block-note muted"
         >
-          <h3 class="context-title">Active auction</h3>
-          <div class="card-grid">
-            <LazyAuctionCard
-              v-for="auction in punkAuctions"
-              :key="String(auction.id)"
-              :auction="auction"
-            />
+          Loading…
+        </p>
+        <p
+          v-else-if="isContextEmpty && !isOwner"
+          class="block-note muted"
+        >
+          This Punk is not in any active auction, listed lot, or offer.
+        </p>
+        <div
+          v-else-if="!isContextEmpty"
+          class="context"
+        >
+          <div
+            v-if="punkAuctions.length"
+            class="context-group"
+          >
+            <h3 class="context-title">Active auction</h3>
+            <div class="card-grid">
+              <LazyAuctionCard
+                v-for="auction in punkAuctions"
+                :key="String(auction.id)"
+                :auction="auction"
+              />
+            </div>
+          </div>
+          <div
+            v-if="punkLots.length"
+            class="context-group"
+          >
+            <h3 class="context-title">Listed in a lot</h3>
+            <div class="card-grid">
+              <LazyLotCard
+                v-for="lot in punkLots"
+                :key="String(lot.id)"
+                :lot="lot"
+              />
+            </div>
+          </div>
+          <div
+            v-if="punkOffers.length"
+            class="context-group"
+          >
+            <h3 class="context-title">Matching offers</h3>
+            <div class="card-grid">
+              <LazyOfferCard
+                v-for="offer in punkOffers"
+                :key="String(offer.id)"
+                :offer="offer"
+              />
+            </div>
           </div>
         </div>
-        <div
-          v-if="punkLots.length"
-          class="context-group"
-        >
-          <h3 class="context-title">Listed in a lot</h3>
-          <div class="card-grid">
-            <LazyLotCard
-              v-for="lot in punkLots"
-              :key="String(lot.id)"
-              :lot="lot"
-            />
-          </div>
-        </div>
-        <div
-          v-if="punkOffers.length"
-          class="context-group"
-        >
-          <h3 class="context-title">Matching offers</h3>
-          <div class="card-grid">
-            <LazyOfferCard
-              v-for="offer in punkOffers"
-              :key="String(offer.id)"
-              :offer="offer"
-            />
-          </div>
-        </div>
-      </div>
+
+        <LazyPunkDetailAuctionCreateLot
+          v-if="isOwner"
+          :punk-id="punkId"
+          :standard="standard"
+          @created="onCreated"
+        />
+      </template>
     </section>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
+import { useConnection } from '@wagmi/vue'
+import type { Hash } from 'viem'
 import type { TokenStandardValue } from '~/utils/auction'
 
 const props = defineProps<{
   punkId: number
   standard: TokenStandardValue
 }>()
+
+const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const {
   punkAuctions,
@@ -92,6 +105,22 @@ const isContextEmpty = computed(
     !punkLots.value.length &&
     !punkOffers.value.length,
 )
+
+const { address } = useConnection()
+const { owner } = usePunkOwner(
+  () => props.punkId,
+  () => props.standard,
+)
+const isOwner = computed(
+  () =>
+    !!address.value &&
+    !!owner.value &&
+    owner.value.toLowerCase() === address.value.toLowerCase(),
+)
+
+function onCreated(tx: Hash) {
+  emit('changed', tx)
+}
 </script>
 
 <style scoped>
