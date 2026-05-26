@@ -9,7 +9,12 @@
     class="not-found muted"
   >
     V1 Punks are hidden. Enable Render V1 Punks in
-    <NuxtLink to="/settings">settings</NuxtLink>.
+    <NuxtLink
+      v-if="settingsHandle"
+      :to="`/profile/${settingsHandle}/settings`"
+      >your profile settings</NuxtLink
+    >
+    <template v-else>your profile settings (connect a wallet first)</template>.
   </div>
   <div
     v-else
@@ -20,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { useConnection } from '@wagmi/vue'
 import { TokenStandard } from '~/utils/auction'
 
 const route = useRoute()
@@ -28,6 +34,12 @@ const validId = computed(
   () => Number.isInteger(id.value) && id.value >= 0 && id.value <= 9999,
 )
 const renderV1 = useV1Rendering()
+
+const { address } = useConnection()
+const ensProfile = useEnsWithAvatar(() => address.value)
+const settingsHandle = computed(
+  () => ensProfile.data.value?.ens ?? address.value ?? null,
+)
 
 useSeoMeta({
   title: () => `V1 Punk #${id.value} · Punks Auction`,

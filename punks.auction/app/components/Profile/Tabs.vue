@@ -48,6 +48,12 @@ const tabs = computed(() => {
       icon: 'lucide:layers',
       to: `${base}/wrappers`,
     },
+    {
+      slug: 'settings',
+      label: 'Settings',
+      icon: 'lucide:settings',
+      to: `${base}/settings`,
+    },
   ]
 })
 </script>

@@ -22,18 +22,6 @@
           >
             {{ shortAddr }}
           </h1>
-
-          <ClientOnly>
-            <NuxtLink
-              v-if="isOwnProfile"
-              to="/settings"
-              class="settings-link muted"
-              aria-label="Settings"
-              title="Settings"
-            >
-              <Icon name="lucide:settings" />
-            </NuxtLink>
-          </ClientOnly>
         </div>
 
         <ClientOnly>
@@ -240,20 +228,6 @@ provide(ProfileContextKey, {
   font-weight: var(--font-weight-bold);
   letter-spacing: 0;
   overflow-wrap: anywhere;
-}
-
-.settings-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  font-size: var(--font-lg);
-  line-height: var(--line-height);
-  padding: var(--size-1);
-}
-
-.settings-link:hover {
-  color: var(--text);
 }
 
 .profile-address {
