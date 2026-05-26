@@ -98,8 +98,8 @@
 </template>
 
 <script setup lang="ts">
-import type { TransactionFlowText } from '@1001-digital/components.evm'
 import type { Hash, TransactionReceipt } from 'viem'
+import type { TransactionFlowText } from '~/types/transactionFlow'
 
 useOwnProfileGuard()
 
@@ -109,11 +109,7 @@ const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 
-const {
-  offers,
-  pending: offersPending,
-  refresh: refreshOffers,
-} = useOffers()
+const { offers, pending: offersPending, refresh: refreshOffers } = useOffers()
 
 const { ids: owned } = useAccountPunks({
   account: profileAddress,
@@ -135,9 +131,7 @@ const ownerAddresses = computed(() => {
 const madeByMe = computed(() => {
   const addrs = ownerAddresses.value
   if (!addrs.size) return []
-  return offers.value.filter((offer) =>
-    addrs.has(offer.offerer.toLowerCase()),
-  )
+  return offers.value.filter((offer) => addrs.has(offer.offerer.toLowerCase()))
 })
 
 // Offer slots can target specific punks by id or by trait criteria. The
@@ -152,9 +146,7 @@ const received = computed(() => {
   if (!ids.size) return []
   return offers.value.filter((offer) => {
     if (made.value.has(String(offer.id))) return false
-    return offer.slots.some((slot) =>
-      slot.includeIds.some((id) => ids.has(id)),
-    )
+    return offer.slots.some((slot) => slot.includeIds.some((id) => ids.has(id)))
   })
 })
 

@@ -81,7 +81,7 @@ import { getPublicClient } from '@wagmi/core'
 import { useConfig, useConnection } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
-import { shortAddress } from '@1001-digital/components.evm'
+import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
 import { accountAvvatarDataUri } from '~/utils/avvatar'
 import { ProfileContextKey } from '~/composables/useProfileContext'
 

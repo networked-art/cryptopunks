@@ -125,7 +125,7 @@ import { getPublicClient } from '@wagmi/core'
 import { useConnection, useConfig } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
-import { shortAddress } from '@1001-digital/components.evm'
+import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
 
 const route = useRoute()
 const handle = computed(() => String(route.params.handle))

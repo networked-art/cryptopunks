@@ -1,7 +1,7 @@
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import { WagmiPlugin } from '@wagmi/vue'
-import { EvmConfigKey } from '@1001-digital/components.evm'
 import { createWagmiConfig } from '@1001-digital/layers.evm/app/wagmi'
+import { EvmConfigKey } from '@1001-digital/layers.evm/app/utils/config'
 import type { Chain } from 'viem'
 
 // Overrides the layer's wagmi plugin so the read RPC URL differs per env:
@@ -24,8 +24,7 @@ export default defineNuxtPlugin({
       ens?: { indexers?: string }
     }
     const publicUrl = (runtimeConfig.public as { publicUrl?: string }).publicUrl
-    const serverRpcUrl =
-      (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? ''
+    const serverRpcUrl = (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? ''
     const toAbsolute = (path: string) =>
       publicUrl ? new URL(path, publicUrl).toString() : path
 
@@ -44,9 +43,7 @@ export default defineNuxtPlugin({
         key,
         {
           ...cfg,
-          rpcs: import.meta.server
-            ? serverRpcUrl
-            : toAbsolute(cfg.rpcs ?? ''),
+          rpcs: import.meta.server ? serverRpcUrl : toAbsolute(cfg.rpcs ?? ''),
         },
       ]),
     )

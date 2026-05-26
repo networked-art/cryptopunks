@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { useConnection, useDisconnect } from '@wagmi/vue'
-import { shortAddress } from '@1001-digital/components.evm'
+import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
 
 const { address } = useConnection()
 const { mutate: disconnect } = useDisconnect()
