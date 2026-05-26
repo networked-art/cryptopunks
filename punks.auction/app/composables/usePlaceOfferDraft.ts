@@ -4,227 +4,336 @@ import {
   type OfferSlotInput,
   type PunkQuery,
 } from '@networked-art/punks-sdk'
+import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
 
-export type PlaceOfferKind = 'collection' | 'single' | 'trait' | 'multi'
-export type PlaceOfferStandard = 'cryptopunks' | 'cryptopunks-v1'
+export type PlaceOfferQuantityMode = 'one' | 'multiple'
+export type PlaceOfferTargetMode = 'exact' | 'traits' | 'any'
 
-export const PLACE_OFFER_KIND_TITLES: Record<PlaceOfferKind, string> = {
-  collection: 'Collection offer',
-  single: 'Single punk offer',
-  trait: 'Trait offer',
-  multi: 'Multi lot offer',
+export type PlaceOfferSlotDraft = {
+  standard: TokenStandardValue
+  targetMode: PlaceOfferTargetMode
+  exactSearchText: string
+  exactPunkId: number | null
+  traitSearchText: string
+  traitText: string
+  traitQuery: PunkQuery | null
+  traitMatchIds: number[]
+  traitIncludeIds: number[]
+  traitExcludeIds: number[]
 }
 
 export type PlaceOfferDraftInput = {
-  kind: PlaceOfferKind | null
-  standard?: PlaceOfferStandard
+  quantityMode: PlaceOfferQuantityMode | null
+  slots?: readonly PlaceOfferSlotDraft[]
+}
+
+export type PlaceOfferSlotSummary = {
+  label: string
+  title: string
+  detail: string
+  targetMode: PlaceOfferTargetMode
+  previewIds: number[]
   singlePunkId?: number | null
-  traitQuery?: PunkQuery
-  traitText?: string
-  traitMatchIds?: readonly number[]
-  traitIncludeIds?: readonly number[]
-  traitExcludeIds?: readonly number[]
-  multiPunkIds?: readonly number[]
 }
 
 export type PlaceOfferDraft = {
-  kind: PlaceOfferKind | null
+  quantityMode: PlaceOfferQuantityMode | null
   canPlaceOffer: boolean
   slots: OfferSlotInput[]
-  standard: PlaceOfferStandard
+  standard: TokenStandardValue
   title: string
   summaryTitle: string
   summaryDetail: string
+  slotSummaries: PlaceOfferSlotSummary[]
   previewIds: number[]
+  singlePunkId?: number | null
   count: number
   error?: string
 }
 
-const DEFAULT_STANDARD: PlaceOfferStandard = 'cryptopunks'
+type BuiltSlot = {
+  input: OfferSlotInput
+  summary: PlaceOfferSlotSummary
+  error?: string
+}
+
+export const PLACE_OFFER_MIN_MULTI_SLOTS = 2
+export const PLACE_OFFER_MAX_SLOTS = PUNKS_AUCTION_MAX_OFFER_SLOTS
+export const PLACE_OFFER_MAX_SLOT_IDS = PUNKS_AUCTION_MAX_SLOT_IDS
+export const DEFAULT_PLACE_OFFER_STANDARD = TokenStandard.CryptoPunks
+
+export function createPlaceOfferSlotDraft(
+  standard: TokenStandardValue = DEFAULT_PLACE_OFFER_STANDARD,
+): PlaceOfferSlotDraft {
+  return {
+    standard,
+    targetMode: 'exact',
+    exactSearchText: '',
+    exactPunkId: null,
+    traitSearchText: '',
+    traitText: '',
+    traitQuery: null,
+    traitMatchIds: [],
+    traitIncludeIds: [],
+    traitExcludeIds: [],
+  }
+}
 
 export function buildPlaceOfferDraft(
   input: PlaceOfferDraftInput,
 ): PlaceOfferDraft {
-  const standard = input.standard ?? DEFAULT_STANDARD
-  switch (input.kind) {
-    case 'collection':
-      return collectionDraft(standard)
-    case 'single':
-      return singleDraft(input.singlePunkId, standard)
-    case 'trait':
-      return traitDraft(input, standard)
-    case 'multi':
-      return multiDraft(input.multiPunkIds ?? [], standard)
+  if (!input.quantityMode) return emptyDraft('Choose one or multiple Punks.')
+
+  const slots = input.slots ?? []
+  const count = slots.length
+  const min =
+    input.quantityMode === 'multiple' ? PLACE_OFFER_MIN_MULTI_SLOTS : 1
+
+  if (count < min) {
+    return emptyDraft(`Choose at least ${min} Punks.`, {
+      quantityMode: input.quantityMode,
+      count,
+    })
+  }
+
+  const countError = slotCountError(count)
+  if (countError) {
+    return invalidDraft(countError, {
+      quantityMode: input.quantityMode,
+      count,
+    })
+  }
+
+  const built = slots.map((slot, index) => buildSlot(slot, slotLabel(index)))
+  const firstInvalid = built.find((slot) => slot.error)
+  if (firstInvalid) {
+    return invalidDraft(firstInvalid.error!, {
+      quantityMode: input.quantityMode,
+      count,
+    })
+  }
+
+  const duplicate = firstDuplicateSingletonSlot(built)
+  if (duplicate) {
+    return invalidDraft(`${duplicate} is selected more than once.`, {
+      quantityMode: input.quantityMode,
+      count,
+    })
+  }
+
+  const slotSummaries = built.map((slot) => slot.summary)
+  const previewIds = uniqueSortedIds(
+    built.flatMap((slot) => slot.summary.previewIds),
+  )
+  const singleBuiltSlot = count === 1 ? built[0] : undefined
+  const title =
+    count === 1
+      ? (singleBuiltSlot?.summary.title ?? 'Punk')
+      : `${count.toLocaleString()} Punks`
+
+  return validDraft({
+    quantityMode: input.quantityMode,
+    canPlaceOffer: true,
+    slots: built.map((slot) => slot.input),
+    standard: slots[0]?.standard ?? DEFAULT_PLACE_OFFER_STANDARD,
+    title,
+    summaryTitle: title,
+    summaryDetail: count === 1 ? (singleBuiltSlot?.summary.detail ?? '') : '',
+    slotSummaries,
+    previewIds,
+    singlePunkId:
+      count === 1 ? (singleBuiltSlot?.summary.singlePunkId ?? null) : null,
+    count,
+  })
+}
+
+function buildSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
+  switch (slot.targetMode) {
+    case 'exact':
+      return exactSlot(slot, label)
+    case 'traits':
+      return traitSlot(slot, label)
+    case 'any':
+      return anySlot(slot, label)
     default:
-      return emptyDraft('Choose an offer type.')
+      return invalidSlot(label, `Choose ${label}.`)
   }
 }
 
-function collectionDraft(standard: PlaceOfferStandard): PlaceOfferDraft {
-  return {
-    kind: 'collection',
-    canPlaceOffer: true,
-    slots: [{ standard }],
-    standard,
-    title: PLACE_OFFER_KIND_TITLES.collection,
-    summaryTitle: '',
-    summaryDetail: '',
-    count: 10000,
-    previewIds: [],
-  }
-}
-
-function singleDraft(
-  punkId: number | null | undefined,
-  standard: PlaceOfferStandard,
-): PlaceOfferDraft {
-  if (!isPunkId(punkId)) return emptyDraft('Choose one Punk.', 'single', standard)
+function exactSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
+  const punkId = slot.exactPunkId
+  if (!isPunkId(punkId)) return invalidSlot(label, `Choose ${label}.`)
 
   return {
-    kind: 'single',
-    canPlaceOffer: true,
-    slots: [{ standard, includeIds: [punkId] }],
-    standard,
-    title: `Punk #${punkId}`,
-    summaryTitle: `Punk #${punkId}`,
-    summaryDetail: '',
-    count: 1,
-    previewIds: [punkId],
+    input: {
+      standard: slot.standard,
+      includeIds: [punkId],
+    },
+    summary: {
+      label,
+      title: `Punk #${punkId}`,
+      detail: '',
+      targetMode: 'exact',
+      previewIds: [punkId],
+      singlePunkId: punkId,
+    },
   }
 }
 
-function traitDraft(
-  input: PlaceOfferDraftInput,
-  standard: PlaceOfferStandard,
-): PlaceOfferDraft {
-  const text = input.traitText?.trim() ?? ''
-  const includeIds = uniqueSortedIds(input.traitIncludeIds ?? [])
-  const excludeIds = uniqueSortedIds(input.traitExcludeIds ?? [])
-  const matchIds = uniqueSortedIds(input.traitMatchIds ?? [])
+function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
+  const text = slot.traitText.trim()
+  const includeIds = uniqueSortedIds(slot.traitIncludeIds)
+  const excludeIds = uniqueSortedIds(slot.traitExcludeIds)
+  const matchIds = uniqueSortedIds(slot.traitMatchIds)
   const matchSet = new Set(matchIds)
   const activeMatchIds = matchIds.filter((id) => !excludeIds.includes(id))
   const extraIncludeIds = includeIds.filter(
     (id) => !matchSet.has(id) && !excludeIds.includes(id),
   )
-  const activeCount = activeMatchIds.length + extraIncludeIds.length
+  const previewIds = uniqueSortedIds([...activeMatchIds, ...extraIncludeIds])
+  const activeCount = previewIds.length
 
-  if (!text) return emptyDraft('Select trait criteria.', 'trait')
-  if (includeIds.length > PUNKS_AUCTION_MAX_SLOT_IDS) {
-    return invalidDraft(
-      'trait',
-      `Include ${PUNKS_AUCTION_MAX_SLOT_IDS} or fewer Punks.`,
-      activeCount,
-      standard,
+  if (!text || !slot.traitQuery) {
+    return invalidSlot(label, 'Select trait criteria.')
+  }
+  if (includeIds.length > PLACE_OFFER_MAX_SLOT_IDS) {
+    return invalidSlot(
+      label,
+      `Include ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`,
     )
   }
-  if (excludeIds.length > PUNKS_AUCTION_MAX_SLOT_IDS) {
-    return invalidDraft(
-      'trait',
-      `Exclude ${PUNKS_AUCTION_MAX_SLOT_IDS} or fewer Punks.`,
-      activeCount,
-      standard,
+  if (excludeIds.length > PLACE_OFFER_MAX_SLOT_IDS) {
+    return invalidSlot(
+      label,
+      `Exclude ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`,
     )
   }
-  if (activeCount <= 0) {
-    return emptyDraft('No Punks match this offer.', 'trait', standard)
-  }
-
-  const detail = [
-    `${activeCount.toLocaleString()} matching`,
-    includeIds.length ? `${includeIds.length.toLocaleString()} included` : '',
-    excludeIds.length ? `${excludeIds.length.toLocaleString()} excluded` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  if (activeCount <= 0) return invalidSlot(label, 'No Punks match this slot.')
 
   return {
-    kind: 'trait',
-    canPlaceOffer: true,
-    slots: [
-      {
-        standard,
-        query: input.traitQuery,
-        includeIds: includeIds.length ? includeIds : undefined,
-        excludeIds: excludeIds.length ? excludeIds : undefined,
-      },
-    ],
-    standard,
-    title: `Trait offer: ${text}`,
-    summaryTitle: text,
-    summaryDetail: detail,
-    count: activeCount,
-    previewIds: uniqueSortedIds([...activeMatchIds, ...extraIncludeIds]),
+    input: {
+      standard: slot.standard,
+      query: slot.traitQuery,
+      includeIds: includeIds.length ? includeIds : undefined,
+      excludeIds: excludeIds.length ? excludeIds : undefined,
+    },
+    summary: {
+      label,
+      title: text,
+      detail: traitDetail(activeCount, includeIds.length, excludeIds.length),
+      targetMode: 'traits',
+      previewIds,
+    },
   }
 }
 
-function multiDraft(
-  ids: readonly number[],
-  standard: PlaceOfferStandard,
-): PlaceOfferDraft {
-  const selectedIds = uniqueSortedIds(ids)
-  if (selectedIds.length < 2) {
-    return emptyDraft('Select at least two Punks.', 'multi')
-  }
-  if (selectedIds.length > PUNKS_AUCTION_MAX_OFFER_SLOTS) {
-    return invalidDraft(
-      'multi',
-      `Select ${PUNKS_AUCTION_MAX_OFFER_SLOTS} or fewer Punks.`,
-      selectedIds.length,
-      standard,
-    )
-  }
-
+function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
   return {
-    kind: 'multi',
-    canPlaceOffer: true,
-    slots: selectedIds.map((id) => ({
-      standard,
-      includeIds: [id],
-    })),
-    standard,
-    title: `${selectedIds.length.toLocaleString()} Punks`,
-    summaryTitle: `${selectedIds.length.toLocaleString()} Punks`,
-    summaryDetail: 'Every selected Punk is required',
-    count: selectedIds.length,
-    previewIds: selectedIds,
+    input: { standard: slot.standard },
+    summary: {
+      label,
+      title: 'Any Punk',
+      detail: '',
+      targetMode: 'any',
+      previewIds: [],
+    },
+  }
+}
+
+function invalidSlot(label: string, error: string): BuiltSlot {
+  return {
+    input: {},
+    summary: {
+      label,
+      title: '',
+      detail: '',
+      targetMode: 'any',
+      previewIds: [],
+    },
+    error,
+  }
+}
+
+function validDraft(draft: Omit<PlaceOfferDraft, 'error'>): PlaceOfferDraft {
+  return {
+    ...draft,
+    error: undefined,
   }
 }
 
 function emptyDraft(
   error = '',
-  kind: PlaceOfferKind | null = null,
-  standard: PlaceOfferStandard = DEFAULT_STANDARD,
+  context: {
+    quantityMode?: PlaceOfferQuantityMode | null
+    count?: number
+  } = {},
 ): PlaceOfferDraft {
   return {
-    kind,
+    quantityMode: context.quantityMode ?? null,
     canPlaceOffer: false,
     slots: [],
-    standard,
+    standard: DEFAULT_PLACE_OFFER_STANDARD,
     title: '',
     summaryTitle: '',
     summaryDetail: '',
-    count: 0,
+    slotSummaries: [],
     previewIds: [],
+    singlePunkId: null,
+    count: context.count ?? 0,
     error,
   }
 }
 
 function invalidDraft(
-  kind: PlaceOfferKind,
   error: string,
-  count: number,
-  standard: PlaceOfferStandard = DEFAULT_STANDARD,
+  context: {
+    quantityMode?: PlaceOfferQuantityMode | null
+    count?: number
+  } = {},
 ): PlaceOfferDraft {
-  return {
-    ...emptyDraft(error, kind, standard),
-    count,
+  return emptyDraft(error, context)
+}
+
+function firstDuplicateSingletonSlot(slots: readonly BuiltSlot[]) {
+  const seen = new Set<string>()
+  for (const slot of slots) {
+    const ids = uniqueSortedIds(slot.summary.previewIds)
+    if (ids.length !== 1) continue
+    const id = ids[0]
+    const key = `${slot.input.standard ?? DEFAULT_PLACE_OFFER_STANDARD}-${id}`
+    if (seen.has(key)) return `Punk #${id}`
+    seen.add(key)
   }
+  return ''
+}
+
+function traitDetail(
+  count: number,
+  included: number,
+  excluded: number,
+): string {
+  return [
+    `${count.toLocaleString()} matching`,
+    included ? `${included.toLocaleString()} included` : '',
+    excluded ? `${excluded.toLocaleString()} excluded` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function slotCountError(count: number) {
+  if (count > PLACE_OFFER_MAX_SLOTS) {
+    return `Choose ${PLACE_OFFER_MAX_SLOTS} or fewer Punks.`
+  }
+  return ''
+}
+
+export function slotLabel(index: number) {
+  return `Slot ${index + 1}`
 }
 
 export function uniqueSortedIds(ids: readonly number[]) {
-  return [...new Set(ids)]
-    .filter((id) => isPunkId(id))
-    .sort((a, b) => a - b)
+  return [...new Set(ids)].filter((id) => isPunkId(id)).sort((a, b) => a - b)
 }
 
 export function isPunkId(id: unknown): id is number {
