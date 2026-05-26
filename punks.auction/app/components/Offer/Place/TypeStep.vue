@@ -49,28 +49,30 @@ function choose(kind: PlaceOfferKind) {
 .type-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--size-3);
+  gap: var(--size-2);
   width: 100%;
-  max-width: calc(var(--form-item-height) * 12);
+  max-width: calc(var(--form-item-height) * 10);
 }
 
 .type-card {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(var(--form-item-height) * 3);
+  min-height: calc(var(--form-item-height) * 2);
   padding: var(--size-3) var(--size-4);
   border: var(--border);
   background: var(--bg);
   color: inherit;
   text-align: center;
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .type-card:hover,
 .type-card:focus-visible,
 .type-card.selected {
-  border-color: var(--primary);
   color: var(--primary);
   background: var(--bg-elevated);
 }
@@ -82,8 +84,10 @@ function choose(kind: PlaceOfferKind) {
 
 .type-title {
   color: inherit;
-  font-size: var(--font-lg);
-  font-weight: var(--font-weight-normal);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
 }
 
 @media (max-width: 640px) {
