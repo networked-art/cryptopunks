@@ -1,6 +1,9 @@
 <template>
   <section class="block">
-    <h2 class="block-title eyebrow">Owned by</h2>
+    <h2 class="block-title eyebrow">
+      Owned by
+      <span v-if="isWrapped">(Wrapped)</span>
+    </h2>
     <ClientOnly>
       <div
         v-if="ownerKnown"
@@ -12,11 +15,6 @@
         >
           <Account :address="owner!" />
         </NuxtLink>
-        <span
-          v-if="isWrapped"
-          class="eyebrow wrapped-note"
-          >Wrapped</span
-        >
       </div>
       <span
         v-else-if="ownerPending"
