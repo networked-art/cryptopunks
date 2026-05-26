@@ -357,10 +357,13 @@ const multiDialogRef = ref<MultiDialogRef>(null)
 const flowSteps = ref<MultiTransactionFlowStep[]>([])
 const multiDialogText = ref<MultiTransactionFlowText>({})
 
-async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
+async function run(
+  planInput: ContractWritePlan | Promise<ContractWritePlan>,
+  text?: TransactionFlowText,
+) {
   try {
     const plan = await planInput
-    await runPlan(plan)
+    await runPlan(plan, text)
   } catch (e) {
     error.value = (e as Error).message
   }
@@ -433,7 +436,16 @@ function onFlowError(message: string) {
 }
 
 function actSetupVault() {
-  void run(sdk.value.auctions.prepareEnsureMyVault([PUNKS_AUCTION_ADDRESS]))
+  const title = setupVaultLabel.value
+  void run(sdk.value.auctions.prepareEnsureMyVault([PUNKS_AUCTION_ADDRESS]), {
+    title: {
+      confirm: title,
+      requesting: title,
+      waiting: title,
+      complete: 'Vault ready',
+    },
+    lead: { complete: 'Vault deployed and approved.' },
+  })
 }
 
 async function actWithdrawClaimable() {
