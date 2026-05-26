@@ -4,7 +4,6 @@
       <div class="card-head">
         <div>
           <h3>Vault movement</h3>
-          <p class="hint muted">Deposit into your `PunksVault` or reclaim from it.</p>
         </div>
       </div>
 
@@ -15,50 +14,60 @@
         {{ error }}
       </p>
 
-      <label
-        v-if="renderV1"
-        class="field"
-      >
-        <span class="label">Standard</span>
-        <select v-model="standard">
-          <option value="cryptopunks">CryptoPunks</option>
-          <option value="cryptopunks-v1">V1</option>
-        </select>
-      </label>
+      <div class="card-body">
+        <p class="hint muted">
+          Deposit a Punk into your `PunksVault` when you want to create auction
+          lots or accept offers through PunksAuction. Vault custody proves the
+          Punk is reserved for that flow and lets the auction move it into
+          escrow only when a sale starts. Reclaim returns an unused Punk to your
+          wallet.
+        </p>
 
-      <div class="picker-row">
-        <template v-if="selectedPunkId !== null">
-          <div class="picker-preview">
-            <PunkThumb
-              :punk-id="selectedPunkId"
-              :size="48"
-              :link="false"
-            />
-            <span class="picker-meta">
-              <strong>Punk #{{ selectedPunkId }}</strong>
-              <span class="muted">{{ custodyHint }}</span>
-            </span>
-          </div>
-          <Button
-            class="icon-button"
-            :disabled="pending"
-            @click="pickerOpen = true"
-          >
-            <Icon name="lucide:mouse-pointer-click" />
-            <span>Change Punk</span>
-          </Button>
-        </template>
-        <template v-else>
-          <Button
-            class="icon-button"
-            :disabled="pending"
-            @click="pickerOpen = true"
-          >
-            <Icon name="lucide:mouse-pointer-click" />
-            <span>Select Punk</span>
-          </Button>
-          <span class="hint muted">{{ pickerHint }}</span>
-        </template>
+        <label
+          v-if="renderV1"
+          class="field"
+        >
+          <span class="label">Standard</span>
+          <select v-model="standard">
+            <option value="cryptopunks">CryptoPunks</option>
+            <option value="cryptopunks-v1">V1</option>
+          </select>
+        </label>
+
+        <div class="picker-row">
+          <template v-if="selectedPunkId !== null">
+            <div class="picker-preview">
+              <PunkThumb
+                :punk-id="selectedPunkId"
+                :size="48"
+                :link="false"
+              />
+              <span class="picker-meta">
+                <strong>Punk #{{ selectedPunkId }}</strong>
+                <span class="muted">{{ custodyHint }}</span>
+              </span>
+            </div>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Change Punk</span>
+            </Button>
+          </template>
+          <template v-else>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Select Punk</span>
+            </Button>
+            <span class="hint muted">{{ pickerHint }}</span>
+          </template>
+        </div>
       </div>
 
       <div class="actions">
@@ -102,12 +111,12 @@
 </template>
 
 <script setup lang="ts">
-import type { TransactionFlowText } from '@1001-digital/components.evm'
 import type {
   ContractWritePlan,
   PunkStandardRef,
 } from '@networked-art/punks-sdk'
 import type { Address, Hash, TransactionReceipt } from 'viem'
+import type { TransactionFlowText } from '~/types/transactionFlow'
 import { TokenStandard } from '~/utils/auction'
 
 const props = defineProps<{ account: Address }>()
@@ -115,8 +124,11 @@ const props = defineProps<{ account: Address }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const renderV1 = useV1Rendering()
-const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
-  useAccountPunkInventory(() => props.account)
+const {
+  items: inventoryItems,
+  loading: inventoryLoading,
+  refresh: refreshInventory,
+} = useAccountPunkInventory(() => props.account)
 
 const standard = ref<'cryptopunks' | 'cryptopunks-v1'>('cryptopunks')
 const selectedPunkId = ref<number | null>(null)
@@ -274,9 +286,14 @@ function actReclaim() {
   font-size: var(--font-md);
 }
 
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+
 .hint {
   margin: 0;
-  margin-top: var(--size-1);
   font-size: var(--font-sm);
 }
 
