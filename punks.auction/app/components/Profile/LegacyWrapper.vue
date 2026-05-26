@@ -45,34 +45,38 @@
 
       <template v-else>
         <div class="picker-row">
-          <Button
-            class="icon-button"
-            :disabled="pending"
-            @click="pickerOpen = true"
-          >
-            <Icon name="lucide:mouse-pointer-click" />
-            <span>{{ selectedPunkId === null ? 'Select Punk' : 'Change Punk' }}</span>
-          </Button>
-          <div
-            v-if="selectedPunkId !== null"
-            class="picker-preview"
-          >
-            <PunkThumb
-              :punk-id="selectedPunkId"
-              :size="48"
-              :link="false"
-            />
-            <span class="picker-meta">
-              <strong>Punk #{{ selectedPunkId }}</strong>
-              <span class="muted">{{ custodyHint }}</span>
-            </span>
-          </div>
-          <span
-            v-else
-            class="hint muted"
-          >
-            {{ pickerHint }}
-          </span>
+          <template v-if="selectedPunkId !== null">
+            <div class="picker-preview">
+              <PunkThumb
+                :punk-id="selectedPunkId"
+                :size="48"
+                :link="false"
+              />
+              <span class="picker-meta">
+                <strong>Punk #{{ selectedPunkId }}</strong>
+                <span class="muted">{{ custodyHint }}</span>
+              </span>
+            </div>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Change Punk</span>
+            </Button>
+          </template>
+          <template v-else>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Select Punk</span>
+            </Button>
+            <span class="hint muted">{{ pickerHint }}</span>
+          </template>
         </div>
 
         <div class="actions">
@@ -123,6 +127,7 @@
         :steps="flowSteps"
         :text="multiDialogText"
         skip-confirmation
+        @complete="onFlowComplete"
         @error="onFlowError"
       />
     </section>
@@ -154,6 +159,7 @@ const emit = defineEmits<{
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const { refreshMarketState } = usePunkMarketState()
 const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
   useAccountPunkInventory(() => props.account)
 
@@ -317,7 +323,9 @@ function onFlowError(message: string) {
 async function onTransactionComplete(receipt: TransactionReceipt) {
   const tx = receipt.transactionHash as Hash
   if (currentSingleAction.value !== 'register') {
+    selectedPunkId.value = null
     void refreshInventory()
+    scheduleMarketRefresh()
     emit('changed', tx)
     return
   }
@@ -334,6 +342,20 @@ async function onTransactionComplete(receipt: TransactionReceipt) {
     error.value = (e as Error).message
     emit('changed', tx)
   }
+}
+
+function onFlowComplete() {
+  selectedPunkId.value = null
+  void refreshInventory()
+  scheduleMarketRefresh()
+}
+
+// `refreshMarketState` reflects the latest indexer snapshot but the indexer
+// itself can lag a few seconds behind a freshly mined wrap/unwrap. Fire one
+// refresh immediately and a follow-up to catch the indexer once it's caught up.
+function scheduleMarketRefresh() {
+  void refreshMarketState()
+  setTimeout(() => void refreshMarketState(), 15000)
 }
 
 function actRegister() {

@@ -44,34 +44,38 @@
 
       <template v-else>
         <div class="picker-row">
-          <Button
-            class="icon-button"
-            :disabled="pending"
-            @click="pickerOpen = true"
-          >
-            <Icon name="lucide:mouse-pointer-click" />
-            <span>{{ selectedPunkId === null ? 'Select Punk' : 'Change Punk' }}</span>
-          </Button>
-          <div
-            v-if="selectedPunkId !== null"
-            class="picker-preview"
-          >
-            <PunkThumb
-              :punk-id="selectedPunkId"
-              :size="48"
-              :link="false"
-            />
-            <span class="picker-meta">
-              <strong>Punk #{{ selectedPunkId }}</strong>
-              <span class="muted">{{ custodyHint }}</span>
-            </span>
-          </div>
-          <span
-            v-else
-            class="hint muted"
-          >
-            {{ pickerHint }}
-          </span>
+          <template v-if="selectedPunkId !== null">
+            <div class="picker-preview">
+              <PunkThumb
+                :punk-id="selectedPunkId"
+                :size="48"
+                :link="false"
+              />
+              <span class="picker-meta">
+                <strong>Punk #{{ selectedPunkId }}</strong>
+                <span class="muted">{{ custodyHint }}</span>
+              </span>
+            </div>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Change Punk</span>
+            </Button>
+          </template>
+          <template v-else>
+            <Button
+              class="icon-button"
+              :disabled="pending"
+              @click="pickerOpen = true"
+            >
+              <Icon name="lucide:mouse-pointer-click" />
+              <span>Select Punk</span>
+            </Button>
+            <span class="hint muted">{{ pickerHint }}</span>
+          </template>
         </div>
 
         <div class="actions">
