@@ -6,6 +6,8 @@ import { CryptoPunks721Abi } from './abis/CryptoPunks721Abi'
 import { CryptoPunksV1Abi } from './abis/CryptoPunksV1Abi'
 import { CryptoPunksV2Abi } from './abis/CryptoPunksV2Abi'
 import { PunksMarketAbi } from './abis/PunksMarketAbi'
+import { PunksVaultFactoryAbi } from './abis/PunksVaultFactoryAbi'
+import { StashFactoryAbi } from './abis/StashFactoryAbi'
 import { V1WrapperAbi } from './abis/V1WrapperAbi'
 import { WrappedPunksAbi } from './abis/WrappedPunksAbi'
 import {
@@ -17,6 +19,10 @@ import {
   CRYPTOPUNKS_V2_START_BLOCK,
   PUNKS_MARKET_ADDRESS,
   PUNKS_MARKET_START_BLOCK,
+  PUNKS_VAULT_FACTORY_ADDRESS,
+  PUNKS_VAULT_FACTORY_START_BLOCK,
+  STASH_FACTORY_ADDRESS,
+  STASH_FACTORY_START_BLOCK,
   V1_WRAPPER_ADDRESS,
   V1_WRAPPER_START_BLOCK,
   WRAPPED_PUNKS_ADDRESS,
@@ -83,6 +89,18 @@ export default createConfig({
       abi: PunksMarketAbi,
       address: PUNKS_MARKET_ADDRESS,
       startBlock: PUNKS_MARKET_START_BLOCK,
+    },
+    PunksVaultFactory: {
+      chain: 'mainnet',
+      abi: PunksVaultFactoryAbi,
+      address: PUNKS_VAULT_FACTORY_ADDRESS,
+      startBlock: PUNKS_VAULT_FACTORY_START_BLOCK,
+    },
+    StashFactory: {
+      chain: 'mainnet',
+      abi: StashFactoryAbi,
+      address: STASH_FACTORY_ADDRESS,
+      startBlock: STASH_FACTORY_START_BLOCK,
     },
   },
 })

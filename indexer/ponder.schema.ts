@@ -62,16 +62,21 @@ export const v1Punk = onchainTable(
 // market, wrappers, PunksMarket bids, etc.). `vault` / `stash` are the
 // deterministic per-user contract addresses read from `PunksVaultFactory.
 // predictVault` and `StashFactory.stashAddressFor` (both pure views of the
-// user address), populated on first sight. `user_proxy` is set from
-// `WrappedPunks:ProxyRegistered`. The vault / stash / user_proxy columns are
-// individually indexed for fast reverse lookup (vault address → owner EOA),
-// which powers profile-URL canonicalization.
+// user address), populated on first sight. `vault_deployed` / `stash_deployed`
+// track whether the clone at that predicted address actually exists onchain,
+// flipped by the `PunksVaultFactory:VaultDeployed` and `StashFactory:Deployed`
+// handlers. `user_proxy` is set from `WrappedPunks:ProxyRegistered`. The
+// vault / stash / user_proxy columns are individually indexed for fast
+// reverse lookup (vault address → owner EOA), which powers profile-URL
+// canonicalization.
 export const account = onchainTable(
   'accounts',
   (t) => ({
     address: t.hex().primaryKey(),
     vault: t.hex(),
+    vault_deployed: t.boolean().notNull().default(false),
     stash: t.hex(),
+    stash_deployed: t.boolean().notNull().default(false),
     user_proxy: t.hex(),
     first_seen_at: t.bigint().notNull(),
     updated_at: t.bigint().notNull(),

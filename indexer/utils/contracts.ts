@@ -29,6 +29,23 @@ export const PUNKS_MARKET_ADDRESS =
   '0x64e507FEBF26521b73FbdfA533106B2042533218' as const
 export const PUNKS_MARKET_START_BLOCK = 25_118_216
 
+// PunksVaultFactory — deploys deterministic per-user `PunksVault` clones.
+// Watched so we can mark `accounts.vault_deployed = true` when a user (or a
+// third party on their behalf) actually deploys their vault. The address
+// column is still populated counterfactually via `predictVault` on first
+// sight in `src/accounts.ts`.
+export const PUNKS_VAULT_FACTORY_ADDRESS =
+  '0xf3381B259B2FE142c0A87bffF463695d935D6F66' as const
+export const PUNKS_VAULT_FACTORY_START_BLOCK = 25_103_673
+
+// StashFactory (Yuga Labs) — emits `Deployed(proxy, implementation)` from
+// `ERC1967Factory` each time `deployStash` clones a new Stash. The owner
+// isn't on the event, so the handler reads `proxy.owner()` to map the new
+// Stash back to its EOA.
+export const STASH_FACTORY_ADDRESS =
+  '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
+export const STASH_FACTORY_START_BLOCK = 19_029_676
+
 // Chainlink ETH/USD aggregator (OCR). Not indexed via Ponder — we read it
 // from API-context code with Viem and write the result into the offchain
 // `eth_usd_prices` table for persistence across redeploys. The consumer-

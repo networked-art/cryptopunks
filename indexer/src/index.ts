@@ -4,13 +4,19 @@ import { event as activityEvent, listing, punk, punkBid } from 'ponder:schema'
 import { getAddress } from 'viem'
 
 import { CryptoPunksV2Abi } from '../abis/CryptoPunksV2Abi'
+import { StashProxyAbi } from '../abis/StashFactoryAbi'
 import {
   CRYPTOPUNKS_V2_ADDRESS,
   WRAPPER_ADDRESSES_LOWER,
   ZERO_ADDRESS,
   wrapperKindFor,
 } from '../utils/contracts'
-import { ensureAccounts, recordUserProxy } from './accounts'
+import {
+  ensureAccounts,
+  markStashDeployed,
+  markVaultDeployed,
+  recordUserProxy,
+} from './accounts'
 import {
   dayUnix,
   seedPreChainlinkPricesFromCsv,
@@ -349,6 +355,43 @@ ponder.on('WrappedPunks:ProxyRegistered', async ({ event, context }) => {
   await recordUserProxy(
     context,
     user,
+    proxy,
+    event.block.number,
+    event.block.timestamp,
+  )
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-user contract deployments (PunksVault clone, Yuga Stash proxy).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Fires the first time a user's `PunksVault` clone is deployed (by them or by
+// a third party via `ensureVault`). The event carries both owner and vault,
+// so we can flip `vault_deployed` without an extra eth_call.
+ponder.on('PunksVaultFactory:VaultDeployed', async ({ event, context }) => {
+  await markVaultDeployed(
+    context,
+    event.args.owner,
+    event.args.vault,
+    event.block.number,
+    event.block.timestamp,
+  )
+})
+
+// Fires for every Stash the factory deploys. The inherited ERC1967Factory
+// event only carries `(proxy, implementation)`, so we read `proxy.owner()`
+// at the event block to recover the EOA the Stash belongs to.
+ponder.on('StashFactory:Deployed', async ({ event, context }) => {
+  const proxy = event.args.proxy
+  const owner = await context.client.readContract({
+    address: proxy,
+    abi: StashProxyAbi,
+    functionName: 'owner',
+    blockNumber: event.block.number,
+  })
+  await markStashDeployed(
+    context,
+    owner,
     proxy,
     event.block.number,
     event.block.timestamp,

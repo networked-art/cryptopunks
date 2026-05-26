@@ -124,7 +124,9 @@ export async function ensureAccount(
     await context.db.insert(account).values({
       address: normalized,
       vault,
+      vault_deployed: false,
       stash,
+      stash_deployed: false,
       user_proxy: null,
       first_seen_at: timestamp,
       updated_at: timestamp,
@@ -136,6 +138,54 @@ export async function ensureAccount(
       updated_at: timestamp,
     })
   }
+}
+
+/**
+ * Marks `user`'s `accounts` row as having a deployed `PunksVault` at `vault`,
+ * creating the row first if needed. The address is taken straight from the
+ * `VaultDeployed` event so it doesn't depend on the `predictVault` view being
+ * callable at the event block.
+ */
+export async function markVaultDeployed(
+  context: Context,
+  owner: string,
+  vault: string,
+  blockNumber: bigint,
+  timestamp: bigint,
+): Promise<void> {
+  await ensureAccount(context, owner, blockNumber, timestamp)
+  if (KNOWN_NON_EOA_LOWER.has(owner.toLowerCase())) return
+  const normalized = getAddress(owner) as Address
+  const vaultNormalized = vault.toLowerCase() as Address
+  await context.db.update(account, { address: normalized }).set({
+    vault: vaultNormalized,
+    vault_deployed: true,
+    updated_at: timestamp,
+  })
+}
+
+/**
+ * Marks `owner`'s `accounts` row as having a deployed Stash at `stash`,
+ * creating the row first if needed. Caller is responsible for resolving
+ * `owner` from the `Deployed(proxy, implementation)` event (typically via
+ * an `eth_call` to `proxy.owner()`) since the event itself doesn't carry it.
+ */
+export async function markStashDeployed(
+  context: Context,
+  owner: string,
+  stash: string,
+  blockNumber: bigint,
+  timestamp: bigint,
+): Promise<void> {
+  await ensureAccount(context, owner, blockNumber, timestamp)
+  if (KNOWN_NON_EOA_LOWER.has(owner.toLowerCase())) return
+  const normalized = getAddress(owner) as Address
+  const stashNormalized = stash.toLowerCase() as Address
+  await context.db.update(account, { address: normalized }).set({
+    stash: stashNormalized,
+    stash_deployed: true,
+    updated_at: timestamp,
+  })
 }
 
 /**
