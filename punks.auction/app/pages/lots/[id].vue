@@ -26,6 +26,11 @@
       </div>
     </dl>
 
+    <LotOwnerActions
+      :lot="lot"
+      @changed="onChanged"
+    />
+
     <LotActions
       :lot="lot"
       :matching-offers="matchingOffers"
