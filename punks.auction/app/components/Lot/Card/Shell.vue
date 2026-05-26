@@ -80,6 +80,10 @@ defineProps<{
   opacity: 1;
 }
 
+.lot-card-shell:not(.lot-card-shell-lift) :deep(.lot-preview) {
+  box-shadow: none;
+}
+
 .lot-card-shell-lift:hover :deep(.lot-preview),
 .lot-card-shell-lift:focus-within :deep(.lot-preview) {
   box-shadow: var(--shadow-2, 0 10px 24px rgb(10 10 18 / 12%));
