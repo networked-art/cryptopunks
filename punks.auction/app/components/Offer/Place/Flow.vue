@@ -197,7 +197,7 @@ const stepTitle = computed(() => {
 const primaryLabel = computed(() => {
   if (actionStep.value === 'amount') return 'Place offer'
   return activeSlotIndex.value >= activeSlotCount.value - 1
-    ? 'Set amount'
+    ? 'Review'
     : 'Continue'
 })
 const isFinalTargetStep = computed(
