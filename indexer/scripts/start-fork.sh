@@ -165,4 +165,4 @@ psql_in -v ON_ERROR_STOP=1 -c "
 
 # 6. Run ponder start
 step "Starting ponder against $SNAPSHOT_SCHEMA"
-exec pnpm exec ponder start
+exec env DATABASE_SCHEMA="$SNAPSHOT_SCHEMA" pnpm exec ponder start
