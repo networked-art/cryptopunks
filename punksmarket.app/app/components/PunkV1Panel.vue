@@ -202,7 +202,7 @@
 
 <script setup lang="ts">
 import { type Address, type Hash, type TransactionReceipt } from 'viem'
-import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import type { ContractWritePlan, PlanKind } from '@networked-art/punks-sdk'
 import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
@@ -350,11 +350,27 @@ type AcceptBidSnapshot = {
   punkId: number
 }
 
+// Titles for the single-tx flows this panel triggers. Unknown kinds fall
+// through to plan.description so the dialog never renders a blank title.
+const SINGLE_PLAN_TITLES: Partial<Record<PlanKind, string>> = {
+  'remove-listing': 'Remove Listing',
+  'withdraw-canonical-balance': 'Withdraw Balance',
+  'buy-punk-v1': 'Buy Punk',
+  'cancel-v1-bid': 'Cancel Bid',
+  'accept-v1-bid': 'Settle Bid',
+  'unwrap-v1': 'Unwrap Punk',
+}
+
 function run(plan: ContractWritePlan, action: 'unwrap' | null = null) {
   singleAction = action
+  const title = SINGLE_PLAN_TITLES[plan.kind] ?? plan.description
   dialogText.value = {
-    title: { confirm: plan.description, waiting: plan.description },
-    lead: { confirm: plan.description },
+    title: { confirm: title, requesting: title, waiting: title },
+    lead: {
+      confirm: plan.description,
+      requesting: plan.description,
+      waiting: plan.description,
+    },
   }
   dialogRef.value?.initializeRequest(() => execute(plan))
 }
