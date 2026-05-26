@@ -47,7 +47,7 @@
             :owner="viewerOwnedAddress"
             :owned="owned"
           />
-          <h2 class="section-title">Owned punks</h2>
+          <h2 class="section-title">{{ ownedPunksTitle }}</h2>
           <p
             v-if="ownedLoading"
             class="muted"
@@ -183,6 +183,11 @@ const {
   loading: ownedLoading,
   error: ownedError,
 } = useOwnedPunks(() => resolvedAddress.value ?? undefined)
+
+const ownedPunksTitle = computed(() => {
+  const count = owned.value.length
+  return `${count} owned ${count === 1 ? 'punk' : 'punks'}`
+})
 
 const { address: connectedAddress } = useConnection()
 
