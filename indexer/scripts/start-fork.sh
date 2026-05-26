@@ -19,7 +19,7 @@ PKG_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$PKG_DIR"
 
 PG_CONTAINER="punks-indexer-db"
-SNAPSHOT_SCHEMA="ponder_c896f90a9aa189f5"
+SNAPSHOT_SCHEMA="ponder_266dfce09b4842e9"
 PROBE_SCHEMA="ponder_probe"
 PROBE_LOG="/tmp/ponder-probe.$$.log"
 FORK_URL="http://127.0.0.1:8545"
