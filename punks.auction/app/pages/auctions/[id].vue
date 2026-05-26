@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { useIntervalFn } from '@vueuse/core'
 import {
   auctionStatus,
   formatLotItemsLabel,
@@ -101,6 +102,7 @@ import {
 } from '~/utils/auction'
 
 const COUNTDOWN_WINDOW_SECONDS = 12 * 60 * 60
+const REFRESH_INTERVAL_MS = 12_000
 
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
@@ -138,6 +140,12 @@ const endLabel = computed(() => {
 function onChanged() {
   void refresh()
 }
+
+useIntervalFn(() => {
+  const current = auction.value
+  if (!current || current.settled) return
+  void refresh()
+}, REFRESH_INTERVAL_MS)
 
 function formatDateTime(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
