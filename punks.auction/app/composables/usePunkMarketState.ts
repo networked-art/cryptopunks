@@ -48,13 +48,16 @@ function toListedPrices(
   return map
 }
 
-async function fetchPunkMarketState(): Promise<PunkMarketStateResponse | null> {
+async function fetchPunkMarketState(
+  fresh = false,
+): Promise<PunkMarketStateResponse | null> {
   const indexerUrl = getIndexerUrl()
   if (!indexerUrl) return null
 
   try {
     return await $fetch<PunkMarketStateResponse>(
       `${indexerUrl}/punks/market-state`,
+      fresh ? { query: { fresh: 1 } } : undefined,
     )
   } catch {
     return null
@@ -63,7 +66,7 @@ async function fetchPunkMarketState(): Promise<PunkMarketStateResponse | null> {
 
 function sharedFetchPunkMarketState(force = false) {
   if (!force && fetchPromise) return fetchPromise
-  fetchPromise = fetchPunkMarketState().finally(() => {
+  fetchPromise = fetchPunkMarketState(force).finally(() => {
     fetchPromise = null
   })
   return fetchPromise

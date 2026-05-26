@@ -3,7 +3,7 @@ import { sql } from 'ponder'
 import { db } from 'ponder:api'
 import { listing, punk, punkBid } from 'ponder:schema'
 import { formatEther } from 'viem'
-import { memoize } from './cache'
+import { invalidate, memoize } from './cache'
 
 const MARKET_STATE_TTL_MS = 10_000
 
@@ -108,16 +108,25 @@ async function computeMarketState(): Promise<MarketStateResponse> {
 
 const app = new Hono()
 
-async function loadMarketState() {
-  return await memoize('punks:market-state', MARKET_STATE_TTL_MS, () =>
+const MARKET_STATE_CACHE_KEY = 'punks:market-state'
+
+async function loadMarketState(fresh = false) {
+  if (fresh) invalidate(MARKET_STATE_CACHE_KEY)
+  return await memoize(MARKET_STATE_CACHE_KEY, MARKET_STATE_TTL_MS, () =>
     computeMarketState(),
   )
 }
 
 // GET /punks/market-state — compact original CryptoPunks market state.
+// Pass `?fresh=1` to bypass the in-process memoize and the HTTP cache, e.g.
+// right after a wrap/unwrap so the caller sees the new wrapper state.
 app.get('/market-state', async (c) => {
-  const data = await loadMarketState()
-  c.header('cache-control', 'public, max-age=10, stale-while-revalidate=30')
+  const fresh = c.req.query('fresh') === '1'
+  const data = await loadMarketState(fresh)
+  c.header(
+    'cache-control',
+    fresh ? 'no-store' : 'public, max-age=10, stale-while-revalidate=30',
+  )
   return c.json(data)
 })
 
