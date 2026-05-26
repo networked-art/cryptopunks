@@ -7,7 +7,7 @@
     />
 
     <LazyPunkGrid
-      class="any-grid"
+      class="target-grid"
       :ids="ALL_PUNK_IDS"
       :size="size"
       scrollable
@@ -28,9 +28,3 @@ withDefaults(
 
 const searchText = ref('')
 </script>
-
-<style scoped>
-.any-grid {
-  min-height: 0;
-}
-</style>

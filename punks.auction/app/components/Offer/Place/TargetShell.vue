@@ -12,4 +12,9 @@
   height: 100%;
   min-height: 0;
 }
+
+.target-shell :deep(.target-grid) {
+  min-height: 0;
+  padding: var(--border-width);
+}
 </style>

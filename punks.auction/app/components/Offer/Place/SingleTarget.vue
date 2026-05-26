@@ -6,6 +6,7 @@
     />
 
     <LazyPunkGrid
+      class="target-grid"
       :ids="ids"
       :size="size"
       selectable
