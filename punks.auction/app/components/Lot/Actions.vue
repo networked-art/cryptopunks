@@ -1,6 +1,25 @@
 <template>
   <ClientOnly>
     <section class="actions-stack">
+      <template v-if="isSeller">
+        <div class="action-block">
+          <h3 class="action-title">Manage lot</h3>
+          <p class="block-note muted">
+            Update the reserve, restrict the initial buyer, or cancel the lot.
+          </p>
+
+          <div class="button-row">
+            <Button @click="openUpdateDialog">Update Lot</Button>
+            <Button @click="openCancelDialog">Cancel Lot</Button>
+          </div>
+        </div>
+
+        <div
+          class="action-divider"
+          aria-hidden="true"
+        />
+      </template>
+
       <div class="action-block">
         <p class="block-note muted">
           Start a 24-hour auction with an opening bid of
@@ -123,6 +142,85 @@
         </div>
       </template>
 
+      <Dialog
+        v-model:open="updateDialogOpen"
+        title="Update Lot"
+        class="lot-action-dialog"
+        compat
+        @closed="updateError = null"
+      >
+        <p class="block-note muted">
+          Change the reserve or set an optional initial buyer for this lot.
+        </p>
+
+        <p
+          v-if="updateError"
+          class="error"
+        >
+          {{ updateError }}
+        </p>
+
+        <div class="manage-fields">
+          <label class="amount-field">
+            <span class="label">Reserve ETH</span>
+            <input
+              v-model="reserveEth"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+        </div>
+
+        <LotPrivateBuyerField
+          v-model="onlySellTo"
+          v-model:open="privateBuyerOpen"
+        />
+
+        <template #footer>
+          <Button
+            class="secondary"
+            @click="updateDialogOpen = false"
+          >
+            Cancel
+          </Button>
+          <Button
+            class="primary"
+            :disabled="!canUpdateLot"
+            @click="actUpdateLot"
+          >
+            Update Lot
+          </Button>
+        </template>
+      </Dialog>
+
+      <Dialog
+        v-model:open="cancelDialogOpen"
+        title="Cancel Lot"
+        class="lot-action-dialog"
+        compat
+      >
+        <p class="block-note muted">
+          Cancel lot #{{ lot.id }} and release its Punk reservations.
+        </p>
+
+        <template #footer>
+          <Button
+            class="secondary"
+            @click="cancelDialogOpen = false"
+          >
+            Keep Lot
+          </Button>
+          <Button
+            class="primary"
+            @click="actCancelLot"
+          >
+            Cancel Lot
+          </Button>
+        </template>
+      </Dialog>
+
       <EvmTransactionFlowDialog
         ref="dialogRef"
         :text="dialogText"
@@ -135,9 +233,11 @@
 </template>
 
 <script setup lang="ts">
-import { useConnection } from '@wagmi/vue'
+import { useConfig, useConnection } from '@wagmi/vue'
 import {
   formatEther,
+  isAddress,
+  parseEther,
   type Address,
   type Hash,
   type TransactionReceipt,
@@ -150,6 +250,7 @@ import {
   type LotRecord,
   type OfferRecord,
 } from '~/utils/auction'
+import { resolveAddressInput } from '~/utils/addressInput'
 
 const props = withDefaults(
   defineProps<{
@@ -164,8 +265,16 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const config = useConfig()
 const { address } = useConnection()
 const renderV1 = useV1Rendering()
+
+const updateDialogOpen = ref(false)
+const cancelDialogOpen = ref(false)
+const reserveEth = ref('')
+const onlySellTo = ref('')
+const privateBuyerOpen = ref(false)
+const updateError = ref<string | null>(null)
 
 const isPrivateLot = computed(
   () => !sameAddress(props.lot.onlySellTo, ZERO_ADDRESS),
@@ -182,6 +291,20 @@ const canOpen = computed(() => {
 })
 const instantEligible = computed(
   () => props.lot.items.length <= MAX_INSTANT_ITEMS,
+)
+const parsedReserveWei = computed(() => parsePositiveEth(reserveEth.value))
+const buyerInputSubmittable = computed(() => {
+  const trimmed = onlySellTo.value.trim()
+  return !trimmed || isAddress(trimmed) || trimmed.includes('.')
+})
+const canUpdateLot = computed(
+  () => !!parsedReserveWei.value && buyerInputSubmittable.value,
+)
+
+watch(
+  () => props.lot,
+  () => seedUpdateForm(),
+  { immediate: true },
 )
 
 type DialogRef = {
@@ -238,6 +361,51 @@ function actStartAuctionFromOffer(offer: OfferRecord) {
   )
 }
 
+function openUpdateDialog() {
+  seedUpdateForm()
+  updateError.value = null
+  updateDialogOpen.value = true
+}
+
+function openCancelDialog() {
+  cancelDialogOpen.value = true
+}
+
+async function actUpdateLot() {
+  const reserveWei = parsedReserveWei.value
+  if (!reserveWei || !buyerInputSubmittable.value) return
+
+  let buyer: Address
+  try {
+    buyer = await resolveOnlySellTo()
+  } catch (e) {
+    updateError.value = (e as Error).message
+    return
+  }
+
+  updateDialogOpen.value = false
+  runPlan(
+    sdk.value.auctions.prepareUpdateLot({
+      lotId: props.lot.id,
+      reserveWei,
+      onlySellTo: buyer,
+    }),
+    `Update Lot #${props.lot.id}`,
+    `Set this lot reserve to ${reserveEth.value.trim()} ETH.`,
+    'Update Lot',
+  )
+}
+
+function actCancelLot() {
+  cancelDialogOpen.value = false
+  runPlan(
+    sdk.value.auctions.prepareCancelLot(props.lot.id),
+    `Cancel Lot #${props.lot.id}`,
+    'Cancel this lot and release its Punk reservations.',
+    'Cancel Lot',
+  )
+}
+
 function runPlan(
   plan: ContractWritePlan,
   title: string,
@@ -256,6 +424,33 @@ function onComplete(receipt: TransactionReceipt) {
   emit('changed', receipt.transactionHash as Hash)
 }
 
+function seedUpdateForm() {
+  reserveEth.value = formatEther(props.lot.reserveWei)
+  privateBuyerOpen.value = !sameAddress(props.lot.onlySellTo, ZERO_ADDRESS)
+  onlySellTo.value = sameAddress(props.lot.onlySellTo, ZERO_ADDRESS)
+    ? ''
+    : props.lot.onlySellTo
+}
+
+async function resolveOnlySellTo(): Promise<Address> {
+  const trimmed = onlySellTo.value.trim()
+  if (!trimmed) return ZERO_ADDRESS
+  return resolveAddressInput(config, trimmed, {
+    invalidMessage: 'Enter a valid initial buyer address or ENS name.',
+  })
+}
+
+function parsePositiveEth(input: unknown): bigint | null {
+  const trimmed = String(input ?? '').trim()
+  if (!trimmed) return null
+  try {
+    const wei = parseEther(trimmed)
+    return wei > 0n ? wei : null
+  } catch {
+    return null
+  }
+}
+
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase()
 }
@@ -269,6 +464,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 }
 
 .block-note,
+.error,
 .hint,
 .warn {
   margin: 0;
@@ -276,6 +472,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .block-note,
 .connect-row,
+.error,
 .hint,
 .warn {
   font-size: var(--font-sm);
@@ -319,6 +516,30 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   font-size: var(--font-xs);
 }
 
+.error {
+  color: var(--accent);
+}
+
+.manage-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 240px);
+  gap: var(--size-2);
+}
+
+.amount-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+}
+
+.amount-field input {
+  width: 100%;
+}
+
+.lot-action-dialog :deep(section) {
+  gap: var(--size-3);
+}
+
 .offer-list {
   list-style: none;
   display: flex;
@@ -357,5 +578,11 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .actions-stack :deep(button .eth-amount .unit) {
   color: inherit;
+}
+
+@media (max-width: 540px) {
+  .manage-fields {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -34,7 +34,7 @@
             />
             <button
               type="button"
-              class="remove"
+              class="remove unstyled"
               :title="`Remove Punk #${item.punkId}`"
               :aria-label="`Remove Punk #${item.punkId}`"
               @click="removePunk(item.punkId)"
@@ -69,29 +69,12 @@
             spellcheck="false"
           />
         </label>
-        <label
-          v-if="showAdvanced"
-          class="field"
-        >
-          <span class="label">Initial buyer</span>
-          <EvmAddressInput
-            v-model="onlySellTo"
-            placeholder="0x... or name.eth"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
       </div>
 
-      <button
-        type="button"
-        class="advanced-toggle unstyled muted"
-        :aria-expanded="showAdvanced"
-        @click="showAdvanced = !showAdvanced"
-      >
-        <Icon :name="showAdvanced ? 'lucide:chevron-down' : 'lucide:chevron-right'" />
-        <span>Private lot offer</span>
-      </button>
+      <LotPrivateBuyerField
+        v-model="onlySellTo"
+        v-model:open="showAdvanced"
+      />
 
       <p
         v-if="custodySummary"
@@ -392,11 +375,6 @@ watch(standard, () => {
   selectedPunkIds.value = []
 })
 
-// Reset the hidden field on collapse so a stale buyer can't silently apply.
-watch(showAdvanced, (open) => {
-  if (!open) onlySellTo.value = ''
-})
-
 function onPickerConfirm(ids: number[]) {
   selectedPunkIds.value = ids.slice(0, MAX_LOT_ITEMS)
 }
@@ -540,13 +518,12 @@ function parsePositiveEth(input: unknown): bigint | null {
   flex-direction: column;
   align-items: center;
   gap: var(--size-1);
-  padding: var(--size-1);
-  border: var(--border);
-  background: var(--bg);
+  box-shadow: inset 0 0 0 3px var(--primary);
 }
 
 .picked :deep(.punk-thumb) {
   border-radius: 0;
+  display: block;
 }
 
 .picked-meta {
@@ -557,17 +534,19 @@ function parsePositiveEth(input: unknown): bigint | null {
 
 .remove {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  inset-block-start: 0px;
+  inset-inline-end: 0px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   inline-size: 18px;
   block-size: 18px;
   padding: 0;
-  border: 1px solid var(--border-color);
-  background: var(--bg-elevated);
-  color: var(--text);
+  border: 0;
+  outline: none;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
@@ -576,8 +555,6 @@ function parsePositiveEth(input: unknown): bigint | null {
 .remove:hover,
 .remove:focus-visible {
   background: var(--accent);
-  color: var(--bg);
-  outline: none;
 }
 
 .add-tile {
@@ -593,7 +570,7 @@ function parsePositiveEth(input: unknown): bigint | null {
 
 .form-grid {
   display: grid;
-  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(120px, 240px);
   gap: var(--size-2);
 }
 
@@ -609,37 +586,9 @@ function parsePositiveEth(input: unknown): bigint | null {
   width: 100%;
 }
 
-.field :deep(.evm-address-input) {
-  min-width: 0;
-}
-
-.field :deep(.evm-address-input > small) {
-  font-size: 10px;
-  overflow-wrap: anywhere;
-  word-break: break-all;
-}
-
 .form-note {
   margin: 0;
   font-size: var(--font-sm);
-}
-
-.advanced-toggle {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-1);
-  padding: 0;
-  font-size: var(--font-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-md);
-  cursor: pointer;
-}
-
-.advanced-toggle:hover,
-.advanced-toggle:focus-visible {
-  color: var(--text);
-  outline: none;
 }
 
 .connect-row {

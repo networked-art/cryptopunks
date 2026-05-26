@@ -24,16 +24,12 @@
             spellcheck="false"
           />
         </label>
-        <label class="field">
-          <span class="label">Initial buyer</span>
-          <EvmAddressInput
-            v-model="onlySellTo"
-            placeholder="0x… or name.eth (optional)"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
       </div>
+
+      <LotPrivateBuyerField
+        v-model="onlySellTo"
+        v-model:open="showAdvanced"
+      />
 
       <p
         v-if="errorMessage"
@@ -97,6 +93,7 @@ const custodyPlan = usePunkCustodyPlan()
 
 const reserveEth = ref('')
 const onlySellTo = ref('')
+const showAdvanced = ref(false)
 const buildError = ref<string | null>(null)
 
 const ownerItem = computed(() =>
@@ -247,7 +244,7 @@ function parsePositiveEth(input: unknown): bigint | null {
 
 .form-grid {
   display: grid;
-  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(120px, 240px);
   gap: var(--size-2);
 }
 
@@ -260,16 +257,6 @@ function parsePositiveEth(input: unknown): bigint | null {
 
 .field input {
   width: 100%;
-}
-
-.field :deep(.evm-address-input) {
-  min-width: 0;
-}
-
-.field :deep(.evm-address-input > small) {
-  font-size: 10px;
-  overflow-wrap: anywhere;
-  word-break: break-all;
 }
 
 .label {
