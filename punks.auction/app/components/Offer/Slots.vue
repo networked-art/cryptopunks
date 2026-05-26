@@ -1,6 +1,6 @@
 <template>
   <section class="slots-block">
-    <h2 class="block-title eyebrow">Slots</h2>
+    <h2 class="block-title eyebrow">Items</h2>
     <ul class="slots">
       <OfferSlotsRow
         v-for="row in rows"

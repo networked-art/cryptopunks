@@ -1,7 +1,4 @@
-import {
-  formatSearchText,
-  type PunksSdk,
-} from '@networked-art/punks-sdk'
+import { formatSearchText, type PunksSdk } from '@networked-art/punks-sdk'
 import {
   filterIsEmpty,
   offerSlotToQuery,
@@ -48,7 +45,7 @@ export function offerSlotDisplay(
   const matches = searchOfferSlot(slot, offline)
   const matchCount = matches?.length
   return {
-    label: `Slot ${index + 1}`,
+    label: `Item ${index + 1}`,
     title: offerSlotTitle(slot, offline),
     titleStandard: offerSlotTitleStandard(slot),
     detail: offerSlotDetail(slot, matchCount),
