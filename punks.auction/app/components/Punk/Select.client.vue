@@ -21,15 +21,15 @@
           v-for="cell in visible"
           :key="cell.id"
           type="button"
-          class="cell unstyled"
-          :class="{ selected: selectedSet.has(cell.id) }"
+          class="cell unstyled punk-selection-cell"
+          :class="{ 'is-selected': selectedSet.has(cell.id) }"
           :style="cellStyle(cell)"
           :title="`Punk #${cell.id}`"
           :aria-pressed="selectedSet.has(cell.id)"
           @click="toggle(cell.id)"
         >
           <span
-            class="indicator"
+            class="punk-selection-indicator"
             aria-hidden="true"
           >
             <Icon name="lucide:check" />
@@ -240,45 +240,6 @@ onBeforeUnmount(() => {
   color: inherit;
   cursor: pointer;
   transition: box-shadow 0.08s ease;
-}
-
-.cell:hover,
-.cell:focus-visible {
-  z-index: 4;
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--border-color);
-}
-
-.cell.selected {
-  z-index: 3;
-  box-shadow: inset 0 0 0 3px var(--primary);
-}
-
-.cell.selected:hover,
-.cell.selected:focus-visible {
-  z-index: 5;
-  box-shadow: inset 0 0 0 3px var(--accent);
-}
-
-.indicator {
-  position: absolute;
-  inset-block-start: 0px;
-  inset-inline-end: 0px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  inline-size: 18px;
-  block-size: 18px;
-  background: var(--primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 12px;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.cell.selected .indicator {
-  display: inline-flex;
 }
 
 .empty {

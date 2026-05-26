@@ -26,7 +26,7 @@
         <button
           v-if="selectable"
           type="button"
-          class="cell"
+          class="cell punk-selection-cell"
           :class="cellClass(cell.id)"
           :style="cellStyle(cell)"
           :title="`Punk #${cell.id}`"
@@ -34,7 +34,14 @@
           :disabled="disabled"
           @pointerdown.prevent
           @click="emit('toggle', cell.id)"
-        />
+        >
+          <span
+            class="punk-selection-indicator"
+            aria-hidden="true"
+          >
+            <Icon name="lucide:check" />
+          </span>
+        </button>
         <NuxtLink
           v-else-if="interactive"
           :to="`/punks/${cell.id}`"
@@ -343,17 +350,10 @@ button.cell:disabled:focus-visible {
   outline-color: transparent;
 }
 
-.punk-grid.is-outline-hover .cell {
-  outline: var(--border-width) solid transparent;
-  transition: opacity 0.08s ease;
-}
-
-.punk-grid.is-outline-hover:not(.is-static) .cell:hover,
-.punk-grid.is-outline-hover:not(.is-static) .cell:focus-visible {
-  transform: none;
-  z-index: auto;
-  box-shadow: none;
-  outline: var(--border-width) solid var(--text);
+.punk-grid.is-outline-hover .punk-selection-cell {
+  transition:
+    box-shadow 0.08s ease,
+    opacity 0.08s ease;
 }
 
 .punk-grid.is-static .cell {
