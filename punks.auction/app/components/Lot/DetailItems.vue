@@ -1,5 +1,8 @@
 <template>
-  <section class="items-block">
+  <section
+    v-if="items.length > 1"
+    class="items-block"
+  >
     <h2 class="block-title eyebrow">Items</h2>
     <ul class="items">
       <DetailRow
