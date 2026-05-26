@@ -1,4 +1,4 @@
-import type { Abi, Address } from 'viem'
+import type { Abi, Address, PublicClient } from 'viem'
 import {
   CRYPTOPUNKS_721_ADDRESS,
   PUNKS_V1_WRAPPER_ADDRESS,
@@ -10,17 +10,26 @@ import {
   punkVaultAbi,
   punkVaultFactoryAbi,
   punksV1WrapperAbi,
+  stashAbi,
+  stashFactoryAbi,
   wrappedPunksAbi,
 } from '@networked-art/punks-sdk'
-import { CRYPTOPUNKS_ADDRESS, PUNKS_V1_ADDRESS } from '~/utils/addresses'
+import {
+  CRYPTOPUNKS_ADDRESS,
+  PUNKS_V1_ADDRESS,
+  STASH_FACTORY_ADDRESS,
+} from '~/utils/addresses'
 import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
 
 /**
  * Current holder of a Punk. Reads the market's `punkIndexToAddress`, then
  * resolves the beneficial holder when the punk is custodied:
  *   - known ERC-721 wrappers (`WrappedPunks`, `CryptoPunks721`,
- *     `PunksV1Wrapper`) — via `wrapper.ownerOf(id)`.
+ *     `PunksV1Wrapper`) — via `wrapper.ownerOf(id)`; when the wrapper token is
+ *     itself held by a `Stash` clone, pierces to the EOA behind the stash.
  *   - a `PunksVault` clone — verified by `predictVault(owner) === native`.
+ * `isWrapped` only reflects an ERC-721 wrapper directly controlled by the
+ * resolved owner — vault and stash custody dominate and read as not wrapped.
  * `nativeOwner` still surfaces the raw market owner — wrapper, vault, or EOA —
  * for callers that need it to gate native-market interactions.
  */
@@ -33,8 +42,16 @@ export function usePunkOwner(
   const owner = ref<Address | null>(null)
   const nativeOwner = ref<Address | null>(null)
   const isWrapped = ref(false)
+  const isVaulted = ref(false)
+  const isStashed = ref(false)
   const pending = ref(false)
   const error = ref<string | null>(null)
+
+  function resetCustody() {
+    isWrapped.value = false
+    isVaulted.value = false
+    isStashed.value = false
+  }
 
   async function load() {
     const id = toValue(punkId)
@@ -43,11 +60,12 @@ export function usePunkOwner(
     if (!c || !Number.isInteger(id)) {
       owner.value = null
       nativeOwner.value = null
-      isWrapped.value = false
+      resetCustody()
       return
     }
     pending.value = true
     error.value = null
+    resetCustody()
     try {
       const isV1 = std === TokenStandard.CryptoPunksV1
       const marketAddress = isV1 ? PUNKS_V1_ADDRESS : CRYPTOPUNKS_ADDRESS
@@ -105,6 +123,14 @@ export function usePunkOwner(
       const wrapperHit =
         knownWrapperIdx >= 0 ? wrapperOwners[knownWrapperIdx] : null
       if (wrapperHit) {
+        // A `Stash` clone may hold the wrapper token — pierce to its EOA so
+        // stash custody dominates wrap state.
+        const stashEoa = await resolveStashOwner(c, wrapperHit)
+        if (stashEoa) {
+          owner.value = stashEoa
+          isStashed.value = true
+          return
+        }
         owner.value = wrapperHit
         isWrapped.value = true
         return
@@ -124,18 +150,17 @@ export function usePunkOwner(
 
         if (predicted && sameAddress(predicted, native)) {
           owner.value = vaultCandidate
-          isWrapped.value = true
+          isVaulted.value = true
           return
         }
       }
 
       owner.value = native
-      isWrapped.value = false
     } catch (e) {
       error.value = (e as Error).message
       owner.value = null
       nativeOwner.value = null
-      isWrapped.value = false
+      resetCustody()
     } finally {
       pending.value = false
     }
@@ -147,9 +172,45 @@ export function usePunkOwner(
     { immediate: true },
   )
 
-  return { owner, nativeOwner, isWrapped, pending, error, refresh: load }
+  return {
+    owner,
+    nativeOwner,
+    isWrapped,
+    isVaulted,
+    isStashed,
+    pending,
+    error,
+    refresh: load,
+  }
 }
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase()
+}
+
+// Treat `candidate` as a `Stash` clone if its `owner()` round-trips through
+// `StashFactory.stashAddressFor(owner)` back to `candidate`.
+async function resolveStashOwner(
+  client: PublicClient,
+  candidate: Address,
+): Promise<Address | null> {
+  const eoa = await client
+    .readContract({
+      address: candidate,
+      abi: stashAbi,
+      functionName: 'owner',
+    })
+    .then((r) => r as Address)
+    .catch(() => null)
+  if (!eoa || sameAddress(eoa, ZERO_ADDRESS)) return null
+  const predicted = await client
+    .readContract({
+      address: STASH_FACTORY_ADDRESS,
+      abi: stashFactoryAbi,
+      functionName: 'stashAddressFor',
+      args: [eoa],
+    })
+    .then((r) => r as Address)
+    .catch(() => null)
+  return predicted && sameAddress(predicted, candidate) ? eoa : null
 }
