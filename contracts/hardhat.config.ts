@@ -35,7 +35,7 @@ export default defineConfig({
       chainType: 'l1',
       forking: {
         url: configVariable('MAINNET_RPC_URL'),
-        blockNumber: 25175806,
+        blockNumber: 25181550,
       },
     },
     localhost: {
