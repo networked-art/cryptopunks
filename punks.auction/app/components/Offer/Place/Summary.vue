@@ -207,12 +207,13 @@ function slotPreviewIds(slot: PlaceOfferSlotSummary) {
 }
 
 .slot-preview {
-  block-size: calc(var(--form-item-height) * 4);
+  max-block-size: calc(var(--form-item-height) * 4);
   min-height: 0;
 }
 
 .summary-preview {
-  block-size: calc(var(--form-item-height) * 8);
+  max-block-size: calc(var(--form-item-height) * 8);
+  min-height: 0;
 }
 
 .single-preview {
