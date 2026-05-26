@@ -15,8 +15,8 @@
     "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
   },
   "dependencies": {
-    "@1001-digital/components.evm": "^3.6.2",
-    "@1001-digital/layers.evm": "^2.7.13",
+    "@1001-digital/components.evm": "^3.6.3",
+    "@1001-digital/layers.evm": "^2.7.15",
     "@networked-art/punks-sdk": "workspace:*",
     "@tanstack/vue-query": "5.95.2",
     "@vueuse/core": "^14.2.1",
