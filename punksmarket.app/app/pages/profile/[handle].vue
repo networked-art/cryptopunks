@@ -43,7 +43,7 @@
       >
         <section class="profile-section">
           <UnwrapAllPunks
-            v-if="viewerOwnedAddress && owned?.length > 1"
+            v-if="viewerOwnedAddress"
             :owner="viewerOwnedAddress"
             :owned="owned"
           />

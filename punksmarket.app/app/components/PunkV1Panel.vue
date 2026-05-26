@@ -445,7 +445,7 @@ function createAcceptBidSteps(
     {
       id: `list-for-bid-${bid.punkId}-${bid.bidId.toString()}`,
       title: 'List at bid price',
-      lead: 'List this punk to PunksMarket at the bid price.',
+      lead: 'List this punk to PunksMarket at the bid price. Once listed, anyone may settle the bid. You receive the listed price either way.',
       action: 'List',
       skip: () => isListedForBid(bid),
       request: () =>
@@ -462,6 +462,12 @@ function createAcceptBidSteps(
       title: 'Accept bid',
       lead: 'Settle the bid and send the punk to the bidder.',
       action: 'Accept Bid',
+      skip: async () => {
+        const current = await sdk.value.market
+          .listing(bid.punkId)
+          .catch(() => null)
+        return !!current && !current.isForSale
+      },
       request: () =>
         execute(
           sdk.value.v1Market.prepareAcceptBid({
