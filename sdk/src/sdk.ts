@@ -17,6 +17,7 @@ import { PunksV1MarketClient } from './v1-market'
 import { PunksV1WrapperClient } from './v1-wrapper'
 import { PunksStashFacade } from './stash'
 import { PunksStashBidsFacade } from './stash-bids'
+import { PunksVaultFacade } from './vault'
 import { PunksWrappersFacade } from './wrappers'
 import { PunksDataset, type PunksDatasetConfig } from './dataset'
 import { PunkImageRenderer } from './render'
@@ -62,6 +63,7 @@ export class PunksSdk {
   readonly wrappers: PunksWrappersFacade
   readonly stash: PunksStashFacade
   readonly stashBids: PunksStashBidsFacade
+  readonly vault: PunksVaultFacade
   readonly auctions: PunksAuctionClient
   readonly offers: PunksOffersFacade
   readonly contracts: PunksContractClients
@@ -105,6 +107,10 @@ export class PunksSdk {
       ...wallet,
       factoryAddress: config.addresses?.stashFactory,
       stashAddress: config.addresses?.stash,
+    })
+    this.vault = new PunksVaultFacade({
+      ...wallet,
+      marketAddress: config.addresses?.market,
     })
     this.auctions = new PunksAuctionClient({
       ...wallet,

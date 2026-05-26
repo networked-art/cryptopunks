@@ -180,6 +180,12 @@ export {
   stashPunkBidTypedData,
   stashPunkBidTypedDataTypes,
 } from './stash'
+export {
+  PunksVaultClient,
+  PunksVaultFacade,
+  createPunksVaultClient,
+} from './vault'
+export type { PunksVaultClientConfig, PunksVaultConfig } from './vault'
 export { PunksStashBidsFacade, StashBidsApiClient } from './stash-bids'
 export type {
   AcceptStashBidInput,

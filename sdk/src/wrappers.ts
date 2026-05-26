@@ -849,7 +849,7 @@ export class LegacyWrappedPunksClient {
     validatePunkId(punkId)
     return this.plan(
       'mint-legacy-wrap',
-      `Mint legacy wrapped CryptoPunk ${punkId}`,
+      `Wrap CryptoPunk ${punkId} as WrappedPunks`,
       'mint',
       [BigInt(punkId)],
     )
@@ -863,7 +863,7 @@ export class LegacyWrappedPunksClient {
     validatePunkId(punkId)
     return this.plan(
       'burn-legacy-wrap',
-      `Burn legacy wrapped CryptoPunk ${punkId}`,
+      `Unwrap CryptoPunk ${punkId} from WrappedPunks`,
       'burn',
       [BigInt(punkId)],
     )

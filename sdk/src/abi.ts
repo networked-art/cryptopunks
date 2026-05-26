@@ -2097,8 +2097,101 @@ export const punkVaultAbi = [
   },
   {
     type: 'function',
+    name: 'offerPunkForSale',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minSalePriceWei', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'offerPunkForSaleToAddress',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minSalePriceWei', type: 'uint256' },
+      { name: 'toAddress', type: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'punkNoLongerForSale',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'acceptBidForPunk',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'minPrice', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'buyPunk',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'value', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'enterBidForPunk',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+      { name: 'value', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawBidForPunk',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'punkIndex', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'withdrawFromMarket',
     inputs: [{ name: 'market', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawFromMarketTo',
+    inputs: [
+      { name: 'market', type: 'address' },
+      { name: 'recipient', type: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'stash',
+    inputs: [{ name: 'punkIndex', type: 'uint256' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -2111,6 +2204,23 @@ export const punkVaultAbi = [
       { name: 'data', type: 'bytes' },
     ],
     outputs: [{ type: 'bytes' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'executeBatch',
+    inputs: [
+      {
+        name: 'calls',
+        type: 'tuple[]',
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [{ type: 'bytes[]' }],
     stateMutability: 'payable',
   },
   {
