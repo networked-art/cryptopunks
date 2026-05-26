@@ -68,7 +68,9 @@ export const v1Punk = onchainTable(
 // handlers. `user_proxy` is set from `WrappedPunks:ProxyRegistered`. The
 // vault / stash / user_proxy columns are individually indexed for fast
 // reverse lookup (vault address → owner EOA), which powers profile-URL
-// canonicalization.
+// canonicalization. `last_interaction_at` tracks the latest timestamp where the
+// address was the transaction sender for an indexed contract event, which is a
+// narrower signal than simply appearing in an event payload.
 export const account = onchainTable(
   'accounts',
   (t) => ({
@@ -79,12 +81,16 @@ export const account = onchainTable(
     stash_deployed: t.boolean().notNull().default(false),
     user_proxy: t.hex(),
     first_seen_at: t.bigint().notNull(),
+    last_interaction_at: t.bigint(),
     updated_at: t.bigint().notNull(),
   }),
   (table) => ({
     vaultIdx: index('account_vault_idx').on(table.vault),
     stashIdx: index('account_stash_idx').on(table.stash),
     proxyIdx: index('account_user_proxy_idx').on(table.user_proxy),
+    lastInteractionIdx: index('account_last_interaction_idx').on(
+      table.last_interaction_at,
+    ),
   }),
 )
 

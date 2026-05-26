@@ -129,6 +129,7 @@ export async function ensureAccount(
       stash_deployed: false,
       user_proxy: null,
       first_seen_at: timestamp,
+      last_interaction_at: null,
       updated_at: timestamp,
     })
   } else if (vault !== existing.vault || stash !== existing.stash) {
@@ -138,6 +139,44 @@ export async function ensureAccount(
       updated_at: timestamp,
     })
   }
+}
+
+/**
+ * Records the latest timestamp where `event.transaction.from` directly sent a
+ * transaction that touched one of the indexed contracts. This is intentionally
+ * separate from `ensureAccount`: many addresses appear in events as recipients,
+ * sellers, credited accounts, or owners without initiating the transaction.
+ */
+export async function recordSelfInitiatedInteraction(
+  context: Context,
+  event: {
+    transaction: { from: string }
+    block: { number: bigint; timestamp: bigint }
+  },
+): Promise<void> {
+  const initiator = event.transaction.from
+  if (KNOWN_NON_EOA_LOWER.has(initiator.toLowerCase())) return
+
+  const normalized = getAddress(initiator) as Address
+  const existing = await context.db.find(account, { address: normalized })
+  if (
+    existing?.last_interaction_at !== null &&
+    existing?.last_interaction_at !== undefined &&
+    existing.last_interaction_at >= event.block.timestamp
+  ) {
+    return
+  }
+
+  await ensureAccount(
+    context,
+    normalized,
+    event.block.number,
+    event.block.timestamp,
+  )
+  await context.db.update(account, { address: normalized }).set({
+    last_interaction_at: event.block.timestamp,
+    updated_at: event.block.timestamp,
+  })
 }
 
 /**

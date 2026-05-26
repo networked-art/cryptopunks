@@ -26,7 +26,7 @@ import {
   V1_WRAPPER_ADDRESS,
   ZERO_ADDRESS,
 } from '../utils/contracts'
-import { ensureAccounts } from './accounts'
+import { ensureAccounts, recordSelfInitiatedInteraction } from './accounts'
 import { dayUnix, usdValueCentsForBlock } from './prices'
 
 type Address = `0x${string}`
@@ -39,7 +39,7 @@ type EventMeta = {
 }
 
 type PonderEvent = {
-  transaction: { hash: Address }
+  transaction: { hash: Address; from: Address }
   block: { number: bigint; timestamp: bigint }
   log: { logIndex: number }
 }
@@ -121,6 +121,7 @@ ponder.on('CryptoPunksV1:Assign', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(context, [to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
@@ -152,6 +153,7 @@ ponder.on('CryptoPunksV1:PunkTransfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
@@ -208,6 +210,7 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
   const onlySellTo = offer?.onlySellTo ?? normalize(event.args.toAddress)
   const active = offer?.isForSale ?? true
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [seller, onlySellTo],
@@ -251,6 +254,7 @@ ponder.on('CryptoPunksV1:PunkOffered', async ({ event, context }) => {
 
 ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   const existing = await context.db.find(v1Listing, {
     punk_id: event.args.punkIndex,
   })
@@ -285,6 +289,7 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
 ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [bidder],
@@ -327,6 +332,7 @@ ponder.on('CryptoPunksV1:PunkBidEntered', async ({ event, context }) => {
 ponder.on('CryptoPunksV1:PunkBidWithdrawn', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [bidder],
@@ -371,6 +377,7 @@ ponder.on('CryptoPunksV1:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
@@ -422,6 +429,7 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.tokenId
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
@@ -513,6 +521,7 @@ ponder.on('V1Wrapper:Transfer', async ({ event, context }) => {
 ponder.on('PunksMarket:BidPlaced', async ({ event, context }) => {
   const bidder = normalize(event.args.bidder)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [bidder],
@@ -587,6 +596,7 @@ ponder.on('PunksMarket:BidAdjusted', async ({ event, context }) => {
     bid_id: event.args.bidId,
   })
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -630,6 +640,7 @@ ponder.on('PunksMarket:BidCancelled', async ({ event, context }) => {
     bid_id: event.args.bidId,
   })
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -672,6 +683,7 @@ ponder.on('PunksMarket:BidAccepted', async ({ event, context }) => {
   const bidder = normalize(event.args.bidder)
   const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [seller, bidder, caller],
@@ -730,6 +742,7 @@ ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
   const recipient = normalize(event.args.recipient)
   const caller = normalize(event.args.caller)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [seller, recipient, caller],
@@ -756,6 +769,7 @@ ponder.on('PunksMarket:PunkPurchased', async ({ event, context }) => {
 ponder.on('PunksMarket:Credited', async ({ event, context }) => {
   const account = normalize(event.args.account)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [account],
@@ -778,6 +792,7 @@ ponder.on('PunksMarket:Credited', async ({ event, context }) => {
 ponder.on('PunksMarket:Withdrawal', async ({ event, context }) => {
   const account = normalize(event.args.account)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [account],

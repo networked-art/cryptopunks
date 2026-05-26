@@ -23,6 +23,7 @@ import {
   ensureAccounts,
   markStashDeployed,
   markVaultDeployed,
+  recordSelfInitiatedInteraction,
   recordUserProxy,
 } from './accounts'
 import {
@@ -42,7 +43,7 @@ type EventMeta = {
 }
 
 type PonderEvent = {
-  transaction: { hash: Address }
+  transaction: { hash: Address; from: Address }
   block: { number: bigint; timestamp: bigint }
   log: { logIndex: number }
 }
@@ -87,6 +88,7 @@ ponder.on('CryptoPunksV2:Assign', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(context, [to], event.block.number, event.block.timestamp)
 
   await insertActivity(context, {
@@ -119,6 +121,7 @@ ponder.on('CryptoPunksV2:PunkTransfer', async ({ event, context }) => {
   const to = normalize(event.args.to)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
@@ -182,6 +185,7 @@ ponder.on('CryptoPunksV2:PunkOffered', async ({ event, context }) => {
   const onlySellTo = offer?.onlySellTo ?? normalize(event.args.toAddress)
   const active = offer?.isForSale ?? true
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [seller, onlySellTo],
@@ -213,6 +217,7 @@ ponder.on('CryptoPunksV2:PunkOffered', async ({ event, context }) => {
 
 ponder.on('CryptoPunksV2:PunkNoLongerForSale', async ({ event, context }) => {
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
 
   await insertActivity(context, {
     id: eventId(event),
@@ -229,6 +234,7 @@ ponder.on('CryptoPunksV2:PunkNoLongerForSale', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [bidder],
@@ -259,6 +265,7 @@ ponder.on('CryptoPunksV2:PunkBidEntered', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkBidWithdrawn', async ({ event, context }) => {
   const bidder = normalize(event.args.fromAddress)
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [bidder],
@@ -291,6 +298,7 @@ ponder.on('CryptoPunksV2:PunkBought', async ({ event, context }) => {
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
@@ -385,6 +393,7 @@ ponder.on('CryptoPunks721:Transfer', async ({ event, context }) => {
 ponder.on('WrappedPunks:ProxyRegistered', async ({ event, context }) => {
   const user = normalize(event.args.user)
   const proxy = normalize(event.args.proxy)
+  await recordSelfInitiatedInteraction(context, event)
   await recordUserProxy(
     context,
     user,
@@ -402,6 +411,7 @@ ponder.on('WrappedPunks:ProxyRegistered', async ({ event, context }) => {
 // a third party via `ensureVault`). The event carries both owner and vault,
 // so we can flip `vault_deployed` without an extra eth_call.
 ponder.on('PunksVaultFactory:VaultDeployed', async ({ event, context }) => {
+  await recordSelfInitiatedInteraction(context, event)
   await markVaultDeployed(
     context,
     event.args.owner,
@@ -415,6 +425,7 @@ ponder.on('PunksVaultFactory:VaultDeployed', async ({ event, context }) => {
 // event only carries `(proxy, implementation)`, so we read `proxy.owner()`
 // at the event block to recover the EOA the Stash belongs to.
 ponder.on('StashFactory:Deployed', async ({ event, context }) => {
+  await recordSelfInitiatedInteraction(context, event)
   const proxy = event.args.proxy
   const owner = await context.client.readContract({
     address: proxy,
@@ -462,6 +473,7 @@ async function handleWrapperTransfer(opts: {
   const to = normalize(args.to)
   const punkId = (args.tokenId ?? args.id) as bigint
   const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
     [from, to],
