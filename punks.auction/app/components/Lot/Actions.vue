@@ -1,8 +1,7 @@
 <template>
   <ClientOnly>
-    <section class="actions-panel">
+    <section class="actions-stack">
       <div class="action-block">
-        <h3 class="action-title">Open as auction</h3>
         <p class="block-note muted">
           Start a 24-hour auction with an opening bid of
           <EthAmount :wei="lot.reserveWei" />.
@@ -263,13 +262,10 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 </script>
 
 <style scoped>
-.actions-panel {
+.actions-stack {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-  padding: var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
 }
 
 .block-note,
@@ -355,11 +351,11 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   font-weight: var(--font-weight-bold);
 }
 
-.actions-panel :deep(button .eth-amount) {
+.actions-stack :deep(button .eth-amount) {
   margin-left: var(--size-1);
 }
 
-.actions-panel :deep(button .eth-amount .unit) {
+.actions-stack :deep(button .eth-amount .unit) {
   color: inherit;
 }
 </style>
