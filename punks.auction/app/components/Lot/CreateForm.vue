@@ -141,27 +141,68 @@
         ref="transactionDialogRef"
         :request="transactionRequest"
         :text="transactionText"
+        :auto-close-success="false"
         skip-confirmation
-        @complete="onTransactionComplete"
-      />
+        @complete="onSingleTxComplete"
+      >
+        <template #actions="{ step, cancel }">
+          <template v-if="step === 'complete'">
+            <Button
+              class="secondary"
+              @click="onClickNewLot(cancel)"
+            >
+              New lot
+            </Button>
+            <Button
+              class="primary"
+              :disabled="lastLotId === null"
+              @click="onClickViewLot(cancel)"
+            >
+              View Lot
+            </Button>
+          </template>
+        </template>
+      </EvmTransactionFlowDialog>
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
         :title="multiDialogTitle"
         :steps="flowSteps"
         :text="multiDialogText"
+        :auto-close-success="false"
         skip-confirmation
-        @complete="onMultiTransactionComplete"
+        @complete="onMultiTxComplete"
         @error="onFlowError"
-      />
+      >
+        <template #actions="{ step, cancel }">
+          <template v-if="step === 'complete'">
+            <Button
+              class="secondary"
+              @click="onClickNewLot(cancel)"
+            >
+              New lot
+            </Button>
+            <Button
+              class="primary"
+              :disabled="lastLotId === null"
+              @click="onClickViewLot(cancel)"
+            >
+              View Lot
+            </Button>
+          </template>
+        </template>
+      </EvmMultiTransactionFlowDialog>
     </section>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
-import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import {
+  punksAuctionAbi,
+  type ContractWritePlan,
+} from '@networked-art/punks-sdk'
 import { useConfig, useConnection } from '@wagmi/vue'
-import { isAddress, parseEther, type Hash } from 'viem'
+import { decodeEventLog, isAddress, parseEther, type TransactionReceipt } from 'viem'
 import type { PunkInventoryCustody } from '~/composables/useAccountPunkInventory'
 import { resolveAddressInput } from '~/utils/addressInput'
 import {
@@ -172,8 +213,6 @@ import {
 } from '~/utils/auction'
 
 type StandardDraft = 'cryptopunks' | 'cryptopunks-v1'
-
-const emit = defineEmits<{ created: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const config = useConfig()
@@ -189,6 +228,7 @@ const reserveEth = ref('')
 const onlySellTo = ref('')
 const showAdvanced = ref(false)
 const buildError = ref<string | null>(null)
+const lastLotId = ref<bigint | null>(null)
 
 const tokenStandard = computed(() =>
   standard.value === 'cryptopunks-v1'
@@ -236,14 +276,56 @@ const {
   onMultiTransactionComplete,
   onFlowError,
 } = useTransactionFlowRunner({
-  onComplete: (tx) => {
+  onComplete: () => {
     selectedPunkIds.value = []
     reserveEth.value = ''
     onlySellTo.value = ''
     void inventory.refresh()
-    emit('created', tx)
   },
 })
+
+const router = useRouter()
+
+function onSingleTxComplete(receipt: TransactionReceipt) {
+  captureLotIdFromReceipt(receipt)
+  onTransactionComplete(receipt)
+}
+
+function onMultiTxComplete(receipts: TransactionReceipt[]) {
+  const last = receipts.at(-1)
+  if (last) captureLotIdFromReceipt(last)
+  onMultiTransactionComplete(receipts)
+}
+
+function captureLotIdFromReceipt(receipt: TransactionReceipt) {
+  for (const log of receipt.logs) {
+    try {
+      const decoded = decodeEventLog({
+        abi: punksAuctionAbi,
+        data: log.data,
+        topics: log.topics,
+      })
+      if (decoded.eventName === 'LotCreated') {
+        lastLotId.value = (decoded.args as { lotId: bigint }).lotId
+        return
+      }
+    } catch {
+      // log isn't from the auction contract — skip
+    }
+  }
+}
+
+function onClickNewLot(cancel: () => void) {
+  lastLotId.value = null
+  cancel()
+}
+
+function onClickViewLot(cancel: () => void) {
+  const id = lastLotId.value
+  if (id === null) return
+  cancel()
+  void router.push(`/lots/${id}`)
+}
 
 const canCreate = computed(
   () =>
