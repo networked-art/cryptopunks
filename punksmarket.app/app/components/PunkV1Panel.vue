@@ -196,7 +196,14 @@
       :text="acceptBidDialogText"
       skip-confirmation
       @complete="onAcceptBidComplete"
-    />
+    >
+      <template #before>
+        <Alert type="info">
+          This bid can be settled by anyone while the listing is live. You
+          receive the listed price either way.
+        </Alert>
+      </template>
+    </EvmMultiTransactionFlowDialog>
   </div>
 </template>
 
@@ -445,7 +452,7 @@ function createAcceptBidSteps(
     {
       id: `list-for-bid-${bid.punkId}-${bid.bidId.toString()}`,
       title: 'List at bid price',
-      lead: 'List this punk to PunksMarket at the bid price. Once listed, anyone may settle the bid. You receive the listed price either way.',
+      lead: 'List this punk to PunksMarket at the bid price.',
       action: 'List',
       skip: () => isListedForBid(bid),
       request: () =>
