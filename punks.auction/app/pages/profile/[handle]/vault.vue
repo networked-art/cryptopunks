@@ -6,6 +6,8 @@
     >
       <ProfileVaultControls :account="ownAccount" />
 
+      <ProfileVaultMovement :account="ownAccount" />
+
       <LazyProfileAddresses
         :account="ownAccount"
         :vault="vault"

@@ -4,8 +4,6 @@
       v-if="ownAccount"
       class="wrappers-tab"
     >
-      <ProfileVaultMovement :account="ownAccount" />
-
       <ProfileStashMovement
         :account="ownAccount"
         @changed="refreshAddresses"
