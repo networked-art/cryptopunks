@@ -78,6 +78,7 @@
               <LazyPunkDetailMarketListForm
                 :punk-id="punkId"
                 :current-price-wei="liveListing?.priceWei ?? null"
+                :via-vault="vaultAddress"
                 @listed="onChanged"
               />
               <Button
@@ -98,6 +99,7 @@
 
             <LazyPunkDetailMarketTransferForm
               :punk-id="punkId"
+              :via-vault="vaultAddress"
               @transferred="onChanged"
             />
           </template>
@@ -171,10 +173,16 @@ const { sdk, publicClient } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const {
+  owner: resolvedOwner,
   nativeOwner,
+  isVaulted,
   pending: ownerPending,
   refresh: refreshOwner,
 } = usePunkOwner(() => props.punkId, TokenStandard.CryptoPunks)
+
+const vaultAddress = computed<Address | null>(() =>
+  isVaulted.value ? nativeOwner.value : null,
+)
 
 const listing = ref<PunkListing | null>(null)
 const bid = ref<PunkMarketBid | null>(null)
@@ -185,8 +193,8 @@ const pending = computed(() => ownerPending.value || marketPending.value)
 const isOwner = computed(
   () =>
     !!address.value &&
-    !!nativeOwner.value &&
-    sameAddress(nativeOwner.value, address.value),
+    !!resolvedOwner.value &&
+    sameAddress(resolvedOwner.value, address.value),
 )
 
 const liveListing = computed(() => {
@@ -288,7 +296,12 @@ function onComplete(receipt: TransactionReceipt) {
 }
 
 function actUnlist() {
-  run(sdk.value.market.prepareUnlist(props.punkId))
+  const plan = vaultAddress.value
+    ? sdk.value.vault
+        .at(vaultAddress.value)
+        .prepareUnlist({ punkId: props.punkId })
+    : sdk.value.market.prepareUnlist(props.punkId)
+  run(plan)
 }
 
 function actBuy() {
@@ -305,12 +318,16 @@ function actBuy() {
 function actAcceptBid() {
   const current = activeBid.value
   if (!current || !isOwner.value) return
-  run(
-    sdk.value.market.prepareAcceptBid({
-      punkId: props.punkId,
-      minPriceWei: current.valueWei,
-    }),
-  )
+  const plan = vaultAddress.value
+    ? sdk.value.vault.at(vaultAddress.value).prepareAcceptBid({
+        punkId: props.punkId,
+        minPriceWei: current.valueWei,
+      })
+    : sdk.value.market.prepareAcceptBid({
+        punkId: props.punkId,
+        minPriceWei: current.valueWei,
+      })
+  run(plan)
 }
 
 function actWithdrawBid() {

@@ -65,8 +65,7 @@
           <p class="hint muted">
             Move CryptoPunks in and out of your Yuga Stash, or wrap them as
             `CryptoPunks721` ERC-721 tokens. Wrap mints an ERC-721 from a Punk
-            held in your Stash; unwrap burns it and leaves the Punk in the
-            Stash.
+            held in your Stash; unwrap leaves the Punk in the Stash.
           </p>
 
           <div class="picker-row">

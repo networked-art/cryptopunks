@@ -2,7 +2,7 @@
   <section class="block">
     <h2 class="block-title eyebrow">
       Owned by
-      <span v-if="isWrapped">(Wrapped)</span>
+      <span v-if="custodyHint">({{ custodyHint }})</span>
     </h2>
     <ClientOnly>
       <div
@@ -44,6 +44,8 @@ const props = defineProps<{
 const {
   owner,
   isWrapped,
+  isVaulted,
+  isStashed,
   pending: ownerPending,
 } = usePunkOwner(
   () => props.punkId,
@@ -54,6 +56,12 @@ const ownerKnown = computed(
     !!owner.value &&
     owner.value !== '0x0000000000000000000000000000000000000000',
 )
+const custodyHint = computed(() => {
+  if (isVaulted.value) return 'Vaulted'
+  if (isStashed.value) return 'Stashed'
+  if (isWrapped.value) return 'Wrapped'
+  return null
+})
 </script>
 
 <style scoped>

@@ -56,16 +56,16 @@
           v-if="!activeWrapperProxy"
           class="hint muted"
         >
-          Mint and burn original `WrappedPunks` ERC-721 tokens via a personal
-          wrapper proxy. Register the proxy once per account; it holds the
-          underlying Punk while you hold the ERC-721.
+          Wrap and unwrap your Punks as original `WrappedPunks` ERC-721 tokens
+          via a personal wrapper proxy. Register the proxy once per account; it
+          holds the underlying Punk while you hold the ERC-721.
         </p>
 
         <template v-else>
           <p class="hint muted">
-            Mint and burn original `WrappedPunks` ERC-721 tokens via your
-            personal wrapper proxy. Wrapping deposits the Punk into your proxy
-            then mints the ERC-721; unwrap burns it and returns the Punk to your
+            Wrap and unwrap your Punks as original `WrappedPunks` ERC-721
+            tokens via your personal wrapper proxy. Wrap deposits the Punk into
+            your proxy and mints the ERC-721; unwrap returns the Punk to your
             wallet.
           </p>
 

@@ -41,11 +41,14 @@
 </template>
 
 <script setup lang="ts">
-import type { Hash } from 'viem'
+import type { Address, Hash } from 'viem'
 import { useConfig, useConnection } from '@wagmi/vue'
 import { resolveAddressInput } from '~/utils/addressInput'
 
-const props = defineProps<{ punkId: number }>()
+const props = defineProps<{
+  punkId: number
+  viaVault?: Address | null
+}>()
 const emit = defineEmits<{ transferred: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
@@ -65,12 +68,16 @@ async function transfer(): Promise<Hash> {
   const recipient = await resolveAddressInput(config, to.value, {
     invalidMessage: 'Enter a valid recipient address or ENS name.',
   })
-  return execute(
-    sdk.value.market.prepareTransfer({
-      punkId: props.punkId,
-      to: recipient,
-    }),
-  )
+  const plan = props.viaVault
+    ? sdk.value.vault.at(props.viaVault).prepareTransferPunk({
+        punkId: props.punkId,
+        to: recipient,
+      })
+    : sdk.value.market.prepareTransfer({
+        punkId: props.punkId,
+        to: recipient,
+      })
+  return execute(plan)
 }
 
 function onComplete(receipt: { transactionHash: Hash }) {

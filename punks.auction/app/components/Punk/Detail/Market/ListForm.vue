@@ -24,7 +24,7 @@
           inputmode="decimal"
           autocomplete="off"
           spellcheck="false"
-          placeholder="0.5"
+          placeholder="50.00"
         />
       </label>
     </template>
@@ -46,12 +46,13 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Hash } from 'viem'
+import { formatEther, parseEther, type Address, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 
 const props = defineProps<{
   punkId: number
   currentPriceWei?: bigint | null
+  viaVault?: Address | null
 }>()
 const emit = defineEmits<{ listed: [tx: Hash] }>()
 
@@ -90,12 +91,16 @@ async function list(): Promise<Hash> {
   if (!priceWei.value) {
     throw new Error('Enter a price greater than zero.')
   }
-  return execute(
-    sdk.value.market.prepareList({
-      punkId: props.punkId,
-      priceWei: priceWei.value,
-    }),
-  )
+  const plan = props.viaVault
+    ? sdk.value.vault.at(props.viaVault).prepareList({
+        punkId: props.punkId,
+        priceWei: priceWei.value,
+      })
+    : sdk.value.market.prepareList({
+        punkId: props.punkId,
+        priceWei: priceWei.value,
+      })
+  return execute(plan)
 }
 
 function onComplete(receipt: { transactionHash: Hash }) {

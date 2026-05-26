@@ -38,6 +38,16 @@
           </Button>
 
           <Button
+            v-if="reclaimAvailable"
+            class="icon-button"
+            :disabled="!canReclaim"
+            @click="actReclaim"
+          >
+            <Icon name="lucide:archive-restore" />
+            <span>{{ reclaimButtonLabel }}</span>
+          </Button>
+
+          <Button
             v-if="unwrapAvailable"
             class="icon-button"
             :disabled="!canUnwrap"
@@ -94,13 +104,65 @@ const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
 const { refreshMarketState } = usePunkMarketState()
 const optimistic = useOptimisticMarketPatch()
+const {
+  owner: resolvedOwner,
+  nativeOwner,
+  isWrapped: chainIsWrapped,
+  isVaulted: chainIsVaulted,
+} = usePunkOwner(
+  () => props.punkId,
+  () => props.standard,
+)
 
-const activeAction = ref<'unwrap' | 'vault' | null>(null)
+const activeAction = ref<'unwrap' | 'vault' | 'reclaim' | null>(null)
 
-const ownerItem = computed(() =>
-  inventory.items.value.find(
-    (item) => item.standard === props.standard && item.punkId === props.punkId,
-  ),
+// Synthesize an inventory item from chain state when the user is the resolved
+// holder of a custodied Punk. Keeps owner actions available even when the
+// indexer-backed inventory hasn't reached this punk yet.
+const chainOwnerItem = computed<AccountPunkInventoryItem | null>(() => {
+  if (
+    !address.value ||
+    !resolvedOwner.value ||
+    !nativeOwner.value ||
+    !sameAddress(resolvedOwner.value, address.value)
+  ) {
+    return null
+  }
+  const base = {
+    key: `chain-${props.standard}-${props.punkId}`,
+    punkId: props.punkId,
+    standard: props.standard,
+    owner: resolvedOwner.value,
+    nativeOwner: nativeOwner.value,
+    nativeStandard: null,
+  } as const
+  if (chainIsWrapped.value) {
+    const wrapper = chainWrapperFor(nativeOwner.value)
+    if (!wrapper) return null
+    return {
+      ...base,
+      isWrapped: true,
+      wrapper,
+      custody: 'wrapped-wallet',
+    }
+  }
+  if (chainIsVaulted.value) {
+    return {
+      ...base,
+      isWrapped: false,
+      wrapper: null,
+      custody: 'vault',
+    }
+  }
+  return null
+})
+
+const ownerItem = computed(
+  () =>
+    inventory.items.value.find(
+      (item) =>
+        item.standard === props.standard && item.punkId === props.punkId,
+    ) ?? chainOwnerItem.value ?? undefined,
 )
 
 const unwrapAvailable = computed(() => {
@@ -118,11 +180,22 @@ const vaultAvailable = computed(() => {
   )
 })
 
+const reclaimAvailable = computed(() => {
+  const item = ownerItem.value
+  return (
+    !!item &&
+    props.standard === TokenStandard.CryptoPunks &&
+    item.custody === 'vault'
+  )
+})
+
 const showSection = computed(
   () =>
     props.standard === TokenStandard.CryptoPunks &&
     !!ownerItem.value &&
-    (unwrapAvailable.value || vaultAvailable.value),
+    (unwrapAvailable.value ||
+      vaultAvailable.value ||
+      reclaimAvailable.value),
 )
 
 const {
@@ -155,6 +228,7 @@ const {
 
 const canUnwrap = computed(() => unwrapAvailable.value && !pending.value)
 const canVault = computed(() => vaultAvailable.value && !pending.value)
+const canReclaim = computed(() => reclaimAvailable.value && !pending.value)
 
 const errorMessage = computed(
   () => transactionError.value ?? inventory.error.value,
@@ -190,6 +264,12 @@ const unwrapButtonLabel = computed(() =>
 
 const vaultButtonLabel = computed(() =>
   activeAction.value === 'vault' && pending.value ? 'Preparing...' : 'Vault',
+)
+
+const reclaimButtonLabel = computed(() =>
+  activeAction.value === 'reclaim' && pending.value
+    ? 'Preparing...'
+    : 'Reclaim',
 )
 
 function actUnwrap() {
@@ -238,6 +318,34 @@ function actVault() {
       },
     },
   )
+}
+
+async function actReclaim() {
+  const item = ownerItem.value
+  const owner = address.value
+  if (!item || !owner || !reclaimAvailable.value || pending.value) return
+
+  activeAction.value = 'reclaim'
+  const vault = inventory.vault.value
+  if (!vault) {
+    activeAction.value = null
+    return
+  }
+  const plan = sdk.value.vault.at(vault).prepareTransferPunk({
+    punkId: item.punkId,
+    to: owner,
+  })
+  void runPlans([plan], {
+    dialogTitle: 'Reclaim Punk',
+    single: {
+      title: { complete: 'Reclaim complete' },
+      lead: { complete: 'Punk reclaimed from the auction vault.' },
+    },
+    multi: {
+      title: { complete: 'Reclaim complete' },
+      lead: { complete: 'Punk reclaimed from the auction vault.' },
+    },
+  })
 }
 
 async function buildUnwrapPlans(
@@ -295,6 +403,16 @@ function wrapperLabel(item: AccountPunkInventoryItem) {
 
 function isWrappedCustody(item: AccountPunkInventoryItem) {
   return item.custody === 'wrapped-wallet' || item.custody === 'wrapped-stash'
+}
+
+function chainWrapperFor(native: Address) {
+  if (sameAddress(native, WRAPPED_PUNKS_ADDRESS)) return 'wrapped_punks'
+  if (sameAddress(native, CRYPTOPUNKS_721_ADDRESS)) return 'cryptopunks_721'
+  return null
+}
+
+function sameAddress(a?: Address | string | null, b?: Address | string | null) {
+  return !!a && !!b && a.toLowerCase() === b.toLowerCase()
 }
 
 function stageUnwrapPatch(item: AccountPunkInventoryItem) {
