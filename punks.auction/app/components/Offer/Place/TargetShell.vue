@@ -15,6 +15,5 @@
 
 .target-shell :deep(.target-grid) {
   min-height: 0;
-  padding: var(--border-width);
 }
 </style>
