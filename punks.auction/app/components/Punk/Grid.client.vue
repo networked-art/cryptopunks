@@ -2,6 +2,11 @@
   <div
     ref="containerRef"
     class="punk-grid"
+    :class="{
+      'is-scrollable': scrollable,
+      'is-outline-hover': outlineHover,
+      'is-static': !interactive,
+    }"
   >
     <div
       v-if="ids.length === 0"
@@ -14,14 +19,38 @@
       class="grid-scroll"
       :style="{ height: totalHeight + 'px' }"
     >
-      <NuxtLink
+      <template
         v-for="cell in visible"
         :key="cell.id"
-        :to="`/punks/${cell.id}`"
-        class="cell"
-        :style="cellStyle(cell)"
-        :title="`Punk #${cell.id}`"
-      />
+      >
+        <button
+          v-if="selectable"
+          type="button"
+          class="cell"
+          :class="cellClass(cell.id)"
+          :style="cellStyle(cell)"
+          :title="`Punk #${cell.id}`"
+          :aria-pressed="selectedSet.has(cell.id) || excludedSet.has(cell.id)"
+          :disabled="disabled"
+          @pointerdown.prevent
+          @click="emit('toggle', cell.id)"
+        />
+        <NuxtLink
+          v-else-if="interactive"
+          :to="`/punks/${cell.id}`"
+          class="cell"
+          :class="cellClass(cell.id)"
+          :style="cellStyle(cell)"
+          :title="`Punk #${cell.id}`"
+        />
+        <span
+          v-else
+          class="cell"
+          :class="cellClass(cell.id)"
+          :style="cellStyle(cell)"
+          :title="`Punk #${cell.id}`"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -35,9 +64,30 @@ const props = withDefaults(
     size?: number
     gap?: number
     overscan?: number
+    selectable?: boolean
+    selectedIds?: readonly number[]
+    excludedIds?: readonly number[]
+    dimUnselected?: boolean
+    scrollable?: boolean
+    disabled?: boolean
+    outlineHover?: boolean
+    interactive?: boolean
   }>(),
-  { size: 72, gap: 2, overscan: 6 },
+  {
+    size: 72,
+    gap: 2,
+    overscan: 6,
+    selectable: false,
+    dimUnselected: false,
+    scrollable: false,
+    disabled: false,
+    outlineHover: false,
+    interactive: true,
+  },
 )
+const emit = defineEmits<{
+  toggle: [id: number]
+}>()
 
 const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
@@ -113,6 +163,8 @@ const visible = computed(() => {
   }
   return out
 })
+const selectedSet = computed(() => new Set(props.selectedIds ?? []))
+const excludedSet = computed(() => new Set(props.excludedIds ?? []))
 
 function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteRow = Math.floor(c.id / SPRITE_COLS)
@@ -127,6 +179,17 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
+  }
+}
+
+function cellClass(id: number) {
+  return {
+    'is-selected': selectedSet.value.has(id),
+    'is-excluded': excludedSet.value.has(id),
+    'is-dimmed':
+      props.dimUnselected &&
+      selectedSet.value.size > 0 &&
+      !selectedSet.value.has(id),
   }
 }
 
@@ -145,6 +208,13 @@ function measure() {
   const padRight = parseFloat(cs.paddingRight) || 0
   const padTop = parseFloat(cs.paddingTop) || 0
   containerWidth.value = rect.width - padLeft - padRight
+
+  if (props.scrollable) {
+    visibleTop.value = el.scrollTop
+    visibleHeight.value = el.clientHeight - padTop
+    return
+  }
+
   /// Intersection of the content box with the viewport, expressed in the
   /// content box's own (scroll-content) coordinate space.
   const vh = window.innerHeight || document.documentElement.clientHeight
@@ -161,6 +231,7 @@ function schedule() {
 }
 
 let resizeObserver: ResizeObserver | null = null
+let scrollEl: HTMLElement | null = null
 
 /// The component is wrapped in Nuxt's ClientOnly, so the real template renders
 /// a tick after the wrapper's onMounted fires against the placeholder div.
@@ -169,10 +240,13 @@ watch(
   containerRef,
   (el) => {
     if (!el) return
+    scrollEl?.removeEventListener('scroll', schedule)
+    scrollEl = el
     measure()
     resizeObserver?.disconnect()
     resizeObserver = new ResizeObserver(() => schedule())
     resizeObserver.observe(el)
+    el.addEventListener('scroll', schedule, { passive: true })
   },
   { immediate: true, flush: 'post' },
 )
@@ -180,12 +254,16 @@ watch(
 watch(
   () => props.ids,
   () => {
-    /// New result set: jump the page back to the top of the grid so the user
-    /// sees the first matches, then re-measure.
+    /// New result set: jump back to the top of whichever element owns
+    /// scrolling so the first matches are visible, then re-measure.
     const el = containerRef.value
     if (el) {
-      const rect = el.getBoundingClientRect()
-      if (rect.top < 0) window.scrollBy({ top: rect.top, behavior: 'auto' })
+      if (props.scrollable) {
+        el.scrollTo({ top: 0, behavior: 'auto' })
+      } else {
+        const rect = el.getBoundingClientRect()
+        if (rect.top < 0) window.scrollBy({ top: rect.top, behavior: 'auto' })
+      }
     }
     schedule()
   },
@@ -197,6 +275,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  scrollEl?.removeEventListener('scroll', schedule)
   resizeObserver?.disconnect()
   window.removeEventListener('scroll', schedule)
   window.removeEventListener('resize', schedule)
@@ -207,6 +286,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .punk-grid {
   position: relative;
+}
+
+.punk-grid.is-scrollable {
+  overflow: auto;
+  min-height: 0;
 }
 
 .grid-scroll {
@@ -221,15 +305,26 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   image-rendering: pixelated;
   border: 0;
+  padding: 0;
   background-repeat: no-repeat;
   color: inherit;
   transition:
     transform 0.08s ease,
-    box-shadow 0.08s ease;
+    box-shadow 0.08s ease,
+    opacity 0.08s ease;
 }
 
-.cell:hover,
-.cell:focus-visible {
+button.cell {
+  appearance: none;
+  cursor: pointer;
+}
+
+button.cell:disabled {
+  cursor: default;
+}
+
+.punk-grid:not(.is-outline-hover):not(.is-static) .cell:hover,
+.punk-grid:not(.is-outline-hover):not(.is-static) .cell:focus-visible {
   transform: scale(1.18);
   z-index: 5;
   outline: none;
@@ -238,6 +333,36 @@ onBeforeUnmount(() => {
     0 0 0 7px var(--border-color),
     0 1px 2px rgba(10, 10, 18, 0.05),
     0 24px 48px -28px rgba(10, 10, 18, 0.4);
+}
+
+button.cell:disabled:hover,
+button.cell:disabled:focus-visible {
+  transform: none;
+  z-index: auto;
+  box-shadow: none;
+  outline-color: transparent;
+}
+
+.punk-grid.is-outline-hover .cell {
+  outline: var(--border-width) solid transparent;
+  transition: opacity 0.08s ease;
+}
+
+.punk-grid.is-outline-hover:not(.is-static) .cell:hover,
+.punk-grid.is-outline-hover:not(.is-static) .cell:focus-visible {
+  transform: none;
+  z-index: auto;
+  box-shadow: none;
+  outline: var(--border-width) solid var(--text);
+}
+
+.punk-grid.is-static .cell {
+  pointer-events: none;
+}
+
+.cell.is-dimmed,
+.cell.is-excluded {
+  opacity: 0.45;
 }
 
 .empty {
