@@ -9,12 +9,9 @@
         <span>Purchase offers</span>
       </NuxtLink>
       <h1>Place offer</h1>
-      <p class="muted">
-        Lock native ETH against one or more Punk criteria slots.
-      </p>
     </header>
 
-    <LazyOfferPlaceForm @placed="onPlaced" />
+    <OfferPlaceFlow @placed="onPlaced" />
 
     <p
       v-if="lastTx"
@@ -43,7 +40,6 @@ useSeoMeta({
 
 <style scoped>
 .new-offer-page {
-  max-width: 760px;
   padding: var(--size-8) var(--size-4);
   display: flex;
   flex-direction: column;
