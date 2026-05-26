@@ -28,12 +28,21 @@ withDefaults(
 }
 
 .liveness-indicator-dot {
-  inline-size: 0.36rem;
-  block-size: 0.36rem;
+  inline-size: calc(0.36rem + 4px);
+  block-size: calc(0.36rem + 4px);
   flex: 0 0 auto;
-  border-radius: 50%;
+  padding: 2px;
+  background: var(--accent-soft);
+  clip-path: circle(50%);
+}
+
+.liveness-indicator-dot::before {
+  content: '';
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
   background: var(--accent-strong);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  clip-path: circle(50%);
 }
 
 .liveness-indicator-label {

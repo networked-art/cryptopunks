@@ -132,7 +132,7 @@ const pills = computed<Pill[]>(() => [
 .dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  clip-path: circle(50%);
   background: var(--text-dim);
   flex: 0 0 auto;
 }
