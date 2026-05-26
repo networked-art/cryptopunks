@@ -107,18 +107,12 @@
             </Button>
           </div>
           <Button
-            v-if="canSettle"
+            v-if="topBid"
             class="primary"
-            @click="actSettle"
+            @click="actAcceptBid"
           >
-            Accept bid · <EthAmount :wei="topBid!.bidWei" />
+            Accept Bid · <EthAmount :wei="topBid.bidWei" />
           </Button>
-          <p
-            v-else-if="topBid && !isDirectedToPunksMarket"
-            class="warn"
-          >
-            Direct your listing to PunksMarket to accept this bid.
-          </p>
           <PunkTransferForm
             :punk-id="punkId"
             @transferred="onTransferred"
@@ -193,6 +187,13 @@
       :text="wrapDialogText"
       skip-confirmation
       @complete="onWrapComplete"
+    />
+    <EvmMultiTransactionFlowDialog
+      ref="acceptBidDialogRef"
+      :steps="acceptBidFlowSteps"
+      :text="acceptBidDialogText"
+      skip-confirmation
+      @complete="onAcceptBidComplete"
     />
   </div>
 </template>
@@ -325,16 +326,27 @@ type MultiDialogRef = {
 } | null
 const dialogRef = ref<DialogRef>(null)
 const wrapDialogRef = ref<MultiDialogRef>(null)
+const acceptBidDialogRef = ref<MultiDialogRef>(null)
 const dialogText = ref<{
   title?: Record<string, string>
   lead?: Record<string, string>
 }>({})
 const wrapFlowSteps = ref<MultiTransactionFlowStep[]>([])
+const acceptBidFlowSteps = ref<MultiTransactionFlowStep[]>([])
 const wrapDialogText: MultiTransactionFlowText = {
   title: { complete: 'Wrap complete' },
   lead: { complete: 'Punk is now wrapped.' },
 }
+const acceptBidDialogText: MultiTransactionFlowText = {
+  title: { complete: 'Bid accepted' },
+  lead: { complete: 'The bid was settled.' },
+}
 let singleAction: 'unwrap' | null = null
+type AcceptBidSnapshot = {
+  bidId: bigint
+  bidWei: bigint
+  punkId: number
+}
 
 function run(plan: ContractWritePlan, action: 'unwrap' | null = null) {
   singleAction = action
@@ -394,6 +406,75 @@ function onWrapComplete(receipts: TransactionReceipt[]) {
   if (receipt) emit('changed', receipt.transactionHash as Hash)
 }
 
+async function startAcceptBid() {
+  const bid = topBid.value
+  if (!bid || !isOwner.value) return
+
+  const snapshot = {
+    bidId: bid.id,
+    bidWei: bid.bidWei,
+    punkId: props.punkId,
+  }
+  acceptBidFlowSteps.value = createAcceptBidSteps(snapshot)
+  await nextTick()
+  acceptBidDialogRef.value?.start()
+}
+
+function createAcceptBidSteps(
+  bid: AcceptBidSnapshot,
+): MultiTransactionFlowStep[] {
+  return [
+    {
+      id: `list-for-bid-${bid.punkId}-${bid.bidId.toString()}`,
+      title: 'List at bid price',
+      lead: 'List this punk to PunksMarket at the bid price.',
+      action: 'List',
+      skip: () => isListedForBid(bid),
+      request: () =>
+        execute(
+          sdk.value.market.prepareList({
+            punkId: bid.punkId,
+            priceWei: bid.bidWei,
+            onlySellTo: PUNKS_MARKET_ADDRESS,
+          }),
+        ),
+    },
+    {
+      id: `accept-bid-${bid.punkId}-${bid.bidId.toString()}`,
+      title: 'Accept bid',
+      lead: 'Settle the bid and send the punk to the bidder.',
+      action: 'Accept Bid',
+      request: () =>
+        execute(
+          sdk.value.v1Market.prepareAcceptBid({
+            bidId: bid.bidId,
+            punkId: bid.punkId,
+            expectedListingWei: bid.bidWei,
+          }),
+        ),
+    },
+  ]
+}
+
+function isListedForBid(bid: AcceptBidSnapshot) {
+  const current = liveListing.value
+  const currentOwner = owner.value
+  if (!current || !currentOwner) return false
+
+  return (
+    current.seller.toLowerCase() === currentOwner.toLowerCase() &&
+    current.priceWei === bid.bidWei &&
+    current.onlySellTo?.toLowerCase() === PUNKS_MARKET_ADDRESS.toLowerCase()
+  )
+}
+
+function onAcceptBidComplete(receipts: TransactionReceipt[]) {
+  refresh()
+  refreshOwner()
+  const receipt = receipts[receipts.length - 1]
+  if (receipt) emit('changed', receipt.transactionHash as Hash)
+}
+
 // ─── Action handlers ──────────────────────────────────────────────────────────
 
 function onListed(tx: Hash) {
@@ -439,6 +520,10 @@ function actSettle() {
       expectedListingWei: listing.value.priceWei,
     }),
   )
+}
+
+function actAcceptBid() {
+  void startAcceptBid()
 }
 
 function onTransferred(tx: Hash) {
