@@ -40,6 +40,14 @@ pnpm seed:fork
 
 The seed is idempotent — Punks already owned by the recipient are skipped.
 
+Fast-forward the localhost chain time and mine one block:
+
+```sh
+pnpm fast-forward -- --hours 1 --minutes 30
+```
+
+Set `LOCALHOST_RPC_URL` to target a different local RPC URL.
+
 ### Seeded transfers
 
 | Source                                       | Collection        | Mechanism                       | Punks                                                                                |
