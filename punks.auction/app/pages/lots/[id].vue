@@ -40,11 +40,6 @@
       </div>
     </dl>
 
-    <LotOwnerActions
-      :lot="lot"
-      @changed="onChanged"
-    />
-
     <section class="actions-block">
       <h2 class="block-title eyebrow">Actions</h2>
 
