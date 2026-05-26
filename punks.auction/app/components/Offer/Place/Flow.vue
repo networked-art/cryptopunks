@@ -104,7 +104,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const quantityMode = ref<PlaceOfferQuantityMode | null>(null)
+const quantityMode = ref<PlaceOfferQuantityMode | null>('one')
 const actionStep = ref<ActionStep>('target')
 const amountEth = ref('')
 const error = ref<string | null>(null)
