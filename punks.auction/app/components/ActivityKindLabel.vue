@@ -16,6 +16,10 @@ const props = defineProps<{
 const KIND_LABEL: Record<ActivityKind, string> = {
   assign: 'Claimed',
   transfer: 'Transferred',
+  stashed: 'Stashed',
+  unstashed: 'Unstashed',
+  vaulted: 'Vaulted',
+  unvaulted: 'Unvaulted',
   wrap: 'Wrapped',
   unwrap: 'Unwrapped',
   listing: 'Listed',

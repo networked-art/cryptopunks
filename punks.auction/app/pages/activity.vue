@@ -96,7 +96,11 @@ const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
     label: 'Listings',
     kinds: ['listing', 'listing_cancelled'],
   },
-  { key: 'transfers', label: 'Transfers', kinds: ['transfer'] },
+  {
+    key: 'transfers',
+    label: 'Transfers',
+    kinds: ['transfer', 'stashed', 'unstashed', 'vaulted', 'unvaulted'],
+  },
   { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_cancelled'] },
   { key: 'wraps', label: 'Wraps', kinds: ['wrap'] },
   { key: 'unwraps', label: 'Unwraps', kinds: ['unwrap'] },

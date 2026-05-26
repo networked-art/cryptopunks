@@ -121,6 +121,14 @@ const { events, pending, error } = useActivityFeed({
   limit: 60,
 })
 
+const TRANSFER_KINDS = new Set([
+  'transfer',
+  'stashed',
+  'unstashed',
+  'vaulted',
+  'unvaulted',
+])
+
 function pickInitiator(event: ActivityEvent): Address | undefined {
   switch (event.kind) {
     case 'sale':
@@ -153,7 +161,7 @@ const rows = computed(() =>
   events.value.map((event) => ({
     id: event.id,
     initiator: pickInitiator(event),
-    isTransfer: event.kind === 'transfer',
+    isTransfer: TRANSFER_KINDS.has(event.kind),
     from: event.from,
     to: event.to,
     kind: event.kind,
