@@ -23,16 +23,16 @@
           :punk-id="punkId"
           :standard="standard"
         />
-        <LazyPunkDetailMarket
-          v-if="!isV1"
-          :key="`market-${marketChangeKey}`"
-          :punk-id="punkId"
-          @changed="onMarketChanged"
-        />
         <LazyPunkDetailAuction
           :key="`auction-${marketChangeKey}`"
           :punk-id="punkId"
           :standard="standard"
+          @changed="onMarketChanged"
+        />
+        <LazyPunkDetailMarket
+          v-if="!isV1"
+          :key="`market-${marketChangeKey}`"
+          :punk-id="punkId"
           @changed="onMarketChanged"
         />
         <LazyPunkDetailOwnerActions
