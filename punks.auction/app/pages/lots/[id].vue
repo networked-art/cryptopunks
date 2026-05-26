@@ -5,7 +5,21 @@
   >
     <header class="head">
       <span class="eyebrow">Lot #{{ lot.id }}</span>
-      <h1 class="title">{{ itemCountLabel }}</h1>
+      <h1 class="title">
+        <NuxtLink
+          v-if="singleItem"
+          :to="punkHref(singleItem.standard, singleItem.punkId)"
+        >
+          Punk <span class="dim">#</span>{{ singleItem.punkId }}
+          <Tag
+            v-if="singleItem.standard === TokenStandard.CryptoPunksV1"
+            small
+            class="v1-tag"
+            >V1</Tag
+          >
+        </NuxtLink>
+        <template v-else>{{ itemCountLabel }}</template>
+      </h1>
     </header>
 
     <dl class="facts">
@@ -73,7 +87,9 @@ import {
   auctionStatus,
   formatLotItemsLabel,
   lotMatchesOffer,
+  punkHref,
   readAuctionForLot,
+  TokenStandard,
 } from '~/utils/auction'
 
 const route = useRoute()
@@ -95,6 +111,9 @@ const { offers, refresh: refreshOffers } = useOffers()
 
 const itemCountLabel = computed(() =>
   lot.value ? formatLotItemsLabel(lot.value.items) : '',
+)
+const singleItem = computed(() =>
+  lot.value?.items.length === 1 ? lot.value.items[0] : null,
 )
 const { criteriaMatchesPunk } = useOfferSlotMatching()
 const matchingOffers = computed(() => {
@@ -148,11 +167,25 @@ useSeoMeta({
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   margin: 0;
   font-size: var(--font-3xl);
   font-weight: var(--font-weight-bolder);
-  letter-spacing: 0;
-  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tighter);
+}
+
+.title a {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  color: inherit;
+  border: 0;
+}
+
+.v1-tag {
+  font-size: var(--font-xs);
 }
 
 .block-note {

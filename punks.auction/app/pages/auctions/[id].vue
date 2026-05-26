@@ -5,7 +5,21 @@
   >
     <header class="head">
       <span class="eyebrow">Auction #{{ auction.id }}</span>
-      <h1 class="title">{{ itemCountLabel }}</h1>
+      <h1 class="title">
+        <NuxtLink
+          v-if="singleItem"
+          :to="punkHref(singleItem.standard, singleItem.punkId)"
+        >
+          Punk <span class="dim">#</span>{{ singleItem.punkId }}
+          <Tag
+            v-if="singleItem.standard === TokenStandard.CryptoPunksV1"
+            small
+            class="v1-tag"
+            >V1</Tag
+          >
+        </NuxtLink>
+        <template v-else>{{ itemCountLabel }}</template>
+      </h1>
     </header>
 
     <dl class="facts">
@@ -100,6 +114,8 @@ import { useIntervalFn } from '@vueuse/core'
 import {
   auctionStatus,
   formatLotItemsLabel,
+  punkHref,
+  TokenStandard,
   type AuctionStatus,
 } from '~/utils/auction'
 
@@ -132,6 +148,9 @@ const statusLabel = computed(() => {
 
 const itemCountLabel = computed(() =>
   auction.value ? formatLotItemsLabel(auction.value.items) : '',
+)
+const singleItem = computed(() =>
+  auction.value?.items.length === 1 ? auction.value.items[0] : null,
 )
 const endLabel = computed(() => {
   const current = auction.value
@@ -171,11 +190,25 @@ useSeoMeta({
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   margin: 0;
   font-size: var(--font-3xl);
   font-weight: var(--font-weight-bolder);
-  letter-spacing: 0;
-  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tighter);
+}
+
+.title a {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  color: inherit;
+  border: 0;
+}
+
+.v1-tag {
+  font-size: var(--font-xs);
 }
 
 .block-note {
