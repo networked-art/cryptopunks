@@ -296,7 +296,8 @@ onBeforeUnmount(() => {
 }
 
 .punk-grid.is-scrollable {
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   min-height: 0;
 }
 
