@@ -71,6 +71,7 @@
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
+        title="Offer Action"
         :steps="flowSteps"
         :text="multiDialogText"
         @complete="onMultiTransactionComplete"

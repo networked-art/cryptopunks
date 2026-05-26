@@ -183,6 +183,7 @@
     />
     <EvmMultiTransactionFlowDialog
       ref="wrapDialogRef"
+      title="Wrap Punk"
       :steps="wrapFlowSteps"
       :text="wrapDialogText"
       skip-confirmation
@@ -190,6 +191,7 @@
     />
     <EvmMultiTransactionFlowDialog
       ref="acceptBidDialogRef"
+      title="Accept Bid"
       :steps="acceptBidFlowSteps"
       :text="acceptBidDialogText"
       skip-confirmation
@@ -204,7 +206,7 @@ import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
-} from '@1001-digital/components.evm'
+} from '~/types/transactionFlow'
 import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'

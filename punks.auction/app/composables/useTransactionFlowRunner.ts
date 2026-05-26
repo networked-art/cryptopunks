@@ -2,7 +2,7 @@ import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
   TransactionFlowText,
-} from '@1001-digital/components.evm'
+} from '~/types/transactionFlow'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import type { Hash, TransactionReceipt } from 'viem'
 
@@ -17,6 +17,7 @@ type MultiDialogRef = {
 type TransactionFlowRunnerText = {
   single?: TransactionFlowText
   multi?: MultiTransactionFlowText
+  dialogTitle?: string
 }
 
 export function useTransactionFlowRunner(
@@ -35,6 +36,7 @@ export function useTransactionFlowRunner(
   const transactionText = ref<TransactionFlowText>({})
   const flowSteps = ref<MultiTransactionFlowStep[]>([])
   const multiDialogText = ref<MultiTransactionFlowText>({})
+  const multiDialogTitle = ref('Transactions')
 
   async function runPlan(
     planInput: ContractWritePlan | Promise<ContractWritePlan>,
@@ -70,6 +72,7 @@ export function useTransactionFlowRunner(
       }
 
       flowSteps.value = plans.map((plan, index) => stepFromPlan(plan, index))
+      multiDialogTitle.value = text.dialogTitle ?? 'Transactions'
       multiDialogText.value = text.multi ?? {
         title: { complete: 'Transactions complete' },
         lead: { complete: 'All transactions were confirmed.' },
@@ -120,6 +123,7 @@ export function useTransactionFlowRunner(
     multiDialogRef,
     flowSteps,
     multiDialogText,
+    multiDialogTitle,
     runPlan,
     runPlans,
     onTransactionComplete,

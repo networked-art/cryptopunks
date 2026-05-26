@@ -86,6 +86,7 @@
     <EvmMultiTransactionFlowDialog
       ref="multiDialogRef"
       chain="mainnet"
+      :title="multiDialogTitle"
       :steps="flowSteps"
       :text="multiDialogText"
       @complete="onMultiTransactionComplete"
@@ -157,6 +158,7 @@ const {
   multiDialogRef,
   flowSteps,
   multiDialogText,
+  multiDialogTitle,
   runPlans,
   onTransactionComplete,
   onMultiTransactionComplete,
@@ -472,14 +474,12 @@ function resolvedWeight(index: number) {
 }
 
 function transactionTextForLot(lot: LotRecord) {
-  const title =
-    mode.value === 'accept'
-      ? `Accept offer #${props.offer.id}`
-      : `Start auction from offer #${props.offer.id}`
+  const dialogTitle = mode.value === 'accept' ? 'Accept Offer' : 'Start Auction'
   const action = mode.value === 'accept' ? 'Accept' : 'Start auction'
   return {
+    dialogTitle,
     single: {
-      title: { confirm: title, waiting: title },
+      title: { confirm: dialogTitle, waiting: dialogTitle },
       lead: {
         confirm:
           mode.value === 'accept'
@@ -494,15 +494,13 @@ function transactionTextForLot(lot: LotRecord) {
 }
 
 function transactionTextForNewLot() {
-  const title =
-    mode.value === 'accept'
-      ? `Create lot and accept offer #${props.offer.id}`
-      : `Create lot and start auction from offer #${props.offer.id}`
+  const dialogTitle = mode.value === 'accept' ? 'Accept Offer' : 'Start Auction'
   const complete =
     mode.value === 'accept' ? 'Offer accepted' : 'Auction started'
   return {
+    dialogTitle,
     single: {
-      title: { confirm: title, waiting: title, complete },
+      title: { confirm: dialogTitle, waiting: dialogTitle, complete },
       lead: {
         confirm:
           mode.value === 'accept'
@@ -516,7 +514,7 @@ function transactionTextForNewLot() {
       },
     },
     multi: {
-      title: { confirm: title, complete },
+      title: { confirm: dialogTitle, complete },
       lead: {
         confirm: 'Review and execute the required setup transactions.',
         complete:

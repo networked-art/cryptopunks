@@ -32,6 +32,7 @@
 
   <EvmMultiTransactionFlowDialog
     ref="dialogRef"
+    title="Unwrap Punks"
     :steps="flowSteps"
     :text="dialogText"
     skip-confirmation
@@ -43,7 +44,7 @@
 import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
-} from '@1001-digital/components.evm'
+} from '~/types/transactionFlow'
 import { type Address, type TransactionReceipt } from 'viem'
 
 const props = defineProps<{

@@ -195,6 +195,7 @@
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
+        title="Withdraw ETH"
         :steps="flowSteps"
         :text="multiDialogText"
         skip-confirmation
@@ -210,7 +211,7 @@ import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
   TransactionFlowText,
-} from '@1001-digital/components.evm'
+} from '~/types/transactionFlow'
 import {
   cryptoPunksMarketAbi,
   punksAuctionAbi,
