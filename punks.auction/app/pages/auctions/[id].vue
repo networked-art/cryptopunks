@@ -84,7 +84,9 @@
     <template v-if="!validId">
       Auction #{{ route.params.id }} does not exist. Auction ids start at 1.
     </template>
-    <template v-else-if="pending">Loading auction…</template>
+    <template v-else-if="pending">
+      <Spinner label="Loading auction" />
+    </template>
     <template v-else-if="!deployed">
       Auctions appear once <code>PunksAuction</code> is deployed.
     </template>

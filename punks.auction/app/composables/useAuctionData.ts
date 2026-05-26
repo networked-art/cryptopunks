@@ -120,16 +120,18 @@ export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
 export function useAuction(id: MaybeRefOrGetter<bigint | number | undefined>) {
   const client = useReadClient()
   const auction = ref<AuctionRecord | null>(null)
-  const pending = ref(false)
+  const pending = ref(true)
   const error = ref<string | null>(null)
 
   async function load() {
-    const c = client.value
     const auctionId = resourceId(id)
-    if (!c || auctionId === null) {
+    if (auctionId === null) {
       auction.value = null
+      pending.value = false
       return
     }
+    const c = client.value
+    if (!c) return
 
     pending.value = true
     error.value = null
@@ -166,17 +168,19 @@ export function useLot(id: MaybeRefOrGetter<bigint | number | undefined>) {
   const client = useReadClient()
   const lot = ref<LotRecord | null>(null)
   const sourceAuction = ref<AuctionRecord | null>(null)
-  const pending = ref(false)
+  const pending = ref(true)
   const error = ref<string | null>(null)
 
   async function load() {
-    const c = client.value
     const lotId = resourceId(id)
-    if (!c || lotId === null) {
+    if (lotId === null) {
       lot.value = null
       sourceAuction.value = null
+      pending.value = false
       return
     }
+    const c = client.value
+    if (!c) return
 
     pending.value = true
     error.value = null
