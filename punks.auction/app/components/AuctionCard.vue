@@ -2,6 +2,7 @@
   <LotCardShell
     :to="`/auctions/${auction.id}`"
     :aria-label="`View auction ${auction.id}`"
+    :lift="lift"
   >
     <LotPreview :items="auction.items" />
 
@@ -23,7 +24,7 @@ import {
   type AuctionRecord,
 } from '~/utils/auction'
 
-const props = defineProps<{ auction: AuctionRecord }>()
+const props = defineProps<{ auction: AuctionRecord; lift?: boolean }>()
 
 const itemCountLabel = computed(() => {
   return formatLotItemsLabel(props.auction.items)

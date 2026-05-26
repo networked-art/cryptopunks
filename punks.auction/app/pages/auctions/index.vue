@@ -58,10 +58,12 @@
               <LazyAuctionCard
                 v-if="entry.kind === 'auction'"
                 :auction="entry.auction"
+                lift
               />
               <LazyLotCard
                 v-else
                 :lot="entry.lot"
+                lift
               />
             </template>
           </div>

@@ -1,5 +1,8 @@
 <template>
-  <div class="lot-card-shell">
+  <div
+    class="lot-card-shell"
+    :class="{ 'lot-card-shell-lift': lift }"
+  >
     <a
       v-if="to"
       class="lot-card-link"
@@ -14,6 +17,7 @@
 defineProps<{
   to?: string
   ariaLabel?: string
+  lift?: boolean
 }>()
 </script>
 
@@ -25,21 +29,24 @@ defineProps<{
   flex-direction: column;
   gap: var(--size-2);
   block-size: 100%;
+}
+
+.lot-card-shell-lift {
   transition: transform var(--speed) ease;
 }
 
-.lot-card-shell:hover,
-.lot-card-shell:focus-within {
+.lot-card-shell-lift:hover,
+.lot-card-shell-lift:focus-within {
   transform: translateY(-4px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lot-card-shell {
+  .lot-card-shell-lift {
     transition: none;
   }
 
-  .lot-card-shell:hover,
-  .lot-card-shell:focus-within {
+  .lot-card-shell-lift:hover,
+  .lot-card-shell-lift:focus-within {
     transform: none;
   }
 }
@@ -73,8 +80,8 @@ defineProps<{
   opacity: 1;
 }
 
-.lot-card-shell:hover :deep(.lot-preview),
-.lot-card-shell:focus-within :deep(.lot-preview) {
+.lot-card-shell-lift:hover :deep(.lot-preview),
+.lot-card-shell-lift:focus-within :deep(.lot-preview) {
   box-shadow: var(--shadow-2, 0 10px 24px rgb(10 10 18 / 12%));
 }
 </style>
