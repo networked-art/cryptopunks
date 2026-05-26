@@ -18,12 +18,9 @@
     <template #confirm>
       <label class="amount-field">
         <span class="label">Listing price</span>
-        <input
+        <EvmEthInput
           v-model="priceEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
+          v-model:wei="priceWei"
           placeholder="50.00"
         />
       </label>
@@ -32,12 +29,9 @@
     <template #error>
       <label class="amount-field">
         <span class="label">Listing price</span>
-        <input
+        <EvmEthInput
           v-model="priceEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
+          v-model:wei="priceWei"
           placeholder="0.5"
         />
       </label>
@@ -46,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Address, type Hash } from 'viem'
+import { formatEther, type Address, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 
 const props = defineProps<{
@@ -61,18 +55,7 @@ const { execute } = useWritePlan()
 const { address } = useConnection()
 
 const priceEth = ref('')
-const priceWei = computed(() => parseEthSafe(priceEth.value))
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
+const priceWei = ref<bigint | null>(null)
 
 const dialogText = computed(() => {
   const current = props.currentPriceWei
@@ -114,9 +97,5 @@ function onComplete(receipt: { transactionHash: Hash }) {
   display: flex;
   flex-direction: column;
   gap: var(--size-1);
-}
-
-.amount-field input {
-  width: 100%;
 }
 </style>

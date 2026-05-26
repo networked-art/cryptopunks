@@ -25,12 +25,9 @@
       >
         <label class="amount-field">
           <span class="label">Bid amount</span>
-          <input
+          <EvmEthInput
             v-model="bidEth"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
+            v-model:wei="parsedBidWei"
             :placeholder="minimumBidEth"
           />
         </label>
@@ -106,7 +103,7 @@
 <script setup lang="ts">
 import { useNow } from '@vueuse/core'
 import { useConnection } from '@wagmi/vue'
-import { formatEther, parseEther, type Hash } from 'viem'
+import { formatEther, type Hash } from 'viem'
 import {
   auctionStatus,
   type AuctionRecord,
@@ -144,7 +141,7 @@ const isHighestBidder = computed(() => {
 
 const minimumBidEth = computed(() => formatEther(props.minimumBidWei))
 const bidEth = ref('')
-const parsedBidWei = computed(() => parseEthSafe(bidEth.value))
+const parsedBidWei = ref<bigint | null>(null)
 const bidButtonWei = computed(() => parsedBidWei.value ?? props.minimumBidWei)
 
 watch(
@@ -192,17 +189,6 @@ async function settle(): Promise<Hash> {
 function onComplete(receipt: { transactionHash: Hash }) {
   emit('changed', receipt.transactionHash)
 }
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
 </script>
 
 <style scoped>
@@ -237,10 +223,6 @@ function parseEthSafe(input: unknown): bigint | null {
   display: flex;
   flex-direction: column;
   gap: var(--size-1);
-}
-
-.amount-field input {
-  width: 100%;
 }
 
 .connect-row {

@@ -18,13 +18,9 @@
     <template #confirm>
       <label class="amount-field">
         <span class="label">Bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -32,13 +28,9 @@
     <template #error>
       <label class="amount-field">
         <span class="label">Bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -46,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Address, type Hash } from 'viem'
+import { formatEther, type Address, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 import type { PunkMarketBid } from '@networked-art/punks-sdk'
 
@@ -65,7 +57,7 @@ const { execute } = useWritePlan()
 const { address } = useConnection()
 
 const bidEth = ref('')
-const bidWei = computed(() => parseEthSafe(bidEth.value))
+const bidWei = ref<bigint | null>(null)
 const hasBid = computed(() => !!props.currentBid?.hasBid)
 const isHighBidder = computed(
   () =>
@@ -78,17 +70,6 @@ const actionLabel = computed(() => {
   if (isHighBidder.value) return 'Increase bid'
   return hasBid.value ? 'Place higher bid' : 'Place bid'
 })
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
 
 const dialogText = computed(() => {
   const title = actionLabel.value
@@ -135,9 +116,5 @@ function sameAddress(a: Address, b: Address) {
   display: flex;
   flex-direction: column;
   gap: var(--size-1);
-}
-
-.amount-field input {
-  width: 100%;
 }
 </style>
