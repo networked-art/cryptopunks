@@ -4,7 +4,6 @@
       :draft="draft"
       :size="size"
     />
-    <OfferPlaceAmountRow v-model="model" />
   </div>
 </template>
 
@@ -18,8 +17,6 @@ withDefaults(
   }>(),
   { size: 72 },
 )
-
-const model = defineModel<string>({ required: true })
 </script>
 
 <style scoped>

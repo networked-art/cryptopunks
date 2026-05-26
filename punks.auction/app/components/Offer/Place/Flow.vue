@@ -23,7 +23,6 @@
 
         <OfferPlaceAmountStep
           v-else-if="actionStep === 'amount'"
-          v-model="amountEth"
           :draft="draft"
           :size="size"
         />
@@ -55,10 +54,35 @@
         </template>
 
         <template
-          v-if="actionStep === 'amount' && !address"
+          v-if="actionStep === 'amount'"
           #primary
         >
-          <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+          <FormInputGroup class="amount-action">
+            <input
+              v-model="amountEth"
+              aria-label="Offer amount in ETH"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="0.5"
+              @keyup.enter="submitAmount"
+            />
+            <Button
+              v-if="address"
+              class="primary"
+              :disabled="primaryDisabled"
+              @click="actPrimary"
+            >
+              Place offer
+            </Button>
+            <EvmConnectDialog
+              v-else
+              class-name="primary"
+            >
+              Connect
+            </EvmConnectDialog>
+          </FormInputGroup>
         </template>
       </OfferPlaceActionCard>
     </div>
@@ -258,6 +282,11 @@ function actPrimary() {
   }
 }
 
+function submitAmount() {
+  if (!address.value) return
+  actPrimary()
+}
+
 function goBack() {
   error.value = null
 
@@ -400,5 +429,20 @@ function parsePositiveEth(input: unknown): bigint | null {
   text-align: right;
   text-transform: uppercase;
   white-space: normal;
+}
+
+.amount-action {
+  flex: 0 1 auto;
+  inline-size: min(100%, calc(var(--form-item-height) * 6));
+}
+
+.amount-action :deep(input) {
+  flex: 0 1 calc(var(--form-item-height) * 2.5);
+  min-inline-size: 0;
+}
+
+.amount-action :deep(button) {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 </style>
