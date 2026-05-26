@@ -32,6 +32,7 @@
         />
         <LazyPunkDetailMarket
           v-if="!isV1"
+          :key="`market-${marketChangeKey}`"
           :punk-id="punkId"
           @changed="onMarketChanged"
         />
