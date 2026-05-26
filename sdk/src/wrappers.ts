@@ -765,11 +765,7 @@ export class LegacyWrappedPunksClient {
   }
 
   prepareRegisterProxy(): ContractWritePlan {
-    return this.plan(
-      'Register legacy wrapped Punk user proxy',
-      'registerProxy',
-      [],
-    )
+    return this.plan('Register wrapper proxy', 'registerProxy', [])
   }
 
   registerProxy(): Promise<TransactionHash> {
