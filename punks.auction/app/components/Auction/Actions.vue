@@ -23,15 +23,6 @@
         v-else-if="isLive"
         class="action-stack"
       >
-        <label class="amount-field">
-          <span class="label">Bid amount</span>
-          <EvmEthInput
-            v-model="bidEth"
-            v-model:wei="parsedBidWei"
-            :placeholder="minimumBidEth"
-          />
-        </label>
-
         <div
           v-if="!address"
           class="connect-row"
@@ -43,24 +34,26 @@
         <EvmTransactionFlowDialog
           v-else
           keep-open
+          skip-confirmation
           :request="bid"
           :text="bidDialogText"
           @complete="onComplete"
         >
           <template #start="{ start }">
-            <Button
-              class="primary"
-              @click="start"
-            >
-              Bid <EthAmount :wei="bidButtonWei" />
-            </Button>
-          </template>
-
-          <template #confirm>
-            <p class="confirm-note muted">
-              Minimum bid:
-              <EthAmount :wei="minimumBidWei" />
-            </p>
+            <FormInputGroup>
+              <EvmEthInput
+                v-model="bidEth"
+                v-model:wei="parsedBidWei"
+                :suffix="false"
+                :placeholder="minimumBidEth"
+              />
+              <Button
+                class="primary"
+                @click="start"
+              >
+                Bid <EthAmount :wei="bidButtonWei" />
+              </Button>
+            </FormInputGroup>
           </template>
 
           <template #error>
@@ -157,7 +150,7 @@ const bidDialogText = computed(() => ({
   lead: {
     confirm: `Current high bid: ${formatEther(
       props.auction.latestBidWei,
-    )} ETH. Enter at least ${minimumBidEth.value} ETH.`,
+    )} ETH.`,
   },
   action: { confirm: 'Bid' },
 }))
@@ -217,12 +210,6 @@ function onComplete(receipt: { transactionHash: Hash }) {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-}
-
-.amount-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
 }
 
 .connect-row {

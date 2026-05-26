@@ -15,50 +15,67 @@
         >
           Loading…
         </p>
-        <p
-          v-else-if="isContextEmpty && !isOwner"
-          class="block-note muted"
-        >
-          This Punk is not in any active auction, listed lot, or offer.
-        </p>
         <div
           v-else
           class="auction-panel"
         >
+          <dl class="state-grid">
+            <template v-if="topAuction">
+              <div class="state-cell">
+                <dt class="label">Top bid</dt>
+                <dd>
+                  <EthAmount :wei="topAuction.latestBidWei" />
+                </dd>
+              </div>
+
+              <div class="state-cell">
+                <dt class="label">Top bidder</dt>
+                <dd>
+                  <NuxtLink :to="`/profile/${topAuction.latestBidder}`">
+                    <Account :address="topAuction.latestBidder" />
+                  </NuxtLink>
+                </dd>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="state-cell">
+                <dt class="label">Lot</dt>
+                <dd v-if="topLot">
+                  <EthAmount :wei="topLot.reserveWei" />
+                </dd>
+                <dd
+                  v-else
+                  class="muted"
+                >
+                  Not listed
+                </dd>
+              </div>
+
+              <div class="state-cell">
+                <dt class="label">Top offer</dt>
+                <dd v-if="topOffer">
+                  <EthAmount :wei="topOffer.amountWei" />
+                  <span class="dim"> by </span>
+                  <NuxtLink :to="`/profile/${topOffer.offerer}`">
+                    <Account :address="topOffer.offerer" />
+                  </NuxtLink>
+                </dd>
+                <dd
+                  v-else
+                  class="muted"
+                >
+                  None
+                </dd>
+              </div>
+            </template>
+          </dl>
+
           <div
-            v-if="!isContextEmpty"
+            v-if="punkOffers.length"
             class="context"
           >
-            <div
-              v-if="punkAuctions.length"
-              class="context-group"
-            >
-              <h3 class="context-title">Active auction</h3>
-              <div class="card-grid">
-                <LazyAuctionCard
-                  v-for="auction in punkAuctions"
-                  :key="String(auction.id)"
-                  :auction="auction"
-                />
-              </div>
-            </div>
-            <div
-              v-if="punkLots.length"
-              class="context-group"
-            >
-              <h3 class="context-title">Listed in a lot</h3>
-              <div class="card-grid">
-                <LazyLotCard
-                  v-for="lot in punkLots"
-                  :key="String(lot.id)"
-                  :lot="lot"
-                />
-              </div>
-            </div>
-            <div
-              v-if="punkOffers.length"
-              class="context-group"
-            >
+            <div class="context-group">
               <h3 class="context-title">Matching offers</h3>
               <div class="card-grid">
                 <LazyOfferCard
@@ -71,10 +88,26 @@
           </div>
 
           <div
-            v-if="isOwner"
+            v-if="punkAuctions.length || punkLots.length || canCreateLot"
             class="actions"
           >
+            <Button
+              v-for="auction in punkAuctions"
+              :key="`auction-${auction.id}`"
+              :to="`/auctions/${auction.id}`"
+              class="primary"
+            >
+              View auction
+            </Button>
+            <Button
+              v-for="lot in punkLots"
+              :key="`lot-${lot.id}`"
+              :to="`/lots/${lot.id}`"
+            >
+              View lot
+            </Button>
             <LazyPunkDetailAuctionCreateLot
+              v-if="canCreateLot"
               :punk-id="punkId"
               :standard="standard"
               @created="onCreated"
@@ -115,6 +148,27 @@ const isContextEmpty = computed(
     !punkOffers.value.length,
 )
 
+const topLot = computed(() => {
+  if (!punkLots.value.length) return null
+  return punkLots.value.reduce((min, lot) =>
+    lot.reserveWei < min.reserveWei ? lot : min,
+  )
+})
+
+const topAuction = computed(() => {
+  if (!punkAuctions.value.length) return null
+  return punkAuctions.value.reduce((top, auction) =>
+    auction.latestBidWei > top.latestBidWei ? auction : top,
+  )
+})
+
+const topOffer = computed(() => {
+  if (!punkOffers.value.length) return null
+  return punkOffers.value.reduce((top, offer) =>
+    offer.amountWei > top.amountWei ? offer : top,
+  )
+})
+
 const { address } = useConnection()
 const { owner } = usePunkOwner(
   () => props.punkId,
@@ -125,6 +179,10 @@ const isOwner = computed(
     !!address.value &&
     !!owner.value &&
     owner.value.toLowerCase() === address.value.toLowerCase(),
+)
+const canCreateLot = computed(
+  () =>
+    isOwner.value && !punkAuctions.value.length && !punkLots.value.length,
 )
 
 function onCreated(tx: Hash) {
@@ -155,6 +213,35 @@ function onCreated(tx: Hash) {
   padding: var(--size-3);
   border: var(--border);
   background: var(--bg-elevated);
+}
+
+.state-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--size-3);
+}
+
+.state-cell {
+  min-width: 0;
+}
+
+.state-cell dd {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-sm);
+}
+
+.state-cell a {
+  border: 0;
+}
+
+.label {
+  margin-bottom: var(--size-1);
+  text-transform: uppercase;
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
+  color: var(--text-dim);
 }
 
 .context {
@@ -189,8 +276,14 @@ function onCreated(tx: Hash) {
   flex-wrap: wrap;
 }
 
-.auction-panel > .context + .actions {
+.auction-panel > * + * {
   padding-top: var(--size-3);
   border-top: var(--border);
+}
+
+@media (max-width: 540px) {
+  .state-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
