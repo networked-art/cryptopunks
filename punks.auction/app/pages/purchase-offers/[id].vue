@@ -1,35 +1,28 @@
 <template>
   <LotDetailShell
-    v-if="validId && displayOffer"
+    v-if="validId && offer"
     :items="previewItems"
   >
     <header class="head">
-      <span class="eyebrow">Offer #{{ displayOffer.id }}</span>
+      <span class="eyebrow">Offer #{{ offer.id }}</span>
       <h1 class="title">
-        <EthAmount :wei="displayOffer.amountWei" />
+        <EthAmount :wei="offer.amountWei" />
       </h1>
       <p class="byline muted">
-        <NuxtLink :to="`/profile/${displayOffer.offerer}`">
-          <Account :address="displayOffer.offerer" />
+        <NuxtLink :to="`/profile/${offer.offerer}`">
+          <Account :address="offer.offerer" />
         </NuxtLink>
-      </p>
-      <p
-        v-if="isMock"
-        class="block-note muted"
-      >
-        Preview data. Wallet actions appear for live offer records.
       </p>
     </header>
 
     <OfferActions
-      :offer="displayOffer"
-      :lots="displayLots"
+      :offer="offer"
+      :lots="lots"
       :matching-lots="matchingLots"
-      :preview="isMock"
       @changed="onChanged"
     />
 
-    <OfferSlots :slots="displayOffer.slots" />
+    <OfferSlots :slots="offer.slots" />
   </LotDetailShell>
 
   <div
@@ -49,7 +42,6 @@
 </template>
 
 <script setup lang="ts">
-import { mockOfferById, useMockLots } from '~/composables/useAuctionData.mock'
 import {
   equalLotWeights,
   filterIsEmpty,
@@ -64,28 +56,11 @@ const id = computed(() => Number(route.params.id))
 const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const offline = usePunksOffline()
 
-const {
-  offer,
-  pending,
-  error,
-  deployed: offerDeployed,
-  refresh,
-} = useOffer(() => (validId.value ? id.value : undefined))
-const { lots, pending: lotsPending, refresh: refreshLots } = useLots()
-const { lots: mockLots, deployed: mockLotsDeployed } = useMockLots()
+const { offer, pending, error, deployed, refresh } = useOffer(() =>
+  validId.value ? id.value : undefined,
+)
+const { lots, refresh: refreshLots } = useLots()
 const { criteriaMatchesPunk, searchCriteriaMatches } = useOfferSlotMatching()
-
-const mockOffer = computed(() =>
-  validId.value ? mockOfferById(id.value) : null,
-)
-const displayOffer = computed(
-  () => offer.value ?? (!pending.value ? mockOffer.value : null),
-)
-const isMock = computed(() => !offer.value && !!displayOffer.value)
-const displayLots = computed(() =>
-  lots.value.length || lotsPending.value ? lots.value : mockLots.value,
-)
-const deployed = computed(() => offerDeployed || mockLotsDeployed)
 
 type SlotMatchCache = {
   previewMatches: number[]
@@ -94,10 +69,10 @@ type SlotMatchCache = {
 
 const slotMatchCache = computed(() => {
   const cache = new WeakMap<OfferSlot, SlotMatchCache>()
-  const offer = displayOffer.value
-  if (!offer) return cache
+  const current = offer.value
+  if (!current) return cache
 
-  for (const slot of offer.slots) {
+  for (const slot of current.slots) {
     cache.set(slot, {
       previewMatches: searchSlotMatches(slot),
       criteriaMatches: filterIsEmpty(slot.criteria)
@@ -110,9 +85,9 @@ const slotMatchCache = computed(() => {
 })
 
 const previewItems = computed<LotItem[]>(() => {
-  const offer = displayOffer.value
-  if (!offer) return []
-  const candidates = offer.slots
+  const current = offer.value
+  if (!current) return []
+  const candidates = current.slots
     .map((slot) => {
       const punkId = slot.includeIds[0] ?? slotPreviewMatches(slot)[0]
       return punkId === undefined ? null : { standard: slot.standard, punkId }
@@ -127,11 +102,11 @@ const previewItems = computed<LotItem[]>(() => {
 })
 
 const matchingLots = computed(() => {
-  const offer = displayOffer.value
-  if (!offer) return []
-  return displayLots.value
+  const current = offer.value
+  if (!current) return []
+  return lots.value
     .filter((lot) =>
-      lotMatchesOffer(offer, lot, (slot, punkId) =>
+      lotMatchesOffer(current, lot, (slot, punkId) =>
         slotCriteriaMatchesPunk(slot, punkId),
       ),
     )
@@ -205,11 +180,6 @@ useSeoMeta({
 
 .byline a {
   border: 0;
-}
-
-.block-note {
-  margin: 0;
-  font-size: var(--font-sm);
 }
 
 .state {

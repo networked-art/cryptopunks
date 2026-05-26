@@ -92,17 +92,11 @@ import {
 } from '~/utils/auction'
 import type { OfferFulfillmentMode } from '~/utils/offerFulfillment'
 
-const props = withDefaults(
-  defineProps<{
-    offer: OfferRecord
-    lots: LotRecord[]
-    matchingLots: LotRecord[]
-    preview?: boolean
-  }>(),
-  {
-    preview: false,
-  },
-)
+const props = defineProps<{
+  offer: OfferRecord
+  lots: LotRecord[]
+  matchingLots: LotRecord[]
+}>()
 
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
@@ -158,7 +152,7 @@ const hasSellerLot = computed(() =>
   ),
 )
 const canFillOfferFromInventory = computed(() => {
-  if (!address.value || props.preview) return false
+  if (!address.value) return false
   if (
     !renderV1.value &&
     props.offer.slots.some(
@@ -187,14 +181,10 @@ const canFillOfferFromInventory = computed(() => {
 const showSellerActions = computed(
   () =>
     !!address.value &&
-    !props.preview &&
     (hasSellerLot.value || canFillOfferFromInventory.value),
 )
 const showActionsPanel = computed(
-  () =>
-    !!address.value &&
-    !props.preview &&
-    (isOfferer.value || showSellerActions.value),
+  () => !!address.value && (isOfferer.value || showSellerActions.value),
 )
 
 function startFulfillment(mode: OfferFulfillmentMode) {

@@ -13,10 +13,8 @@ export function usePunkAuctionContext(
   punkId: MaybeRefOrGetter<number>,
   standard: MaybeRefOrGetter<TokenStandardValue>,
 ) {
-  // MOCK DATA — use the same fixtures as the auction index/detail pages until
-  // the auction indexer is ready to back punk-level context.
-  const { auctions, pending: auctionsPending, deployed } = useMockAuctions()
-  const { lots, pending: lotsPending } = useMockLots()
+  const { auctions, pending: auctionsPending, deployed } = useAuctions()
+  const { lots, pending: lotsPending } = useLots()
   const { offers, pending: offersPending } = useOffers()
   const { matchesItem: offerSlotMatchesItem } = useOfferSlotMatching()
   const now = useSeconds()

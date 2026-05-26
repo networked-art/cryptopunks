@@ -20,7 +20,7 @@
     <ClientOnly>
       <section class="section">
         <div
-          v-if="pending && !displayOffers.length"
+          v-if="pending && !offers.length"
           class="loading"
         >
           <Spinner label="Loading offers" />
@@ -61,25 +61,17 @@
 </template>
 
 <script setup lang="ts">
-import { useMockOffers } from '~/composables/useAuctionData.mock'
-
 useSeoMeta({
   title: 'Purchase offers · Punks Auction',
   ogTitle: 'Purchase offers · Punks Auction',
   twitterTitle: 'Purchase offers · Punks Auction',
 })
 
-const { offers, pending, error, deployed: offersDeployed } = useOffers()
-const { offers: mockOffers, deployed: mockOffersDeployed } = useMockOffers()
-
-const displayOffers = computed(() =>
-  offers.value.length || pending.value ? offers.value : mockOffers.value,
-)
-const deployed = computed(() => offersDeployed || mockOffersDeployed)
+const { offers, pending, error, deployed } = useOffers()
 
 /// Highest offer first.
 const sortedOffers = computed(() =>
-  [...displayOffers.value].sort((a, b) =>
+  [...offers.value].sort((a, b) =>
     a.amountWei === b.amountWei ? 0 : a.amountWei > b.amountWei ? -1 : 1,
   ),
 )

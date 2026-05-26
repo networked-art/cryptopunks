@@ -1,16 +1,35 @@
 <template>
-  <section
+  <div
     v-if="showSection"
     class="create-lot"
   >
-    <h3 class="context-title">List for auction</h3>
+    <Button
+      class="primary"
+      :disabled="pending"
+      @click="openCreateDialog"
+    >
+      Create lot
+    </Button>
 
-    <div class="form-panel">
+    <Dialog
+      v-model:open="createDialogOpen"
+      title="Create lot"
+      class="create-lot-dialog"
+      compat
+      @closed="onDialogClosed"
+    >
       <p
         v-if="custodySummary"
         class="form-note muted"
       >
         {{ custodySummary }}
+      </p>
+
+      <p
+        v-else
+        class="form-note muted"
+      >
+        Set the reserve and optional initial buyer for this Punk lot.
       </p>
 
       <div class="form-grid">
@@ -38,14 +57,22 @@
         {{ errorMessage }}
       </p>
 
-      <Button
-        class="primary"
-        :disabled="!canCreate"
-        @click="actCreate"
-      >
-        Create lot <EthAmount :wei="reserveWei || 0n" />
-      </Button>
-    </div>
+      <template #footer>
+        <Button
+          class="secondary"
+          @click="createDialogOpen = false"
+        >
+          Cancel
+        </Button>
+        <Button
+          class="primary"
+          :disabled="!canCreate"
+          @click="actCreate"
+        >
+          Create lot <EthAmount :wei="reserveWei || 0n" />
+        </Button>
+      </template>
+    </Dialog>
 
     <EvmTransactionFlowDialog
       ref="transactionDialogRef"
@@ -64,7 +91,7 @@
       @complete="onMultiTransactionComplete"
       @error="onFlowError"
     />
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -94,6 +121,7 @@ const custodyPlan = usePunkCustodyPlan()
 const reserveEth = ref('')
 const onlySellTo = ref('')
 const showAdvanced = ref(false)
+const createDialogOpen = ref(false)
 const buildError = ref<string | null>(null)
 
 const ownerItem = computed(() =>
@@ -151,6 +179,15 @@ const custodySummary = computed(() => {
     : 'Your auction vault will be deployed and the Punk moved into it before the lot is created.'
 })
 
+function openCreateDialog() {
+  buildError.value = null
+  createDialogOpen.value = true
+}
+
+function onDialogClosed() {
+  buildError.value = null
+}
+
 async function actCreate() {
   buildError.value = null
   const item = ownerItem.value
@@ -186,6 +223,7 @@ async function actCreate() {
     return
   }
 
+  createDialogOpen.value = false
   await runPlans(plans, {
     dialogTitle: 'Create lot',
     single: {
@@ -222,24 +260,14 @@ function parsePositiveEth(input: unknown): bigint | null {
 <style scoped>
 .create-lot {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--size-2);
 }
 
-.context-title {
-  margin: 0;
-  font-size: var(--font-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-muted);
-}
-
-.form-panel {
+.create-lot-dialog :deep(section) {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-  padding: var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
 }
 
 .form-grid {
@@ -278,11 +306,11 @@ function parsePositiveEth(input: unknown): bigint | null {
   color: var(--accent);
 }
 
-.form-panel :deep(button .eth-amount) {
+.create-lot-dialog :deep(button .eth-amount) {
   margin-left: var(--size-1);
 }
 
-.form-panel :deep(button .eth-amount .unit) {
+.create-lot-dialog :deep(button .eth-amount .unit) {
   color: inherit;
 }
 

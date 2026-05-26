@@ -22,56 +22,65 @@
           This Punk is not in any active auction, listed lot, or offer.
         </p>
         <div
-          v-else-if="!isContextEmpty"
-          class="context"
+          v-else
+          class="auction-panel"
         >
           <div
-            v-if="punkAuctions.length"
-            class="context-group"
+            v-if="!isContextEmpty"
+            class="context"
           >
-            <h3 class="context-title">Active auction</h3>
-            <div class="card-grid">
-              <LazyAuctionCard
-                v-for="auction in punkAuctions"
-                :key="String(auction.id)"
-                :auction="auction"
-              />
+            <div
+              v-if="punkAuctions.length"
+              class="context-group"
+            >
+              <h3 class="context-title">Active auction</h3>
+              <div class="card-grid">
+                <LazyAuctionCard
+                  v-for="auction in punkAuctions"
+                  :key="String(auction.id)"
+                  :auction="auction"
+                />
+              </div>
+            </div>
+            <div
+              v-if="punkLots.length"
+              class="context-group"
+            >
+              <h3 class="context-title">Listed in a lot</h3>
+              <div class="card-grid">
+                <LazyLotCard
+                  v-for="lot in punkLots"
+                  :key="String(lot.id)"
+                  :lot="lot"
+                />
+              </div>
+            </div>
+            <div
+              v-if="punkOffers.length"
+              class="context-group"
+            >
+              <h3 class="context-title">Matching offers</h3>
+              <div class="card-grid">
+                <LazyOfferCard
+                  v-for="offer in punkOffers"
+                  :key="String(offer.id)"
+                  :offer="offer"
+                />
+              </div>
             </div>
           </div>
+
           <div
-            v-if="punkLots.length"
-            class="context-group"
+            v-if="isOwner"
+            class="actions"
           >
-            <h3 class="context-title">Listed in a lot</h3>
-            <div class="card-grid">
-              <LazyLotCard
-                v-for="lot in punkLots"
-                :key="String(lot.id)"
-                :lot="lot"
-              />
-            </div>
-          </div>
-          <div
-            v-if="punkOffers.length"
-            class="context-group"
-          >
-            <h3 class="context-title">Matching offers</h3>
-            <div class="card-grid">
-              <LazyOfferCard
-                v-for="offer in punkOffers"
-                :key="String(offer.id)"
-                :offer="offer"
-              />
-            </div>
+            <LazyPunkDetailAuctionCreateLot
+              :punk-id="punkId"
+              :standard="standard"
+              @created="onCreated"
+            />
           </div>
         </div>
-
-        <LazyPunkDetailAuctionCreateLot
-          v-if="isOwner"
-          :punk-id="punkId"
-          :standard="standard"
-          @created="onCreated"
-        />
       </template>
     </section>
   </ClientOnly>
@@ -139,6 +148,15 @@ function onCreated(tx: Hash) {
   font-size: var(--font-sm);
 }
 
+.auction-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+  padding: var(--size-3);
+  border: var(--border);
+  background: var(--bg-elevated);
+}
+
 .context {
   display: flex;
   flex-direction: column;
@@ -162,5 +180,17 @@ function onCreated(tx: Hash) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--size-7);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  flex-wrap: wrap;
+}
+
+.auction-panel > .context + .actions {
+  padding-top: var(--size-3);
+  border-top: var(--border);
 }
 </style>
