@@ -120,13 +120,16 @@ function toggleExcluded(id: number) {
   justify-content: center;
   align-self: stretch;
   box-sizing: border-box;
-  height: var(--form-item-height);
-  margin-inline-end: calc(-1 * var(--size-3));
+  height: 100%;
+  min-height: var(--form-item-height);
   padding-inline: var(--size-3);
+  border: 0;
   border-inline-start: var(--border);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   font-size: var(--font-xs);
+  line-height: 1;
   text-transform: uppercase;
 }
 

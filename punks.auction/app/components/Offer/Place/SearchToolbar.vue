@@ -2,7 +2,10 @@
   <div class="place-search-toolbar">
     <label
       class="search-field"
-      :class="{ 'is-disabled': disabled }"
+      :class="{
+        'is-disabled': disabled,
+        'has-actions': hasActions,
+      }"
     >
       <input
         v-model="model"
@@ -13,7 +16,12 @@
         spellcheck="false"
         @keydown.enter.prevent="emit('submit')"
       />
-      <slot name="actions" />
+      <span
+        v-if="hasActions"
+        class="search-actions"
+      >
+        <slot name="actions" />
+      </span>
     </label>
   </div>
 </template>
@@ -31,6 +39,8 @@ const model = defineModel<string>({ required: true })
 const emit = defineEmits<{
   submit: []
 }>()
+const slots = useSlots()
+const hasActions = computed(() => !!slots.actions)
 </script>
 
 <style scoped>
@@ -50,6 +60,10 @@ const emit = defineEmits<{
   background: var(--tag-background);
   box-shadow: 0 0 0 var(--border-width) var(--border-color);
   box-sizing: border-box;
+}
+
+.search-field.has-actions {
+  padding-inline-end: 0;
 }
 
 .search-field input {
@@ -90,5 +104,13 @@ const emit = defineEmits<{
 .search-field input:focus-visible {
   outline: none;
   box-shadow: none;
+}
+
+.search-actions {
+  display: inline-flex;
+  align-self: stretch;
+  align-items: stretch;
+  flex: 0 0 auto;
+  margin-inline-start: var(--size-2);
 }
 </style>
