@@ -104,7 +104,7 @@ export function buildPlaceOfferDraft(
     })
   }
 
-  const built = slots.map((slot, index) => buildSlot(slot, slotLabel(index)))
+  const built = slots.map((slot, index) => buildSlot(slot, itemLabel(index)))
   const firstInvalid = built.find((slot) => slot.error)
   if (firstInvalid) {
     return invalidDraft(firstInvalid.error!, {
@@ -208,7 +208,7 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       `Exclude ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`,
     )
   }
-  if (activeCount <= 0) return invalidSlot(label, 'No Punks match this slot.')
+  if (activeCount <= 0) return invalidSlot(label, 'No Punks match this item.')
 
   return {
     input: {
@@ -328,8 +328,8 @@ function slotCountError(count: number) {
   return ''
 }
 
-export function slotLabel(index: number) {
-  return `Slot ${index + 1}`
+export function itemLabel(index: number) {
+  return `Item ${index + 1}`
 }
 
 export function uniqueSortedIds(ids: readonly number[]) {

@@ -82,7 +82,7 @@ import {
   PLACE_OFFER_MIN_MULTI_SLOTS,
   buildPlaceOfferDraft,
   createPlaceOfferSlotDraft,
-  slotLabel,
+  itemLabel,
   type PlaceOfferDraft,
   type PlaceOfferQuantityMode,
   type PlaceOfferSlotDraft,
@@ -165,7 +165,7 @@ const canUseCurrentSlot = computed(
 const stepTitle = computed(() => {
   if (actionStep.value === 'target') {
     return quantityMode.value === 'multiple'
-      ? slotLabel(activeSlotIndex.value)
+      ? itemLabel(activeSlotIndex.value)
       : 'Target'
   }
   return amountStepTitle()
