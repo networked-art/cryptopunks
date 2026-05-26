@@ -2,29 +2,46 @@
   <ClientOnly>
     <section class="card">
       <div class="card-head">
-        <div>
+        <div class="card-title-row">
           <h3>Legacy wrapper</h3>
-          <a
-            v-if="activeWrapperProxy"
-            :href="addressUrl(activeWrapperProxy)"
-            target="_blank"
-            rel="noopener"
-            class="addr-link"
-          >
-            <Account :address="activeWrapperProxy" />
-          </a>
-          <p class="hint muted">
-            Mint and burn original `WrappedPunks` ERC-721 tokens via your
-            personal wrapper proxy.
-          </p>
+          <Tooltip side="bottom">
+            <template #trigger>
+              <Tag
+                small
+                class="status-tag"
+                :class="{ active: !!activeWrapperProxy }"
+              >
+                {{ activeWrapperProxy ? 'Registered' : 'Not registered' }}
+              </Tag>
+            </template>
+
+            <div class="tooltip-body">
+              <header class="tooltip-header">
+                <h4 class="title eyebrow">Wrapper proxy</h4>
+                <span class="status eyebrow">
+                  {{ activeWrapperProxy ? 'Registered' : 'Not registered' }}
+                </span>
+              </header>
+              <a
+                v-if="activeWrapperProxy"
+                :href="addressUrl(activeWrapperProxy)"
+                target="_blank"
+                rel="noopener"
+                class="explorer"
+              >
+                <Account :address="activeWrapperProxy" />
+                <Icon name="lucide:external-link" />
+              </a>
+              <p class="hint muted">
+                {{
+                  activeWrapperProxy
+                    ? 'Proxy contract used by WrappedPunks wrap and unwrap.'
+                    : 'Register once to create a personal proxy for legacy wrapping.'
+                }}
+              </p>
+            </div>
+          </Tooltip>
         </div>
-        <Tag
-          small
-          class="status-tag"
-          :class="{ active: !!activeWrapperProxy }"
-        >
-          {{ activeWrapperProxy ? 'Registered' : 'Not registered' }}
-        </Tag>
       </div>
 
       <p
@@ -34,14 +51,65 @@
         {{ error }}
       </p>
 
+      <div class="card-body">
+        <p
+          v-if="!activeWrapperProxy"
+          class="hint muted"
+        >
+          Mint and burn original `WrappedPunks` ERC-721 tokens via a personal
+          wrapper proxy. Register the proxy once per account; it holds the
+          underlying Punk while you hold the ERC-721.
+        </p>
+
+        <template v-else>
+          <p class="hint muted">
+            Mint and burn original `WrappedPunks` ERC-721 tokens via your
+            personal wrapper proxy. Wrapping deposits the Punk into your proxy
+            then mints the ERC-721; unwrap burns it and returns the Punk to your
+            wallet.
+          </p>
+
+          <div class="picker-row">
+            <template v-if="selectedPunkId !== null">
+              <div class="picker-preview">
+                <PunkThumb
+                  :punk-id="selectedPunkId"
+                  :size="48"
+                  :link="false"
+                />
+                <span class="picker-meta">
+                  <strong>Punk #{{ selectedPunkId }}</strong>
+                  <span class="muted">{{ custodyHint }}</span>
+                </span>
+              </div>
+              <Button
+                class="icon-button"
+                :disabled="pending"
+                @click="pickerOpen = true"
+              >
+                <Icon name="lucide:mouse-pointer-click" />
+                <span>Change Punk</span>
+              </Button>
+            </template>
+            <template v-else>
+              <Button
+                class="icon-button"
+                :disabled="pending"
+                @click="pickerOpen = true"
+              >
+                <Icon name="lucide:mouse-pointer-click" />
+                <span>Select Punk</span>
+              </Button>
+              <span class="hint muted">{{ pickerHint }}</span>
+            </template>
+          </div>
+        </template>
+      </div>
+
       <div
         v-if="!activeWrapperProxy"
-        class="setup"
+        class="actions"
       >
-        <p class="hint muted">
-          The proxy contract holds the underlying Punk while you hold the
-          ERC-721. One-time setup per account.
-        </p>
         <Button
           class="primary icon-button"
           :disabled="pending"
@@ -53,41 +121,6 @@
       </div>
 
       <template v-else>
-        <div class="picker-row">
-          <template v-if="selectedPunkId !== null">
-            <div class="picker-preview">
-              <PunkThumb
-                :punk-id="selectedPunkId"
-                :size="48"
-                :link="false"
-              />
-              <span class="picker-meta">
-                <strong>Punk #{{ selectedPunkId }}</strong>
-                <span class="muted">{{ custodyHint }}</span>
-              </span>
-            </div>
-            <Button
-              class="icon-button"
-              :disabled="pending"
-              @click="pickerOpen = true"
-            >
-              <Icon name="lucide:mouse-pointer-click" />
-              <span>Change Punk</span>
-            </Button>
-          </template>
-          <template v-else>
-            <Button
-              class="icon-button"
-              :disabled="pending"
-              @click="pickerOpen = true"
-            >
-              <Icon name="lucide:mouse-pointer-click" />
-              <span>Select Punk</span>
-            </Button>
-            <span class="hint muted">{{ pickerHint }}</span>
-          </template>
-        </div>
-
         <div class="actions">
           <Button
             class="primary icon-button"
@@ -106,11 +139,6 @@
             <span>Unwrap</span>
           </Button>
         </div>
-
-        <p class="hint muted">
-          Wrapping deposits the Punk into your proxy then mints the ERC-721.
-          Unwrap burns it and returns the Punk to your wallet.
-        </p>
       </template>
 
       <DialogPunkPicker
@@ -133,6 +161,7 @@
 
       <EvmMultiTransactionFlowDialog
         ref="multiDialogRef"
+        title="Wrap Punk"
         :steps="flowSteps"
         :text="multiDialogText"
         skip-confirmation
@@ -148,7 +177,7 @@ import type {
   MultiTransactionFlowStep,
   MultiTransactionFlowText,
   TransactionFlowText,
-} from '@1001-digital/components.evm'
+} from '~/types/transactionFlow'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import {
   zeroAddress,
@@ -171,8 +200,11 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { refreshMarketState } = usePunkMarketState()
 const optimistic = useOptimisticMarketPatch()
-const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
-  useAccountPunkInventory(() => props.account)
+const {
+  items: inventoryItems,
+  loading: inventoryLoading,
+  refresh: refreshInventory,
+} = useAccountPunkInventory(() => props.account)
 
 const confirmedWrapperProxy = ref<Address | null>(props.wrapperProxy)
 const selectedPunkId = ref<number | null>(null)
@@ -189,7 +221,8 @@ const eligibleItems = computed(() =>
     (item) =>
       item.standard === TokenStandard.CryptoPunks &&
       (item.custody === 'wallet' ||
-        (item.custody === 'wrapped-wallet' && item.wrapper === 'wrapped_punks')),
+        (item.custody === 'wrapped-wallet' &&
+          item.wrapper === 'wrapped_punks')),
   ),
 )
 
@@ -416,10 +449,8 @@ function actUnwrap() {
 
 .card-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--size-3);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--size-2);
 }
 
 .card-head h3 {
@@ -427,25 +458,23 @@ function actUnwrap() {
   font-size: var(--font-md);
 }
 
-.addr-link {
-  display: inline-block;
-  margin-top: var(--size-1);
-  border: 0;
-  font-size: var(--font-xs);
-  color: var(--text-dim);
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-2);
+  flex-wrap: wrap;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
 }
 
 .hint {
   margin: 0;
-  margin-top: var(--size-1);
   font-size: var(--font-sm);
-}
-
-.setup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  align-items: flex-start;
 }
 
 .picker-row {
@@ -499,6 +528,38 @@ function actUnwrap() {
 .status-tag {
   flex: 0 0 auto;
   cursor: default;
+}
+
+.tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+  min-width: 12rem;
+  max-width: 20rem;
+}
+
+.tooltip-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-2);
+}
+
+.title {
+  margin: 0;
+}
+
+.explorer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  font-size: var(--font-xs);
+  border: 0;
+  word-break: break-all;
+}
+
+.tooltip-body .hint {
+  font-size: var(--font-xs);
 }
 
 .error {
