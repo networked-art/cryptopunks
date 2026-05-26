@@ -18,6 +18,21 @@ type PunkMarketStateSetKey =
   | 'wrapped'
 export type PunkMarketStateSets = Record<PunkMarketStateSetKey, Set<number>>
 
+export type PunkMarketLocalPatch = {
+  legacy_wrapped?: boolean
+  wrapped?: boolean
+}
+
+function withId(arr: number[], id: number, present: boolean): number[] {
+  const idx = arr.indexOf(id)
+  if (present) {
+    if (idx !== -1) return arr
+    return [...arr, id].sort((a, b) => a - b)
+  }
+  if (idx === -1) return arr
+  return arr.slice(0, idx).concat(arr.slice(idx + 1))
+}
+
 const IDLE_LOAD_TIMEOUT_MS = 1_500
 
 let fetchPromise: Promise<PunkMarketStateResponse | null> | null = null
@@ -126,6 +141,27 @@ export function usePunkMarketState() {
   const sets = computed(() => toSets(data.value))
   const listedPrices = computed(() => toListedPrices(data.value))
 
+  /// Optimistically toggle wrapper membership for a single Punk so consumers
+  /// (bg colors, sort buckets) reflect the new state immediately after a
+  /// wrap/unwrap is mined. The next `refreshMarketState` reconciles against
+  /// the indexer truth, so a miscoded transition self-corrects within ~15s.
+  function applyPunkLocal(punkId: number, patch: PunkMarketLocalPatch) {
+    const current = data.value
+    if (!current) return
+    const next = { ...current }
+    if (patch.legacy_wrapped !== undefined) {
+      next.legacy_wrapped = withId(
+        current.legacy_wrapped,
+        punkId,
+        patch.legacy_wrapped,
+      )
+    }
+    if (patch.wrapped !== undefined) {
+      next.wrapped = withId(current.wrapped, punkId, patch.wrapped)
+    }
+    data.value = next
+  }
+
   return {
     marketState: data,
     marketStateLoaded: loaded,
@@ -133,5 +169,6 @@ export function usePunkMarketState() {
     marketStateSets: sets,
     listedPrices,
     refreshMarketState: () => load(true),
+    applyPunkLocal,
   }
 }

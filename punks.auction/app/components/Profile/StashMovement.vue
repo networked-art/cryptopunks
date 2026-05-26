@@ -175,7 +175,7 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
-const { refreshMarketState } = usePunkMarketState()
+const { refreshMarketState, applyPunkLocal } = usePunkMarketState()
 const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
   useAccountPunkInventory(() => props.account)
 
@@ -315,6 +315,17 @@ const transactionText = ref<TransactionFlowText>({})
 const flowSteps = ref<MultiTransactionFlowStep[]>([])
 const multiDialogText = ref<MultiTransactionFlowText>({})
 const currentSingleAction = ref<'deploy' | null>(null)
+const pendingOptimistic = ref<
+  | { punkId: number; patch: import('~/composables/usePunkMarketState').PunkMarketLocalPatch }
+  | null
+>(null)
+
+function flushOptimistic() {
+  const pending = pendingOptimistic.value
+  if (!pending) return
+  applyPunkLocal(pending.punkId, pending.patch)
+  pendingOptimistic.value = null
+}
 
 async function run(
   planInput: ContractWritePlan | Promise<ContractWritePlan>,
@@ -342,6 +353,8 @@ async function run(
     await nextTick()
     dialogRef.value?.initializeRequest()
   } catch (e) {
+    currentSingleAction.value = null
+    pendingOptimistic.value = null
     error.value = (e as Error).message
   } finally {
     pending.value = false
@@ -370,6 +383,7 @@ async function runSteps(
     await nextTick()
     multiDialogRef.value?.start()
   } catch (e) {
+    pendingOptimistic.value = null
     error.value = (e as Error).message
   } finally {
     pending.value = false
@@ -383,6 +397,11 @@ function actDeploy() {
 function onTransactionComplete(receipt: TransactionReceipt) {
   const wasDeploy = currentSingleAction.value === 'deploy'
   currentSingleAction.value = null
+  if (wasDeploy) {
+    pendingOptimistic.value = null
+  } else {
+    flushOptimistic()
+  }
   void refreshStatus()
   void refreshInventory()
   if (!wasDeploy) scheduleMarketRefresh()
@@ -390,6 +409,7 @@ function onTransactionComplete(receipt: TransactionReceipt) {
 }
 
 function onFlowComplete() {
+  flushOptimistic()
   selectedPunkId.value = null
   void refreshStatus()
   void refreshInventory()
@@ -397,6 +417,7 @@ function onFlowComplete() {
 }
 
 function onFlowError(message: string) {
+  pendingOptimistic.value = null
   error.value = message
 }
 
@@ -435,6 +456,7 @@ function actWrap() {
   const item = selectedItem.value
   if (punkId === null || !item) return
   if (item.custody === 'wallet') {
+    pendingOptimistic.value = { punkId, patch: { wrapped: true } }
     void runSteps(
       sdk.value.wrappers.c721.prepareWrapFlow({
         owner: props.account,
@@ -447,6 +469,7 @@ function actWrap() {
       },
     )
   } else if (item.custody === 'stash') {
+    pendingOptimistic.value = { punkId, patch: { wrapped: true } }
     void run(Promise.resolve(sdk.value.wrappers.c721.prepareWrapPunk(punkId)))
   }
 }
@@ -454,6 +477,7 @@ function actWrap() {
 function actUnwrap() {
   const punkId = selectedPunkId.value
   if (punkId === null) return
+  pendingOptimistic.value = { punkId, patch: { wrapped: false } }
   void run(Promise.resolve(sdk.value.wrappers.c721.prepareUnwrapPunk(punkId)))
 }
 </script>
