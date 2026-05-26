@@ -68,7 +68,8 @@ const containerWidth = ref(0)
 
 /// Fit as many cells per row as possible given `gap` as the minimum spacing,
 /// then redistribute leftover width as extra horizontal gap so the row spans
-/// the full container (space-between). Vertical spacing stays at `gap`.
+/// the full container (space-between). Reuse that actual horizontal gap for
+/// vertical spacing so rows stay visually even on narrow screens.
 const cols = computed(() =>
   Math.max(
     1,
@@ -79,10 +80,16 @@ const colStep = computed(() => {
   if (cols.value <= 1) return props.size
   return (containerWidth.value - props.size) / (cols.value - 1)
 })
+const actualGap = computed(() => {
+  if (cols.value <= 1) return props.gap
+  return colStep.value - props.size
+})
 const priceRowHeight = computed(() =>
   hasPriceRow.value ? PRICE_LABEL_HEIGHT : 0,
 )
-const rowStep = computed(() => props.size + priceRowHeight.value + props.gap)
+const rowStep = computed(
+  () => props.size + priceRowHeight.value + actualGap.value,
+)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() => rows.value * rowStep.value)
 
