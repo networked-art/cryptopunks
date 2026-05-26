@@ -125,6 +125,7 @@ async function refreshStatus() {
     if (t !== statusToken) return
     stashAddress.value = status.address
     deployed.value = status.deployed
+    error.value = null
   } catch (e) {
     if (t !== statusToken) return
     error.value = (e as Error).message
@@ -133,7 +134,15 @@ async function refreshStatus() {
   }
 }
 
-watch(() => props.account, () => void refreshStatus(), { immediate: true })
+// Watching `sdk` matters because `usePunksSdk` initializes its ref to an
+// offline SDK (no publicClient) and only swaps in the wired SDK after a
+// `watchEffect` tick. Without it, the immediate firing on mount calls the
+// offline SDK, throws "publicClient is required" and never retries.
+watch(
+  [() => props.account, sdk],
+  () => void refreshStatus(),
+  { immediate: true },
+)
 
 type DialogRef = { initializeRequest: () => void } | null
 const dialogRef = ref<DialogRef>(null)
