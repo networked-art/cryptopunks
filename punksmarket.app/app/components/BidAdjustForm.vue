@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Hash } from 'viem'
+import { formatEther, type Hash } from 'viem'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
@@ -54,7 +54,7 @@ const emit = defineEmits<{ adjusted: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 
-const bidEth = ref('')
+const { amount: bidEth, wei: bidWei } = useEthAmountInput()
 
 const dialogText = computed(() => ({
   title: { confirm: 'Adjust bid', waiting: 'Adjusting bid' },
@@ -69,19 +69,8 @@ function onOpen(start: () => void) {
   start()
 }
 
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
-
 async function adjust(): Promise<Hash> {
-  const newWei = parseEthSafe(bidEth.value)
+  const newWei = bidWei.value
   if (!newWei) {
     throw new Error('Enter a bid amount greater than zero.')
   }

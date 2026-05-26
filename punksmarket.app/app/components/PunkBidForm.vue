@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Hash } from 'viem'
+import { formatEther, type Hash } from 'viem'
 import { emptyPunksFilter } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import type { CollectionBid } from '~/composables/usePunksMarketBids'
@@ -61,19 +61,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const bidEth = ref('')
-const bidWei = computed(() => parseEthSafe(bidEth.value))
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
+const { amount: bidEth, wei: bidWei } = useEthAmountInput()
 
 const dialogText = computed(() => {
   const existing = props.existingBid

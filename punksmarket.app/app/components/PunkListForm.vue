@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, parseEther, type Hash } from 'viem'
+import { formatEther, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 import { PUNKS_MARKET_ADDRESS } from '~/utils/addresses'
 
@@ -60,19 +60,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const priceEth = ref('')
-const priceWei = computed(() => parseEthSafe(priceEth.value))
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
+const { amount: priceEth, wei: priceWei } = useEthAmountInput()
 
 const dialogText = computed(() => {
   const current = props.currentPriceWei

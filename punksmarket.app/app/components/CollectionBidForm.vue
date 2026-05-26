@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { parseEther, type Hash } from 'viem'
+import type { Hash } from 'viem'
 import { writeContract } from '@wagmi/core'
 import { useConnection, useConfig } from '@wagmi/vue'
 import {
@@ -80,20 +80,7 @@ const config = useConfig()
 const { address } = useConnection()
 const offline = usePunksOffline()
 
-const bidEth = ref('')
-
-const bidWei = computed(() => parseEthSafe(bidEth.value))
-
-function parseEthSafe(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
+const { amount: bidEth, wei: bidWei } = useEthAmountInput()
 
 /// Strip pagination/sort before handing the query to `compileOfferSlot` —
 /// those fields are not part of the onchain filter and the SDK rejects them.
