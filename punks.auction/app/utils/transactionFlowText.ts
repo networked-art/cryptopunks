@@ -70,8 +70,8 @@ const PLAN_TITLES: Record<PlanKind, string> = {
   // Legacy wrapper
   'register-wrapper-proxy': 'Register Proxy',
   'transfer-to-legacy-proxy': 'Transfer to Proxy',
-  'mint-legacy-wrap': 'Mint Wrapped Punk',
-  'burn-legacy-wrap': 'Burn Wrapped Punk',
+  'mint-legacy-wrap': 'Wrap Punk',
+  'burn-legacy-wrap': 'Unwrap Punk',
   'approve-legacy-wrap': 'Approve Wrapped Punk',
   'set-legacy-wrap-approval': 'Set Approval',
   'transfer-legacy-wrap': 'Transfer Wrapped Punk',
