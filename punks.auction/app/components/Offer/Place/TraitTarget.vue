@@ -3,6 +3,7 @@
     <OfferPlaceSearchToolbar
       v-model="searchText"
       :placeholder="placeholder"
+      @submit="selectCurrentCriteria"
     >
       <template #actions>
         <button
@@ -74,8 +75,9 @@ const canToggleCriteria = computed(
 )
 
 function selectCurrentCriteria() {
+  if (!canToggleCriteria.value) return
+
   const label = settledCriteriaText.value
-  if (!label || ids.value.length === 0) return
 
   selectedText.value = label
   selectedQuery.value = offerQuery.value
@@ -116,6 +118,8 @@ function toggleExcluded(id: number) {
   align-items: center;
   justify-content: center;
   align-self: stretch;
+  box-sizing: border-box;
+  height: var(--form-item-height);
   margin-inline-end: calc(-1 * var(--size-3));
   padding-inline: var(--size-3);
   border-inline-start: var(--border);

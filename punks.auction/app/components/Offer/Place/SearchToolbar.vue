@@ -1,12 +1,17 @@
 <template>
   <div class="place-search-toolbar">
-    <label class="search-field">
+    <label
+      class="search-field"
+      :class="{ 'is-disabled': disabled }"
+    >
       <input
         v-model="model"
         type="text"
         :placeholder="placeholder"
+        :disabled="disabled"
         autocomplete="off"
         spellcheck="false"
+        @keydown.enter.prevent="emit('submit')"
       />
       <slot name="actions" />
     </label>
@@ -14,11 +19,18 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  placeholder: string
-}>()
+withDefaults(
+  defineProps<{
+    disabled?: boolean
+    placeholder: string
+  }>(),
+  { disabled: false },
+)
 
 const model = defineModel<string>({ required: true })
+const emit = defineEmits<{
+  submit: []
+}>()
 </script>
 
 <style scoped>
@@ -31,10 +43,13 @@ const model = defineModel<string>({ required: true })
   align-items: center;
   gap: var(--size-2);
   min-width: 0;
+  height: var(--form-item-height);
   min-height: var(--form-item-height);
   padding-inline: var(--size-3);
-  border: var(--border);
-  background: var(--bg);
+  border: 0;
+  background: var(--tag-background);
+  box-shadow: 0 0 0 var(--border-width) var(--border-color);
+  box-sizing: border-box;
 }
 
 .search-field input {
@@ -42,10 +57,33 @@ const model = defineModel<string>({ required: true })
   min-width: 0;
   border: 0;
   background: transparent;
+  color: var(--text);
   box-shadow: none;
   padding: 0;
   font-size: var(--font-sm);
   text-transform: uppercase;
+}
+
+.search-field input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.search-field.is-disabled {
+  background: var(--bg);
+  cursor: default;
+}
+
+.search-field.is-disabled input,
+.search-field input:disabled {
+  color: var(--text-dim);
+  cursor: default;
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-dim);
+}
+
+.search-field.is-disabled input::placeholder {
+  color: var(--text-dim);
 }
 
 .search-field input:focus,
@@ -53,5 +91,4 @@ const model = defineModel<string>({ required: true })
   outline: none;
   box-shadow: none;
 }
-
 </style>

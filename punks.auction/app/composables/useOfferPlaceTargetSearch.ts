@@ -1,12 +1,19 @@
 import { computed, watch, type Ref } from 'vue'
 
-export function useOfferPlaceTargetSearch(text: Ref<string>) {
+type OfferPlaceTargetSearchOptions = {
+  enableOwnerSearch?: boolean
+}
+
+export function useOfferPlaceTargetSearch(
+  text: Ref<string>,
+  options: OfferPlaceTargetSearchOptions = {},
+) {
   const search = usePunkSearch({
     initialText: text.value,
     syncRoute: false,
     enableListedFilter: false,
     enableMarketQualifiers: false,
-    enableOwnerSearch: false,
+    enableOwnerSearch: options.enableOwnerSearch ?? false,
     enableEnterNavigation: false,
   })
 

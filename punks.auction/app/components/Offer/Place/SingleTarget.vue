@@ -13,7 +13,7 @@
       outline-hover
       :dim-unselected="selectedId !== null"
       :selected-ids="selectedId === null ? [] : [selectedId]"
-      @toggle="selectedId = $event"
+      @toggle="toggleSelected"
     />
   </OfferPlaceTargetShell>
 </template>
@@ -28,6 +28,12 @@ withDefaults(
 
 const text = defineModel<string>('text', { required: true })
 const selectedId = defineModel<number | null>('selectedId', { required: true })
-const placeholder = 'Try #2623'
-const { searchText, ids } = useOfferPlaceTargetSearch(text)
+const placeholder = 'Try #1234, hoodie, 2 colors'
+const { searchText, ids } = useOfferPlaceTargetSearch(text, {
+  enableOwnerSearch: true,
+})
+
+function toggleSelected(id: number) {
+  selectedId.value = selectedId.value === id ? null : id
+}
 </script>
