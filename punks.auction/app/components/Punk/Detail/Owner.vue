@@ -2,13 +2,22 @@
   <section class="block">
     <h2 class="block-title eyebrow">Owned by</h2>
     <ClientOnly>
-      <NuxtLink
+      <div
         v-if="ownerKnown"
-        :to="`/profile/${owner}`"
-        class="owner-account"
+        class="owner-row"
       >
-        <Account :address="owner!" />
-      </NuxtLink>
+        <NuxtLink
+          :to="`/profile/${owner}`"
+          class="owner-account"
+        >
+          <Account :address="owner!" />
+        </NuxtLink>
+        <span
+          v-if="isWrapped"
+          class="eyebrow wrapped-note"
+          >Wrapped</span
+        >
+      </div>
       <span
         v-else-if="ownerPending"
         class="block-note muted"
@@ -34,7 +43,11 @@ const props = defineProps<{
   standard: TokenStandardValue
 }>()
 
-const { owner, pending: ownerPending } = usePunkOwner(
+const {
+  owner,
+  isWrapped,
+  pending: ownerPending,
+} = usePunkOwner(
   () => props.punkId,
   () => props.standard,
 )
@@ -59,6 +72,13 @@ const ownerKnown = computed(
 .block-note {
   margin: 0;
   font-size: var(--font-sm);
+}
+
+.owner-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-3);
+  min-width: 0;
 }
 
 .owner-account {

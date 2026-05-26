@@ -171,7 +171,7 @@ const { sdk, publicClient } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const {
-  owner,
+  nativeOwner,
   pending: ownerPending,
   refresh: refreshOwner,
 } = usePunkOwner(() => props.punkId, TokenStandard.CryptoPunks)
@@ -184,7 +184,9 @@ const pending = computed(() => ownerPending.value || marketPending.value)
 
 const isOwner = computed(
   () =>
-    !!address.value && !!owner.value && sameAddress(owner.value, address.value),
+    !!address.value &&
+    !!nativeOwner.value &&
+    sameAddress(nativeOwner.value, address.value),
 )
 
 const liveListing = computed(() => {
