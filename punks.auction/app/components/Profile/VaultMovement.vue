@@ -16,7 +16,7 @@
 
       <div class="card-body">
         <p class="hint muted">
-          Deposit a Punk into your `PunksVault` when you want to create auction
+          Vault a Punk in your `PunksVault` when you want to create auction
           lots or accept offers through PunksAuction. Vault custody proves the
           Punk is reserved for that flow and lets the auction move it into
           escrow only when a sale starts. Reclaim returns an unused Punk to your
@@ -77,7 +77,7 @@
           @click="actDeposit"
         >
           <Icon name="lucide:archive" />
-          <span>Deposit</span>
+          <span>Vault</span>
         </Button>
         <Button
           class="icon-button"
@@ -94,7 +94,7 @@
         :ids="pickerIds"
         :initial="selectedPunkId === null ? [] : [selectedPunkId]"
         title="Select a CryptoPunk"
-        lead="Pick one of your CryptoPunks in the wallet (to deposit) or in the vault (to reclaim)."
+        lead="Pick one of your CryptoPunks in the wallet (to vault) or in the vault (to reclaim)."
         empty-message="No eligible CryptoPunks in your wallet or vault."
         @confirm="onPickerConfirm"
       />
@@ -162,7 +162,7 @@ const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
 const pickerHint = computed(() => {
   if (inventoryLoading.value) return 'Loading your Punks…'
   if (pickerIds.value.length === 0) return 'No eligible Punks found.'
-  return 'Pick a Punk to deposit or reclaim.'
+  return 'Pick a Punk to vault or reclaim.'
 })
 
 const selectedItem = computed(() => {
@@ -190,7 +190,7 @@ const canReclaim = computed(
 const custodyHint = computed(() => {
   switch (selectedItem.value?.custody) {
     case 'wallet':
-      return 'In your wallet — ready to deposit'
+      return 'In your wallet — ready to vault'
     case 'vault':
       return 'In your vault — ready to reclaim'
     default:

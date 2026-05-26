@@ -12,7 +12,7 @@ const PLAN_TITLES: Record<PlanKind, string> = {
   'withdraw-punk-bid': 'Withdraw Bid',
 
   // Auction vault
-  'deposit-vault': 'Deposit Punk',
+  'deposit-vault': 'Vault Punk',
   'deploy-vault': 'Deploy Vault',
   'setup-vault': 'Set Up Vault',
   'reclaim-vault': 'Reclaim Punk',

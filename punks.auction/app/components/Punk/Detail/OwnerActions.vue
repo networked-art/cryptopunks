@@ -162,7 +162,9 @@ const ownerItem = computed(
     inventory.items.value.find(
       (item) =>
         item.standard === props.standard && item.punkId === props.punkId,
-    ) ?? chainOwnerItem.value ?? undefined,
+    ) ??
+    chainOwnerItem.value ??
+    undefined,
 )
 
 const unwrapAvailable = computed(() => {
@@ -193,9 +195,7 @@ const showSection = computed(
   () =>
     props.standard === TokenStandard.CryptoPunks &&
     !!ownerItem.value &&
-    (unwrapAvailable.value ||
-      vaultAvailable.value ||
-      reclaimAvailable.value),
+    (unwrapAvailable.value || vaultAvailable.value || reclaimAvailable.value),
 )
 
 const {
@@ -263,7 +263,9 @@ const unwrapButtonLabel = computed(() =>
 )
 
 const vaultButtonLabel = computed(() =>
-  activeAction.value === 'vault' && pending.value ? 'Preparing...' : 'Vault',
+  activeAction.value === 'vault' && pending.value
+    ? 'Preparing...'
+    : 'Send to Vault',
 )
 
 const reclaimButtonLabel = computed(() =>
