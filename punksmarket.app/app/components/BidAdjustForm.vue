@@ -17,13 +17,9 @@
     <template #confirm>
       <label class="bid-amount">
         <span class="label">New bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -31,13 +27,9 @@
     <template #error>
       <label class="bid-amount">
         <span class="label">New bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -54,7 +46,8 @@ const emit = defineEmits<{ adjusted: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 
-const { amount: bidEth, wei: bidWei } = useEthAmountInput()
+const bidEth = ref('')
+const bidWei = ref<bigint | null>(null)
 
 const dialogText = computed(() => ({
   title: { confirm: 'Adjust bid', waiting: 'Adjusting bid' },
@@ -101,9 +94,5 @@ function onComplete(receipt: { transactionHash: Hash }) {
   display: flex;
   flex-direction: column;
   gap: var(--size-1);
-}
-
-.bid-amount input {
-  width: 100%;
 }
 </style>

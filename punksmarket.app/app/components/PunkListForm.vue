@@ -18,13 +18,9 @@
     <template #confirm>
       <label class="listing-amount">
         <span class="label">Listing price</span>
-        <input
+        <EvmEthInput
           v-model="priceEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="priceWei"
         />
       </label>
     </template>
@@ -32,13 +28,9 @@
     <template #error>
       <label class="listing-amount">
         <span class="label">Listing price</span>
-        <input
+        <EvmEthInput
           v-model="priceEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="priceWei"
         />
       </label>
     </template>
@@ -60,7 +52,8 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const { amount: priceEth, wei: priceWei } = useEthAmountInput()
+const priceEth = ref('')
+const priceWei = ref<bigint | null>(null)
 
 const dialogText = computed(() => {
   const current = props.currentPriceWei
@@ -99,10 +92,6 @@ function onComplete(receipt: { transactionHash: Hash }) {
   display: flex;
   flex-direction: column;
   gap: var(--size-1);
-}
-
-.listing-amount input {
-  width: 100%;
 }
 
 .warn {

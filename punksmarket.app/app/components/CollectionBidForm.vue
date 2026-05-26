@@ -34,13 +34,9 @@
 
       <label class="bid-amount">
         <span class="label">Bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -48,13 +44,9 @@
     <template #error>
       <label class="bid-amount">
         <span class="label">Bid amount</span>
-        <input
+        <EvmEthInput
           v-model="bidEth"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="0.5"
+          v-model:wei="bidWei"
         />
       </label>
     </template>
@@ -80,7 +72,8 @@ const config = useConfig()
 const { address } = useConnection()
 const offline = usePunksOffline()
 
-const { amount: bidEth, wei: bidWei } = useEthAmountInput()
+const bidEth = ref('')
+const bidWei = ref<bigint | null>(null)
 
 /// Strip pagination/sort before handing the query to `compileOfferSlot` —
 /// those fields are not part of the onchain filter and the SDK rejects them.
