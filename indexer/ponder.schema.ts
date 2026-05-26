@@ -339,8 +339,9 @@ export const backfillMarker = onchainTable('backfill_markers', (t) => ({
 
 // Unified user-facing activity stream. `source` ∈ { cryptopunks_v1,
 // cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }.
-// `type` ∈ { assign, transfer, listing, listing_cancelled, bid, bid_adjusted,
-// bid_cancelled, sale, wrap, unwrap, escrow_credit, escrow_withdrawal }.
+// `type` ∈ { assign, transfer, stashed, unstashed, vaulted, unvaulted,
+// listing, listing_cancelled, bid, bid_adjusted, bid_cancelled, sale, wrap,
+// unwrap, escrow_credit, escrow_withdrawal }.
 // `day_unix` is the UTC day of `timestamp` — stable JOIN key against
 // `eth_usd_prices`. `usd_value_cents` is the Stripe-style USD-cent equivalent
 // of `wei_amount` at the day's ETH/USD price, cached on the row at indexing

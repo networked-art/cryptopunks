@@ -1,10 +1,18 @@
 import { ponder } from 'ponder:registry'
 import type { Context } from 'ponder:registry'
-import { event as activityEvent, listing, punk, punkBid } from 'ponder:schema'
-import { getAddress } from 'viem'
+import {
+  account,
+  event as activityEvent,
+  listing,
+  punk,
+  punkBid,
+} from 'ponder:schema'
+import { eq, or } from 'ponder'
+import { getAbiItem, getAddress, toEventSelector, toHex } from 'viem'
 
 import { CryptoPunksV2Abi } from '../abis/CryptoPunksV2Abi'
 import { StashProxyAbi } from '../abis/StashFactoryAbi'
+import { WrappedPunksAbi } from '../abis/WrappedPunksAbi'
 import {
   CRYPTOPUNKS_V2_ADDRESS,
   WRAPPER_ADDRESSES_LOWER,
@@ -39,11 +47,28 @@ type PonderEvent = {
   log: { logIndex: number }
 }
 
+type TransferActivityType =
+  | 'transfer'
+  | 'stashed'
+  | 'unstashed'
+  | 'vaulted'
+  | 'unvaulted'
+
+type CustodyAccount = Pick<
+  typeof account.$inferSelect,
+  'address' | 'vault' | 'stash'
+>
+
 const SOURCE_V2 = 'cryptopunks_v2'
 const SOURCE_WPUNKS = 'wrapped_punks'
 const SOURCE_C721 = 'cryptopunks_721'
 
 const NATIVE_V2 = 'v2'
+
+const WRAPPER_TRANSFER_TOPIC = toEventSelector(
+  getAbiItem({ abi: WrappedPunksAbi, name: 'Transfer' }),
+)
+const ZERO_TOPIC = toHex(0n, { size: 32 })
 
 // One-time seed of daily ETH/USD prices for the pre-Chainlink window (V1
 // launch → ~2021-07) from the committed CSV. Runs before the first V1 event
@@ -101,17 +126,25 @@ ponder.on('CryptoPunksV2:PunkTransfer', async ({ event, context }) => {
     event.block.timestamp,
   )
 
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V2,
-    source_event: 'PunkTransfer',
-    type: 'transfer',
-    punk_id: punkId,
-    actor: from,
-    from,
-    to,
-    ...meta,
-  })
+  const unwrapByproduct =
+    WRAPPER_ADDRESSES_LOWER.has(from.toLowerCase()) &&
+    (await isWrapperUnwrapByproduct(context, meta.tx_hash, from, punkId))
+
+  if (!unwrapByproduct) {
+    const transferActivity = await classifyNativeTransfer(context, from, to)
+
+    await insertActivity(context, {
+      id: eventId(event),
+      source: SOURCE_V2,
+      source_event: 'PunkTransfer',
+      type: transferActivity.type,
+      punk_id: punkId,
+      actor: transferActivity.actor,
+      from,
+      to,
+      ...meta,
+    })
+  }
 
   // Wrap state is owned by the wrapper Transfer handlers. We only touch the
   // public `owner` field here when the Punk is not currently wrapped — a
@@ -717,6 +750,68 @@ async function readNativeOwner(
   return normalize(owner)
 }
 
+async function classifyNativeTransfer(
+  context: Context,
+  from: Address,
+  to: Address,
+): Promise<{ type: TransferActivityType; actor: Address }> {
+  const custodyOwner = await findCustodyOwner(context, from)
+  if (custodyOwner && sameAddress(custodyOwner.stash, from)) {
+    return { type: 'unstashed', actor: custodyOwner.address }
+  }
+  if (custodyOwner && sameAddress(custodyOwner.vault, from)) {
+    return { type: 'unvaulted', actor: custodyOwner.address }
+  }
+
+  const sender = await context.db.find(account, { address: from })
+  if (sameAddress(sender?.stash, to)) {
+    return { type: 'stashed', actor: from }
+  }
+  if (sameAddress(sender?.vault, to)) {
+    return { type: 'vaulted', actor: from }
+  }
+
+  return { type: 'transfer', actor: from }
+}
+
+async function findCustodyOwner(
+  context: Context,
+  custodyAddress: Address,
+): Promise<CustodyAccount | null> {
+  const address = custodyAddress.toLowerCase() as Address
+  const rows = await context.db.sql
+    .select({
+      address: account.address,
+      vault: account.vault,
+      stash: account.stash,
+    })
+    .from(account)
+    .where(or(eq(account.stash, address), eq(account.vault, address)))
+    .limit(1)
+
+  return rows[0] ?? null
+}
+
+// WrappedPunks and CryptoPunks721 unwraps burn the ERC-721 token, then transfer
+// the native Punk from the wrapper contract to the caller. The burn is the
+// user-facing unwrap row; the native PunkTransfer is bookkeeping for state.
+async function isWrapperUnwrapByproduct(
+  context: Context,
+  txHash: Address,
+  wrapperAddress: Address,
+  punkId: bigint,
+): Promise<boolean> {
+  const receipt = await context.client.getTransactionReceipt({ hash: txHash })
+  const punkTopic = toHex(punkId, { size: 32 })
+  return receipt.logs.some(
+    (log) =>
+      normalize(log.address) === wrapperAddress &&
+      log.topics[0] === WRAPPER_TRANSFER_TOPIC &&
+      log.topics[2] === ZERO_TOPIC &&
+      log.topics[3] === punkTopic,
+  )
+}
+
 async function insertActivity(
   context: Context,
   values: Omit<
@@ -759,6 +854,10 @@ function eventMeta(event: PonderEvent): EventMeta {
     log_index: event.log.logIndex,
     timestamp: event.block.timestamp,
   }
+}
+
+function sameAddress(a: string | null | undefined, b: string): boolean {
+  return !!a && a.toLowerCase() === b.toLowerCase()
 }
 
 function normalize(address: Address): Address {
