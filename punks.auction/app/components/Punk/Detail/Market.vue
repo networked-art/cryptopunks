@@ -160,6 +160,7 @@ import {
 import { useConnection } from '@wagmi/vue'
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import { TokenStandard } from '~/utils/auction'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
   punkId: number
@@ -262,9 +263,14 @@ const dialogText = ref<{
 }>({})
 
 function run(plan: ContractWritePlan) {
+  const title = transactionTitleForPlan(plan)
   dialogText.value = {
-    title: { confirm: plan.description, waiting: plan.description },
-    lead: { confirm: plan.description },
+    title: { confirm: title, requesting: title, waiting: title },
+    lead: {
+      confirm: plan.description,
+      requesting: plan.description,
+      waiting: plan.description,
+    },
   }
   dialogRef.value?.initializeRequest(() => execute(plan))
 }

@@ -222,6 +222,7 @@ import {
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import { CRYPTOPUNKS_ADDRESS, PUNKS_AUCTION_ADDRESS } from '~/utils/addresses'
 import { addressUrl } from '~/utils/explorer'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
   account: Address
@@ -390,17 +391,21 @@ async function runPlan(
   },
 ) {
   error.value = null
+  const compactTitle = transactionTitleForPlan(plan)
+  const sharedTitle = text.title?.confirm ?? compactTitle
   transactionRequest.value = () => execute(plan)
   transactionText.value = {
     ...text,
     title: {
-      confirm: plan.description,
-      requesting: plan.description,
-      waiting: plan.description,
+      confirm: compactTitle,
+      requesting: sharedTitle,
+      waiting: sharedTitle,
       ...text.title,
     },
     lead: {
       confirm: plan.description,
+      requesting: plan.description,
+      waiting: plan.description,
       ...text.lead,
     },
   }
@@ -414,7 +419,7 @@ function stepFromPlan(
 ): MultiTransactionFlowStep {
   return {
     id,
-    title: plan.description,
+    title: transactionTitleForPlan(plan),
     lead: plan.description,
     request: () => execute(plan),
   }

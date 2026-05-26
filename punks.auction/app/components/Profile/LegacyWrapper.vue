@@ -187,6 +187,7 @@ import {
 } from 'viem'
 import { TokenStandard } from '~/utils/auction'
 import { addressUrl } from '~/utils/explorer'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
   account: Address
@@ -308,17 +309,20 @@ async function run(
   error.value = null
   try {
     const plan = await planInput
+    const title = transactionTitleForPlan(plan)
     currentSingleAction.value = action
     transactionRequest.value = () => execute(plan)
     transactionText.value = {
       title: {
-        confirm: plan.description,
-        requesting: plan.description,
-        waiting: plan.description,
+        confirm: title,
+        requesting: title,
+        waiting: title,
         complete: 'Transaction complete',
       },
       lead: {
         confirm: plan.description,
+        requesting: plan.description,
+        waiting: plan.description,
         complete: 'Transaction confirmed.',
       },
     }
@@ -344,7 +348,7 @@ async function runSteps(
     const plans = await plansInput
     flowSteps.value = plans.map((plan, i) => ({
       id: `legacy-step-${i}`,
-      title: plan.description,
+      title: transactionTitleForPlan(plan),
       lead: plan.description,
       request: () => execute(plan),
     }))

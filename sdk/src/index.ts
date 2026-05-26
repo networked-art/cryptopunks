@@ -268,6 +268,7 @@ export type {
   LotItemInput,
   OfferSlotInput,
   PlaceOfferInput,
+  PlanKind,
   PunkMarketBid,
   PunkListing,
   PunksAuctionConfig,

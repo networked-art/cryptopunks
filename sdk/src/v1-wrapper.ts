@@ -4,6 +4,7 @@ import { PUNKS_V1_WRAPPER_ADDRESS, UNWRAP_V1_PUNKS_ADDRESS } from './constants'
 import type {
   ContractWritePlan,
   ContractWriteRequest,
+  PlanKind,
   TransactionHash,
   WalletConfig,
 } from './actions'
@@ -95,7 +96,9 @@ export class PunksV1WrapperClient {
 
   prepareWrap(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Wrap CryptoPunk ${punkId}`, 'wrap', [BigInt(punkId)])
+    return this.plan('wrap-v1', `Wrap CryptoPunk ${punkId}`, 'wrap', [
+      BigInt(punkId),
+    ])
   }
   wrap(punkId: number): Promise<TransactionHash> {
     return this.write(this.prepareWrap(punkId))
@@ -103,7 +106,9 @@ export class PunksV1WrapperClient {
 
   prepareUnwrap(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Unwrap CryptoPunk ${punkId}`, 'unwrap', [BigInt(punkId)])
+    return this.plan('unwrap-v1', `Unwrap CryptoPunk ${punkId}`, 'unwrap', [
+      BigInt(punkId),
+    ])
   }
   unwrap(punkId: number): Promise<TransactionHash> {
     return this.write(this.prepareUnwrap(punkId))
@@ -114,6 +119,7 @@ export class PunksV1WrapperClient {
     approved: boolean
   }): ContractWritePlan {
     return this.plan(
+      'set-v1-wrapper-approval',
       `${params.approved ? 'Approve' : 'Revoke'} V1 wrapper operator`,
       'setApprovalForAll',
       [params.operator, params.approved],
@@ -129,6 +135,7 @@ export class PunksV1WrapperClient {
   prepareApprove(params: { to: Address; punkId: number }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
+      'approve-v1-wrap',
       `Approve V1 wrapped CryptoPunk ${params.punkId}`,
       'approve',
       [params.to, BigInt(params.punkId)],
@@ -145,6 +152,7 @@ export class PunksV1WrapperClient {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
+      'transfer-v1-wrap',
       `Transfer V1 wrapped CryptoPunk ${params.punkId}`,
       'transferFrom',
       [params.from, params.to, BigInt(params.punkId)],
@@ -179,6 +187,7 @@ export class PunksV1WrapperClient {
   prepareUnwrapBatch(punkIds: readonly number[]): ContractWritePlan {
     const ids = normalizeBatchIds(punkIds)
     return {
+      kind: 'unwrap-v1-batch',
       description: `Unwrap ${ids.length} CryptoPunks via UnwrapV1Punks helper`,
       request: {
         address: this.unwrapHelperAddress,
@@ -221,11 +230,13 @@ export class PunksV1WrapperClient {
   // ───────────────────────────── Internals ─────────────────────────────
 
   private plan(
+    kind: PlanKind,
     description: string,
     functionName: string,
     args: readonly unknown[],
   ): ContractWritePlan {
     return {
+      kind,
       description,
       request: {
         address: this.address,

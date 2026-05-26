@@ -42,7 +42,94 @@ export type ContractWriteRequest = {
   value?: bigint
 }
 
+export type PlanKind =
+  // Canonical CryptoPunks market
+  | 'list-punk'
+  | 'remove-listing'
+  | 'buy-punk'
+  | 'transfer-punk'
+  | 'withdraw-canonical-balance'
+  | 'bid-on-punk'
+  | 'accept-punk-bid'
+  | 'withdraw-punk-bid'
+  // Auction vault
+  | 'deposit-vault'
+  | 'deploy-vault'
+  | 'setup-vault'
+  | 'reclaim-vault'
+  // Auction lots & offers
+  | 'create-lot'
+  | 'update-lot'
+  | 'cancel-lot'
+  | 'clear-stale-lot'
+  | 'clear-stale-lots'
+  | 'open-auction'
+  | 'bid-on-auction'
+  | 'place-offer'
+  | 'cancel-offer'
+  | 'adjust-offer'
+  | 'accept-offer'
+  | 'accept-offer-from-lot'
+  | 'start-auction-from-offer'
+  | 'create-lot-and-accept-offer'
+  | 'create-lot-and-start-auction-from-offer'
+  | 'settle-auction'
+  | 'withdraw-auction-balance'
+  // Stash
+  | 'deploy-stash'
+  | 'upgrade-stash'
+  | 'fund-stash'
+  | 'place-stash-order'
+  | 'process-stash-order'
+  | 'process-stash-punk-bid'
+  | 'cancel-stash-punk-bid'
+  | 'cancel-all-stash-punk-bids'
+  | 'wrap-punk-from-stash'
+  | 'withdraw-stash-funds'
+  | 'withdraw-stash-erc721'
+  | 'withdraw-stash-erc1155'
+  | 'reclaim-punks-from-stash'
+  | 'handle-erc721-receipt'
+  | 'handle-erc1155-receipt'
+  | 'handle-erc1155-batch-receipt'
+  // C721 wrapper
+  | 'transfer-to-stash'
+  | 'wrap-c721'
+  | 'wrap-c721-batch'
+  | 'unwrap-c721'
+  | 'unwrap-c721-batch'
+  | 'migrate-legacy-wraps'
+  | 'rescue-c721'
+  | 'approve-c721'
+  | 'set-c721-approval'
+  | 'transfer-c721'
+  | 'safe-transfer-c721'
+  // Legacy wrapper
+  | 'register-wrapper-proxy'
+  | 'transfer-to-legacy-proxy'
+  | 'mint-legacy-wrap'
+  | 'burn-legacy-wrap'
+  | 'approve-legacy-wrap'
+  | 'set-legacy-wrap-approval'
+  | 'transfer-legacy-wrap'
+  | 'safe-transfer-legacy-wrap'
+  // V1 wrapper
+  | 'wrap-v1'
+  | 'unwrap-v1'
+  | 'unwrap-v1-batch'
+  | 'set-v1-wrapper-approval'
+  | 'approve-v1-wrap'
+  | 'transfer-v1-wrap'
+  // V1 market
+  | 'buy-punk-v1'
+  | 'place-v1-collection-bid'
+  | 'cancel-v1-bid'
+  | 'adjust-v1-bid'
+  | 'accept-v1-bid'
+  | 'withdraw-v1-balance'
+
 export type ContractWritePlan = {
+  kind: PlanKind
   description: string
   request: ContractWriteRequest
 }
@@ -163,6 +250,7 @@ export class PunksMarketClient {
     const privateListing =
       params.onlySellTo !== undefined && params.onlySellTo !== ZERO_ADDRESS
     return {
+      kind: 'list-punk',
       description: privateListing
         ? `List CryptoPunk ${params.punkId} to one buyer`
         : `List CryptoPunk ${params.punkId}`,
@@ -190,6 +278,7 @@ export class PunksMarketClient {
   prepareUnlist(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
     return {
+      kind: 'remove-listing',
       description: `Remove CryptoPunk ${punkId} listing`,
       request: {
         address: this.address,
@@ -208,6 +297,7 @@ export class PunksMarketClient {
     validatePunkId(params.punkId)
     assertWei('priceWei', params.priceWei)
     return {
+      kind: 'buy-punk',
       description: `Buy CryptoPunk ${params.punkId}`,
       request: {
         address: this.address,
@@ -243,6 +333,7 @@ export class PunksMarketClient {
   prepareTransfer(params: { punkId: number; to: Address }): ContractWritePlan {
     validatePunkId(params.punkId)
     return {
+      kind: 'transfer-punk',
       description: `Transfer CryptoPunk ${params.punkId}`,
       request: {
         address: this.address,
@@ -259,6 +350,7 @@ export class PunksMarketClient {
 
   prepareWithdraw(): ContractWritePlan {
     return {
+      kind: 'withdraw-canonical-balance',
       description: 'Withdraw CryptoPunks market balance',
       request: {
         address: this.address,
@@ -279,6 +371,7 @@ export class PunksMarketClient {
     validatePunkId(params.punkId)
     assertWei('amountWei', params.amountWei)
     return {
+      kind: 'bid-on-punk',
       description: `Bid on CryptoPunk ${params.punkId}`,
       request: {
         address: this.address,
@@ -304,6 +397,7 @@ export class PunksMarketClient {
     validatePunkId(params.punkId)
     assertWei('minPriceWei', params.minPriceWei)
     return {
+      kind: 'accept-punk-bid',
       description: `Accept CryptoPunk ${params.punkId} bid`,
       request: {
         address: this.address,
@@ -324,6 +418,7 @@ export class PunksMarketClient {
   prepareWithdrawBid(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
     return {
+      kind: 'withdraw-punk-bid',
       description: `Withdraw CryptoPunk ${punkId} bid`,
       request: {
         address: this.address,
@@ -462,6 +557,7 @@ export class PunksAuctionClient {
       this.marketAddressFor(standard),
     ])
     return {
+      kind: 'deposit-vault',
       description: `Deposit CryptoPunk ${params.punkId} to auction vault`,
       request: {
         address: market,
@@ -484,6 +580,7 @@ export class PunksAuctionClient {
   /// approvals — the owner sets approvals afterwards.
   async prepareEnsureVault(user: Address): Promise<ContractWritePlan> {
     return {
+      kind: 'deploy-vault',
       description: 'Deploy auction vault',
       request: {
         address: await this.vaultFactoryAddress(),
@@ -504,6 +601,7 @@ export class PunksAuctionClient {
     operators: readonly Address[],
   ): Promise<ContractWritePlan> {
     return {
+      kind: 'setup-vault',
       description: 'Deploy your vault and approve operators',
       request: {
         address: await this.vaultFactoryAddress(),
@@ -532,6 +630,7 @@ export class PunksAuctionClient {
       this.marketAddressFor(standard),
     ])
     return {
+      kind: 'reclaim-vault',
       description: `Reclaim CryptoPunk ${params.punkId} from auction vault`,
       request: {
         address: vault,
@@ -559,6 +658,7 @@ export class PunksAuctionClient {
     const onlySellTo = params.onlySellTo ?? ZERO_ADDRESS
     const privateLot = onlySellTo !== ZERO_ADDRESS
     return {
+      kind: 'create-lot',
       description: privateLot
         ? 'Create CryptoPunks auction lot for one buyer'
         : 'Create CryptoPunks auction lot',
@@ -587,6 +687,7 @@ export class PunksAuctionClient {
     assertWei('reserveWei', params.reserveWei)
     const onlySellTo = params.onlySellTo ?? ZERO_ADDRESS
     return {
+      kind: 'update-lot',
       description: `Update CryptoPunks lot ${params.lotId.toString()}`,
       request: {
         address: this.requireAddress(),
@@ -608,6 +709,7 @@ export class PunksAuctionClient {
   prepareCancelLot(lotId: bigint | number): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),
+      'cancel-lot',
       'Cancel CryptoPunks lot',
       'cancelLot',
       [BigInt(lotId)],
@@ -621,6 +723,7 @@ export class PunksAuctionClient {
   prepareClearStaleLot(lotId: bigint | number): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),
+      'clear-stale-lot',
       'Clear stale CryptoPunks lot',
       'clearStaleLot',
       [BigInt(lotId)],
@@ -641,6 +744,7 @@ export class PunksAuctionClient {
     }
     return simpleAuctionWrite(
       this.requireAddress(),
+      'clear-stale-lots',
       'Clear stale CryptoPunks lots',
       'clearStaleLots',
       [lotIds.map((id) => BigInt(id))],
@@ -662,6 +766,7 @@ export class PunksAuctionClient {
     const value = params.bidWei ?? params.reserveWei
     assertWei('bidWei', value)
     return {
+      kind: 'open-auction',
       description: `Open CryptoPunks auction lot ${params.lotId.toString()}`,
       request: {
         address: this.requireAddress(),
@@ -687,6 +792,7 @@ export class PunksAuctionClient {
   }): ContractWritePlan {
     assertWei('amountWei', params.amountWei)
     return {
+      kind: 'bid-on-auction',
       description: `Bid on CryptoPunks auction ${params.auctionId.toString()}`,
       request: {
         address: this.requireAddress(),
@@ -738,6 +844,7 @@ export class PunksAuctionClient {
       )
     }
     return {
+      kind: 'place-offer',
       description: 'Place CryptoPunks offer',
       request: {
         address: this.requireAddress(),
@@ -756,6 +863,7 @@ export class PunksAuctionClient {
   prepareCancelOffer(offerId: bigint | number): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),
+      'cancel-offer',
       'Cancel CryptoPunks offer',
       'cancelOffer',
       [BigInt(offerId)],
@@ -784,6 +892,7 @@ export class PunksAuctionClient {
         ? params.newAmountWei - currentAmountWei
         : 0n
     return {
+      kind: 'adjust-offer',
       description: 'Adjust CryptoPunks offer amount',
       request: {
         address: this.requireAddress(),
@@ -811,6 +920,7 @@ export class PunksAuctionClient {
     assertWei('expectedListingWei', params.expectedListingWei)
     return simpleAuctionWrite(
       this.requireAddress(),
+      'accept-offer',
       'Accept CryptoPunks offer',
       'acceptOffer',
       [BigInt(params.offerId), params.punkId, params.expectedListingWei],
@@ -833,6 +943,7 @@ export class PunksAuctionClient {
     assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
+      'accept-offer-from-lot',
       'Accept CryptoPunks offer from lot',
       'acceptOfferFromLot',
       [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
@@ -855,6 +966,7 @@ export class PunksAuctionClient {
     assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
+      'start-auction-from-offer',
       'Start CryptoPunks auction from offer',
       'startAuctionFromOffer',
       [BigInt(params.offerId), BigInt(params.lotId), params.minAmountWei],
@@ -878,6 +990,7 @@ export class PunksAuctionClient {
     assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
+      'create-lot-and-accept-offer',
       'Create CryptoPunks auction lot and accept offer',
       'createLotAndAcceptOffer',
       [items, BigInt(params.offerId), params.minAmountWei],
@@ -901,6 +1014,7 @@ export class PunksAuctionClient {
     assertWei('minAmountWei', params.minAmountWei)
     return simpleAuctionWrite(
       this.requireAddress(),
+      'create-lot-and-start-auction-from-offer',
       'Create CryptoPunks auction lot and start auction from offer',
       'createLotAndStartAuction',
       [items, BigInt(params.offerId), params.minAmountWei],
@@ -918,6 +1032,7 @@ export class PunksAuctionClient {
   prepareSettle(auctionId: bigint | number): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),
+      'settle-auction',
       'Settle CryptoPunks auction',
       'settle',
       [BigInt(auctionId)],
@@ -945,6 +1060,7 @@ export class PunksAuctionClient {
   prepareWithdraw(): ContractWritePlan {
     return simpleAuctionWrite(
       this.requireAddress(),
+      'withdraw-auction-balance',
       'Withdraw credited ETH from CryptoPunks auction',
       'withdraw',
       [],
@@ -1038,11 +1154,13 @@ function normalizeLotItems(items: readonly LotItemInput[]): LotItem[] {
 
 function simpleAuctionWrite(
   address: Address,
+  kind: PlanKind,
   description: string,
   functionName: string,
   args: readonly unknown[],
 ): ContractWritePlan {
   return {
+    kind,
     description,
     request: {
       address,

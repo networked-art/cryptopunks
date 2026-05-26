@@ -14,6 +14,7 @@ import {
 } from './constants'
 import type {
   ContractWritePlan,
+  PlanKind,
   TransactionHash,
   WalletConfig,
 } from './actions'
@@ -281,6 +282,7 @@ export class CryptoPunks721Client {
     return writePlan(
       this.stashFactoryAddress,
       stashFactoryAbi,
+      'deploy-stash',
       'Deploy CryptoPunks Stash',
       'deployStash',
       [owner],
@@ -297,6 +299,7 @@ export class CryptoPunks721Client {
     validatePunkId(input.punkId)
     const stash = await this.resolveStash(input)
     return {
+      kind: 'transfer-to-stash',
       description: `Transfer CryptoPunk ${input.punkId} to Stash`,
       request: {
         address: this.marketAddress,
@@ -330,15 +333,18 @@ export class CryptoPunks721Client {
     const punkIds = normalizePunkIds(input.punkIds)
     const stash = await this.resolveStash(input)
     return [
-      ...punkIds.map((punkId) => ({
-        description: `Transfer CryptoPunk ${punkId} to Stash`,
-        request: {
-          address: this.marketAddress,
-          abi: cryptoPunksMarketAbi,
-          functionName: 'transferPunk',
-          args: [stash, BigInt(punkId)],
-        },
-      })),
+      ...punkIds.map(
+        (punkId): ContractWritePlan => ({
+          kind: 'transfer-to-stash',
+          description: `Transfer CryptoPunk ${punkId} to Stash`,
+          request: {
+            address: this.marketAddress,
+            abi: cryptoPunksMarketAbi,
+            functionName: 'transferPunk',
+            args: [stash, BigInt(punkId)],
+          },
+        }),
+      ),
       this.prepareWrapPunkBatch(punkIds),
     ]
   }
@@ -351,9 +357,12 @@ export class CryptoPunks721Client {
 
   prepareWrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Wrap CryptoPunk ${punkId} as ERC-721`, 'wrapPunk', [
-      BigInt(punkId),
-    ])
+    return this.plan(
+      'wrap-c721',
+      `Wrap CryptoPunk ${punkId} as ERC-721`,
+      'wrapPunk',
+      [BigInt(punkId)],
+    )
   }
 
   prepareWrap(punkId: number): ContractWritePlan {
@@ -369,9 +378,12 @@ export class CryptoPunks721Client {
   }
 
   prepareWrapPunkBatch(punkIds: readonly number[]): ContractWritePlan {
-    return this.plan('Wrap CryptoPunks as ERC-721 tokens', 'wrapPunkBatch', [
-      normalizePunkIds(punkIds).map(BigInt),
-    ])
+    return this.plan(
+      'wrap-c721-batch',
+      'Wrap CryptoPunks as ERC-721 tokens',
+      'wrapPunkBatch',
+      [normalizePunkIds(punkIds).map(BigInt)],
+    )
   }
 
   wrapPunkBatch(punkIds: readonly number[]): Promise<TransactionHash> {
@@ -380,7 +392,7 @@ export class CryptoPunks721Client {
 
   prepareUnwrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Unwrap CryptoPunk ${punkId}`, 'unwrapPunk', [
+    return this.plan('unwrap-c721', `Unwrap CryptoPunk ${punkId}`, 'unwrapPunk', [
       BigInt(punkId),
     ])
   }
@@ -398,7 +410,7 @@ export class CryptoPunks721Client {
   }
 
   prepareUnwrapPunkBatch(punkIds: readonly number[]): ContractWritePlan {
-    return this.plan('Unwrap CryptoPunks', 'unwrapPunkBatch', [
+    return this.plan('unwrap-c721-batch', 'Unwrap CryptoPunks', 'unwrapPunkBatch', [
       normalizePunkIds(punkIds).map(BigInt),
     ])
   }
@@ -411,6 +423,7 @@ export class CryptoPunks721Client {
     punkIds: readonly number[],
   ): ContractWritePlan {
     return this.plan(
+      'migrate-legacy-wraps',
       'Migrate legacy wrapped CryptoPunks',
       'migrateLegacyWrappedPunks',
       [normalizePunkIds(punkIds).map(BigInt)],
@@ -425,9 +438,12 @@ export class CryptoPunks721Client {
 
   prepareRescuePunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Rescue unwrapped CryptoPunk ${punkId}`, 'rescuePunk', [
-      BigInt(punkId),
-    ])
+    return this.plan(
+      'rescue-c721',
+      `Rescue unwrapped CryptoPunk ${punkId}`,
+      'rescuePunk',
+      [BigInt(punkId)],
+    )
   }
 
   rescuePunk(punkId: number): Promise<TransactionHash> {
@@ -439,10 +455,12 @@ export class CryptoPunks721Client {
     punkId: number
   }): ContractWritePlan {
     validatePunkId(params.punkId)
-    return this.plan(`Approve ERC-721 CryptoPunk ${params.punkId}`, 'approve', [
-      params.operator,
-      BigInt(params.punkId),
-    ])
+    return this.plan(
+      'approve-c721',
+      `Approve ERC-721 CryptoPunk ${params.punkId}`,
+      'approve',
+      [params.operator, BigInt(params.punkId)],
+    )
   }
 
   approve(params: {
@@ -456,10 +474,12 @@ export class CryptoPunks721Client {
     operator: Address
     approved: boolean
   }): ContractWritePlan {
-    return this.plan('Set ERC-721 CryptoPunks approval', 'setApprovalForAll', [
-      params.operator,
-      params.approved,
-    ])
+    return this.plan(
+      'set-c721-approval',
+      'Set ERC-721 CryptoPunks approval',
+      'setApprovalForAll',
+      [params.operator, params.approved],
+    )
   }
 
   setApprovalForAll(params: {
@@ -476,6 +496,7 @@ export class CryptoPunks721Client {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
+      'transfer-c721',
       `Transfer ERC-721 CryptoPunk ${params.punkId}`,
       'transferFrom',
       [params.from, params.to, BigInt(params.punkId)],
@@ -502,6 +523,7 @@ export class CryptoPunks721Client {
         ? [params.from, params.to, BigInt(params.punkId)]
         : [params.from, params.to, BigInt(params.punkId), params.data]
     return this.plan(
+      'safe-transfer-c721',
       `Safe transfer ERC-721 CryptoPunk ${params.punkId}`,
       'safeTransferFrom',
       args,
@@ -518,6 +540,7 @@ export class CryptoPunks721Client {
   }
 
   private plan(
+    kind: PlanKind,
     description: string,
     functionName: string,
     args: readonly unknown[],
@@ -525,6 +548,7 @@ export class CryptoPunks721Client {
     return writePlan(
       this.address,
       cryptoPunks721Abi,
+      kind,
       description,
       functionName,
       args,
@@ -765,7 +789,12 @@ export class LegacyWrappedPunksClient {
   }
 
   prepareRegisterProxy(): ContractWritePlan {
-    return this.plan('Register wrapper proxy', 'registerProxy', [])
+    return this.plan(
+      'register-wrapper-proxy',
+      'Register wrapper proxy',
+      'registerProxy',
+      [],
+    )
   }
 
   registerProxy(): Promise<TransactionHash> {
@@ -783,6 +812,7 @@ export class LegacyWrappedPunksClient {
       )
     }
     return {
+      kind: 'transfer-to-legacy-proxy',
       description: `Transfer CryptoPunk ${params.punkId} to legacy wrapper proxy`,
       request: {
         address: this.marketAddress,
@@ -817,9 +847,12 @@ export class LegacyWrappedPunksClient {
 
   prepareMint(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Mint legacy wrapped CryptoPunk ${punkId}`, 'mint', [
-      BigInt(punkId),
-    ])
+    return this.plan(
+      'mint-legacy-wrap',
+      `Mint legacy wrapped CryptoPunk ${punkId}`,
+      'mint',
+      [BigInt(punkId)],
+    )
   }
 
   mint(punkId: number): Promise<TransactionHash> {
@@ -828,9 +861,12 @@ export class LegacyWrappedPunksClient {
 
   prepareBurn(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Burn legacy wrapped CryptoPunk ${punkId}`, 'burn', [
-      BigInt(punkId),
-    ])
+    return this.plan(
+      'burn-legacy-wrap',
+      `Burn legacy wrapped CryptoPunk ${punkId}`,
+      'burn',
+      [BigInt(punkId)],
+    )
   }
 
   burn(punkId: number): Promise<TransactionHash> {
@@ -843,6 +879,7 @@ export class LegacyWrappedPunksClient {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
+      'approve-legacy-wrap',
       `Approve legacy wrapped CryptoPunk ${params.punkId}`,
       'approve',
       [params.operator, BigInt(params.punkId)],
@@ -860,10 +897,12 @@ export class LegacyWrappedPunksClient {
     operator: Address
     approved: boolean
   }): ContractWritePlan {
-    return this.plan('Set legacy wrapped Punk approval', 'setApprovalForAll', [
-      params.operator,
-      params.approved,
-    ])
+    return this.plan(
+      'set-legacy-wrap-approval',
+      'Set legacy wrapped Punk approval',
+      'setApprovalForAll',
+      [params.operator, params.approved],
+    )
   }
 
   setApprovalForAll(params: {
@@ -880,6 +919,7 @@ export class LegacyWrappedPunksClient {
   }): ContractWritePlan {
     validatePunkId(params.punkId)
     return this.plan(
+      'transfer-legacy-wrap',
       `Transfer legacy wrapped CryptoPunk ${params.punkId}`,
       'transferFrom',
       [params.from, params.to, BigInt(params.punkId)],
@@ -906,6 +946,7 @@ export class LegacyWrappedPunksClient {
         ? [params.from, params.to, BigInt(params.punkId)]
         : [params.from, params.to, BigInt(params.punkId), params.data]
     return this.plan(
+      'safe-transfer-legacy-wrap',
       `Safe transfer legacy wrapped CryptoPunk ${params.punkId}`,
       'safeTransferFrom',
       args,
@@ -922,6 +963,7 @@ export class LegacyWrappedPunksClient {
   }
 
   private plan(
+    kind: PlanKind,
     description: string,
     functionName: string,
     args: readonly unknown[],
@@ -929,6 +971,7 @@ export class LegacyWrappedPunksClient {
     return writePlan(
       this.address,
       wrappedPunksAbi,
+      kind,
       description,
       functionName,
       args,
@@ -1027,11 +1070,13 @@ export function createLegacyWrappedPunksClient(
 function writePlan(
   address: Address,
   abi: Abi,
+  kind: PlanKind,
   description: string,
   functionName: string,
   args: readonly unknown[],
 ): ContractWritePlan {
   return {
+    kind,
     description,
     request: {
       address,

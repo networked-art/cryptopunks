@@ -3,6 +3,7 @@ import type {
   MultiTransactionFlowText,
   TransactionFlowText,
 } from '~/types/transactionFlow'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import type { Hash, TransactionReceipt } from 'viem'
 
@@ -94,7 +95,7 @@ export function useTransactionFlowRunner(
   ): MultiTransactionFlowStep {
     return {
       id: `tx-${index}`,
-      title: plan.description,
+      title: transactionTitleForPlan(plan),
       lead: plan.description,
       request: () => execute(plan),
     }
@@ -136,17 +137,23 @@ function textForPlan(
   plan: ContractWritePlan,
   text: TransactionFlowText = {},
 ): TransactionFlowText {
+  const compactTitle = transactionTitleForPlan(plan)
+  // Caller's confirm title (if any) wins across all phases — prevents the
+  // wallet round-trip from flipping back to the compact label mid-flow.
+  const sharedTitle = text.title?.confirm ?? compactTitle
   return {
     ...text,
     title: {
-      confirm: plan.description,
-      requesting: plan.description,
-      waiting: plan.description,
+      confirm: compactTitle,
+      requesting: sharedTitle,
+      waiting: sharedTitle,
       complete: 'Transaction complete',
       ...text.title,
     },
     lead: {
       confirm: plan.description,
+      requesting: plan.description,
+      waiting: plan.description,
       complete: 'Transaction confirmed.',
       ...text.lead,
     },

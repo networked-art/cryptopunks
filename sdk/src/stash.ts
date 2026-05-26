@@ -3,6 +3,7 @@ import { stashAbi, stashFactoryAbi } from './abi'
 import { STASH_FACTORY_ADDRESS, ZERO_ADDRESS } from './constants'
 import type {
   ContractWritePlan,
+  PlanKind,
   TransactionHash,
   WalletConfig,
 } from './actions'
@@ -163,7 +164,9 @@ export class StashFactoryClient {
   }
 
   prepareDeployStash(owner: Address): ContractWritePlan {
-    return this.plan('Deploy CryptoPunks Stash', 'deployStash', [owner])
+    return this.plan('deploy-stash', 'Deploy CryptoPunks Stash', 'deployStash', [
+      owner,
+    ])
   }
 
   deployStash(owner: Address): Promise<TransactionHash> {
@@ -171,7 +174,7 @@ export class StashFactoryClient {
   }
 
   prepareUpgradeStash(): ContractWritePlan {
-    return this.plan('Upgrade caller Stash', 'upgradeStash', [])
+    return this.plan('upgrade-stash', 'Upgrade caller Stash', 'upgradeStash', [])
   }
 
   upgradeStash(): Promise<TransactionHash> {
@@ -179,6 +182,7 @@ export class StashFactoryClient {
   }
 
   private plan(
+    kind: PlanKind,
     description: string,
     functionName: string,
     args: readonly unknown[],
@@ -186,6 +190,7 @@ export class StashFactoryClient {
     return writePlan(
       this.address,
       stashFactoryAbi,
+      kind,
       description,
       functionName,
       args,
@@ -311,6 +316,7 @@ export class StashClient {
     assertWei('valueWei', valueWei)
     assertIntegerInRange('numberOfUnits', params.numberOfUnits, 1, 65_535)
     return this.plan(
+      'place-stash-order',
       'Place Stash order',
       'placeOrder',
       [params.pricePerUnit, params.numberOfUnits],
@@ -332,10 +338,12 @@ export class StashClient {
   }): ContractWritePlan {
     assertWei('costPerUnit', params.costPerUnit)
     assertIntegerInRange('numberOfUnits', params.numberOfUnits, 1, 65_535)
-    return this.plan('Process Stash order', 'processOrder', [
-      params.costPerUnit,
-      params.numberOfUnits,
-    ])
+    return this.plan(
+      'process-stash-order',
+      'Process Stash order',
+      'processOrder',
+      [params.costPerUnit, params.numberOfUnits],
+    )
   }
 
   processOrder(params: {
@@ -348,6 +356,7 @@ export class StashClient {
   prepareProcessPunkBid(input: ProcessStashPunkBidInput): ContractWritePlan {
     validatePunkId(input.punkId)
     return this.plan(
+      'process-stash-punk-bid',
       `Process Stash bid for CryptoPunk ${input.punkId}`,
       'processPunkBid',
       [
@@ -364,9 +373,12 @@ export class StashClient {
   }
 
   prepareCancelPunkBid(bidNonce: bigint | number): ContractWritePlan {
-    return this.plan('Cancel Stash Punk bid', 'cancelPunkBid', [
-      normalizeUint256('bidNonce', bidNonce),
-    ])
+    return this.plan(
+      'cancel-stash-punk-bid',
+      'Cancel Stash Punk bid',
+      'cancelPunkBid',
+      [normalizeUint256('bidNonce', bidNonce)],
+    )
   }
 
   cancelPunkBid(bidNonce: bigint | number): Promise<TransactionHash> {
@@ -374,7 +386,12 @@ export class StashClient {
   }
 
   prepareCancelAllPunkBids(): ContractWritePlan {
-    return this.plan('Cancel all Stash Punk bids', 'cancelAllPunkBids', [])
+    return this.plan(
+      'cancel-all-stash-punk-bids',
+      'Cancel all Stash Punk bids',
+      'cancelAllPunkBids',
+      [],
+    )
   }
 
   cancelAllPunkBids(): Promise<TransactionHash> {
@@ -383,9 +400,12 @@ export class StashClient {
 
   prepareWrapPunk(punkId: number): ContractWritePlan {
     validatePunkId(punkId)
-    return this.plan(`Wrap CryptoPunk ${punkId} from Stash`, 'wrapPunk', [
-      BigInt(punkId),
-    ])
+    return this.plan(
+      'wrap-punk-from-stash',
+      `Wrap CryptoPunk ${punkId} from Stash`,
+      'wrapPunk',
+      [BigInt(punkId)],
+    )
   }
 
   wrapPunk(punkId: number): Promise<TransactionHash> {
@@ -397,10 +417,12 @@ export class StashClient {
     amountWei: bigint
   }): ContractWritePlan {
     assertWei('amountWei', params.amountWei)
-    return this.plan('Withdraw Stash funds', 'withdraw', [
-      params.token ?? ZERO_ADDRESS,
-      params.amountWei,
-    ])
+    return this.plan(
+      'withdraw-stash-funds',
+      'Withdraw Stash funds',
+      'withdraw',
+      [params.token ?? ZERO_ADDRESS, params.amountWei],
+    )
   }
 
   withdraw(params: {
@@ -414,10 +436,12 @@ export class StashClient {
     token: Address
     tokenIds: readonly (bigint | number)[]
   }): ContractWritePlan {
-    return this.plan('Withdraw ERC-721 tokens from Stash', 'withdrawERC721', [
-      params.token,
-      normalizeUint256Array('tokenIds', params.tokenIds),
-    ])
+    return this.plan(
+      'withdraw-stash-erc721',
+      'Withdraw ERC-721 tokens from Stash',
+      'withdrawERC721',
+      [params.token, normalizeUint256Array('tokenIds', params.tokenIds)],
+    )
   }
 
   withdrawERC721(params: {
@@ -437,11 +461,16 @@ export class StashClient {
         'tokenIds and amounts must have the same length',
       )
     }
-    return this.plan('Withdraw ERC-1155 tokens from Stash', 'withdrawERC1155', [
-      params.token,
-      normalizeUint256Array('tokenIds', params.tokenIds),
-      normalizeUint256Array('amounts', params.amounts),
-    ])
+    return this.plan(
+      'withdraw-stash-erc1155',
+      'Withdraw ERC-1155 tokens from Stash',
+      'withdrawERC1155',
+      [
+        params.token,
+        normalizeUint256Array('tokenIds', params.tokenIds),
+        normalizeUint256Array('amounts', params.amounts),
+      ],
+    )
   }
 
   withdrawERC1155(params: {
@@ -453,9 +482,12 @@ export class StashClient {
   }
 
   prepareWithdrawPunks(punkIds: readonly number[]): ContractWritePlan {
-    return this.plan('Withdraw CryptoPunks from Stash', 'withdrawPunks', [
-      normalizePunkIds(punkIds).map(BigInt),
-    ])
+    return this.plan(
+      'reclaim-punks-from-stash',
+      'Reclaim CryptoPunks from Stash',
+      'withdrawPunks',
+      [normalizePunkIds(punkIds).map(BigInt)],
+    )
   }
 
   withdrawPunks(punkIds: readonly number[]): Promise<TransactionHash> {
@@ -463,12 +495,17 @@ export class StashClient {
   }
 
   prepareOnERC721Received(input: StashERC721ReceivedInput): ContractWritePlan {
-    return this.plan('Handle ERC-721 token receipt', 'onERC721Received', [
-      input.operator,
-      input.from,
-      normalizeUint256('tokenId', input.tokenId),
-      input.data ?? '0x',
-    ])
+    return this.plan(
+      'handle-erc721-receipt',
+      'Handle ERC-721 token receipt',
+      'onERC721Received',
+      [
+        input.operator,
+        input.from,
+        normalizeUint256('tokenId', input.tokenId),
+        input.data ?? '0x',
+      ],
+    )
   }
 
   onERC721Received(input: StashERC721ReceivedInput): Promise<TransactionHash> {
@@ -478,13 +515,18 @@ export class StashClient {
   prepareOnERC1155Received(
     input: StashERC1155ReceivedInput,
   ): ContractWritePlan {
-    return this.plan('Handle ERC-1155 token receipt', 'onERC1155Received', [
-      input.operator,
-      input.from,
-      normalizeUint256('tokenId', input.tokenId),
-      normalizeUint256('amount', input.amount),
-      input.data ?? '0x',
-    ])
+    return this.plan(
+      'handle-erc1155-receipt',
+      'Handle ERC-1155 token receipt',
+      'onERC1155Received',
+      [
+        input.operator,
+        input.from,
+        normalizeUint256('tokenId', input.tokenId),
+        normalizeUint256('amount', input.amount),
+        input.data ?? '0x',
+      ],
+    )
   }
 
   onERC1155Received(
@@ -502,6 +544,7 @@ export class StashClient {
       )
     }
     return this.plan(
+      'handle-erc1155-batch-receipt',
       'Handle ERC-1155 batch token receipt',
       'onERC1155BatchReceived',
       [
@@ -545,6 +588,7 @@ export class StashClient {
   }
 
   private plan(
+    kind: PlanKind,
     description: string,
     functionName: string,
     args: readonly unknown[],
@@ -553,6 +597,7 @@ export class StashClient {
     return writePlan(
       this.address,
       stashAbi,
+      kind,
       description,
       functionName,
       args,
@@ -653,12 +698,14 @@ export function createStashClient(config: StashClientConfig): StashClient {
 function writePlan(
   address: Address,
   abi: Abi,
+  kind: PlanKind,
   description: string,
   functionName: string,
   args: readonly unknown[],
   value?: bigint,
 ): ContractWritePlan {
   return {
+    kind,
     description,
     request: {
       address,

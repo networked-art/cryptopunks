@@ -149,6 +149,7 @@ export class PunksV1MarketClient {
     validatePunkId(params.punkId)
     assertWei('expectedListingWei', params.expectedListingWei)
     return {
+      kind: 'buy-punk-v1',
       description: `Buy CryptoPunk ${params.punkId} via the V1 market`,
       request: {
         address: this.address,
@@ -183,6 +184,7 @@ export class PunksV1MarketClient {
     const includeIds = sanitizeIds(params.includeIds, 'includeIds')
     const excludeIds = sanitizeIds(params.excludeIds, 'excludeIds')
     return {
+      kind: 'place-v1-collection-bid',
       description: 'Place CryptoPunks V1 collection bid',
       request: {
         address: this.address,
@@ -211,6 +213,7 @@ export class PunksV1MarketClient {
 
   prepareCancelBid(bidId: bigint | number): ContractWritePlan {
     return {
+      kind: 'cancel-v1-bid',
       description: `Cancel CryptoPunks V1 bid ${bidId.toString()}`,
       request: {
         address: this.address,
@@ -234,6 +237,7 @@ export class PunksV1MarketClient {
       throw new PunksDataValidationError('weiToAdjust must be positive')
     }
     return {
+      kind: 'adjust-v1-bid',
       description: `${params.increase ? 'Increase' : 'Decrease'} CryptoPunks V1 bid ${params.bidId.toString()} by ${params.weiToAdjust.toString()} wei`,
       request: {
         address: this.address,
@@ -260,6 +264,7 @@ export class PunksV1MarketClient {
     validatePunkId(params.punkId)
     assertWei('expectedListingWei', params.expectedListingWei)
     return {
+      kind: 'accept-v1-bid',
       description: `Accept CryptoPunks V1 bid ${params.bidId.toString()} against punk ${params.punkId}`,
       request: {
         address: this.address,
@@ -279,6 +284,7 @@ export class PunksV1MarketClient {
 
   prepareWithdraw(): ContractWritePlan {
     return {
+      kind: 'withdraw-v1-balance',
       description: 'Withdraw CryptoPunks V1 market balance',
       request: {
         address: this.address,

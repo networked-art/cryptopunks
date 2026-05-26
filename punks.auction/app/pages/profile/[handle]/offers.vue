@@ -100,6 +100,7 @@
 <script setup lang="ts">
 import type { Hash, TransactionReceipt } from 'viem'
 import type { TransactionFlowText } from '~/types/transactionFlow'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 useOwnProfileGuard()
 
@@ -166,16 +167,19 @@ async function actCancel(offerId: bigint) {
     pending.value = true
     error.value = null
     const plan = sdk.value.auctions.prepareCancelOffer(offerId)
+    const title = transactionTitleForPlan(plan)
     transactionRequest.value = () => execute(plan)
     transactionText.value = {
       title: {
-        confirm: plan.description,
-        requesting: plan.description,
-        waiting: plan.description,
+        confirm: title,
+        requesting: title,
+        waiting: title,
         complete: 'Offer cancelled',
       },
       lead: {
         confirm: plan.description,
+        requesting: plan.description,
+        waiting: plan.description,
         complete: 'Locked ETH refunded to your wallet.',
       },
     }

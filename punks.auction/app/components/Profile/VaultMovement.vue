@@ -118,6 +118,7 @@ import type {
 import type { Address, Hash, TransactionReceipt } from 'viem'
 import type { TransactionFlowText } from '~/types/transactionFlow'
 import { TokenStandard } from '~/utils/auction'
+import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{ account: Address }>()
 
@@ -221,16 +222,19 @@ async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
   error.value = null
   try {
     const plan = await planInput
+    const title = transactionTitleForPlan(plan)
     transactionRequest.value = () => execute(plan)
     transactionText.value = {
       title: {
-        confirm: plan.description,
-        requesting: plan.description,
-        waiting: plan.description,
+        confirm: title,
+        requesting: title,
+        waiting: title,
         complete: 'Transaction complete',
       },
       lead: {
         confirm: plan.description,
+        requesting: plan.description,
+        waiting: plan.description,
         complete: 'Transaction confirmed.',
       },
     }
