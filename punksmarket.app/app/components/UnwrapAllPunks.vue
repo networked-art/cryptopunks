@@ -108,7 +108,7 @@ function createUnwrapSteps(): MultiTransactionFlowStep[] {
     {
       id: 'approve-unwrap-helper',
       title: 'Approve unwrap helper',
-      lead: 'One-time approval so unwrap.punksmarket.eth can burn wrapper tokens on your behalf.',
+      lead: 'One-time approval so unwrap.punksmarket.eth can unwrap multiple wrapper tokens in a single transaction.',
       action: 'Approve helper',
       skip: () => isApproved.value,
       request: () => execute(sdk.value.v1Wrapper.prepareApproveBatchUnwrap()),
