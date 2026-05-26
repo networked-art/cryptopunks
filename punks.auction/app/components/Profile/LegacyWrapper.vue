@@ -44,21 +44,41 @@
       </div>
 
       <template v-else>
-        <label class="field">
-          <span class="label">Punk id</span>
-          <input
-            v-model="punkIdInput"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
+        <div class="picker-row">
+          <Button
+            class="icon-button"
+            :disabled="pending"
+            @click="pickerOpen = true"
+          >
+            <Icon name="lucide:mouse-pointer-click" />
+            <span>{{ selectedPunkId === null ? 'Select Punk' : 'Change Punk' }}</span>
+          </Button>
+          <div
+            v-if="selectedPunkId !== null"
+            class="picker-preview"
+          >
+            <PunkThumb
+              :punk-id="selectedPunkId"
+              :size="48"
+              :link="false"
+            />
+            <span class="picker-meta">
+              <strong>Punk #{{ selectedPunkId }}</strong>
+              <span class="muted">{{ custodyHint }}</span>
+            </span>
+          </div>
+          <span
+            v-else
+            class="hint muted"
+          >
+            {{ pickerHint }}
+          </span>
+        </div>
 
         <div class="actions">
           <Button
             class="primary icon-button"
-            :disabled="!parsedPunkId || pending"
+            :disabled="!canWrap"
             @click="actWrap"
           >
             <Icon name="lucide:package" />
@@ -66,7 +86,7 @@
           </Button>
           <Button
             class="icon-button"
-            :disabled="!parsedPunkId || pending"
+            :disabled="!canUnwrap"
             @click="actUnwrap"
           >
             <Icon name="lucide:package-open" />
@@ -79,6 +99,16 @@
           Unwrap burns it and returns the Punk to your wallet.
         </p>
       </template>
+
+      <DialogPunkPicker
+        v-model:open="pickerOpen"
+        :ids="pickerIds"
+        :initial="selectedPunkId === null ? [] : [selectedPunkId]"
+        title="Select a CryptoPunk"
+        lead="Pick one of your CryptoPunks in the wallet (to wrap) or wrapped via WrappedPunks (to unwrap)."
+        empty-message="No eligible CryptoPunks in your wallet or wrapper."
+        @confirm="onPickerConfirm"
+      />
 
       <EvmTransactionFlowDialog
         ref="dialogRef"
@@ -112,6 +142,7 @@ import {
   type Hash,
   type TransactionReceipt,
 } from 'viem'
+import { TokenStandard } from '~/utils/auction'
 
 const props = defineProps<{
   account: Address
@@ -123,9 +154,12 @@ const emit = defineEmits<{
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
+  useAccountPunkInventory(() => props.account)
 
 const confirmedWrapperProxy = ref<Address | null>(props.wrapperProxy)
-const punkIdInput = ref('')
+const selectedPunkId = ref<number | null>(null)
+const pickerOpen = ref(false)
 const pending = ref(false)
 const error = ref<string | null>(null)
 
@@ -133,9 +167,55 @@ const activeWrapperProxy = computed(
   () => props.wrapperProxy ?? confirmedWrapperProxy.value,
 )
 
-const parsedPunkId = computed(() => {
-  const id = Number(punkIdInput.value.trim())
-  return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
+const eligibleItems = computed(() =>
+  inventoryItems.value.filter(
+    (item) =>
+      item.standard === TokenStandard.CryptoPunks &&
+      (item.custody === 'wallet' ||
+        (item.custody === 'wrapped-wallet' && item.wrapper === 'wrapped_punks')),
+  ),
+)
+
+const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
+
+const pickerHint = computed(() => {
+  if (inventoryLoading.value) return 'Loading your Punks…'
+  if (pickerIds.value.length === 0) return 'No eligible Punks found.'
+  return 'Pick a Punk to wrap or unwrap.'
+})
+
+const selectedItem = computed(() => {
+  if (selectedPunkId.value === null) return null
+  return (
+    eligibleItems.value.find((item) => item.punkId === selectedPunkId.value) ??
+    null
+  )
+})
+
+const canWrap = computed(
+  () =>
+    !!selectedItem.value &&
+    selectedItem.value.custody === 'wallet' &&
+    !!activeWrapperProxy.value &&
+    !pending.value,
+)
+
+const canUnwrap = computed(
+  () =>
+    !!selectedItem.value &&
+    selectedItem.value.custody === 'wrapped-wallet' &&
+    !pending.value,
+)
+
+const custodyHint = computed(() => {
+  switch (selectedItem.value?.custody) {
+    case 'wallet':
+      return 'In your wallet — ready to wrap'
+    case 'wrapped-wallet':
+      return 'Wrapped — ready to unwrap'
+    default:
+      return ''
+  }
 })
 
 watch(
@@ -145,6 +225,19 @@ watch(
   },
   { immediate: true },
 )
+
+// Clear the preview when the picked Punk leaves the eligible set (e.g. after a
+// successful wrap/unwrap moves it to a different custody bucket).
+watch(eligibleItems, (items) => {
+  if (selectedPunkId.value === null) return
+  if (!items.some((item) => item.punkId === selectedPunkId.value)) {
+    selectedPunkId.value = null
+  }
+})
+
+function onPickerConfirm(ids: number[]) {
+  selectedPunkId.value = ids[0] ?? null
+}
 
 type DialogRef = { initializeRequest: () => void } | null
 type MultiDialogRef = { start: () => void } | null
@@ -224,6 +317,8 @@ function onFlowError(message: string) {
 async function onTransactionComplete(receipt: TransactionReceipt) {
   const tx = receipt.transactionHash as Hash
   if (currentSingleAction.value !== 'register') {
+    void refreshInventory()
+    emit('changed', tx)
     return
   }
 
@@ -246,7 +341,7 @@ function actRegister() {
 }
 
 function actWrap() {
-  const punkId = parsedPunkId.value
+  const punkId = selectedPunkId.value
   const proxy = activeWrapperProxy.value
   if (punkId === null || !proxy) return
   void runSteps(
@@ -263,7 +358,7 @@ function actWrap() {
 }
 
 function actUnwrap() {
-  const punkId = parsedPunkId.value
+  const punkId = selectedPunkId.value
   if (punkId === null) return
   void run(sdk.value.wrappers.legacy.prepareBurn(punkId))
 }
@@ -305,15 +400,30 @@ function actUnwrap() {
   align-items: flex-start;
 }
 
-.field {
+.picker-row {
   display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
+  align-items: center;
+  gap: var(--size-3);
+  flex-wrap: wrap;
+}
+
+.picker-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   min-width: 0;
 }
 
-.field input {
-  width: 100%;
+.picker-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-0);
+  min-width: 0;
+  font-size: var(--font-sm);
+}
+
+.picker-meta .muted {
+  font-size: var(--font-xs);
 }
 
 .actions {

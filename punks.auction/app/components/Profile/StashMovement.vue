@@ -43,21 +43,41 @@
       </div>
 
       <template v-else>
-        <label class="field">
-          <span class="label">Punk id</span>
-          <input
-            v-model="punkIdInput"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
+        <div class="picker-row">
+          <Button
+            class="icon-button"
+            :disabled="pending"
+            @click="pickerOpen = true"
+          >
+            <Icon name="lucide:mouse-pointer-click" />
+            <span>{{ selectedPunkId === null ? 'Select Punk' : 'Change Punk' }}</span>
+          </Button>
+          <div
+            v-if="selectedPunkId !== null"
+            class="picker-preview"
+          >
+            <PunkThumb
+              :punk-id="selectedPunkId"
+              :size="48"
+              :link="false"
+            />
+            <span class="picker-meta">
+              <strong>Punk #{{ selectedPunkId }}</strong>
+              <span class="muted">{{ custodyHint }}</span>
+            </span>
+          </div>
+          <span
+            v-else
+            class="hint muted"
+          >
+            {{ pickerHint }}
+          </span>
+        </div>
 
         <div class="actions">
           <Button
             class="primary icon-button"
-            :disabled="!parsedPunkId || pending"
+            :disabled="!canDeposit"
             @click="actDeposit"
           >
             <Icon name="lucide:archive" />
@@ -65,7 +85,7 @@
           </Button>
           <Button
             class="icon-button"
-            :disabled="!parsedPunkId || pending"
+            :disabled="!canReclaim"
             @click="actReclaim"
           >
             <Icon name="lucide:undo-2" />
@@ -77,6 +97,16 @@
           Stash deposit and reclaim operate on canonical CryptoPunks.
         </p>
       </template>
+
+      <DialogPunkPicker
+        v-model:open="pickerOpen"
+        :ids="pickerIds"
+        :initial="selectedPunkId === null ? [] : [selectedPunkId]"
+        title="Select a CryptoPunk"
+        lead="Pick one of your CryptoPunks in the wallet (to deposit) or in the Stash (to reclaim)."
+        empty-message="No eligible CryptoPunks in your wallet or Stash."
+        @confirm="onPickerConfirm"
+      />
 
       <EvmTransactionFlowDialog
         ref="dialogRef"
@@ -93,12 +123,15 @@
 import type { TransactionFlowText } from '@1001-digital/components.evm'
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import type { Address, Hash, TransactionReceipt } from 'viem'
+import { TokenStandard } from '~/utils/auction'
 
 const props = defineProps<{ account: Address }>()
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+const { items: inventoryItems, loading: inventoryLoading, refresh: refreshInventory } =
+  useAccountPunkInventory(() => props.account)
 
 // Stash address + deployment flag come straight from `StashFactory` so this
 // card keeps working through indexer downtime — `stashAddressFor` is a pure
@@ -108,13 +141,59 @@ const deployed = ref(false)
 const statusLoading = ref(false)
 let statusToken = 0
 
-const punkIdInput = ref('')
+const selectedPunkId = ref<number | null>(null)
+const pickerOpen = ref(false)
 const pending = ref(false)
 const error = ref<string | null>(null)
 
-const parsedPunkId = computed(() => {
-  const id = Number(punkIdInput.value.trim())
-  return Number.isInteger(id) && id >= 0 && id <= 9999 ? id : null
+const eligibleItems = computed(() =>
+  inventoryItems.value.filter(
+    (item) =>
+      item.standard === TokenStandard.CryptoPunks &&
+      (item.custody === 'wallet' || item.custody === 'stash'),
+  ),
+)
+
+const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
+
+const pickerHint = computed(() => {
+  if (inventoryLoading.value) return 'Loading your Punks…'
+  if (pickerIds.value.length === 0) return 'No eligible Punks found.'
+  return 'Pick a Punk to deposit or reclaim.'
+})
+
+const selectedItem = computed(() => {
+  if (selectedPunkId.value === null) return null
+  return (
+    eligibleItems.value.find((item) => item.punkId === selectedPunkId.value) ??
+    null
+  )
+})
+
+const canDeposit = computed(
+  () =>
+    !!selectedItem.value &&
+    selectedItem.value.custody === 'wallet' &&
+    !pending.value,
+)
+
+const canReclaim = computed(
+  () =>
+    !!selectedItem.value &&
+    selectedItem.value.custody === 'stash' &&
+    !!stashAddress.value &&
+    !pending.value,
+)
+
+const custodyHint = computed(() => {
+  switch (selectedItem.value?.custody) {
+    case 'wallet':
+      return 'In your wallet — ready to deposit'
+    case 'stash':
+      return 'In your Stash — ready to reclaim'
+    default:
+      return ''
+  }
 })
 
 async function refreshStatus() {
@@ -143,6 +222,19 @@ watch(
   () => void refreshStatus(),
   { immediate: true },
 )
+
+// Clear the preview when the picked Punk leaves the eligible set (e.g. after
+// a successful deposit/reclaim swaps its custody bucket).
+watch(eligibleItems, (items) => {
+  if (selectedPunkId.value === null) return
+  if (!items.some((item) => item.punkId === selectedPunkId.value)) {
+    selectedPunkId.value = null
+  }
+})
+
+function onPickerConfirm(ids: number[]) {
+  selectedPunkId.value = ids[0] ?? null
+}
 
 type DialogRef = { initializeRequest: () => void } | null
 const dialogRef = ref<DialogRef>(null)
@@ -183,11 +275,12 @@ function actDeploy() {
 
 function onTransactionComplete(receipt: TransactionReceipt) {
   void refreshStatus()
+  void refreshInventory()
   emit('changed', receipt.transactionHash as Hash)
 }
 
 function actDeposit() {
-  const punkId = parsedPunkId.value
+  const punkId = selectedPunkId.value
   if (punkId === null) return
   void run(
     sdk.value.wrappers.c721.prepareDepositToStash({
@@ -199,7 +292,7 @@ function actDeposit() {
 }
 
 function actReclaim() {
-  const punkId = parsedPunkId.value
+  const punkId = selectedPunkId.value
   if (punkId === null || !stashAddress.value) return
   void run(
     Promise.resolve(
@@ -245,15 +338,30 @@ function actReclaim() {
   align-items: flex-start;
 }
 
-.field {
+.picker-row {
   display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
+  align-items: center;
+  gap: var(--size-3);
+  flex-wrap: wrap;
+}
+
+.picker-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   min-width: 0;
 }
 
-.field input {
-  width: 100%;
+.picker-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-0);
+  min-width: 0;
+  font-size: var(--font-sm);
+}
+
+.picker-meta .muted {
+  font-size: var(--font-xs);
 }
 
 .actions {
