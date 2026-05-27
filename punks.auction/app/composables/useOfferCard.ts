@@ -17,12 +17,16 @@ import {
 } from '~/composables/useOfferSlotDisplay'
 
 export type OfferCardThumb = OfferSlotPreviewItem
+export type OfferCardCoverItem =
+  | ({ kind: 'punk' } & OfferCardThumb)
+  | { kind: 'icon'; icon: string }
 
 export type OfferCardTarget = {
   title: string
   detail: string
   icon?: string
   thumbs: OfferCardThumb[]
+  coverItems?: OfferCardCoverItem[]
 }
 
 export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
@@ -59,7 +63,8 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
     return {
       title: `${record.slots.length.toLocaleString()} Items`,
       detail: slotStandardsLabel(record.slots),
-      thumbs: offerSlotCoverItems(record.slots, offline),
+      thumbs: [],
+      coverItems: offerSlotCoverItems(record.slots, offline),
     }
   })
 
@@ -78,20 +83,28 @@ function exactOfferItems(offer: OfferRecord): OfferCardThumb[] {
 function offerSlotCoverItems(
   slots: OfferRecord['slots'],
   offline: ReturnType<typeof usePunksOffline>,
-): OfferCardThumb[] {
+): OfferCardCoverItem[] {
   return slots
     .map((slot) => offerSlotCoverItem(slot, offline))
-    .filter((item): item is OfferCardThumb => !!item)
+    .filter((item): item is OfferCardCoverItem => !!item)
 }
 
 function offerSlotCoverItem(
   slot: OfferSlot,
   offline: ReturnType<typeof usePunksOffline>,
-): OfferCardThumb | null {
+): OfferCardCoverItem | null {
+  if (!filterIsEmpty(slot.criteria)) {
+    return {
+      kind: 'icon',
+      icon: offerSlotFallbackIcon(slot),
+    }
+  }
+
   const punkId = slot.includeIds[0] ?? searchSlotMatches(slot, offline)[0]
   return punkId === undefined
     ? null
     : {
+        kind: 'punk',
         punkId,
         standard: slot.standard,
       }

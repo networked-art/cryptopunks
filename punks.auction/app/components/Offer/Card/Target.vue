@@ -4,8 +4,41 @@
       class="target-art"
       aria-hidden="true"
     >
-      <template v-if="target.thumbs.length">
-        <PunkMosaic :items="target.thumbs" />
+      <template v-if="coverItems.length">
+        <div
+          class="target-mosaic"
+          :class="`target-mosaic-${layoutCount}`"
+        >
+          <template
+            v-for="(item, index) in visibleCoverItems"
+            :key="coverItemKey(item, index)"
+          >
+            <PunkThumb
+              v-if="item.kind === 'punk'"
+              class="target-punk"
+              :punk-id="item.punkId"
+              :standard="item.standard"
+              :background="lotItemBackground(item.standard)"
+              :link="false"
+              fluid
+            />
+            <span
+              v-else
+              class="target-symbol-tile"
+            >
+              <Icon
+                class="target-symbol-icon"
+                :name="item.icon"
+              />
+            </span>
+          </template>
+        </div>
+        <span
+          v-if="extraCount > 0"
+          class="target-extra"
+        >
+          +{{ extraCount }}
+        </span>
       </template>
       <Icon
         v-else
@@ -27,11 +60,38 @@
 </template>
 
 <script setup lang="ts">
-import type { OfferCardTarget } from '~/composables/useOfferCard'
+import { lotItemBackground } from '~/utils/auction'
+import type {
+  OfferCardCoverItem,
+  OfferCardTarget,
+} from '~/composables/useOfferCard'
 
-defineProps<{
+const MAX_VISIBLE_ITEMS = 4
+
+const props = defineProps<{
   target: OfferCardTarget
 }>()
+
+const coverItems = computed<OfferCardCoverItem[]>(() =>
+  props.target.coverItems?.length
+    ? props.target.coverItems
+    : props.target.thumbs.map((item) => ({ kind: 'punk', ...item })),
+)
+const visibleCoverItems = computed(() =>
+  coverItems.value.slice(0, MAX_VISIBLE_ITEMS),
+)
+const extraCount = computed(() =>
+  Math.max(0, coverItems.value.length - MAX_VISIBLE_ITEMS),
+)
+const layoutCount = computed(() =>
+  Math.max(1, Math.min(visibleCoverItems.value.length, MAX_VISIBLE_ITEMS)),
+)
+
+function coverItemKey(item: OfferCardCoverItem, index: number) {
+  return item.kind === 'punk'
+    ? `punk-${item.standard}-${item.punkId}`
+    : `icon-${item.icon}-${index}`
+}
 </script>
 
 <style scoped>
@@ -57,6 +117,78 @@ defineProps<{
 .target-icon {
   color: var(--text-muted);
   font-size: var(--font-lg);
+}
+
+.target-mosaic {
+  box-sizing: border-box;
+  display: grid;
+  place-content: center;
+  place-items: center;
+  gap: var(--size-1);
+  inline-size: 100%;
+  padding: var(--punk-mosaic-inset, 19%);
+  aspect-ratio: 1;
+}
+
+.target-mosaic-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.target-mosaic-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.target-mosaic-3 {
+  grid-template-columns:
+    minmax(0, calc((200% - var(--size-1)) / 3))
+    minmax(0, calc((100% - (2 * var(--size-1))) / 3));
+  grid-template-rows: repeat(
+    2,
+    minmax(0, calc((100% - (2 * var(--size-1))) / 3))
+  );
+}
+
+.target-mosaic-3 > :first-child {
+  grid-row: 1 / -1;
+}
+
+.target-mosaic-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.target-punk,
+.target-symbol-tile {
+  inline-size: 100%;
+}
+
+.target-symbol-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  color: var(--text-muted);
+  background: var(--gray-z-2);
+}
+
+.target-symbol-icon {
+  font-size: var(--font-sm);
+}
+
+.target-extra {
+  position: absolute;
+  inset-inline-end: var(--size-0);
+  inset-block-end: var(--size-0);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+  scale: 0.82;
+  transform-origin: bottom right;
+}
+
+.target-art :deep(.punk-thumb) {
+  border-radius: 0;
 }
 
 .target-copy {
