@@ -9,6 +9,7 @@ import {
 import { createOfflinePunksDataClient } from '../dist/offline.js'
 
 const data = createOfflinePunksDataClient()
+const BEANIE_TRAIT_ID = data.resolveTraitSync('Beanie').id
 
 /// Mirrors punksmarket.app/PunkSearch.vue — hex color tokens in the URL are stripped
 /// out of `text` and routed into `colors.required` before the search runs.
@@ -120,6 +121,32 @@ describe('formatSearchText — round-trips matching sets', () => {
     assertMatchesRoundTrip(slot)
   })
 
+  it('handles a generic trait any-of group', () => {
+    const slot = compileOfferSlot(data, {
+      query: { text: 'Beanie or Hoodie' },
+    })
+    assert.equal(
+      formatSearchText(data, { criteria: slot.criteria }),
+      '"Beanie" OR "Hoodie"',
+    )
+    assertMatchesRoundTrip(slot)
+  })
+
+  it('handles an arbitrary trait any-of mask as quoted OR terms', () => {
+    /// Trait id 0 (NormalizedType.Alien) + Beanie cross
+    /// recognized buckets, so the formatter falls back to an explicit OR list.
+    const bid = {
+      includeIds: [],
+      excludeIds: [],
+      criteria: {
+        ...emptyPunksFilter(),
+        anyOfTraitMask: (1n << 0n) | (1n << BigInt(BEANIE_TRAIT_ID)),
+      },
+    }
+    assert.equal(formatSearchText(data, bid), '"Alien" OR "Beanie"')
+    assertMatchesRoundTrip(bid)
+  })
+
   it('handles a color-count constraint', () => {
     const slot = compileOfferSlot(data, { query: { text: '4 colors' } })
     assertMatchesRoundTrip(slot)
@@ -197,17 +224,31 @@ describe('formatSearchText — rejects unrepresentable filters', () => {
     )
   })
 
-  it('throws on an any-of trait mask that is not a recognized group', () => {
-    /// Trait id 0 (NormalizedType.Alien) + id 5 (HeadVariant.Alien) — two
-    /// traits from different recognized buckets cannot be expressed as a
-    /// single text token.
-    const broken = {
-      ...emptyPunksFilter(),
-      anyOfTraitMask: (1n << 0n) | (1n << 5n),
-    }
+  it('throws when a generic any-of trait mask needs grouping', () => {
+    const slot = compileOfferSlot(data, {
+      query: {
+        attributes: {
+          required: ['Male'],
+          anyOf: ['Beanie', 'Hoodie'],
+        },
+      },
+    })
     assert.throws(
-      () => formatSearchText(data, { criteria: broken }),
-      /any-of trait mask/,
+      () => formatSearchText(data, { criteria: slot.criteria }),
+      /generic any-of trait masks/,
+    )
+    assert.throws(
+      () =>
+        formatSearchText(data, {
+          criteria: {
+            ...emptyPunksFilter(),
+            anyOfTraitMask:
+              (1n << BigInt(BEANIE_TRAIT_ID)) |
+              (1n << BigInt(data.resolveTraitSync('Hoodie').id)),
+          },
+          excludeIds: [1],
+        }),
+      /generic any-of trait masks/,
     )
   })
 })

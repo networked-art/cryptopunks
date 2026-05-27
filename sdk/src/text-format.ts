@@ -35,16 +35,21 @@ const ATTRIBUTE_COUNT_TRAIT_MAX = 23
 /// for filters that round-trip cleanly.
 ///
 /// Throws {@link PunksDataValidationError} when the criteria use features
-/// the text grammar cannot express: forbidden trait or color masks, any-of
-/// color masks, or any-of trait masks that don't correspond to a recognized
-/// skin-tone, normalized-type, or attribute-count group. Callers should fall
-/// back to a link-less display in that case.
+/// the text grammar cannot express: forbidden trait or color masks, or any-of
+/// color masks. General trait any-of groups are emitted as quoted OR terms.
 export function formatSearchText(
   data: OfflinePunksDataClient,
   input: FormatSearchTextInput = {},
 ): string {
   const criteria = input.criteria
   const tokens: string[] = []
+  let anyOfTraits:
+    | {
+        text: string
+        genericOr: boolean
+        index: number
+      }
+    | undefined
 
   if (criteria !== undefined) {
     if (criteria.forbiddenTraitMask !== 0n) {
@@ -71,7 +76,10 @@ export function formatSearchText(
     }
 
     if (criteria.anyOfTraitMask !== 0n) {
-      tokens.push(describeAnyOfTraits(criteria.anyOfTraitMask))
+      anyOfTraits = {
+        ...describeAnyOfTraits(data, criteria.anyOfTraitMask),
+        index: tokens.length,
+      }
     }
 
     for (const colorId of idsFromMask(
@@ -105,6 +113,20 @@ export function formatSearchText(
       )
       if (token !== undefined) tokens.push(token)
     }
+
+    if (anyOfTraits !== undefined) {
+      const hasOtherTokens =
+        anyOfTraits.index > 0 || tokens.length > anyOfTraits.index
+      const hasIdOverlays =
+        (input.includeIds?.length ?? 0) > 0 ||
+        (input.excludeIds?.length ?? 0) > 0
+      if (anyOfTraits.genericOr && (hasOtherTokens || hasIdOverlays)) {
+        throw new PunksDataValidationError(
+          'generic any-of trait masks cannot be combined with other criteria as search text',
+        )
+      }
+      tokens.splice(anyOfTraits.index, 0, anyOfTraits.text)
+    }
   }
 
   for (const id of input.includeIds ?? []) {
@@ -119,15 +141,18 @@ export function formatSearchText(
   return tokens.join(' ')
 }
 
-/// Recognizes the any-of trait masks that the compile path actually
+/// Recognizes compact names for any-of trait masks that the compile path
 /// produces:
 ///   - exactly the two head variants of one skin tone pair → `<tone> skin`
 ///     (or the bare `albino` shorthand);
 ///   - all four female / male head variants → `female` / `male`;
 ///   - a contiguous run of attribute-count traits → `<n>-<m> attributes`.
-/// Anything else is rejected — the search-text grammar has no general
-/// inline OR for traits, and the front-end input would not round-trip.
-function describeAnyOfTraits(mask: bigint): string {
+/// Anything else is emitted as a quoted OR list, which round-trips through
+/// the trait-OR path in the query compiler.
+function describeAnyOfTraits(
+  data: OfflinePunksDataClient,
+  mask: bigint,
+): { text: string; genericOr: boolean } {
   const ids = idsFromMask(mask, TRAIT_COUNT)
 
   if (
@@ -144,8 +169,8 @@ function describeAnyOfTraits(mask: bigint): string {
         'non-contiguous attribute-count any-of group cannot be represented as search text',
       )
     }
-    if (min === max) return `${min} attributes`
-    return `${min}-${max} attributes`
+    if (min === max) return { text: `${min} attributes`, genericOr: false }
+    return { text: `${min}-${max} attributes`, genericOr: false }
   }
 
   if (
@@ -159,21 +184,29 @@ function describeAnyOfTraits(mask: bigint): string {
       for (let tone = 0; tone < skinToneHeadVariants.length; tone++) {
         const [female, male] = skinToneHeadVariants[tone]
         if (variants[0] === female && variants[1] === male) {
-          return skinToneToken(tone as SkinToneValue)
+          return {
+            text: skinToneToken(tone as SkinToneValue),
+            genericOr: false,
+          }
         }
       }
     }
 
     /// Female 1..4 → HeadVariant 2..5; Male 1..4 → HeadVariant 6..9.
     if (variants.length === 4) {
-      if (variants.every((v) => v >= 2 && v <= 5)) return 'female'
-      if (variants.every((v) => v >= 6 && v <= 9)) return 'male'
+      if (variants.every((v) => v >= 2 && v <= 5)) {
+        return { text: 'female', genericOr: false }
+      }
+      if (variants.every((v) => v >= 6 && v <= 9)) {
+        return { text: 'male', genericOr: false }
+      }
     }
   }
 
-  throw new PunksDataValidationError(
-    'any-of trait mask cannot be represented as search text',
-  )
+  return {
+    text: ids.map((id) => quoteTerm(data.getTraitNameSync(id))).join(' OR '),
+    genericOr: ids.length > 1,
+  }
 }
 
 function skinToneToken(tone: SkinToneValue): string {
