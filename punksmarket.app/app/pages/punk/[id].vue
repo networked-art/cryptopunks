@@ -60,6 +60,15 @@
               <OpenSeaIcon class="external-link-icon" />
               OpenSea
             </a>
+            <!-- <a -->
+            <!--   :href="`https://evm.now/address/0x6ba6f2207e343923ba692e5cae646fb0f566db8d/read#punkIndexToAddress:${id}`" -->
+            <!--   target="_blank" -->
+            <!--   rel="noopener noreferrer" -->
+            <!--   class="external-link" -->
+            <!-- > -->
+            <!--   <EvmNowIcon class="external-link-icon" /> -->
+            <!--   evm.now -->
+            <!-- </a> -->
           </nav>
         </div>
 
