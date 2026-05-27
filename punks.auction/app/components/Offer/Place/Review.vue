@@ -34,7 +34,6 @@
     </div>
 
     <footer class="review-summary">
-      <span class="summary-label">Summary</span>
       <span class="summary-copy">{{ summaryCopy }}</span>
       <ul
         v-if="summaryItems.length"
@@ -146,12 +145,6 @@ function formatCriteriaTitle(title: string) {
   margin-block-start: var(--size-3);
   padding-block-start: var(--size-3);
   border-top: var(--border);
-}
-
-.summary-label {
-  color: var(--text-muted);
-  font-size: var(--font-xs);
-  text-transform: uppercase;
 }
 
 .summary-copy {
