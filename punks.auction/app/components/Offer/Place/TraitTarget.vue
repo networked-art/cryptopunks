@@ -3,15 +3,15 @@
     <OfferPlaceSearchToolbar
       v-model="searchText"
       :placeholder="placeholder"
-      @submit="selectCurrentCriteria"
+      @submit="selectCurrentSearch"
     >
       <template #actions>
         <button
           type="button"
-          class="unstyled criteria-toggle"
-          :class="{ ready: canToggleCriteria }"
-          :disabled="!canToggleCriteria"
-          @click="selectCurrentCriteria"
+          class="unstyled search-select"
+          :class="{ ready: canSelectSearch }"
+          :disabled="!canSelectSearch"
+          @click="selectCurrentSearch"
         >
           Select all
         </button>
@@ -34,8 +34,15 @@
 </template>
 
 <script setup lang="ts">
-import type { PunkQuery } from '@networked-art/punks-sdk'
-import { uniqueSortedIds } from '~/composables/usePlaceOfferDraft'
+import {
+  isPunksFilterEmpty,
+  type CompiledOfferSlot,
+  type PunkQuery,
+} from '@networked-art/punks-sdk'
+import {
+  PLACE_OFFER_MAX_SLOT_IDS,
+  uniqueSortedIds,
+} from '~/composables/usePlaceOfferDraft'
 
 withDefaults(
   defineProps<{
@@ -54,9 +61,9 @@ const selectedMatchIds = defineModel<number[]>('selectedMatchIds', {
 })
 const includeIds = defineModel<number[]>('includeIds', { required: true })
 const excludeIds = defineModel<number[]>('excludeIds', { required: true })
-const placeholder = 'Try beanie smile, hoodie pipe'
-const { searchText, debouncedText, ids, offerQuery } =
-  useOfferPlaceTargetSearch(text)
+const { sdk } = usePunksSdk()
+const { searchText, debouncedText, ids, offerQuery, placeholder } =
+  useOfferPlaceTargetSearch(text, { enableOwnerSearch: true })
 const liveCriteriaText = computed(() => searchText.value.trim())
 const settledCriteriaText = computed(() => debouncedText.value.trim())
 const selectedMatchSet = computed(() => new Set(selectedMatchIds.value))
@@ -67,24 +74,16 @@ const activeSelectedIds = computed(() =>
     ),
   ),
 )
-const canToggleCriteria = computed(
+const canSelectSearch = computed(
   () =>
     !!settledCriteriaText.value &&
     liveCriteriaText.value === settledCriteriaText.value &&
     ids.value.length > 0,
 )
-
-function selectCurrentCriteria() {
-  if (!canToggleCriteria.value) return
-
-  const label = settledCriteriaText.value
-
-  selectedText.value = label
-  selectedQuery.value = offerQuery.value
-  selectedMatchIds.value = ids.value
-  includeIds.value = []
-  excludeIds.value = []
-}
+const compiledSearchSlot = computed(() => compileSearchSlot())
+const canUseCompiledSearchSlot = computed(() =>
+  isOfferableCompiledSearchSlot(compiledSearchSlot.value),
+)
 
 function toggleGridId(id: number) {
   if (selectedQuery.value && selectedMatchSet.value.has(id)) {
@@ -112,10 +111,58 @@ function toggleExcluded(id: number) {
   excludeIds.value = uniqueSortedIds([...excludeIds.value, id])
   includeIds.value = includeIds.value.filter((current) => current !== id)
 }
+
+function selectCurrentSearch() {
+  if (!canSelectSearch.value) return
+
+  const label = settledCriteriaText.value
+
+  if (canUseCompiledSearchSlot.value) {
+    selectCompiledSearch(label)
+    return
+  }
+
+  selectIdSelection(ids.value)
+}
+
+function selectCompiledSearch(label: string) {
+  selectedText.value = label
+  selectedQuery.value = offerQuery.value
+  selectedMatchIds.value = ids.value
+  includeIds.value = []
+  excludeIds.value = []
+}
+
+function selectIdSelection(nextIds: number[]) {
+  selectedText.value = ''
+  selectedQuery.value = null
+  selectedMatchIds.value = []
+  includeIds.value = nextIds
+  excludeIds.value = []
+}
+
+function compileSearchSlot(): CompiledOfferSlot | null {
+  try {
+    return sdk.value.offers.slot({ query: offerQuery.value })
+  } catch {
+    return null
+  }
+}
+
+function isOfferableCompiledSearchSlot(slot: CompiledOfferSlot | null) {
+  if (!slot) return false
+  if (
+    slot.includeIds.length > PLACE_OFFER_MAX_SLOT_IDS ||
+    slot.excludeIds.length > PLACE_OFFER_MAX_SLOT_IDS
+  ) {
+    return false
+  }
+  return !isPunksFilterEmpty(slot.criteria) || slot.excludeIds.length > 0
+}
 </script>
 
 <style scoped>
-.criteria-toggle {
+.search-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -134,25 +181,25 @@ function toggleExcluded(id: number) {
   text-transform: uppercase;
 }
 
-.criteria-toggle:hover,
-.criteria-toggle:focus-visible {
+.search-select:hover,
+.search-select:focus-visible {
   color: var(--text);
 }
 
-.criteria-toggle.ready {
+.search-select.ready {
   background: var(--button-primary-background);
   border-color: var(--button-primary-border-color);
   color: var(--button-primary-color);
 }
 
-.criteria-toggle.ready:hover,
-.criteria-toggle.ready:focus-visible {
+.search-select.ready:hover,
+.search-select.ready:focus-visible {
   background: var(--button-primary-background-highlight);
   border-color: var(--button-primary-border-color-highlight);
   color: var(--button-primary-color-highlight);
 }
 
-.criteria-toggle:disabled {
+.search-select:disabled {
   color: var(--text-dim);
   cursor: default;
 }
