@@ -81,6 +81,7 @@ import {
   lotMatchesOffer,
   punkHref,
   readAuctionForLot,
+  readLot,
   TokenStandard,
 } from '~/utils/auction'
 
@@ -148,6 +149,33 @@ useSeoMeta({
   title: () => `Lot #${id.value} · Punks Auction`,
   ogTitle: () => `Lot #${id.value} · Punks Auction`,
   twitterTitle: () => `Lot #${id.value} · Punks Auction`,
+})
+
+const { data: ogLot } = await useAsyncData(
+  () => `og-lot-${id.value}`,
+  async () => {
+    if (!validId.value) return null
+    const client = readClient.value
+    if (!client) return null
+    const record = await readLot(client, id.value)
+    if (!record) return null
+    return {
+      items: record.items.map((item) => ({
+        standard: item.standard,
+        punkId: item.punkId,
+      })),
+      reserveWei: record.reserveWei.toString(),
+    }
+  },
+)
+
+defineOgImage('Lot', {
+  kind: 'lot',
+  id: id.value,
+  items: ogLot.value?.items ?? [],
+  priceWei: ogLot.value?.reserveWei ?? '0',
+  priceLabel: 'Reserve',
+  status: null,
 })
 </script>
 

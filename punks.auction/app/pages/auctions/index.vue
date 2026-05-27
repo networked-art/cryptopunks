@@ -1,22 +1,20 @@
 <template>
   <div class="container auctions-page">
     <header class="page-head">
-      <div class="page-head-row">
+      <div class="page-head-text">
         <h1>Auctions</h1>
-        <div class="head-actions">
-          <Button
-            class="primary icon-button"
-            to="/lots/new"
-          >
-            <Icon name="lucide:plus" />
-            <span class="label-full">Create lot</span>
-            <span class="label-short">New</span>
-          </Button>
-        </div>
+        <p class="muted">
+          Open lots become 24 hour auctions when their initial reserve is met.
+        </p>
       </div>
-      <p class="muted">
-        Open lots become 24 hour auctions when their initial reserve is met.
-      </p>
+      <Button
+        class="primary icon-button page-head-action"
+        to="/lots/new"
+      >
+        <Icon name="lucide:plus" />
+        <span class="label-full">Create lot</span>
+        <span class="label-short">New</span>
+      </Button>
     </header>
 
     <section class="section">
@@ -75,6 +73,10 @@ useSeoMeta({
   title: 'Auctions · Punks Auction',
   ogTitle: 'Auctions · Punks Auction',
   twitterTitle: 'Auctions · Punks Auction',
+})
+defineOgImage('Default', {
+  title: 'Live auctions',
+  description: 'Open lots and 24h auctions for CryptoPunks.',
 })
 
 const {
@@ -188,23 +190,30 @@ function compareBigint(a: bigint, b: bigint): number {
   min-width: 0;
 }
 
-.page-head-row {
+.page-head {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
-  align-items: start;
-  gap: var(--size-4);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: last baseline;
+  column-gap: var(--size-4);
 }
 
-.head-actions {
+.page-head-text {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: var(--size-3);
+  gap: var(--size-2);
   min-width: 0;
 }
 
-.head-actions > .button {
-  align-self: flex-end;
+.page-head-text > h1 {
+  margin: 0;
+}
+
+.page-head-text > .muted {
+  margin: 0;
+}
+
+.page-head-action {
+  overflow: hidden;
 }
 
 .label-short {
@@ -252,13 +261,12 @@ function compareBigint(a: bigint, b: bigint): number {
 }
 
 @media (max-width: 860px) {
-  .page-head .muted {
-    display: none;
+  .page-head {
+    align-items: center;
   }
 
-  .page-head-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+  .page-head-text > .muted {
+    display: none;
   }
 
   .label-full {

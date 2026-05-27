@@ -145,6 +145,7 @@ import {
   auctionStatus,
   formatLotItemsLabel,
   punkHref,
+  readAuction,
   TokenStandard,
   type AuctionStatus,
 } from '~/utils/auction'
@@ -219,6 +220,38 @@ useSeoMeta({
   title: () => `Auction #${id.value} · Punks Auction`,
   ogTitle: () => `Auction #${id.value} · Punks Auction`,
   twitterTitle: () => `Auction #${id.value} · Punks Auction`,
+})
+
+const ogReadClient = useReadClient()
+const { data: ogAuction } = await useAsyncData(
+  () => `og-auction-${id.value}`,
+  async () => {
+    if (!validId.value) return null
+    const client = ogReadClient.value
+    if (!client) return null
+    const record = await readAuction(client, id.value)
+    if (!record) return null
+    return {
+      items: record.items.map((item) => ({
+        standard: item.standard,
+        punkId: item.punkId,
+      })),
+      latestBidWei: record.latestBidWei.toString(),
+      status: auctionStatus({
+        endTimestamp: record.endTimestamp,
+        settled: record.settled,
+      }),
+    }
+  },
+)
+
+defineOgImage('Lot', {
+  kind: 'auction',
+  id: id.value,
+  items: ogAuction.value?.items ?? [],
+  priceWei: ogAuction.value?.latestBidWei ?? '0',
+  priceLabel: 'Current bid',
+  status: ogAuction.value?.status ?? null,
 })
 </script>
 

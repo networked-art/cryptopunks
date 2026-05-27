@@ -104,6 +104,10 @@ useSeoMeta({
   ogTitle: 'About · Punks Auction',
   twitterTitle: 'About · Punks Auction',
 })
+defineOgImage('Default', {
+  title: 'About Punks Auction',
+  description: 'Ownerless, zero-fee auction house for CryptoPunks.',
+})
 </script>
 
 <style scoped>

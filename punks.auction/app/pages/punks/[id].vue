@@ -26,6 +26,10 @@ useSeoMeta({
   ogTitle: () => `Punk #${id.value} · Punks Auction`,
   twitterTitle: () => `Punk #${id.value} · Punks Auction`,
 })
+defineOgImage('Punk', {
+  punkId: id.value,
+  standard: TokenStandard.CryptoPunks,
+})
 </script>
 
 <style scoped>

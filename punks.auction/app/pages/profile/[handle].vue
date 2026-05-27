@@ -169,6 +169,39 @@ useSeoMeta({
   twitterTitle: () => `${titleLabel.value} · Punks Auction`,
 })
 
+const { data: ogProfile } = await useAsyncData(
+  () => `og-profile-${handle.value}`,
+  async () => {
+    const h = handle.value
+    const client = getPublicClient(config) as PublicClient | undefined
+    if (!client) return null
+
+    if (isAddress(h)) {
+      let ens: string | null = null
+      try {
+        ens = (await client.getEnsName({ address: h as Address })) ?? null
+      } catch {
+        ens = null
+      }
+      return { address: h as Address, ens }
+    }
+
+    try {
+      const addr = await client.getEnsAddress({ name: h })
+      if (!addr) return null
+      return { address: addr as Address, ens: h }
+    } catch {
+      return null
+    }
+  },
+)
+
+defineOgImage('Profile', {
+  address:
+    ogProfile.value?.address ?? '0x0000000000000000000000000000000000000000',
+  ens: ogProfile.value?.ens ?? null,
+})
+
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
 const {
