@@ -218,15 +218,25 @@ ponder.on('CryptoPunksV2:PunkOffered', async ({ event, context }) => {
 ponder.on('CryptoPunksV2:PunkNoLongerForSale', async ({ event, context }) => {
   const meta = eventMeta(event)
   await recordSelfInitiatedInteraction(context, event)
-
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_V2,
-    source_event: 'PunkNoLongerForSale',
-    type: 'listing_cancelled',
+  const existing = await context.db.find(listing, {
     punk_id: event.args.punkIndex,
-    ...meta,
   })
+
+  // The contract emits `PunkNoLongerForSale` whenever the owner calls
+  // `punkNoLongerForSale`, regardless of whether the punk was actually listed.
+  // Only record a cancellation activity if there was a real prior listing.
+  if (existing?.active) {
+    await insertActivity(context, {
+      id: eventId(event),
+      source: SOURCE_V2,
+      source_event: 'PunkNoLongerForSale',
+      type: 'listing_cancelled',
+      punk_id: event.args.punkIndex,
+      actor: existing.seller,
+      seller: existing.seller,
+      ...meta,
+    })
+  }
 
   await clearListing(context, event.args.punkIndex, meta)
 })

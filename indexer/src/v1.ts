@@ -258,27 +258,27 @@ ponder.on('CryptoPunksV1:PunkNoLongerForSale', async ({ event, context }) => {
   const existing = await context.db.find(v1Listing, {
     punk_id: event.args.punkIndex,
   })
-  const seller =
-    existing && existing.seller !== ZERO_ADDRESS ? existing.seller : undefined
 
   // `buyPunk` calls `punkNoLongerForSale` internally, so a settlement, wrapper
   // deposit, or direct buy emits a redundant PunkNoLongerForSale already
-  // covered by its own sale / wrap row. Only a standalone PunkNoLongerForSale —
-  // no sibling PunkBought in the tx — is a real listing cancellation.
+  // covered by its own sale / wrap row. The contract also emits the event when
+  // the owner calls `punkNoLongerForSale` defensively on a punk that wasn't
+  // listed. Only a standalone PunkNoLongerForSale against a currently active
+  // listing is a real cancellation.
   const settlementByproduct = await isBuyPunkByproduct(
     context,
     meta.tx_hash,
     event.args.punkIndex,
   )
-  if (!settlementByproduct) {
+  if (!settlementByproduct && existing?.active) {
     await insertActivity(context, {
       id: eventId(event),
       source: SOURCE_V1,
       source_event: 'PunkNoLongerForSale',
       type: 'listing_cancelled',
       punk_id: event.args.punkIndex,
-      actor: seller,
-      seller,
+      actor: existing.seller,
+      seller: existing.seller,
       ...meta,
     })
   }
