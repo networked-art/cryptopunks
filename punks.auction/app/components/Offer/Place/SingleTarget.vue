@@ -29,8 +29,7 @@ withDefaults(
 
 const text = defineModel<string>('text', { required: true })
 const selectedId = defineModel<number | null>('selectedId', { required: true })
-const placeholder = 'Try #1234, hoodie, 2 colors'
-const { searchText, ids } = useOfferPlaceTargetSearch(text, {
+const { searchText, ids, placeholder } = useOfferPlaceTargetSearch(text, {
   enableOwnerSearch: true,
 })
 

@@ -36,6 +36,7 @@ export function useOfferPlaceTargetSearch(
   return {
     searchText,
     debouncedText: search.debouncedText,
+    placeholder: search.placeholder,
     ids,
     offerQuery: search.offerQuery,
   }
