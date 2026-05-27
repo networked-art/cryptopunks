@@ -1,19 +1,19 @@
 <template>
-  <NuxtLink
-    class="offer-card"
+  <OfferItemShell
     :to="detailHref"
     :aria-label="`View offer ${offer.id}`"
   >
-    <OfferCardTarget :target="target" />
+    <OfferTarget :target="target" />
     <OfferCardAmount
       :wei="offer.amountWei"
       :offerer="offer.offerer"
       :show-offerer="showOfferer"
     />
-  </NuxtLink>
+  </OfferItemShell>
 </template>
 
 <script setup lang="ts">
+import { offerRecordTarget } from '~/composables/useOfferTarget'
 import type { OfferRecord } from '~/utils/auction'
 
 defineOptions({ name: 'OfferCard' })
@@ -23,7 +23,9 @@ const props = defineProps<{
   displayedOffererAddresses?: readonly string[]
 }>()
 
-const { detailHref, target } = useOfferCard(() => props.offer)
+const offline = usePunksOffline()
+const detailHref = computed(() => `/purchase-offers/${props.offer.id}`)
+const target = computed(() => offerRecordTarget(props.offer, offline))
 
 const showOfferer = computed(() => {
   const offerer = props.offer.offerer.toLowerCase()
@@ -32,35 +34,3 @@ const showOfferer = computed(() => {
   )
 })
 </script>
-
-<style scoped>
-.offer-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  align-items: center;
-  gap: var(--size-4);
-  min-width: 0;
-  padding: 0 var(--size-4) 0 0;
-  color: inherit;
-  border: 0;
-  background: white;
-  text-decoration: none;
-  transition: box-shadow 120ms ease;
-}
-
-.offer-card + .offer-card {
-  border-top: var(--border);
-}
-
-.offer-card:hover,
-.offer-card:focus-visible {
-  color: inherit;
-  background: white;
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
-.offer-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: var(--size-1);
-}
-</style>

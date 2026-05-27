@@ -112,17 +112,17 @@ import {
   OFFER_SLOT_TRAIT_ICON,
 } from '~/composables/useOfferSlotDisplay'
 import type {
-  OfferCardCoverItem,
-  OfferCardTarget,
-} from '~/composables/useOfferCard'
+  OfferTargetCoverItem,
+  OfferTargetDisplay,
+} from '~/composables/useOfferTarget'
 
 const MAX_VISIBLE_ITEMS = 4
 
 const props = defineProps<{
-  target: OfferCardTarget
+  target: OfferTargetDisplay
 }>()
 
-const coverItems = computed<OfferCardCoverItem[]>(() =>
+const coverItems = computed<OfferTargetCoverItem[]>(() =>
   props.target.coverItems?.length
     ? props.target.coverItems
     : props.target.thumbs.map((item) => ({ kind: 'punk', ...item })),
@@ -137,7 +137,7 @@ const layoutCount = computed(() =>
   Math.max(1, Math.min(visibleCoverItems.value.length, MAX_VISIBLE_ITEMS)),
 )
 
-function coverItemKey(item: OfferCardCoverItem, index: number) {
+function coverItemKey(item: OfferTargetCoverItem, index: number) {
   return item.kind === 'punk'
     ? `punk-${item.standard}-${item.punkId}`
     : `icon-${item.icon}-${index}`
@@ -168,7 +168,6 @@ const collectionMarkStyle = {
   inline-size: var(--size-9);
   block-size: var(--size-9);
   --punk-mosaic-inset: 19%;
-  background: var(--bg-elevated);
   background: transparent;
   border-right: var(--border);
   border-color: var(--gray-z-0);
