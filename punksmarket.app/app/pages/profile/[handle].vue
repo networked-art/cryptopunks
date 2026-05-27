@@ -1,18 +1,55 @@
 <template>
   <div class="container profile-page">
     <header class="profile-head">
-      <h1
-        v-if="ensProfile.data.value?.ens"
-        class="profile-name"
-      >
-        {{ ensProfile.data.value.ens }}
-      </h1>
-      <h1
-        v-else
-        class="profile-name muted"
-      >
-        {{ shortAddr }}
-      </h1>
+      <div class="profile-title-row">
+        <h1
+          v-if="ensProfile.data.value?.ens"
+          class="profile-name"
+        >
+          {{ ensProfile.data.value.ens }}
+        </h1>
+        <h1
+          v-else
+          class="profile-name muted"
+        >
+          {{ shortAddr }}
+        </h1>
+
+        <ClientOnly>
+          <nav
+            v-if="resolvedAddress"
+            class="external-links"
+          >
+            <a
+              :href="`https://v1cryptopunks.com/user/${resolvedAddress}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
+              <V1CryptopunksIcon class="external-link-icon" />
+              v1cryptopunks
+            </a>
+            <a
+              :href="`https://opensea.io/${resolvedAddress}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
+              <OpenSeaIcon class="external-link-icon" />
+              OpenSea
+            </a>
+            <a
+              :href="`https://evm.now/address/${handle}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
+              <EvmNowIcon class="external-link-icon" />
+              evm.now
+            </a>
+          </nav>
+        </ClientOnly>
+      </div>
 
       <ClientOnly>
         <p
@@ -215,11 +252,47 @@ const viewerOwnedAddress = computed<Address | null>(() => {
   gap: var(--size-1);
 }
 
+.profile-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-3);
+  flex-wrap: wrap;
+}
+
 .profile-name {
   margin: 0;
   font-size: 28px;
   font-weight: 500;
   letter-spacing: -0.02em;
+}
+
+.external-links {
+  display: flex;
+  gap: var(--size-3);
+  flex-shrink: 0;
+}
+
+.external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.external-link:hover {
+  color: inherit;
+}
+
+.external-link-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .profile-address {
