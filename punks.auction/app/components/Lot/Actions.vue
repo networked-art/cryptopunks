@@ -138,12 +138,9 @@
         <div class="manage-fields">
           <label class="amount-field">
             <span class="label">Reserve ETH</span>
-            <input
+            <EvmEthInput
               v-model="reserveEth"
-              type="text"
-              inputmode="decimal"
-              autocomplete="off"
-              spellcheck="false"
+              v-model:wei="parsedReserveWei"
             />
           </label>
         </div>
@@ -212,7 +209,6 @@ import { useConfig, useConnection } from '@wagmi/vue'
 import {
   formatEther,
   isAddress,
-  parseEther,
   type Address,
   type Hash,
   type TransactionReceipt,
@@ -247,6 +243,7 @@ const renderV1 = useV1Rendering()
 const updateDialogOpen = ref(false)
 const cancelDialogOpen = ref(false)
 const reserveEth = ref('')
+const parsedReserveWei = ref<bigint | null>(null)
 const onlySellTo = ref('')
 const privateBuyerOpen = ref(false)
 const updateError = ref<string | null>(null)
@@ -267,7 +264,6 @@ const canOpen = computed(() => {
 const instantEligible = computed(
   () => props.lot.items.length <= MAX_INSTANT_ITEMS,
 )
-const parsedReserveWei = computed(() => parsePositiveEth(reserveEth.value))
 const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
   return !trimmed || isAddress(trimmed) || trimmed.includes('.')
@@ -413,17 +409,6 @@ async function resolveOnlySellTo(): Promise<Address> {
   return resolveAddressInput(config, trimmed, {
     invalidMessage: 'Enter a valid initial buyer address or ENS name.',
   })
-}
-
-function parsePositiveEth(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
 }
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {

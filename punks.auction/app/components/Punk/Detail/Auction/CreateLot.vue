@@ -35,12 +35,10 @@
       <div class="form-grid">
         <label class="field">
           <span class="label">Reserve ETH</span>
-          <input
+          <EvmEthInput
             v-model="reserveEth"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
+            v-model:wei="reserveWei"
+            :suffix="false"
           />
         </label>
       </div>
@@ -97,7 +95,7 @@
 <script setup lang="ts">
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConfig, useConnection } from '@wagmi/vue'
-import { isAddress, parseEther, type Hash } from 'viem'
+import { isAddress, type Hash } from 'viem'
 import { resolveAddressInput } from '~/utils/addressInput'
 import {
   TOTAL_WEIGHT_BPS,
@@ -119,6 +117,7 @@ const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
 
 const reserveEth = ref('')
+const reserveWei = ref<bigint | null>(null)
 const onlySellTo = ref('')
 const showAdvanced = ref(false)
 const createDialogOpen = ref(false)
@@ -132,7 +131,6 @@ const ownerItem = computed(() =>
 
 const showSection = computed(() => !!ownerItem.value)
 
-const reserveWei = computed(() => parsePositiveEth(reserveEth.value))
 const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
   return !trimmed || isAddress(trimmed) || trimmed.includes('.')
@@ -245,16 +243,6 @@ async function resolveOnlySellTo() {
   })
 }
 
-function parsePositiveEth(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
 </script>
 
 <style scoped>

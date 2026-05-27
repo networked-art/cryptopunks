@@ -57,9 +57,13 @@
           #primary
         >
           <FormInputGroup class="amount-action">
-            <OfferPlaceAmountInput
+            <EvmEthInput
               v-model="amountEth"
-              @submit="submitAmount"
+              v-model:wei="amountWei"
+              :suffix="false"
+              placeholder="10"
+              aria-label="Offer amount in ETH"
+              @keyup.enter="submitAmount"
             />
             <Button
               v-if="address"
@@ -117,7 +121,6 @@ import {
 import { useConnection } from '@wagmi/vue'
 import {
   decodeEventLog,
-  parseEther,
   type Hash,
   type TransactionReceipt,
 } from 'viem'
@@ -156,6 +159,7 @@ const { address } = useConnection()
 const quantityMode = ref<PlaceOfferQuantityMode>('one')
 const actionStep = ref<ActionStep>('target')
 const amountEth = ref('')
+const amountWei = ref<bigint | null>(null)
 const error = ref<string | null>(null)
 const slotCount = ref(PLACE_OFFER_MIN_MULTI_SLOTS)
 const activeSlotIndex = ref(0)
@@ -209,7 +213,6 @@ const isSingleCollectionTargetStep = computed(
 const showAmountAction = computed(
   () => actionStep.value === 'amount' || isSingleCollectionTargetStep.value,
 )
-const amountWei = computed(() => parsePositiveEth(amountEth.value))
 const slotValidationError = computed(() => validateDraftSlots(draft.value))
 const currentSlotValidationError = computed(() =>
   validateDraftSlots(currentSlotDraft.value),
@@ -490,17 +493,6 @@ function ensureSlotDrafts(count: number, options: { trim?: boolean } = {}) {
     { length: nextCount },
     (_, index) => slotDrafts.value[index] ?? createPlaceOfferSlotDraft(),
   )
-}
-
-function parsePositiveEth(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
 }
 </script>
 
