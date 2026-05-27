@@ -44,9 +44,11 @@ function parseAddresses(value: string | undefined): `0x${string}`[] | null {
 //   - lastActiveAt: accounts.last_interaction_at for the EOA — tx-from
 //     rather than event-participant, which is the narrower "this user
 //     personally signed something" signal.
+//   - firstSeenAt: accounts.first_seen_at for the EOA — the first block
+//     timestamp where the address appeared in any indexed punks event.
 //
 // `addresses` is the custody set (EOA + vault + stash). `eoa` is only used
-// for the last-active lookup.
+// for the per-EOA lookups (last-active, first-seen).
 app.get('/stats', async (c) => {
   const addresses = parseAddresses(c.req.query('addresses'))
   if (!addresses) {
@@ -86,7 +88,10 @@ app.get('/stats', async (c) => {
         ),
       ),
     db
-      .select({ last_interaction_at: account.last_interaction_at })
+      .select({
+        last_interaction_at: account.last_interaction_at,
+        first_seen_at: account.first_seen_at,
+      })
       .from(account)
       .where(eq(account.address, eoa))
       .limit(1),
@@ -95,6 +100,7 @@ app.get('/stats', async (c) => {
   const bought = boughtRows[0]
   const sold = soldRows[0]
   const last = accountRows[0]?.last_interaction_at ?? null
+  const first = accountRows[0]?.first_seen_at ?? null
 
   return c.json({
     totalSpentWei: bigStr(bought?.total),
@@ -102,6 +108,7 @@ app.get('/stats', async (c) => {
     salesBoughtCount: toInt(bought?.count),
     salesSoldCount: toInt(sold?.count),
     lastActiveAt: last == null ? null : last.toString(),
+    firstSeenAt: first == null ? null : first.toString(),
   })
 })
 
