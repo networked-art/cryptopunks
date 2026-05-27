@@ -8,6 +8,7 @@
     <OfferCardAmount
       :wei="offer.amountWei"
       :offerer="offer.offerer"
+      :show-offerer="showOfferer"
     />
   </NuxtLink>
 </template>
@@ -17,9 +18,19 @@ import type { OfferRecord } from '~/utils/auction'
 
 defineOptions({ name: 'OfferCard' })
 
-const props = defineProps<{ offer: OfferRecord }>()
+const props = defineProps<{
+  offer: OfferRecord
+  displayedOffererAddresses?: readonly string[]
+}>()
 
 const { detailHref, target } = useOfferCard(() => props.offer)
+
+const showOfferer = computed(() => {
+  const offerer = props.offer.offerer.toLowerCase()
+  return !props.displayedOffererAddresses?.some(
+    (address) => address.toLowerCase() === offerer,
+  )
+})
 </script>
 
 <style scoped>

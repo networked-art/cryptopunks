@@ -76,6 +76,7 @@
             v-for="offer in myOffers"
             :key="String(offer.id)"
             :offer="offer"
+            :displayed-offerer-addresses="ownerAddressList"
           />
         </div>
         <p
@@ -156,6 +157,8 @@ const ownerAddresses = computed(() => {
   if (s) set.add(s)
   return set
 })
+
+const ownerAddressList = computed(() => [...ownerAddresses.value])
 
 const myLots = computed(() => {
   const addrs = ownerAddresses.value

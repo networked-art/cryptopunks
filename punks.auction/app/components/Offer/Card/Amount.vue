@@ -4,7 +4,10 @@
       class="amount-value"
       :wei="wei"
     />
-    <span class="offerer">
+    <span
+      v-if="showOfferer"
+      class="offerer"
+    >
       <Account
         :address="offerer"
         :image-size="16"
@@ -16,10 +19,16 @@
 <script setup lang="ts">
 import type { Address } from 'viem'
 
-defineProps<{
-  wei: bigint | number | string
-  offerer: Address
-}>()
+withDefaults(
+  defineProps<{
+    wei: bigint | number | string
+    offerer: Address
+    showOfferer?: boolean
+  }>(),
+  {
+    showOfferer: true,
+  },
+)
 </script>
 
 <style scoped>

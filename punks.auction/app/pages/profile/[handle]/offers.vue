@@ -39,7 +39,10 @@
             :key="String(offer.id)"
             class="offer-row"
           >
-            <LazyOfferCard :offer="offer" />
+            <LazyOfferCard
+              :offer="offer"
+              :displayed-offerer-addresses="ownerAddressList"
+            />
             <div class="row-actions">
               <Button
                 class="icon-button"
@@ -72,7 +75,10 @@
             :key="String(offer.id)"
             class="offer-row"
           >
-            <LazyOfferCard :offer="offer" />
+            <LazyOfferCard
+              :offer="offer"
+              :displayed-offerer-addresses="ownerAddressList"
+            />
             <div class="row-actions">
               <NuxtLink
                 class="details-link"
@@ -128,6 +134,8 @@ const ownerAddresses = computed(() => {
   if (s) set.add(s)
   return set
 })
+
+const ownerAddressList = computed(() => [...ownerAddresses.value])
 
 const madeByMe = computed(() => {
   const addrs = ownerAddresses.value
