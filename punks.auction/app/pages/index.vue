@@ -9,7 +9,7 @@
       24-hour auctions. Zero fees. Real price discovery.
     </p>
     <div class="cta-buttons">
-      <NuxtLink to="/auctions" class="btn btn-primary">Browse Lots</NuxtLink>
+      <NuxtLink to="/punks" class="btn btn-primary">Browse Punks</NuxtLink>
       <NuxtLink to="/about" class="btn btn-secondary">Learn More</NuxtLink>
     </div>
   </div>

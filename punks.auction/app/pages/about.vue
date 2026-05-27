@@ -9,27 +9,12 @@
       </div>
     </header>
 
-    <section class="about-section">
-      <p>
-        <a
-          :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
-          target="_blank"
-          rel="noopener"
-          >PunksAuction.sol</a
-        >
-        is an ownerless smart contract that runs 24-hour auctions and native-ETH
-        purchase offers for
-        <a
-          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
-          target="_blank"
-          rel="noopener"
-          >CryptoPunks</a
-        >. It charges no fees — every wei a bidder pays reaches the seller.
-      </p>
-    </section>
-
     <section class="about-section why-auctions">
       <h2 class="section-title eyebrow">Why auctions?</h2>
+      <p class="punchline-lead">
+        Fixed pricing only works when the market is liquid and items are
+        fungible. Punks are neither.
+      </p>
       <p>
         Auctions solve the fundamental problem of <em>price discovery</em> for
         unique assets. Fixed pricing forces sellers into an impossible dilemma:
@@ -38,33 +23,19 @@
         pay — which you can't know.
       </p>
       <h3 class="subhead eyebrow">True demand</h3>
-      <p>
-        The final price reflects actual willingness to pay, not a guess.
-      </p>
+      <p>Price reflects what buyers will actually pay.</p>
 
-      <h3 class="subhead eyebrow">No information asymmetry</h3>
-      <p>
-        Sellers don't need to know the value — buyers reveal it through
-        competition.
-      </p>
+      <h3 class="subhead eyebrow">No guessing</h3>
+      <p>Sellers don't set the price. Bidders do.</p>
 
-      <h3 class="subhead eyebrow">Self-correcting</h3>
-      <p>
-        Market conditions change constantly. Fixed prices go stale. Auctions are
-        always current.
-      </p>
+      <h3 class="subhead eyebrow">Always current</h3>
+      <p>Markets move. Auctions move with them.</p>
 
-      <h3 class="subhead eyebrow">Competition extracts surplus</h3>
-      <p>
-        Two motivated bidders push each other past what either would pay against
-        a fixed ask.
-      </p>
+      <h3 class="subhead eyebrow">Competition works</h3>
+      <p>Two bidders outprice one buyer every time.</p>
 
-      <h3 class="subhead eyebrow">Works for unique items</h3>
-      <p>
-        Each Punk's trait combination is unique — no "comparable sales" exist.
-        Auctions establish value where none exists.
-      </p>
+      <h3 class="subhead eyebrow">Unique items</h3>
+      <p>No comps exist. Auctions create the price.</p>
       <p>
         The purchase-offer system inverts the auction but achieves the same
         goal: buyers post criteria-based bids (e.g. "any Female with 3D Glasses
@@ -72,32 +43,28 @@
         than guessing a list price. Price discovery through competition, from
         the other side of the book.
       </p>
-      <p class="punchline">
-        Fixed pricing only works when the market is liquid and items are
-        fungible. Punks are neither.
-      </p>
     </section>
 
     <section class="about-section">
       <h2 class="section-title eyebrow">Vaults</h2>
       <p>
         A seller never hands custody to the auction house. Each seller keeps
-        their Punks in their own <code>PunksVault</code>, deployed
-        deterministically through the
+        their Punks in their own PunksVault.sol, deployed deterministically through the
         <a
           :href="`https://evm.now/address/${PUNKS_VAULT_FACTORY_ADDRESS}/code`"
           target="_blank"
           rel="noopener"
-          ><code>PunksVaultFactory</code></a
-        >, and approves <code>PunksAuction</code> as an operator. The auction
-        pulls a Punk out of the vault only at the moment a sale starts, into a
-        dedicated
+          >PunksVaultFactory.sol</a
+        >, and approves
         <a
-          :href="`https://evm.now/address/${PUNKS_AUCTION_ESCROW_ADDRESS}/code`"
+          :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
           target="_blank"
           rel="noopener"
-          ><code>PunksAuctionEscrow</code></a
-        >, and settles from there.
+          >PunksAuction.sol</a
+        >
+        as an operator. The auction pulls a Punk out of the vault only at the
+        moment a sale starts, into a dedicated PunksAuctionEscrow.sol, and
+        settles from there.
       </p>
     </section>
 
@@ -134,6 +101,22 @@
 
     <section class="about-section">
       <h2 class="section-title eyebrow">The contracts</h2>
+      <p>
+        <a
+          :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
+          target="_blank"
+          rel="noopener"
+          >PunksAuction.sol</a
+        >
+        is an ownerless smart contract that runs 24-hour auctions and native-ETH
+        purchase offers for
+        <a
+          href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
+          target="_blank"
+          rel="noopener"
+          >CryptoPunks</a
+        >. It charges no fees.
+      </p>
       <dl class="contract-meta">
         <dt class="eyebrow">Auction</dt>
         <dd>
@@ -141,7 +124,7 @@
             :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
             target="_blank"
             rel="noopener"
-            ><code>punksauction.eth</code></a
+            >PunksAuction.sol</a
           >
         </dd>
         <dt class="eyebrow">Escrow</dt>
@@ -150,7 +133,7 @@
             :href="`https://evm.now/address/${PUNKS_AUCTION_ESCROW_ADDRESS}/code`"
             target="_blank"
             rel="noopener"
-            ><code>escrow.punksauction.eth</code></a
+            >PunksAuctionEscrow.sol</a
           >
         </dd>
         <dt class="eyebrow">Vault Factory</dt>
@@ -159,7 +142,7 @@
             :href="`https://evm.now/address/${PUNKS_VAULT_FACTORY_ADDRESS}/code`"
             target="_blank"
             rel="noopener"
-            ><code>{{ PUNKS_VAULT_FACTORY_ADDRESS }}</code></a
+            >PunksVaultFactory.sol</a
           >
         </dd>
       </dl>
@@ -198,6 +181,7 @@ useSeoMeta({
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
+  padding-bottom: var(--size-4);
 }
 
 .section-title {
@@ -223,9 +207,6 @@ useSeoMeta({
   min-width: 0;
 }
 
-.contract-meta dd code {
-  word-break: break-all;
-}
 
 .credit {
   font-size: var(--font-sm);
@@ -247,8 +228,11 @@ useSeoMeta({
   font-size: var(--font-sm);
 }
 
-.punchline {
+.punchline-lead {
   color: var(--accent-strong);
+  font-size: var(--font-display-sm);
   font-style: italic;
+  line-height: var(--line-height-relaxed);
 }
+
 </style>
