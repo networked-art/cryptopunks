@@ -84,6 +84,7 @@
       ref="transactionDialogRef"
       :text="transactionText"
       :auto-close-success="false"
+      keep-open
       skip-confirmation
       @complete="onComplete"
     >
