@@ -121,6 +121,7 @@ import { TokenStandard } from '~/utils/auction'
 import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{ account: Address }>()
+const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
@@ -247,8 +248,9 @@ async function run(planInput: ContractWritePlan | Promise<ContractWritePlan>) {
   }
 }
 
-function onTransactionComplete(_receipt: TransactionReceipt) {
+function onTransactionComplete(receipt: TransactionReceipt) {
   void refreshInventory()
+  emit('changed', receipt.transactionHash as Hash)
 }
 
 function actDeposit() {

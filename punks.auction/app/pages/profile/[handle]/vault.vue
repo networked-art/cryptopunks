@@ -4,9 +4,15 @@
       v-if="ownAccount"
       class="vault-tab"
     >
-      <ProfileVaultControls :account="ownAccount" />
+      <ProfileVaultControls
+        :account="ownAccount"
+        @changed="refreshAddresses"
+      />
 
-      <ProfileVaultMovement :account="ownAccount" />
+      <ProfileVaultMovement
+        :account="ownAccount"
+        @changed="refreshAddresses"
+      />
     </section>
   </ClientOnly>
 </template>
@@ -14,7 +20,7 @@
 <script setup lang="ts">
 useOwnProfileGuard()
 
-const { ownAccount } = useProfileContext()
+const { ownAccount, refreshAddresses } = useProfileContext()
 </script>
 
 <style scoped>

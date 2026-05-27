@@ -227,6 +227,7 @@ import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 const props = defineProps<{
   account: Address
 }>()
+const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk, publicClient } = usePunksSdk()
 const { execute } = useWritePlan()
@@ -441,12 +442,15 @@ async function runSteps(
   multiDialogRef.value?.start()
 }
 
-function onTransactionComplete(_receipt: TransactionReceipt) {
+function onTransactionComplete(receipt: TransactionReceipt) {
   refresh()
+  emit('changed', receipt.transactionHash as Hash)
 }
 
-function onMultiTransactionComplete(_receipts: TransactionReceipt[]) {
+function onMultiTransactionComplete(receipts: TransactionReceipt[]) {
   refresh()
+  const last = receipts.at(-1)
+  if (last) emit('changed', last.transactionHash as Hash)
 }
 
 function onFlowError(message: string) {
