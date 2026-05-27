@@ -255,7 +255,7 @@ function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
     input: { standard: slot.standard },
     summary: {
       label,
-      title: 'Collection offer',
+      title: 'Collection Offer',
       detail: '',
       targetMode: 'any',
       previewIds: [],

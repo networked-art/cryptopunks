@@ -61,8 +61,8 @@ const targetOptions: {
   label: string
 }[] = [
   { value: 'exact', label: 'Specific Punk' },
-  { value: 'traits', label: 'Selection or trait offer' },
-  { value: 'any', label: 'Collection offer' },
+  { value: 'traits', label: 'Selection or Trait Offer' },
+  { value: 'any', label: 'Collection Offer' },
 ]
 
 const targetMode = computed({

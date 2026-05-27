@@ -114,7 +114,7 @@ export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
       ? criteriaTitle(slot, offline)
       : slot.includeIds.length > 1
         ? `${slot.includeIds.length.toLocaleString()} included Punks`
-        : 'Collection offer',
+        : 'Collection Offer',
   ]
 
   if (hasCriteria) {
@@ -161,7 +161,7 @@ export function offerSlotHeading(
   const title =
     slot.includeIds.length > 1
       ? `${slot.includeIds.length.toLocaleString()} included Punks`
-      : 'Collection offer'
+      : 'Collection Offer'
   const parts: OfferSlotDetailPart[] = []
   const excluded = countLabel(slot.excludeIds.length, 'excluded')
   if (excluded) parts.push({ text: excluded })
@@ -247,7 +247,9 @@ function offerSlotSearchText(slot: OfferSlot, offline: PunksSdk) {
   const criteriaText = formatSearchText(offline.dataset.source, {
     criteria: slot.criteria,
   })
-  const criteriaGroup = [criteriaText, ...excludeTokens].filter(Boolean).join(' ')
+  const criteriaGroup = [criteriaText, ...excludeTokens]
+    .filter(Boolean)
+    .join(' ')
   if (!includeTokens.length) return criteriaGroup
 
   const includeGroup = [...includeTokens, ...excludeTokens].join(' ')
