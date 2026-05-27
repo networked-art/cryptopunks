@@ -104,13 +104,13 @@ import {
   offerSlotMatchingIds,
   punkHref,
   TokenStandard,
-  type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
 import {
   offerSlotExactItem,
   offerSlotHeading,
 } from '~/composables/useOfferSlotDisplay'
+import type { LotPreviewItem } from '~/components/Lot/Preview.vue'
 
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
@@ -149,15 +149,19 @@ const slotMatchCache = computed(() => {
   return cache
 })
 
-const previewItems = computed<LotItem[]>(() => {
+const previewItems = computed<LotPreviewItem[]>(() => {
   const current = offer.value
   if (!current) return []
-  const candidates = current.slots
-    .map((slot) => {
-      const punkId = slotPreviewPunkId(slot)
-      return punkId === undefined ? null : { standard: slot.standard, punkId }
-    })
-    .filter((item): item is Pick<LotItem, 'standard' | 'punkId'> => !!item)
+  const candidates = current.slots.flatMap((slot) => {
+    const punkId = slotPreviewPunkId(slot)
+    if (punkId === undefined) return []
+    const matches = slotPreviewMatches(slot)
+    const alternates =
+      matches.length > 1
+        ? [punkId, ...matches.filter((id) => id !== punkId)]
+        : undefined
+    return [{ standard: slot.standard, punkId, alternates }]
+  })
 
   const weights = equalLotWeights(candidates.length)
   return candidates.map((item, index) => ({

@@ -19,10 +19,10 @@
 </template>
 
 <script setup lang="ts">
-import type { LotItem } from '~/utils/auction'
+import type { LotPreviewItem } from '~/components/Lot/Preview.vue'
 
 defineProps<{
-  items: LotItem[]
+  items: LotPreviewItem[]
 }>()
 </script>
 

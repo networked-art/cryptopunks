@@ -63,13 +63,19 @@
 </template>
 
 <script setup lang="ts">
+import { useIntervalFn } from '@vueuse/core'
 import { lotItemBackground, type LotItem } from '~/utils/auction'
 
+export type LotPreviewItem = LotItem & { alternates?: readonly number[] }
+
+const ROTATE_INTERVAL_MS = 1500
+
 const props = defineProps<{
-  items: LotItem[]
+  items: LotPreviewItem[]
 }>()
 
 const activeIndex = ref(0)
+const tick = ref(0)
 
 watch(
   () => props.items.length,
@@ -78,16 +84,46 @@ watch(
   },
 )
 
-const activeItem = computed(() => props.items[activeIndex.value])
+const hasAlternates = computed(() =>
+  props.items.some((item) => (item.alternates?.length ?? 0) > 1),
+)
+
+const { pause, resume } = useIntervalFn(
+  () => {
+    tick.value++
+  },
+  ROTATE_INTERVAL_MS,
+  { immediate: false },
+)
+
+watchEffect(() => {
+  if (hasAlternates.value) resume()
+  else pause()
+})
+
+function displayItem(
+  item: LotPreviewItem,
+  index: number,
+): LotPreviewItem {
+  const alts = item.alternates
+  if (!alts || alts.length <= 1) return item
+  const altIndex = (tick.value + index) % alts.length
+  return { ...item, punkId: alts[altIndex] ?? item.punkId }
+}
+
+const displayItems = computed(() => props.items.map(displayItem))
+const activeItem = computed(() => displayItems.value[activeIndex.value])
 const isCarousel = computed(() => props.items.length > 4)
 const isMosaic = computed(
   () => props.items.length > 1 && props.items.length <= 4,
 )
-const mosaicItems = computed(() => props.items.slice(0, 4))
+const mosaicItems = computed(() => displayItems.value.slice(0, 4))
 
 const backingItem = computed(() => {
   if (!isCarousel.value) return undefined
-  return props.items[(activeIndex.value + 1) % props.items.length]
+  return displayItems.value[
+    (activeIndex.value + 1) % displayItems.value.length
+  ]
 })
 
 function previous() {
@@ -102,7 +138,7 @@ function next() {
   activeIndex.value = (activeIndex.value + 1) % length
 }
 
-function itemBackground(item: LotItem) {
+function itemBackground(item: LotPreviewItem) {
   return lotItemBackground(item.standard)
 }
 </script>
