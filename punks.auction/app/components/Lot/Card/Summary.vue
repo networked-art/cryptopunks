@@ -85,14 +85,15 @@ defineProps<{
 
 .summary-meta {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: end;
   gap: var(--size-2);
   text-align: right;
 }
 
 .summary-detail {
-  display: inline;
+  display: inline-flex;
+  align-items: center;
 }
 
 .summary-detail :deep(.liveness-indicator) {
