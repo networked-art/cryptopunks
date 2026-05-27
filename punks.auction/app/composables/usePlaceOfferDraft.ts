@@ -9,6 +9,11 @@ import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 
 export type PlaceOfferQuantityMode = 'one' | 'multiple'
 export type PlaceOfferTargetMode = 'exact' | 'traits' | 'any'
+export type PlaceOfferSlotDisplayKind =
+  | 'exact'
+  | 'selection'
+  | 'criteria'
+  | 'collection'
 
 export type PlaceOfferSlotDraft = {
   standard: TokenStandardValue
@@ -32,9 +37,10 @@ export type PlaceOfferSlotSummary = {
   label: string
   title: string
   detail: string
+  displayKind: PlaceOfferSlotDisplayKind
   targetMode: PlaceOfferTargetMode
+  standard: TokenStandardValue
   previewIds: number[]
-  singlePunkId?: number | null
 }
 
 export type PlaceOfferDraft = {
@@ -43,11 +49,7 @@ export type PlaceOfferDraft = {
   slots: OfferSlotInput[]
   standard: TokenStandardValue
   title: string
-  summaryTitle: string
-  summaryDetail: string
   slotSummaries: PlaceOfferSlotSummary[]
-  previewIds: number[]
-  singlePunkId?: number | null
   count: number
   error?: string
 }
@@ -123,9 +125,6 @@ export function buildPlaceOfferDraft(
   }
 
   const slotSummaries = built.map((slot) => slot.summary)
-  const previewIds = uniqueSortedIds(
-    built.flatMap((slot) => slot.summary.previewIds),
-  )
   const singleBuiltSlot = count === 1 ? built[0] : undefined
   const title =
     count === 1
@@ -138,12 +137,7 @@ export function buildPlaceOfferDraft(
     slots: built.map((slot) => slot.input),
     standard: slots[0]?.standard ?? DEFAULT_PLACE_OFFER_STANDARD,
     title,
-    summaryTitle: title,
-    summaryDetail: count === 1 ? (singleBuiltSlot?.summary.detail ?? '') : '',
     slotSummaries,
-    previewIds,
-    singlePunkId:
-      count === 1 ? (singleBuiltSlot?.summary.singlePunkId ?? null) : null,
     count,
   })
 }
@@ -174,9 +168,10 @@ function exactSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       label,
       title: `Punk #${punkId}`,
       detail: '',
+      displayKind: 'exact',
       targetMode: 'exact',
+      standard: slot.standard,
       previewIds: [punkId],
-      singlePunkId: punkId,
     },
   }
 }
@@ -223,11 +218,15 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
         title:
           includeIds.length === 1
             ? `Punk #${includeIds[0]}`
+            : OFFER_SLOT_TEXT.selectionOffer,
+        detail:
+          includeIds.length === 1
+            ? ''
             : `${includeIds.length.toLocaleString()} Punks`,
-        detail: '',
+        displayKind: 'selection',
         targetMode: 'traits',
+        standard: slot.standard,
         previewIds: includeIds,
-        singlePunkId: includeIds.length === 1 ? includeIds[0] : null,
       },
     }
   }
@@ -245,7 +244,9 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       label,
       title: text,
       detail: traitDetail(activeCount, includeIds.length, excludeIds.length),
+      displayKind: 'criteria',
       targetMode: 'traits',
+      standard: slot.standard,
       previewIds,
     },
   }
@@ -258,7 +259,9 @@ function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       label,
       title: OFFER_SLOT_TEXT.collectionOffer,
       detail: '',
+      displayKind: 'collection',
       targetMode: 'any',
+      standard: slot.standard,
       previewIds: [],
     },
   }
@@ -271,7 +274,9 @@ function invalidSlot(label: string, error: string): BuiltSlot {
       label,
       title: '',
       detail: '',
+      displayKind: 'collection',
       targetMode: 'any',
+      standard: DEFAULT_PLACE_OFFER_STANDARD,
       previewIds: [],
     },
     error,
@@ -298,11 +303,7 @@ function emptyDraft(
     slots: [],
     standard: DEFAULT_PLACE_OFFER_STANDARD,
     title: '',
-    summaryTitle: '',
-    summaryDetail: '',
     slotSummaries: [],
-    previewIds: [],
-    singlePunkId: null,
     count: context.count ?? 0,
     error,
   }

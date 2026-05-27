@@ -1,6 +1,6 @@
 <template>
   <div class="amount-step">
-    <OfferPlaceSummary
+    <OfferPlaceReview
       :draft="draft"
       :size="size"
     />
@@ -26,6 +26,6 @@ withDefaults(
   gap: 0;
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 </style>
