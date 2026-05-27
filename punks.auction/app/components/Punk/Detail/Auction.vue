@@ -3,133 +3,125 @@
     <section class="block">
       <h2 class="block-title eyebrow">Auction House Status</h2>
       <p
-        v-if="!deployed"
+        v-if="contextPending && isContextEmpty"
         class="block-note muted"
       >
-        <code>PunksAuction</code> is not deployed yet.
+        Loading…
       </p>
-      <template v-else>
-        <p
-          v-if="contextPending && isContextEmpty"
-          class="block-note muted"
-        >
-          Loading…
-        </p>
-        <div
-          v-else
-          class="auction-panel"
-        >
-          <dl class="state-grid">
-            <template v-if="topAuction">
-              <div class="state-cell">
-                <dt class="label">Top bid</dt>
-                <dd>
-                  <EthAmount :wei="topAuction.latestBidWei" />
-                </dd>
-              </div>
-
-              <div class="state-cell">
-                <dt class="label">Top bidder</dt>
-                <dd>
-                  <NuxtLink :to="`/profile/${topAuction.latestBidder}`">
-                    <Account :address="topAuction.latestBidder" />
-                  </NuxtLink>
-                </dd>
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="state-cell">
-                <dt class="label">Lot</dt>
-                <dd v-if="topLot">
-                  <EthAmount :wei="topLot.reserveWei" />
-                </dd>
-                <dd
-                  v-else
-                  class="muted"
-                >
-                  Not listed
-                </dd>
-              </div>
-
-              <div class="state-cell">
-                <dt class="label">Top offer</dt>
-                <dd v-if="topOffer">
-                  <EthAmount :wei="topOffer.amountWei" />
-                  <span class="dim"> by </span>
-                  <NuxtLink :to="`/profile/${topOffer.offerer}`">
-                    <Account :address="topOffer.offerer" />
-                  </NuxtLink>
-                </dd>
-                <dd
-                  v-else
-                  class="muted"
-                >
-                  None
-                </dd>
-              </div>
-            </template>
-          </dl>
-
-          <div
-            v-if="sortedPunkOffers.length"
-            class="context"
-          >
-            <div class="context-group">
-              <h3 class="context-title">Matching offers</h3>
-              <ul class="offer-list">
-                <li
-                  v-for="offer in sortedPunkOffers"
-                  :key="String(offer.id)"
-                >
-                  <NuxtLink
-                    class="offer-row"
-                    :to="`/purchase-offers/${offer.id}`"
-                  >
-                    <EthAmount :wei="offer.amountWei" />
-                    <span class="dim"> by </span>
-                    <Account :address="offer.offerer" />
-                  </NuxtLink>
-                </li>
-              </ul>
+      <div
+        v-else
+        class="auction-panel"
+      >
+        <dl class="state-grid">
+          <template v-if="topAuction">
+            <div class="state-cell">
+              <dt class="label">Top bid</dt>
+              <dd>
+                <EthAmount :wei="topAuction.latestBidWei" />
+              </dd>
             </div>
-          </div>
 
-          <div
-            v-if="punkAuctions.length || punkLots.length || canCreateLot"
-            class="actions"
-          >
-            <Button
-              v-for="auction in punkAuctions"
-              :key="`auction-${auction.id}`"
-              :to="`/auctions/${auction.id}`"
-              class="primary"
-            >
-              View auction
-            </Button>
-            <Button
-              v-for="lot in punkLots"
-              :key="`lot-${lot.id}`"
-              :to="`/lots/${lot.id}`"
-            >
-              View lot
-            </Button>
-            <LazyPunkDetailAuctionCreateLot
-              v-if="canCreateLot"
-              :punk-id="punkId"
-              :standard="standard"
-              @created="onCreated"
-            />
-            <LazyPunkDetailAuctionAcceptOffer
-              v-if="canCreateLot && topOffer"
-              :punk-id="punkId"
-              :standard="standard"
-              :offer="topOffer"
-              @changed="onCreated"
-            />
+            <div class="state-cell">
+              <dt class="label">Top bidder</dt>
+              <dd>
+                <NuxtLink :to="`/profile/${topAuction.latestBidder}`">
+                  <Account :address="topAuction.latestBidder" />
+                </NuxtLink>
+              </dd>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="state-cell">
+              <dt class="label">Lot</dt>
+              <dd v-if="topLot">
+                <EthAmount :wei="topLot.reserveWei" />
+              </dd>
+              <dd
+                v-else
+                class="muted"
+              >
+                Not listed
+              </dd>
+            </div>
+
+            <div class="state-cell">
+              <dt class="label">Top offer</dt>
+              <dd v-if="topOffer">
+                <EthAmount :wei="topOffer.amountWei" />
+                <span class="dim"> by </span>
+                <NuxtLink :to="`/profile/${topOffer.offerer}`">
+                  <Account :address="topOffer.offerer" />
+                </NuxtLink>
+              </dd>
+              <dd
+                v-else
+                class="muted"
+              >
+                None
+              </dd>
+            </div>
+          </template>
+        </dl>
+
+        <div
+          v-if="sortedPunkOffers.length"
+          class="context"
+        >
+          <div class="context-group">
+            <h3 class="context-title">Matching offers</h3>
+            <ul class="offer-list">
+              <li
+                v-for="offer in sortedPunkOffers"
+                :key="String(offer.id)"
+              >
+                <NuxtLink
+                  class="offer-row"
+                  :to="`/purchase-offers/${offer.id}`"
+                >
+                  <EthAmount :wei="offer.amountWei" />
+                  <span class="dim"> by </span>
+                  <Account :address="offer.offerer" />
+                </NuxtLink>
+              </li>
+            </ul>
           </div>
         </div>
-      </template>
+
+        <div
+          v-if="punkAuctions.length || punkLots.length || canCreateLot"
+          class="actions"
+        >
+          <Button
+            v-for="auction in punkAuctions"
+            :key="`auction-${auction.id}`"
+            :to="`/auctions/${auction.id}`"
+            class="primary"
+          >
+            View auction
+          </Button>
+          <Button
+            v-for="lot in punkLots"
+            :key="`lot-${lot.id}`"
+            :to="`/lots/${lot.id}`"
+          >
+            View lot
+          </Button>
+          <LazyPunkDetailAuctionCreateLot
+            v-if="canCreateLot"
+            :punk-id="punkId"
+            :standard="standard"
+            @created="onCreated"
+          />
+          <LazyPunkDetailAuctionAcceptOffer
+            v-if="canCreateLot && topOffer"
+            :punk-id="punkId"
+            :standard="standard"
+            :offer="topOffer"
+            @changed="onCreated"
+          />
+        </div>
+      </div>
     </section>
   </ClientOnly>
 </template>
@@ -151,7 +143,6 @@ const {
   punkLots,
   punkOffers,
   pending: contextPending,
-  deployed,
 } = usePunkAuctionContext(
   () => props.punkId,
   () => props.standard,
