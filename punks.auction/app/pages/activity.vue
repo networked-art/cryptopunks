@@ -1,12 +1,14 @@
 <template>
   <div class="container activity-page">
     <header class="page-head">
-      <h1>Activity</h1>
-      <p class="muted">
-        Every <code>CryptoPunks</code> market event — claims, transfers,
-        listings, bids, sales, and wraps — newest first.
-        <code>PunksAuction</code> activity joins here once it's live.
-      </p>
+      <div class="page-head-text">
+        <h1>Activity</h1>
+        <p class="muted">
+          Every <code>CryptoPunks</code> market event — claims, transfers,
+          listings, bids, sales, and wraps — newest first.
+          <code>PunksAuction</code> activity joins here once it's live.
+        </p>
+      </div>
     </header>
 
     <ClientOnly>

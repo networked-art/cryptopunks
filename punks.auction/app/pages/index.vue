@@ -46,7 +46,7 @@ defineOgImage('Default', {
 }
 
 .headline-em {
-  color: var(--accent-strong);
+  color: var(--accent);
 }
 
 .subline {

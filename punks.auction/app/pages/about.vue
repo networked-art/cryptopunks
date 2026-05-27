@@ -9,8 +9,14 @@
 
     <section class="about-section">
       <p>
-        <code>PunksAuction</code> is an ownerless smart contract that runs
-        24-hour auctions and native-ETH purchase offers for
+        <a
+          :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
+          target="_blank"
+          rel="noopener"
+          >PunksAuction.sol</a
+        >
+        is an ownerless smart contract that runs 24-hour auctions and native-ETH
+        purchase offers for
         <a
           href="https://evm.now/address/0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb"
           target="_blank"
@@ -25,10 +31,21 @@
       <p>
         A seller never hands custody to the auction house. Each seller keeps
         their Punks in their own <code>PunksVault</code>, deployed
-        deterministically through the <code>PunksVaultFactory</code>, and
-        approves <code>PunksAuction</code> as an operator. The auction pulls a
-        Punk out of the vault only at the moment a sale starts, into a dedicated
-        <code>PunksAuctionEscrow</code>, and settles from there.
+        deterministically through the
+        <a
+          :href="`https://evm.now/address/${PUNKS_VAULT_FACTORY_ADDRESS}/code`"
+          target="_blank"
+          rel="noopener"
+          ><code>PunksVaultFactory</code></a
+        >, and approves <code>PunksAuction</code> as an operator. The auction
+        pulls a Punk out of the vault only at the moment a sale starts, into a
+        dedicated
+        <a
+          :href="`https://evm.now/address/${PUNKS_AUCTION_ESCROW_ADDRESS}/code`"
+          target="_blank"
+          rel="noopener"
+          ><code>PunksAuctionEscrow</code></a
+        >, and settles from there.
       </p>
     </section>
 
@@ -66,31 +83,58 @@
     <section class="about-section">
       <h2 class="section-title eyebrow">The contracts</h2>
       <dl class="contract-meta">
-        <dt class="eyebrow">Punks Auction</dt>
+        <dt class="eyebrow">Auction</dt>
         <dd>
           <a
-            href="https://evm.now/address/0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b"
+            :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
+            target="_blank"
+            rel="noopener"
+            ><code>{{ PUNKS_AUCTION_ADDRESS }}</code></a
+          >
+        </dd>
+        <dt class="eyebrow">ENS</dt>
+        <dd>
+          <a
+            href="https://evm.now/address/punksauction.eth/code"
             target="_blank"
             rel="noopener"
             ><code>punksauction.eth</code></a
           >
         </dd>
-        <dt class="eyebrow">Punks Auction Escrow</dt>
+        <dt class="eyebrow">Escrow</dt>
         <dd>
           <a
-            href="https://evm.now/address/0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24"
+            :href="`https://evm.now/address/${PUNKS_AUCTION_ESCROW_ADDRESS}/code`"
+            target="_blank"
+            rel="noopener"
+            ><code>{{ PUNKS_AUCTION_ESCROW_ADDRESS }}</code></a
+          >
+        </dd>
+        <dt class="eyebrow">Escrow ENS</dt>
+        <dd>
+          <a
+            href="https://evm.now/address/escrow.punksauction.eth/code"
             target="_blank"
             rel="noopener"
             ><code>escrow.punksauction.eth</code></a
           >
         </dd>
-        <dt class="eyebrow">Punks Vault Factory</dt>
+        <dt class="eyebrow">Vault Factory</dt>
         <dd>
           <a
-            href="https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66"
+            :href="`https://evm.now/address/${PUNKS_VAULT_FACTORY_ADDRESS}/code`"
             target="_blank"
             rel="noopener"
-            ><code>punksvaultfactory.eth</code></a
+            ><code>{{ PUNKS_VAULT_FACTORY_ADDRESS }}</code></a
+          >
+        </dd>
+        <dt class="eyebrow">Docs</dt>
+        <dd>
+          <a
+            href="https://docs.punksmarket.app/sdk/offers-and-auctions"
+            target="_blank"
+            rel="noopener"
+            >offers and auctions</a
           >
         </dd>
       </dl>
@@ -99,6 +143,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_AUCTION_ESCROW_ADDRESS,
+  PUNKS_VAULT_FACTORY_ADDRESS,
+} from '~/utils/addresses'
+
 useSeoMeta({
   title: 'About · Punks Auction',
   ogTitle: 'About · Punks Auction',
@@ -146,6 +196,10 @@ defineOgImage('Default', {
 .contract-meta dd {
   margin: 0;
   min-width: 0;
+}
+
+.contract-meta dd code {
+  word-break: break-all;
 }
 
 .credit {

@@ -92,47 +92,6 @@ const sortedOffers = computed(() =>
   min-width: 0;
 }
 
-.page-head-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  min-width: 0;
-}
-
-.page-head-text > h1 {
-  margin: 0;
-}
-
-.page-head-text > .muted {
-  margin: 0;
-}
-
-.page-head-action {
-  overflow: hidden;
-}
-
-.label-short {
-  display: none;
-}
-
-@media (max-width: 860px) {
-  .page-head {
-    align-items: center;
-  }
-
-  .page-head-text > .muted {
-    display: none;
-  }
-
-  .label-full {
-    display: none;
-  }
-
-  .label-short {
-    display: inline;
-  }
-}
-
 .state {
   margin: 0;
 }
