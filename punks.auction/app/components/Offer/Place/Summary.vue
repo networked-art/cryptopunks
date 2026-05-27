@@ -2,6 +2,7 @@
   <section
     v-if="hasSummary"
     class="offer-summary"
+    :class="{ 'is-summary-grid': isSummaryGrid }"
   >
     <div
       v-if="hasCopy"
@@ -93,6 +94,12 @@ const singlePunkId = computed(() => props.draft.singlePunkId ?? null)
 const singleSlotSummary = computed(() =>
   slotSummaries.value.length === 1 ? slotSummaries.value[0] : null,
 )
+const isSummaryGrid = computed(
+  () =>
+    !showSlots.value &&
+    singlePunkId.value === null &&
+    summaryPreviewIds.value.length > 0,
+)
 const singlePreviewSize = computed(() => props.size * 3)
 const slotPreviewSize = computed(() =>
   Math.max(24, Math.round((props.size * 2) / 3 / 24) * 24),
@@ -128,6 +135,12 @@ function slotPreviewIds(slot: PlaceOfferSlotSummary) {
   gap: var(--size-4);
   padding-block: var(--size-4);
   border-bottom: var(--border);
+}
+
+.offer-summary.is-summary-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-bottom: 0;
 }
 
 .summary-copy {
@@ -219,6 +232,11 @@ function slotPreviewIds(slot: PlaceOfferSlotSummary) {
 .summary-preview {
   max-block-size: calc(var(--form-item-height) * 8);
   min-height: 0;
+}
+
+.offer-summary.is-summary-grid .summary-preview {
+  flex: 1 1 auto;
+  max-block-size: none;
 }
 
 .single-preview {
