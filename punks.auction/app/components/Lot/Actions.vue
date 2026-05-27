@@ -1,25 +1,6 @@
 <template>
   <ClientOnly>
     <section class="actions-stack">
-      <template v-if="isSeller">
-        <div class="action-block">
-          <h3 class="action-title">Manage lot</h3>
-          <p class="block-note muted">
-            Update the reserve, restrict the initial buyer, or cancel the lot.
-          </p>
-
-          <div class="button-row">
-            <Button @click="openUpdateDialog">Update Lot</Button>
-            <Button @click="openCancelDialog">Cancel Lot</Button>
-          </div>
-        </div>
-
-        <div
-          class="action-divider"
-          aria-hidden="true"
-        />
-      </template>
-
       <div class="action-block">
         <p class="block-note muted">
           Start a 24-hour auction with an opening bid of
@@ -115,7 +96,9 @@
                 v-if="!address"
                 class="connect-row"
               >
-                <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+                <EvmConnectDialog class-name="primary"
+                  >Connect</EvmConnectDialog
+                >
                 <span class="muted">Connect a wallet to use the offer.</span>
               </div>
 
@@ -140,6 +123,24 @@
             </li>
           </ul>
         </div>
+      </template>
+
+      <template v-if="isSeller">
+        <div class="action-block">
+          <p class="block-note muted">
+            Update the reserve, restrict the initial buyer, or cancel the lot.
+          </p>
+
+          <div class="button-row">
+            <Button @click="openUpdateDialog">Update Lot</Button>
+            <Button @click="openCancelDialog">Cancel Lot</Button>
+          </div>
+        </div>
+
+        <div
+          class="action-divider"
+          aria-hidden="true"
+        />
       </template>
 
       <Dialog
@@ -460,7 +461,7 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 .actions-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--size-3);
+  gap: var(--size-6);
 }
 
 .block-note,
