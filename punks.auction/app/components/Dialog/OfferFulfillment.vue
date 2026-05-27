@@ -142,11 +142,13 @@ const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
 const transactionFlow = useTransactionFlowRunner({
   onComplete: (tx) => emit('changed', tx),
-  onError: (message) => {
-    error.value = message
+  onError: (message, source) => {
+    if (source === 'transaction') return
+
     if (decisionStep.value === 'idle') {
-      decisionStep.value = 'empty'
-      emptyMessage.value = message
+      showEmpty(message)
+    } else {
+      error.value = message
     }
   },
 })
