@@ -206,6 +206,7 @@ const { address } = useConnection()
 const renderV1 = useV1Rendering()
 const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
+const { lots, refresh: refreshLots } = useLots()
 
 const standard = ref<StandardDraft>('cryptopunks')
 const selectedPunkIds = ref<number[]>([])
@@ -225,11 +226,29 @@ const tokenStandard = computed(() =>
 
 const inventoryLoading = computed(() => inventory.loading.value)
 
-const eligibleItems = computed(() =>
+const lockedLotKeys = computed(() => {
+  const keys = new Set<string>()
+  for (const lot of lots.value) {
+    for (const item of lot.items) keys.add(`${item.standard}-${item.punkId}`)
+  }
+  return keys
+})
+
+const inventoryForStandard = computed(() =>
   inventory.items.value.filter(
     (item) =>
       item.standard === tokenStandard.value && item.custody !== 'unsupported',
   ),
+)
+
+const eligibleItems = computed(() =>
+  inventoryForStandard.value.filter(
+    (item) => !lockedLotKeys.value.has(`${item.standard}-${item.punkId}`),
+  ),
+)
+
+const lockedInLotsCount = computed(
+  () => inventoryForStandard.value.length - eligibleItems.value.length,
 )
 
 const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
@@ -265,6 +284,7 @@ const {
     reserveEth.value = ''
     onlySellTo.value = ''
     void inventory.refresh()
+    void refreshLots()
   },
 })
 
@@ -323,19 +343,28 @@ const canCreate = computed(
 
 const errorMessage = computed(() => buildError.value ?? txError.value)
 
+const lockedNote = computed(() => {
+  const n = lockedInLotsCount.value
+  if (n === 0) return ''
+  return ` ${n} ${n === 1 ? 'Punk is' : 'Punks are'} already in an active lot.`
+})
+
 const pickerHint = computed(() => {
   if (!address.value) return 'Connect a wallet to pick Punks.'
   if (inventoryLoading.value) return 'Loading your Punks…'
   if (pickerIds.value.length === 0) {
+    if (lockedInLotsCount.value > 0) {
+      return 'All your eligible Punks are already in active lots.'
+    }
     return 'No eligible CryptoPunks in your wallet, vault, or stash.'
   }
   if (selectedItems.value.length === 0) {
-    return `Pick up to ${MAX_LOT_ITEMS} Punks for the lot.`
+    return `Pick up to ${MAX_LOT_ITEMS} Punks for the lot.${lockedNote.value}`
   }
   if (selectedItems.value.length >= MAX_LOT_ITEMS) {
     return `Lot is full (${MAX_LOT_ITEMS} Punks).`
   }
-  return `Add another Punk — up to ${MAX_LOT_ITEMS} per lot.`
+  return `Add another Punk — up to ${MAX_LOT_ITEMS} per lot.${lockedNote.value}`
 })
 
 const pickerLead = computed(
