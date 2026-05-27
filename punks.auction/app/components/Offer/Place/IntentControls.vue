@@ -5,7 +5,7 @@
         type="button"
         class="unstyled intent-option"
         :class="{ selected: quantityMode === 'one' }"
-        @click="quantityMode = 'one'"
+        @click="selectQuantityMode('one')"
       >
         One Punk
       </button>
@@ -18,7 +18,7 @@
           type="button"
           class="unstyled intent-option slot-trigger"
           :class="{ selected: quantityMode === 'multiple' }"
-          @click="quantityMode = 'multiple'"
+          @click="selectQuantityMode('multiple')"
         >
           Multiple Punks
         </button>
@@ -64,11 +64,19 @@ const quantityMode = defineModel<PlaceOfferQuantityMode>('quantityMode', {
   required: true,
 })
 const slotCount = defineModel<number>('slotCount', { required: true })
+const emit = defineEmits<{
+  restart: []
+}>()
 const slotCountText = ref(String(slotCount.value))
 
 watch(slotCount, (value) => {
   slotCountText.value = String(value)
 })
+
+function selectQuantityMode(mode: PlaceOfferQuantityMode) {
+  quantityMode.value = mode
+  emit('restart')
+}
 
 function updateSlotCountText(value: string) {
   slotCountText.value = value.replace(/\D/g, '')
@@ -78,13 +86,19 @@ function updateSlotCountText(value: string) {
     next >= props.minSlots &&
     next <= props.maxSlots
   ) {
-    slotCount.value = Math.trunc(next)
+    updateSlotCount(Math.trunc(next))
   }
 }
 
 function commitSlotCount() {
-  slotCount.value = clampSlotCount(slotCountText.value)
+  updateSlotCount(clampSlotCount(slotCountText.value))
   slotCountText.value = String(slotCount.value)
+}
+
+function updateSlotCount(next: number) {
+  if (slotCount.value === next) return
+  slotCount.value = next
+  emit('restart')
 }
 
 function clampSlotCount(value: string | number) {

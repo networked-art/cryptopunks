@@ -6,6 +6,7 @@
         v-model:slot-count="slotCount"
         :min-slots="PLACE_OFFER_MIN_MULTI_SLOTS"
         :max-slots="PLACE_OFFER_MAX_SLOTS"
+        @restart="resetIntentDraft"
       />
 
       <OfferPlaceActionCard
@@ -277,25 +278,6 @@ const visibleError = computed(() => {
   return null
 })
 
-watch(
-  quantityMode,
-  (quantity) => {
-    error.value = null
-    ensureSlotDrafts(activeSlotCount.value, { trim: quantity === 'one' })
-    activeSlotIndex.value = 0
-    actionStep.value = 'target'
-  },
-  { flush: 'sync' },
-)
-
-watch(slotCount, (count) => {
-  if (quantityMode.value !== 'multiple') return
-  ensureSlotDrafts(count)
-  if (activeSlotIndex.value >= count) {
-    activeSlotIndex.value = Math.max(0, count - 1)
-  }
-})
-
 function actPrimary() {
   error.value = null
 
@@ -427,6 +409,15 @@ function resetFlow() {
   slotDrafts.value = [createPlaceOfferSlotDraft()]
 }
 
+function resetIntentDraft() {
+  actionStep.value = 'target'
+  amountEth.value = ''
+  amountWei.value = null
+  error.value = null
+  activeSlotIndex.value = 0
+  slotDrafts.value = createSlotDrafts(activeSlotCount.value)
+}
+
 function targetStepTitle() {
   return quantityMode.value === 'multiple'
     ? itemLabel(activeSlotIndex.value)
@@ -482,16 +473,14 @@ function validateDraftSlots(value: PlaceOfferDraft) {
   }
 }
 
-function ensureSlotDrafts(count: number, options: { trim?: boolean } = {}) {
+function createSlotDrafts(count: number) {
   const nextCount = Math.min(
     PLACE_OFFER_MAX_SLOTS,
     Math.max(1, Math.trunc(count)),
   )
-  if (!options.trim && slotDrafts.value.length >= nextCount) return
-  if (slotDrafts.value.length === nextCount) return
-  slotDrafts.value = Array.from(
+  return Array.from(
     { length: nextCount },
-    (_, index) => slotDrafts.value[index] ?? createPlaceOfferSlotDraft(),
+    () => createPlaceOfferSlotDraft(),
   )
 }
 </script>
