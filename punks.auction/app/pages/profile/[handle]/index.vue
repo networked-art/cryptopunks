@@ -5,7 +5,45 @@
       class="profile-cols"
     >
       <section class="profile-section">
-        <h2 class="section-title eyebrow">Owned Punks</h2>
+        <h2 class="section-title eyebrow">Stats</h2>
+        <dl class="stats-list">
+          <div class="stat-row">
+            <dt>Last active</dt>
+            <dd>{{ lastActiveLabel }}</dd>
+          </div>
+          <div class="stat-row">
+            <dt>Bought</dt>
+            <dd>
+              <EthAmount
+                v-if="stats.totalSpentWei > 0n"
+                :wei="stats.totalSpentWei"
+              />
+              <span
+                v-else
+                class="muted"
+                >—</span
+              >
+            </dd>
+          </div>
+          <div class="stat-row">
+            <dt>Sold</dt>
+            <dd>
+              <EthAmount
+                v-if="stats.totalEarnedWei > 0n"
+                :wei="stats.totalEarnedWei"
+              />
+              <span
+                v-else
+                class="muted"
+                >—</span
+              >
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="profile-section">
+        <h2 class="section-title eyebrow">{{ ownedTitle }}</h2>
         <p
           v-if="ownedLoading"
           class="muted"
@@ -111,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Address } from 'viem'
 import {
   auctionStatus,
   type AuctionRecord,
@@ -137,6 +176,11 @@ const breakdownLabel = computed(() => {
   return parts.join(' · ')
 })
 
+const ownedTitle = computed(() => {
+  const count = owned.value.length
+  return `${count} Owned ${count === 1 ? 'Punk' : 'Punks'}`
+})
+
 const { events: activity } = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { auctions } = useAuctions()
@@ -158,7 +202,22 @@ const ownerAddresses = computed(() => {
   return set
 })
 
-const ownerAddressList = computed(() => [...ownerAddresses.value])
+const ownerAddressList = computed(
+  () => [...ownerAddresses.value] as Address[],
+)
+
+const { stats } = useAccountStats({
+  addresses: ownerAddressList,
+  eoa: profileAddress,
+})
+
+const lastActiveIso = computed(() =>
+  stats.value.lastActiveAt
+    ? new Date(stats.value.lastActiveAt * 1000).toISOString()
+    : undefined,
+)
+const lastActiveAgo = useTimeAgo(lastActiveIso)
+const lastActiveLabel = computed(() => lastActiveAgo.value || '—')
 
 const myLots = computed(() => {
   const addrs = ownerAddresses.value
@@ -231,6 +290,37 @@ const myOffers = computed(() => {
 
 .section-title {
   margin: 0;
+}
+
+.stats-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: var(--border);
+  background: var(--bg-elevated);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--size-3);
+  padding: var(--size-2) var(--size-3);
+  border-bottom: var(--border);
+}
+
+.stat-row:last-child {
+  border-bottom: 0;
+}
+
+.stat-row dt {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.stat-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .card-grid {
