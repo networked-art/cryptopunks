@@ -1,5 +1,5 @@
 const siteDescription =
-  'Zero-fee auction house for CryptoPunks — 24h auctions, multi-Punk lots, and native-ETH purchase offers.'
+  '24-hour auctions. Zero fees. Real price discovery. CryptoPunks.'
 
 // Matches the gate in `app.config.ts` — dev-only entries only ship when
 // Nuxt explicitly sets NODE_ENV=development (via `overrideEnv` in `nuxt dev`).
