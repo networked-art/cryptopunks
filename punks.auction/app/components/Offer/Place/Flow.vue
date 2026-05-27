@@ -91,9 +91,17 @@
 </template>
 
 <script setup lang="ts">
-import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import {
+  punksAuctionAbi,
+  type ContractWritePlan,
+} from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
-import { parseEther, type Hash, type TransactionReceipt } from 'viem'
+import {
+  decodeEventLog,
+  parseEther,
+  type Hash,
+  type TransactionReceipt,
+} from 'viem'
 import {
   PLACE_OFFER_MAX_SLOTS,
   PLACE_OFFER_MIN_MULTI_SLOTS,
@@ -106,6 +114,10 @@ import {
 } from '~/composables/usePlaceOfferDraft'
 
 type ActionStep = 'target' | 'amount'
+type PlaceOfferResult = {
+  tx: Hash
+  offerId: bigint | null
+}
 
 withDefaults(
   defineProps<{
@@ -114,7 +126,7 @@ withDefaults(
   { size: 72 },
 )
 const emit = defineEmits<{
-  placed: [tx: Hash]
+  placed: [result: PlaceOfferResult]
 }>()
 
 const { sdk } = usePunksSdk()
@@ -340,8 +352,30 @@ function actPlace() {
 }
 
 function onComplete(receipt: TransactionReceipt) {
+  const offerId = offerIdFromReceipt(receipt)
   resetFlow()
-  emit('placed', receipt.transactionHash as Hash)
+  emit('placed', {
+    tx: receipt.transactionHash as Hash,
+    offerId,
+  })
+}
+
+function offerIdFromReceipt(receipt: TransactionReceipt) {
+  for (const log of receipt.logs) {
+    try {
+      const decoded = decodeEventLog({
+        abi: punksAuctionAbi,
+        data: log.data,
+        topics: log.topics,
+      })
+      if (decoded.eventName === 'OfferPlaced') {
+        return (decoded.args as { offerId: bigint }).offerId
+      }
+    } catch {
+      // log is not from PunksAuction
+    }
+  }
+  return null
 }
 
 function resetFlow() {

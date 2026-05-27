@@ -5,7 +5,12 @@
 <script setup lang="ts">
 import type { Hash } from 'viem'
 
+type PlaceOfferResult = {
+  tx: Hash
+  offerId: bigint | null
+}
+
 const emit = defineEmits<{
-  placed: [tx: Hash]
+  placed: [result: PlaceOfferResult]
 }>()
 </script>

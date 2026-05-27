@@ -14,10 +14,11 @@
     <OfferPlaceFlow @placed="onPlaced" />
 
     <p
-      v-if="lastTx"
+      v-if="fallbackTx"
       class="success"
     >
-      Offer submitted: <code>{{ lastTx }}</code>
+      Offer submitted. <NuxtLink to="/purchase-offers">View offers</NuxtLink>
+      <code>{{ fallbackTx }}</code>
     </p>
   </div>
 </template>
@@ -25,10 +26,20 @@
 <script setup lang="ts">
 import type { Hash } from 'viem'
 
-const lastTx = ref<Hash | null>(null)
+type PlaceOfferResult = {
+  tx: Hash
+  offerId: bigint | null
+}
 
-function onPlaced(tx: Hash) {
-  lastTx.value = tx
+const router = useRouter()
+const fallbackTx = ref<Hash | null>(null)
+
+function onPlaced(result: PlaceOfferResult) {
+  if (result.offerId !== null) {
+    void router.replace(`/purchase-offers/${result.offerId}`)
+    return
+  }
+  fallbackTx.value = result.tx
 }
 
 useSeoMeta({
@@ -59,5 +70,13 @@ useSeoMeta({
   margin: 0;
   color: var(--text);
   font-size: var(--font-sm);
+}
+
+.success a {
+  margin-inline: var(--size-1);
+}
+
+.success code {
+  color: var(--text-muted);
 }
 </style>
