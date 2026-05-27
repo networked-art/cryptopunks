@@ -3,20 +3,7 @@
     <aside class="stage">
       <div class="stage-inner">
         <figure class="frame">
-          <div
-            v-if="coverIcon"
-            class="cover-symbol"
-            aria-hidden="true"
-          >
-            <Icon
-              class="cover-icon"
-              :name="coverIcon"
-            />
-          </div>
-          <LotPreview
-            v-else
-            :items="items"
-          />
+          <LotPreview :items="items" />
         </figure>
       </div>
     </aside>
@@ -36,7 +23,6 @@ import type { LotItem } from '~/utils/auction'
 
 defineProps<{
   items: LotItem[]
-  coverIcon?: string
 }>()
 </script>
 
@@ -68,23 +54,6 @@ defineProps<{
 .frame {
   width: min(520px, 42vw, 62vh);
   margin: 0;
-}
-
-.cover-symbol {
-  display: grid;
-  place-items: center;
-  inline-size: 100%;
-  aspect-ratio: 1 / 1.24;
-  padding: var(--preview-inset, 19%);
-  color: var(--text-muted);
-  background: white;
-  box-shadow: var(--shadow, 0 6px 16px rgb(10 10 18 / 8%));
-}
-
-.cover-icon {
-  inline-size: 46%;
-  block-size: 46%;
-  stroke-width: 1.5;
 }
 
 .panel {

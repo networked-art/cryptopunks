@@ -9,6 +9,7 @@ import {
   countOfferSlotMatches,
   offerSlotDetail,
   offerSlotExactItem,
+  offerSlotFallbackIcon,
   offerSlotIncludedItems,
   offerSlotTitle,
   standardQualifier,
@@ -20,6 +21,7 @@ export type OfferCardThumb = OfferSlotPreviewItem
 export type OfferCardTarget = {
   title: string
   detail: string
+  icon?: string
   thumbs: OfferCardThumb[]
 }
 
@@ -47,6 +49,7 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
       return {
         title: offerSlotTitle(slot, offline),
         detail: offerSlotDetail(slot, countOfferSlotMatches(slot, offline)),
+        icon: offerSlotFallbackIcon(slot),
         thumbs: filterIsEmpty(slot.criteria)
           ? offerSlotIncludedItems(slot)
           : [],

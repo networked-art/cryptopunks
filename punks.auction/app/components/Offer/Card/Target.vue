@@ -10,7 +10,7 @@
       <Icon
         v-else
         class="target-icon"
-        name="lucide:list-filter"
+        :name="target.icon ?? 'lucide:list-filter'"
       />
     </div>
 

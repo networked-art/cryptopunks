@@ -30,12 +30,16 @@ export type OfferSlotDisplay = {
   detail: string
   detailParts: OfferSlotDetailPart[]
   href?: string
+  icon: string
   previewItems: OfferSlotPreviewItem[]
 }
 
 type OfferSlotDisplayOptions = {
   previewLimit?: number
 }
+
+export const OFFER_SLOT_COLLECTION_ICON = 'lucide:grid-3x3'
+export const OFFER_SLOT_TRAIT_ICON = 'lucide:list-filter'
 
 export function offerSlotDisplay(
   slot: OfferSlot,
@@ -52,11 +56,8 @@ export function offerSlotDisplay(
     detail: offerSlotDetail(slot, matchCount),
     detailParts: offerSlotDetailParts(slot, matchCount, offline),
     href: offerSlotHref(slot),
-    previewItems: offerSlotPreviewItems(
-      slot,
-      matches ?? [],
-      options.previewLimit ?? 4,
-    ),
+    icon: offerSlotFallbackIcon(slot),
+    previewItems: offerSlotPreviewItems(slot, options.previewLimit ?? 4),
   }
 }
 
@@ -86,6 +87,14 @@ export function countOfferSlotMatches(
   offline: PunksSdk,
 ): number | undefined {
   return searchOfferSlot(slot, offline)?.length
+}
+
+export function offerSlotFallbackIcon(
+  slot: Pick<OfferSlot, 'criteria'>,
+): string {
+  return filterIsEmpty(slot.criteria)
+    ? OFFER_SLOT_COLLECTION_ICON
+    : OFFER_SLOT_TRAIT_ICON
 }
 
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
@@ -131,10 +140,9 @@ export function standardQualifier(standard: TokenStandardValue) {
 
 function offerSlotPreviewItems(
   slot: OfferSlot,
-  matches: readonly number[],
   limit: number,
 ): OfferSlotPreviewItem[] {
-  const ids = filterIsEmpty(slot.criteria) ? matches : []
+  const ids = filterIsEmpty(slot.criteria) ? slot.includeIds : []
   return ids.slice(0, limit).map((punkId) => ({
     punkId,
     standard: slot.standard,

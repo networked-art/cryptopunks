@@ -10,7 +10,7 @@
     <Icon
       v-else
       class="slot-icon"
-      name="lucide:list-filter"
+      :name="row.icon"
     />
   </div>
 

@@ -2,7 +2,6 @@
   <LotDetailShell
     v-if="validId && offer"
     :items="previewItems"
-    :cover-icon="coverIcon"
   >
     <header class="head">
       <span class="eyebrow">Offer #{{ offer.id }}</span>
@@ -111,14 +110,6 @@ const previewItems = computed<LotItem[]>(() => {
     ...item,
     weightBps: weights[index] ?? 0,
   }))
-})
-
-const coverIcon = computed(() => {
-  const current = offer.value
-  if (!current || current.slots.length !== 1) return undefined
-
-  const [slot] = current.slots
-  return slot && !filterIsEmpty(slot.criteria) ? 'lucide:list-filter' : undefined
 })
 
 const matchingLots = computed(() => {
