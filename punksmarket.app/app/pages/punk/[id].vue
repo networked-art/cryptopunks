@@ -144,7 +144,7 @@
         </div>
         <div
           v-else
-          class="bid-grid"
+          class="bid-list"
         >
           <BidCard
             v-for="b in matchingBids"
@@ -489,10 +489,13 @@ function searchHref(text: string) {
   color: var(--text-muted);
 }
 
-.bid-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--size-3);
+.bid-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elevated);
 }
 
 .event-list {

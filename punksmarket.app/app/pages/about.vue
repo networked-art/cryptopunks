@@ -290,7 +290,6 @@ code {
   background: var(--bg-elevated);
   color: var(--text-muted);
   padding: 1px 6px;
-  border-radius: 3px;
   font-size: 12px;
 }
 

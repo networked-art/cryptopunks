@@ -78,7 +78,7 @@
           <h2 class="section-title">Collection bids placed</h2>
           <div
             v-if="bids.length"
-            class="bid-grid"
+            class="bid-list"
           >
             <BidCard
               v-for="b in bids"
@@ -249,10 +249,13 @@ const viewerOwnedAddress = computed<Address | null>(() => {
   color: var(--text-muted);
 }
 
-.bid-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--size-3);
+.bid-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elevated);
 }
 
 .event-list {
@@ -273,7 +276,6 @@ code {
   font-family: var(--font-mono);
   background: var(--bg-elevated);
   padding: 1px 6px;
-  border-radius: 3px;
   font-size: 11px;
 }
 </style>

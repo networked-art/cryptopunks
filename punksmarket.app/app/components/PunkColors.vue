@@ -66,7 +66,6 @@ function stripHexPrefix(hex: string) {
   width: 14px;
   height: 14px;
   border: var(--border);
-  border-radius: 2px;
 }
 
 .swatch:hover {

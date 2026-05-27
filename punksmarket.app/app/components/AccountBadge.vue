@@ -33,7 +33,6 @@ const dotColor = computed(() => `#${props.address.slice(2, 8)}`)
   gap: 6px;
   font-size: 12px;
   padding: 2px 8px;
-  border-radius: 99px;
   background: var(--tag-background);
   box-shadow: var(--border-shadow);
   color: var(--text);
@@ -43,7 +42,6 @@ const dotColor = computed(() => `#${props.address.slice(2, 8)}`)
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 

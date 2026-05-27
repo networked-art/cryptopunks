@@ -192,7 +192,6 @@ function scheduleBurst() {
   position: relative;
   display: inline-block;
   overflow: hidden;
-  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 

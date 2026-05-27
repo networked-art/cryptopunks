@@ -1,53 +1,71 @@
 <template>
-  <article class="bid-card">
-    <header class="bid-head">
-      <span class="bid-id">#{{ bid.id }}</span>
-      <span class="muted bid-block">block {{ bid.placedAtBlock }}</span>
-    </header>
+  <article
+    class="bid-card"
+    :class="{ 'bid-card-own': isOwnBid }"
+  >
+    <NuxtLink
+      v-if="display.matchesLink"
+      class="bid-link"
+      :to="display.matchesLink"
+      :aria-label="`See ${display.matchCount?.toLocaleString() ?? 'all'} punks matching bid ${bid.id}`"
+    />
 
-    <div class="bid-amount">
+    <div class="bid-preview">
+      <PunkMosaic
+        v-if="display.previewIds.length"
+        :ids="display.previewIds"
+        :total="display.matchCount ?? undefined"
+      />
+      <div
+        v-else
+        class="bid-preview-fallback"
+        aria-hidden="true"
+      >
+        <Icon name="lucide:hash" />
+      </div>
+    </div>
+
+    <div class="bid-target">
+      <span class="bid-title">{{ display.title }}</span>
+      <span
+        v-if="display.description"
+        class="bid-description"
+        >{{ display.description }}</span
+      >
+      <span
+        v-if="matchCountLabel"
+        class="bid-matches"
+        >{{ matchCountLabel }}</span
+      >
+    </div>
+
+    <div class="bid-meta">
       <EthAmount
+        class="bid-amount"
         :wei="bid.bidWei"
-        :precision="6"
+        :precision="4"
       />
       <span
         v-if="bid.settlementWei > 0n"
-        class="muted bid-settlement"
+        class="bid-settlement"
       >
         +<EthAmount
           :wei="bid.settlementWei"
-          :precision="6"
+          :precision="4"
         />
         settlement
       </span>
-    </div>
-
-    <div class="bid-bidder">
-      <NuxtLink :to="`/profile/${bid.bidder}`">
+      <NuxtLink
+        class="bid-bidder"
+        :to="`/profile/${bid.bidder}`"
+      >
         <AccountBadge :address="bid.bidder" />
       </NuxtLink>
     </div>
 
-    <div
-      v-if="matchCount !== null"
-      class="bid-matches"
-    >
-      <NuxtLink
-        v-if="matchesLink"
-        class="muted matches-link"
-        :to="matchesLink"
-        >{{ matchingPunksLabel }}</NuxtLink
-      >
-      <span
-        v-else
-        class="muted matches-link"
-        >{{ matchingPunksLabel }}</span
-      >
-    </div>
-
     <Actions
       v-if="isOwnBid"
-      class="left card-actions"
+      class="bid-actions"
     >
       <BidAdjustForm
         :bid="bid"
@@ -76,11 +94,7 @@
 <script setup lang="ts">
 import type { Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
-import { formatSearchText } from '@networked-art/punks-sdk'
-import {
-  bidToQuery,
-  type CollectionBid,
-} from '~/composables/usePunksMarketBids'
+import type { CollectionBid } from '~/composables/usePunksMarketBids'
 
 const props = defineProps<{ bid: CollectionBid }>()
 const emit = defineEmits<{
@@ -88,16 +102,31 @@ const emit = defineEmits<{
   adjusted: [tx: Hash]
 }>()
 
-const offline = usePunksOffline()
 const { address } = useConnection()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
+
+const display = useBidDisplay(() => props.bid)
 
 const isOwnBid = computed(
   () =>
     !!address.value &&
     address.value.toLowerCase() === props.bid.bidder.toLowerCase(),
 )
+
+/// "N matching" reads as redundant when the title is "Punk #X" (count=1) or
+/// "N specific punks" (count=N); in those cases the include-id list is the
+/// matching set itself. Suppress the label whenever the bid pins specific
+/// punks without extra criteria.
+const matchCountLabel = computed(() => {
+  const count = display.value.matchCount
+  if (count === null || display.value.isExact) return null
+  const pinned =
+    props.bid.includeIds.length > 0 &&
+    props.bid.includeIds.length === count
+  if (pinned) return null
+  return `${count.toLocaleString()} matching`
+})
 
 const dialogText = {
   title: { confirm: 'Withdraw bid', waiting: 'Withdrawing bid' },
@@ -116,92 +145,166 @@ function onWithdrawn(receipt: { transactionHash: Hash }) {
 function onAdjusted(tx: Hash) {
   emit('adjusted', tx)
 }
-
-const matchCount = computed(() => {
-  try {
-    return offline.count(bidToQuery(props.bid))
-  } catch {
-    return null
-  }
-})
-
-const matchingPunksLabel = computed(() => {
-  const count = matchCount.value
-  if (count === null) return ''
-  return `${count.toLocaleString()} matching punk${count === 1 ? '' : 's'}`
-})
-
-/// Rebuild the front-end search query string that selects the same punks
-/// this bid covers. An empty result means the bid imposes no filter — link
-/// to the unfiltered grid instead of `/?q=`. Filters with features the
-/// text grammar can't express (forbidden masks, exotic any-of groups)
-/// throw and leave the link unrendered.
-const matchesLink = computed(() => {
-  try {
-    const q = formatSearchText(offline.dataset.source, {
-      criteria: props.bid.criteria,
-      includeIds: props.bid.includeIds,
-      excludeIds: props.bid.excludeIds,
-    })
-    return q ? { path: '/', query: { q } } : { path: '/' }
-  } catch {
-    return null
-  }
-})
 </script>
 
 <style scoped>
 .bid-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  padding: var(--size-3);
-  border: var(--border);
-  border-radius: var(--radius);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: var(--preview-size) minmax(0, 1fr) max-content;
+  grid-template-rows: minmax(var(--preview-size), auto) auto;
+  grid-template-areas:
+    'preview target meta'
+    'preview actions actions';
+  align-items: center;
+  gap: var(--size-2) var(--size-4);
+  padding: var(--size-3) var(--size-4);
   background: var(--bg-elevated);
-  transition: border-color 0.1s;
+  border-bottom: 1px solid var(--border-color);
+  --preview-size: 48px;
+  transition: background 0.1s ease;
+}
+
+.bid-card:last-child {
+  border-bottom-color: transparent;
 }
 
 .bid-card:hover {
-  border-color: var(--accent-soft);
+  background: var(--bg);
 }
 
-.bid-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
+.bid-card-own {
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.bid-id {
+/* Full-bleed link covers the row so anywhere outside an interactive child is
+ * a click-target for the matching-punks search. Actions, account badge, and
+ * any other link sit above via z-index. */
+.bid-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  cursor: pointer;
+}
+
+.bid-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.bid-preview {
+  grid-area: preview;
+  inline-size: var(--preview-size);
+  pointer-events: none;
+}
+
+.bid-preview-fallback {
+  inline-size: var(--preview-size);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+  font-size: 22px;
 }
 
-.bid-amount {
-  font-size: 18px;
+.bid-target {
+  grid-area: target;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.bid-title {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bid-description {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bid-matches {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bid-meta {
+  grid-area: meta;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.bid-amount {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.bid-amount :deep(.unit) {
+  font-size: 0.75em;
 }
 
 .bid-settlement {
-  font-size: 11px;
-}
-
-.matches-link {
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.bid-bidder {
+  margin-top: 4px;
   border: 0;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
 }
 
-.matches-link:hover {
-  color: var(--accent-strong);
+.bid-bidder:hover {
+  opacity: 0.85;
 }
 
-.card-actions {
-  border-top: 1px solid var(--border-color);
-  padding: var(--size-3);
-  margin: var(--size-1) calc(-1 * var(--size-3)) calc(-1 * var(--size-3));
+.bid-actions {
+  grid-area: actions;
+  justify-self: end;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+@media (max-width: 600px) {
+  .bid-card {
+    grid-template-columns: var(--preview-size) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'preview target'
+      'preview meta'
+      'actions actions';
+    align-items: start;
+  }
+
+  .bid-meta {
+    align-items: flex-start;
+  }
 }
 </style>

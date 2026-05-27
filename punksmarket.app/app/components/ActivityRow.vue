@@ -96,7 +96,7 @@ const sameParties = computed(
     props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
 
-const SPRITE_SIZE = 44
+const SPRITE_SIZE = 48
 const spriteLayers = usePunkSpriteLayers()
 
 const spriteStyle = computed(() => {
@@ -182,18 +182,16 @@ const KIND_LABEL: Record<string, string> = {
 .thumb-sprite {
   image-rendering: pixelated;
   background-repeat: no-repeat;
-  border-radius: 3px;
 }
 
 .thumb-bid {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-elevated);
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
   color: var(--text-dim);
 }
 

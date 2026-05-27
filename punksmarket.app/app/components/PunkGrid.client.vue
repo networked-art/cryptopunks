@@ -237,7 +237,6 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   image-rendering: pixelated;
   border: 0;
-  border-radius: 3px;
   background-clip: content-box;
   background-origin: content-box;
   background-repeat: no-repeat;
