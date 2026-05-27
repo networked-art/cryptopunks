@@ -22,7 +22,10 @@
       @changed="onChanged"
     />
 
-    <OfferSlots :slots="offer.slots" />
+    <OfferSlots
+      v-if="showOfferSlots"
+      :slots="offer.slots"
+    />
   </LotDetailShell>
 
   <div
@@ -57,6 +60,7 @@ import {
   type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
+import { offerSlotExactItem } from '~/composables/useOfferSlotDisplay'
 
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
@@ -110,6 +114,14 @@ const previewItems = computed<LotItem[]>(() => {
     ...item,
     weightBps: weights[index] ?? 0,
   }))
+})
+
+const showOfferSlots = computed(() => {
+  const current = offer.value
+  if (!current || current.slots.length !== 1) return true
+
+  const [slot] = current.slots
+  return !slot || !offerSlotExactItem(slot)
 })
 
 const matchingLots = computed(() => {
