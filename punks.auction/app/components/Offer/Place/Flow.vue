@@ -57,15 +57,9 @@
           #primary
         >
           <FormInputGroup class="amount-action">
-            <input
+            <OfferPlaceAmountInput
               v-model="amountEth"
-              aria-label="Offer amount in ETH"
-              type="text"
-              inputmode="decimal"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="0.5"
-              @keyup.enter="submitAmount"
+              @submit="submitAmount"
             />
             <Button
               v-if="address"
@@ -461,9 +455,16 @@ function parsePositiveEth(input: unknown): bigint | null {
   inline-size: min(100%, calc(var(--form-item-height) * 6));
 }
 
-.amount-action :deep(input) {
-  flex: 0 1 calc(var(--form-item-height) * 2.5);
-  min-inline-size: 0;
+.amount-action :deep(.amount-input:has(+ button)),
+.amount-action :deep(.amount-input:has(+ .button)) {
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+
+.amount-action :deep(.amount-input + button),
+.amount-action :deep(.amount-input + .button) {
+  border-start-start-radius: 0 !important;
+  border-end-start-radius: 0 !important;
 }
 
 .amount-action :deep(button) {
