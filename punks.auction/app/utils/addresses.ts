@@ -11,6 +11,10 @@ import {
 export const PUNKS_AUCTION_ADDRESS =
   '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as Address
 
+/** Mainnet `PunksAuctionEscrow` — custody during live auctions. */
+export const PUNKS_AUCTION_ESCROW_ADDRESS =
+  '0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24' as Address
+
 /** First block containing the `PunksAuction` deployment. */
 export const PUNKS_AUCTION_START_BLOCK = 25_146_787n
 
