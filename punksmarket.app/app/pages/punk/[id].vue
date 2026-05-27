@@ -31,15 +31,37 @@
       </div>
 
       <div class="hero-info">
-        <h1 class="hero-title">
-          Punk <span class="dim">#</span>{{ id
-          }}<span
-            v-if="isWrapped"
-            class="dim"
-          >
-            (Wrapped)</span
-          >
-        </h1>
+        <div class="hero-header">
+          <h1 class="hero-title">
+            Punk <span class="dim">#</span>{{ id
+            }}<span
+              v-if="isWrapped"
+              class="dim"
+            >
+              (Wrapped)</span
+            >
+          </h1>
+          <nav class="external-links">
+            <a
+              :href="`https://v1cryptopunks.com/details/${id}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
+              v1cryptopunks
+              <Icon name="lucide:arrow-up-right" />
+            </a>
+            <a
+              :href="`https://opensea.io/item/ethereum/0x6ba6f2207e343923ba692e5cae646fb0f566db8d/${id}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="external-link"
+            >
+              OpenSea
+              <Icon name="lucide:arrow-up-right" />
+            </a>
+          </nav>
+        </div>
 
         <Tags class="hero-meta">
           <NuxtLink :to="searchHref(summary.punkTypeName)">
@@ -346,11 +368,42 @@ function searchHref(text: string) {
   container-type: inline-size;
 }
 
+.hero-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-3);
+  flex-wrap: wrap;
+}
+
 .hero-title {
   font-size: 32px;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+.external-links {
+  display: flex;
+  gap: var(--size-3);
+  flex-shrink: 0;
+}
+
+.external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.external-link:hover {
+  color: inherit;
+  border-bottom-color: currentColor;
 }
 
 .trait-list {
