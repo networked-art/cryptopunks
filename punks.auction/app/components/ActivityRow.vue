@@ -1,16 +1,21 @@
 <template>
-  <li class="activity-row">
-    <PunkThumb
-      v-if="event.punkId !== undefined"
-      :punk-id="event.punkId"
-      :size="44"
-    />
-    <span
-      v-else
-      class="thumb-icon"
-    >
-      <Icon name="lucide:gavel" />
-    </span>
+  <li
+    class="activity-row"
+    :class="{ 'no-thumb': hideThumb }"
+  >
+    <template v-if="!hideThumb">
+      <PunkThumb
+        v-if="event.punkId !== undefined"
+        :punk-id="event.punkId"
+        :size="44"
+      />
+      <span
+        v-else
+        class="thumb-icon"
+      >
+        <Icon name="lucide:gavel" />
+      </span>
+    </template>
 
     <div class="row-body">
       <div class="row-line">
@@ -71,7 +76,10 @@
 import type { ActivityEvent } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
 
-const props = defineProps<{ event: ActivityEvent }>()
+const props = defineProps<{
+  event: ActivityEvent
+  hideThumb?: boolean
+}>()
 
 /// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
 /// them so the row shows a single party.
@@ -104,6 +112,10 @@ const absoluteTime = computed(() =>
   padding: var(--size-3);
   border-bottom: var(--border);
   list-style: none;
+}
+
+.activity-row.no-thumb {
+  grid-template-columns: 1fr auto;
 }
 
 .activity-row:hover {
