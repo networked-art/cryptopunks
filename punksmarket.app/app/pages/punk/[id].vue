@@ -48,8 +48,8 @@
               rel="noopener noreferrer"
               class="external-link"
             >
+              <V1CryptopunksIcon class="external-link-icon" />
               v1cryptopunks
-              <Icon name="lucide:arrow-up-right" />
             </a>
             <a
               :href="`https://opensea.io/item/ethereum/0x6ba6f2207e343923ba692e5cae646fb0f566db8d/${id}`"
@@ -57,8 +57,8 @@
               rel="noopener noreferrer"
               class="external-link"
             >
+              <OpenSeaIcon class="external-link-icon" />
               OpenSea
-              <Icon name="lucide:arrow-up-right" />
             </a>
           </nav>
         </div>
@@ -392,18 +392,23 @@ function searchHref(text: string) {
 .external-link {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--size-1);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
   text-decoration: none;
-  border-bottom: 1px solid transparent;
 }
 
 .external-link:hover {
   color: inherit;
-  border-bottom-color: currentColor;
+}
+
+.external-link-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .trait-list {
