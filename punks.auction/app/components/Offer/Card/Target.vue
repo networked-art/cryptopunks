@@ -23,6 +23,29 @@
               fluid
             />
             <span
+              v-else-if="item.icon === OFFER_SLOT_COLLECTION_ICON"
+              class="target-symbol-tile"
+            >
+              <Spinner
+                class="target-collection-mark"
+                :style="collectionMarkStyle"
+                :loop="false"
+                idle-pattern="full"
+                decorative
+              />
+            </span>
+            <span
+              v-else-if="item.icon === OFFER_SLOT_TRAIT_ICON"
+              class="target-symbol-tile"
+            >
+              <span class="target-selection-badge">
+                <Icon
+                  class="target-selection-check"
+                  name="lucide:check"
+                />
+              </span>
+            </span>
+            <span
               v-else
               class="target-symbol-tile"
             >
@@ -40,6 +63,29 @@
           +{{ extraCount }}
         </span>
       </template>
+      <span
+        v-else-if="target.icon === OFFER_SLOT_COLLECTION_ICON"
+        class="target-symbol-tile target-symbol-tile-solo"
+      >
+        <Spinner
+          class="target-collection-mark"
+          :style="collectionMarkStyle"
+          :loop="false"
+          idle-pattern="full"
+          decorative
+        />
+      </span>
+      <span
+        v-else-if="target.icon === OFFER_SLOT_TRAIT_ICON"
+        class="target-symbol-tile target-symbol-tile-solo"
+      >
+        <span class="target-selection-badge">
+          <Icon
+            class="target-selection-check"
+            name="lucide:check"
+          />
+        </span>
+      </span>
       <Icon
         v-else
         class="target-icon"
@@ -61,6 +107,10 @@
 
 <script setup lang="ts">
 import { lotItemBackground } from '~/utils/auction'
+import {
+  OFFER_SLOT_COLLECTION_ICON,
+  OFFER_SLOT_TRAIT_ICON,
+} from '~/composables/useOfferSlotDisplay'
 import type {
   OfferCardCoverItem,
   OfferCardTarget,
@@ -91,6 +141,13 @@ function coverItemKey(item: OfferCardCoverItem, index: number) {
   return item.kind === 'punk'
     ? `punk-${item.standard}-${item.punkId}`
     : `icon-${item.icon}-${index}`
+}
+
+const collectionMarkStyle = {
+  '--spinner-pixel': 'var(--size-1)',
+  '--spinner-gap': 'var(--size-0)',
+  width: 'auto',
+  height: 'auto',
 }
 </script>
 
@@ -171,11 +228,28 @@ function coverItemKey(item: OfferCardCoverItem, index: number) {
   place-items: center;
   aspect-ratio: 1;
   color: var(--text-muted);
-  background: var(--gray-z-2);
+  background: var(--gray-z-1);
+}
+
+.target-symbol-tile-solo {
+  inline-size: 60%;
 }
 
 .target-symbol-icon {
   font-size: var(--font-sm);
+}
+
+.target-selection-badge {
+  display: grid;
+  place-items: center;
+  inline-size: calc(3 * var(--size-1) + 2 * var(--size-0));
+  block-size: calc(3 * var(--size-1) + 2 * var(--size-0));
+  background: var(--primary);
+  color: white;
+}
+
+.target-selection-check {
+  font-size: var(--font-xs);
 }
 
 .target-extra {
