@@ -48,6 +48,17 @@ pnpm fast-forward -- --hours 1 --minutes 30
 
 Set `LOCALHOST_RPC_URL` to target a different local RPC URL.
 
+Fund any account on the localhost chain:
+
+```sh
+pnpm fund:account -- 0xabc0000000000000000000000000000000000123
+pnpm fund:account -- 0xabc0000000000000000000000000000000000123 --eth 25
+```
+
+This sets the account balance via `hardhat_setBalance`. The default amount is
+`200` ETH; override it with `--eth` or `FUND_ACCOUNT_ETH`. The helper refuses
+non-localhost chain IDs unless `FUND_ACCOUNT_ALLOW_NON_LOCALHOST=1` is set.
+
 ### Seeded transfers
 
 | Source                                       | Collection        | Mechanism                       | Punks                                                                                |

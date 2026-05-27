@@ -10,6 +10,7 @@
     "seal:punks-data": "PUNKS_DATA_SEAL=1 hardhat run scripts/load-punks-data.ts --network mainnet",
     "dev:fork": "bash scripts/dev-fork.sh",
     "seed:fork": "hardhat run scripts/seed-fork.ts --network localhost",
+    "fund:account": "node scripts/fund-account.mjs",
     "fast-forward": "node scripts/fast-forward.mjs",
     "test": "hardhat test",
     "test:gas": "hardhat --gas-stats test",
