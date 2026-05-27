@@ -8,9 +8,18 @@ const isDev = process.env.NODE_ENV === 'development'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   extends: ['@1001-digital/layers.evm'],
+  modules: ['nuxt-og-image'],
   // ssr: false,
 
   devtools: { enabled: true },
+
+  site: {
+    url: process.env.NUXT_PUBLIC_PUBLIC_URL || 'http://localhost:3000',
+  },
+
+  ogImage: {
+    defaults: { width: 1200, height: 630, cacheMaxAgeSeconds: 60 * 60 * 24 },
+  },
 
   app: {
     head: {

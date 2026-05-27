@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/luxon": "^3.4.2",
     "nuxt": "^4.4.2",
+    "nuxt-og-image": "^6.5.1",
     "vue-tsc": "^3.2.6"
   }
 }
