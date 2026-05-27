@@ -53,7 +53,7 @@
         </template>
 
         <template
-          v-if="actionStep === 'amount'"
+          v-if="showAmountAction"
           #primary
         >
           <FormInputGroup class="amount-action">
@@ -172,6 +172,15 @@ const currentSlotDraft = computed(() =>
     slots: [currentSlot.value],
   }),
 )
+const isSingleCollectionTargetStep = computed(
+  () =>
+    actionStep.value === 'target' &&
+    quantityMode.value === 'one' &&
+    currentSlot.value.targetMode === 'any',
+)
+const showAmountAction = computed(
+  () => actionStep.value === 'amount' || isSingleCollectionTargetStep.value,
+)
 const amountWei = computed(() => parsePositiveEth(amountEth.value))
 const slotValidationError = computed(() => validateDraftSlots(draft.value))
 const currentSlotValidationError = computed(() =>
@@ -191,6 +200,16 @@ const isFinalTargetStep = computed(
 )
 const cardState = computed(() => {
   if (actionStep.value === 'target') {
+    if (isSingleCollectionTargetStep.value) {
+      return {
+        title: targetStepTitle(),
+        primaryLabel: 'Place offer',
+        primaryDisabled: !canUseDraft.value || !amountWei.value,
+        showBackButton: false,
+        footerSelection: '',
+      }
+    }
+
     return {
       title: targetStepTitle(),
       primaryLabel: isFinalTargetStep.value ? 'Review' : 'Continue',
@@ -250,6 +269,12 @@ function actPrimary() {
   error.value = null
 
   if (actionStep.value === 'target') {
+    if (isSingleCollectionTargetStep.value) {
+      if (!canUseDraft.value || !amountWei.value) return
+      actPlace()
+      return
+    }
+
     if (!canUseCurrentSlot.value) return
     if (activeSlotIndex.value < activeSlotCount.value - 1) {
       activeSlotIndex.value += 1
