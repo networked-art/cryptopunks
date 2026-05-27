@@ -39,15 +39,21 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   align-self: stretch;
-  flex: 0 1 calc(var(--form-item-height) * 2.5);
+  flex: 1 1 calc(var(--form-item-height) * 3.5);
   min-inline-size: 0;
   block-size: var(--form-item-height);
-  padding-inline: var(--ui-padding-inline);
+  padding: var(--ui-padding-block) var(--ui-padding-inline);
   border-radius: var(--button-border-radius);
   background: var(--input-background);
   box-shadow: var(--border-shadow);
   color: var(--ui-color);
   cursor: text;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  font-weight: var(--ui-font-weight);
+  letter-spacing: var(--ui-letter-spacing);
+  line-height: var(--ui-line-height);
+  text-transform: var(--input-text-transform);
   transition: all var(--speed);
   z-index: 1;
 }
@@ -68,12 +74,11 @@ const emit = defineEmits<{
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--ui-color);
-  font-family: var(--ui-font-family);
-  font-size: var(--ui-font-size);
-  font-weight: var(--ui-font-weight);
-  line-height: var(--ui-line-height);
-  text-transform: var(--input-text-transform);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: inherit;
 }
 
 .amount-input input:focus,
@@ -92,7 +97,9 @@ const emit = defineEmits<{
   flex: 0 0 auto;
   margin-inline-start: var(--size-2);
   color: var(--text-muted);
-  font-size: var(--font-xs);
-  line-height: 1;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: uppercase;
 }
 </style>
