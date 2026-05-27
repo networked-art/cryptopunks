@@ -72,18 +72,26 @@
           </dl>
 
           <div
-            v-if="punkOffers.length"
+            v-if="sortedPunkOffers.length"
             class="context"
           >
             <div class="context-group">
               <h3 class="context-title">Matching offers</h3>
-              <div class="card-grid">
-                <LazyOfferCard
-                  v-for="offer in punkOffers"
+              <ul class="offer-list">
+                <li
+                  v-for="offer in sortedPunkOffers"
                   :key="String(offer.id)"
-                  :offer="offer"
-                />
-              </div>
+                >
+                  <NuxtLink
+                    class="offer-row"
+                    :to="`/purchase-offers/${offer.id}`"
+                  >
+                    <EthAmount :wei="offer.amountWei" />
+                    <span class="dim"> by </span>
+                    <Account :address="offer.offerer" />
+                  </NuxtLink>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -111,6 +119,13 @@
               :punk-id="punkId"
               :standard="standard"
               @created="onCreated"
+            />
+            <LazyPunkDetailAuctionAcceptOffer
+              v-if="canCreateLot && topOffer"
+              :punk-id="punkId"
+              :standard="standard"
+              :offer="topOffer"
+              @changed="onCreated"
             />
           </div>
         </div>
@@ -168,6 +183,14 @@ const topOffer = computed(() => {
     offer.amountWei > top.amountWei ? offer : top,
   )
 })
+
+const sortedPunkOffers = computed(() =>
+  [...punkOffers.value]
+    .sort((a, b) =>
+      a.amountWei < b.amountWei ? 1 : a.amountWei > b.amountWei ? -1 : 0,
+    )
+    .slice(0, 3),
+)
 
 const { address } = useConnection()
 const { owner } = usePunkOwner(
@@ -263,10 +286,35 @@ function onCreated(tx: Hash) {
   color: var(--text-muted);
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--size-7);
+.offer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: white;
+}
+
+.offer-list > li + li {
+  border-top: var(--border);
+}
+
+.offer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  padding: var(--size-2) var(--size-3);
+  color: inherit;
+  border: 0;
+  text-decoration: none;
+}
+
+.offer-row:hover,
+.offer-row:focus-visible {
+  color: inherit;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.offer-row :deep(.avvatar) {
+  height: 1em;
 }
 
 .actions {
