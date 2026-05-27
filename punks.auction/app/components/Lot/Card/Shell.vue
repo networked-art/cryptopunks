@@ -29,6 +29,7 @@ defineProps<{
   flex-direction: column;
   gap: var(--size-2);
   block-size: 100%;
+  max-width: 19rem;
 }
 
 .lot-card-shell-lift {
