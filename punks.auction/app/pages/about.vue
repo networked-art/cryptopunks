@@ -28,6 +28,56 @@
       </p>
     </section>
 
+    <section class="about-section why-auctions">
+      <h2 class="section-title eyebrow">Why auctions?</h2>
+      <p>
+        Auctions solve the fundamental problem of <em>price discovery</em> for
+        unique assets. Fixed pricing forces sellers into an impossible dilemma:
+        price too high and you get no sale; price too low and you leave money on
+        the table; price "right" and you've somehow guessed what buyers will
+        pay — which you can't know.
+      </p>
+      <h3 class="subhead eyebrow">True demand</h3>
+      <p>
+        The final price reflects actual willingness to pay, not a guess.
+      </p>
+
+      <h3 class="subhead eyebrow">No information asymmetry</h3>
+      <p>
+        Sellers don't need to know the value — buyers reveal it through
+        competition.
+      </p>
+
+      <h3 class="subhead eyebrow">Self-correcting</h3>
+      <p>
+        Market conditions change constantly. Fixed prices go stale. Auctions are
+        always current.
+      </p>
+
+      <h3 class="subhead eyebrow">Competition extracts surplus</h3>
+      <p>
+        Two motivated bidders push each other past what either would pay against
+        a fixed ask.
+      </p>
+
+      <h3 class="subhead eyebrow">Works for unique items</h3>
+      <p>
+        Each Punk's trait combination is unique — no "comparable sales" exist.
+        Auctions establish value where none exists.
+      </p>
+      <p>
+        The purchase-offer system inverts the auction but achieves the same
+        goal: buyers post criteria-based bids (e.g. "any Female with 3D Glasses
+        under 10 ETH"), and sellers settle into the highest matching bid rather
+        than guessing a list price. Price discovery through competition, from
+        the other side of the book.
+      </p>
+      <p class="punchline">
+        Fixed pricing only works when the market is liquid and items are
+        fungible. Punks are neither.
+      </p>
+    </section>
+
     <section class="about-section">
       <h2 class="section-title eyebrow">Vaults</h2>
       <p>
@@ -190,5 +240,15 @@ defineOgImage('Default', {
 
 .about-section p a:hover {
   border-bottom-color: var(--accent-strong);
+}
+
+.subhead {
+  margin: var(--size-2) 0 0;
+  font-size: var(--font-sm);
+}
+
+.punchline {
+  color: var(--accent-strong);
+  font-style: italic;
 }
 </style>

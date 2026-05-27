@@ -6,8 +6,12 @@
       <span class="headline-em">for CryptoPunks</span>
     </h1>
     <p class="subline">
-      Open source marketplace with 24h auctions on CryptoPunks lots
+      24-hour auctions. Zero fees. Real price discovery.
     </p>
+    <div class="cta-buttons">
+      <NuxtLink to="/auctions" class="btn btn-primary">Browse Lots</NuxtLink>
+      <NuxtLink to="/about" class="btn btn-secondary">Learn More</NuxtLink>
+    </div>
   </div>
 </template>
 
@@ -55,5 +59,40 @@ defineOgImage('Default', {
   color: var(--text-muted);
   font-size: var(--font-display-sm);
   line-height: var(--line-height-relaxed);
+}
+
+.cta-buttons {
+  display: flex;
+  gap: var(--size-3);
+  margin-top: var(--size-2);
+}
+
+.btn {
+  padding: var(--size-3) var(--size-5);
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent-strong);
+  color: var(--bg);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
 }
 </style>
