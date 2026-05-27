@@ -1,13 +1,13 @@
 <template>
   <section class="slots-block">
     <h2 class="block-title eyebrow">Items</h2>
-    <ul class="slots">
+    <OfferList>
       <OfferSlotsRow
         v-for="row in rows"
         :key="row.key"
         :row="row"
       />
-    </ul>
+    </OfferList>
   </section>
 </template>
 
@@ -16,10 +16,15 @@ import {
   offerSlotDisplay,
   type OfferSlotDisplay,
 } from '~/composables/useOfferSlotDisplay'
+import {
+  offerSlotDisplayTarget,
+  type OfferTargetDisplay,
+} from '~/composables/useOfferTarget'
 import type { OfferSlot } from '~/utils/auction'
 
 type OfferSlotRow = OfferSlotDisplay & {
   key: string
+  target: OfferTargetDisplay
 }
 
 const props = defineProps<{
@@ -29,10 +34,14 @@ const props = defineProps<{
 const offline = usePunksOffline()
 
 const rows = computed<OfferSlotRow[]>(() =>
-  props.slots.map((slot, index) => ({
-    key: `${index}-${slot.standard}`,
-    ...offerSlotDisplay(slot, offline, index),
-  })),
+  props.slots.map((slot, index) => {
+    const display = offerSlotDisplay(slot, offline, index)
+    return {
+      key: `${index}-${slot.standard}`,
+      ...display,
+      target: offerSlotDisplayTarget(slot, display),
+    }
+  }),
 )
 </script>
 
@@ -45,14 +54,5 @@ const rows = computed<OfferSlotRow[]>(() =>
 
 .block-title {
   margin: 0;
-}
-
-.slots {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: var(--border);
-  border-bottom: 0;
-  background: var(--bg-elevated);
 }
 </style>
