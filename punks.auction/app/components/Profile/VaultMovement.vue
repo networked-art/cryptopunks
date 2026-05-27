@@ -129,6 +129,7 @@ const renderV1 = useV1Rendering()
 const {
   items: inventoryItems,
   loading: inventoryLoading,
+  vaultDeployed,
   refresh: refreshInventory,
 } = useAccountPunkInventory(() => props.account)
 
@@ -185,6 +186,7 @@ const canReclaim = computed(
   () =>
     !!selectedItem.value &&
     selectedItem.value.custody === 'vault' &&
+    vaultDeployed.value &&
     !pending.value,
 )
 
@@ -193,7 +195,9 @@ const custodyHint = computed(() => {
     case 'wallet':
       return 'In your wallet — ready to vault'
     case 'vault':
-      return 'In your vault — ready to reclaim'
+      return vaultDeployed.value
+        ? 'In your vault — ready to reclaim'
+        : 'In your vault — deploy the vault to reclaim'
     default:
       return ''
   }
