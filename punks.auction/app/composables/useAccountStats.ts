@@ -39,12 +39,12 @@ const EMPTY: AccountStats = {
 
 /**
  * Lifetime aggregates for the profile address — sum of sale wei the user has
- * spent (as buyer) and earned (as seller) across the canonical CryptoPunks
- * market (CryptoPunksMarket + PunksMarket), plus the indexer's
- * `accounts.last_interaction_at` for the EOA. The `*UsdCents` totals are
- * stamped at indexing time using the daily ETH/USD close, so they reflect
- * dollar value at the moment of each trade rather than today's price. Sales
- * on the original C̷̢̛͙ryptoPunks market are intentionally excluded; the
+ * spent (as buyer) and earned (as seller) on the canonical `CryptoPunksMarket`,
+ * plus the indexer's `accounts.last_interaction_at` for the EOA. The
+ * `*UsdCents` totals are stamped at indexing time using the daily ETH/USD
+ * close, so they reflect dollar value at the moment of each trade rather than
+ * today's price. C̷̢̛͙ryptoPunks-side sales (the original C̷̢̛͙ryptoPunks
+ * market, the V1 wrapper, and `PunksMarket`) are intentionally excluded; the
  * `punksClaimedCount` is the only stat sourced from C̷̢̛͙ryptoPunks (the
  * original assigns).
  *

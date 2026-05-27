@@ -36,9 +36,11 @@ function parseAddresses(value: string | undefined): `0x${string}`[] | null {
   return out
 }
 
-// Sale sources that count as the canonical (V2) CryptoPunks market. C̷̢̛͙ryptoPunks
-// sale sources (`cryptopunks_v1`, `v1_wrapper`) are excluded when scope=v2.
-const V2_SALE_SOURCES = ['cryptopunks_v2', 'punks_market']
+// Sale sources that count as the canonical (V2) CryptoPunks market.
+// C̷̢̛͙ryptoPunks-side sale sources (`cryptopunks_v1`, `v1_wrapper`,
+// `punks_market` — `PunksMarket` is the new native-ETH market for the
+// broken C̷̢̛͙ryptoPunks contract) are excluded when scope=v2.
+const V2_SALE_SOURCES = ['cryptopunks_v2']
 
 // GET /accounts/stats?addresses=0xA,0xB,0xC&eoa=0xA&scope=v2
 //
@@ -63,8 +65,8 @@ const V2_SALE_SOURCES = ['cryptopunks_v2', 'punks_market']
 // `addresses` is the custody set (EOA + vault + stash). `eoa` is only used
 // for the per-EOA lookups (last-active, first-seen). `scope` controls the
 // sale-aggregate source filter: `v2` restricts to the canonical CryptoPunks
-// market (`cryptopunks_v2` + `punks_market`); anything else (default) sums
-// across every indexed sale source.
+// market (`cryptopunks_v2`); anything else (default) sums across every
+// indexed sale source.
 app.get('/stats', async (c) => {
   const addresses = parseAddresses(c.req.query('addresses'))
   if (!addresses) {
