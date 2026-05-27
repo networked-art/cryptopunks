@@ -379,7 +379,7 @@ function amountStepTitle() {
 
 function formatTraitTitle(title: string) {
   const text = title.trim()
-  return text ? `${text[0].toUpperCase()}${text.slice(1)}` : text
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text
 }
 
 function slotFooterSelection(value: PlaceOfferDraft) {
