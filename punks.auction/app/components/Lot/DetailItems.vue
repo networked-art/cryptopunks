@@ -112,6 +112,7 @@ function itemBackground(item: LotItem) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--font-xs);
+  font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-md);
   text-transform: uppercase;
 }
