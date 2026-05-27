@@ -40,7 +40,7 @@ const showOfferer = computed(() => {
   align-items: center;
   gap: var(--size-4);
   min-width: 0;
-  padding: var(--size-3) var(--size-4);
+  padding: 0 var(--size-4) 0 0;
   color: inherit;
   border: 0;
   background: white;

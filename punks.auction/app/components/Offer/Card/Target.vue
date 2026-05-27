@@ -101,6 +101,7 @@ function coverItemKey(item: OfferCardCoverItem, index: number) {
   align-items: center;
   gap: var(--size-3);
   min-width: 0;
+  z-index: 0;
 }
 
 .target-art {
@@ -111,6 +112,9 @@ function coverItemKey(item: OfferCardCoverItem, index: number) {
   block-size: var(--size-9);
   --punk-mosaic-inset: 19%;
   background: var(--bg-elevated);
+  background: transparent;
+  border-right: var(--border);
+  border-color: var(--gray-z-0);
   overflow: hidden;
 }
 
