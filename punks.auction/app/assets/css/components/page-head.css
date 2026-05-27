@@ -39,7 +39,7 @@
     align-items: center;
   }
 
-  .page-head-text > .muted {
+  .page-head:has(.page-head-action) .page-head-text > .muted {
     display: none;
   }
 

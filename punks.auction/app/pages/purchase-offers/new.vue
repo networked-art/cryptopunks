@@ -1,14 +1,16 @@
 <template>
   <div class="container new-offer-page">
     <header class="page-head">
-      <NuxtLink
-        class="back-link muted"
-        to="/purchase-offers"
-      >
-        <Icon name="lucide:arrow-left" />
-        <span>Purchase offers</span>
-      </NuxtLink>
-      <h1>Place offer</h1>
+      <div class="page-head-text">
+        <NuxtLink
+          class="back-link muted"
+          to="/purchase-offers"
+        >
+          <Icon name="lucide:arrow-left" />
+          <span>Purchase offers</span>
+        </NuxtLink>
+        <h1>Place offer</h1>
+      </div>
     </header>
 
     <OfferPlaceFlow />
