@@ -188,11 +188,7 @@ import {
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
 import { useConfig, useConnection } from '@wagmi/vue'
-import {
-  decodeEventLog,
-  isAddress,
-  type TransactionReceipt,
-} from 'viem'
+import { decodeEventLog, isAddress, type TransactionReceipt } from 'viem'
 import type { PunkInventoryCustody } from '~/composables/useAccountPunkInventory'
 import { resolveAddressInput } from '~/utils/addressInput'
 import {
@@ -462,7 +458,6 @@ async function resolveOnlySellTo() {
     invalidMessage: 'Enter a valid initial buyer address or ENS name.',
   })
 }
-
 </script>
 
 <style scoped>
@@ -512,9 +507,10 @@ async function resolveOnlySellTo() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 3px;
   box-shadow: inset 0 0 0 3px var(--primary);
   background: var(--bg);
-  width: 5rem;
+  width: calc(5rem + 3px * 2);
 }
 
 .picked :deep(.punk-thumb) {
@@ -533,8 +529,8 @@ async function resolveOnlySellTo() {
 
 .remove {
   position: absolute;
-  inset-block-start: var(--size-1);
-  inset-inline-end: var(--size-1);
+  inset-block-start: 0;
+  inset-inline-end: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
