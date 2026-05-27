@@ -242,6 +242,8 @@ useSeoMeta({
   margin: 0;
   min-width: 0;
   font-size: var(--font-sm);
+  display: flex;
+  align-items: center;
 }
 
 .fact a {
