@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { client, graphql } from 'ponder'
 import { db, publicClients } from 'ponder:api'
 import schema from 'ponder:schema'
+import accountStatsRouter from './account-stats'
 import bidsRouter from './bids'
 import punksRouter from './punks'
 import salesRouter from './sales'
@@ -21,6 +22,7 @@ app.route(
   }),
 )
 
+app.route('/accounts', accountStatsRouter)
 app.route('/bids', bidsRouter)
 app.route('/punks', punksRouter)
 app.route('/sales', salesRouter)
