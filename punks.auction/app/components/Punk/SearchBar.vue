@@ -351,7 +351,7 @@ onMounted(() => nextTick(syncUnderline))
 
 @media (max-width: 640px) {
   .search-bar {
-    padding-inline: 0;
+    padding-inline: var(--size-4);
   }
 
   .result-total {
