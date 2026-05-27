@@ -1,61 +1,65 @@
 <template>
   <dl class="stats-list">
-    <div class="stat-row">
+    <div class="stat-row text-row">
       <dt>First seen</dt>
-      <dd>{{ firstSeenLabel }}</dd>
+      <dd class="full">{{ firstSeenLabel }}</dd>
     </div>
-    <div class="stat-row">
+    <div class="stat-row text-row">
       <dt>Last active</dt>
-      <dd>{{ lastActiveLabel }}</dd>
+      <dd class="full">{{ lastActiveLabel }}</dd>
     </div>
-    <div class="stat-row">
+    <div class="stat-row amount-row">
       <dt>
-        Bought<span
-          v-if="stats.salesBoughtCount > 0"
-          class="count"
-        >
+        <span>Bought</span>
+        <span v-if="stats.salesBoughtCount > 0">
           ({{ stats.salesBoughtCount }}×)</span
         >
       </dt>
-      <dd>
-        <template v-if="stats.totalSpentWei > 0n">
-          <EthAmount :wei="stats.totalSpentWei" />
+      <template v-if="stats.totalSpentWei > 0n">
+        <dd class="usd">
+          <template v-if="totalSpentUsd">${{ totalSpentUsd }}</template>
           <span
-            v-if="totalSpentUsd"
-            class="usd"
-            >{{ totalSpentUsd }}</span
+            v-else
+            class="muted"
+            >—</span
           >
-        </template>
-        <span
-          v-else
-          class="muted"
-          >—</span
-        >
+        </dd>
+        <dd class="eth">
+          <EthAmount :wei="stats.totalSpentWei" />
+        </dd>
+      </template>
+      <dd
+        v-else
+        class="full muted"
+      >
+        —
       </dd>
     </div>
-    <div class="stat-row">
+    <div class="stat-row amount-row">
       <dt>
-        Sold<span
-          v-if="stats.salesSoldCount > 0"
-          class="count"
-        >
+        <span>Sold</span>
+        <span v-if="stats.salesSoldCount > 0">
           ({{ stats.salesSoldCount }}×)</span
         >
       </dt>
-      <dd>
-        <template v-if="stats.totalEarnedWei > 0n">
-          <EthAmount :wei="stats.totalEarnedWei" />
+      <template v-if="stats.totalEarnedWei > 0n">
+        <dd class="usd">
+          <template v-if="totalEarnedUsd">${{ totalEarnedUsd }}</template>
           <span
-            v-if="totalEarnedUsd"
-            class="usd"
-            >{{ totalEarnedUsd }}</span
+            v-else
+            class="muted"
+            >—</span
           >
-        </template>
-        <span
-          v-else
-          class="muted"
-          >—</span
-        >
+        </dd>
+        <dd class="eth">
+          <EthAmount :wei="stats.totalEarnedWei" />
+        </dd>
+      </template>
+      <dd
+        v-else
+        class="full muted"
+      >
+        —
       </dd>
     </div>
   </dl>
@@ -91,57 +95,87 @@ const lastActiveIso = computed(() =>
 const lastActiveAgo = useTimeAgo(lastActiveIso)
 const lastActiveLabel = computed(() => lastActiveAgo.value || '—')
 
+const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
 const firstSeenLabel = computed(() => {
   if (!props.stats.firstSeenAt) return '—'
-  return new Date(props.stats.firstSeenAt * 1000).toISOString().slice(0, 10)
+  return DATE_FORMAT.format(new Date(props.stats.firstSeenAt * 1000))
 })
 </script>
 
 <style scoped>
 .stats-list {
   margin: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   border: var(--border);
   background: var(--bg-elevated);
 }
 
 .stat-row {
+  display: contents;
+}
+
+.stat-row > * {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--size-3);
-  padding: var(--size-2) var(--size-3);
+  align-items: center;
+  padding: var(--size-2) 0;
   border-bottom: var(--border);
 }
 
-.stat-row:last-child {
+.stat-row > *:first-child {
+  padding-left: var(--size-3);
+}
+
+.stat-row > *:last-child {
+  padding-right: var(--size-3);
+}
+
+.stat-row > * + * {
+  padding-left: var(--size-3);
+}
+
+.stat-row:last-child > * {
   border-bottom: 0;
 }
 
-.stat-row dt {
+dt {
   color: var(--text-dim);
   font-size: var(--font-xs);
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-md);
+
+  span {
+    margin-right: var(--size-1);
+  }
 }
 
-.stat-row dd {
+dd {
   margin: 0;
-  min-width: 0;
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--size-2);
+  justify-content: flex-end;
+}
+
+.full {
+  grid-column: 2 / 4;
+}
+
+.usd {
+  grid-column: 2;
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+}
+
+.eth {
+  grid-column: 3;
 }
 
 .count {
   color: var(--text-muted);
-}
-
-.usd {
-  color: var(--text-dim);
-  font-size: var(--font-xs);
 }
 </style>
