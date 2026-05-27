@@ -18,13 +18,6 @@
         </header>
 
         <p
-          v-if="error"
-          class="error"
-        >
-          {{ error }}
-        </p>
-
-        <p
           v-if="!madeByMe.length"
           class="muted empty"
         >
@@ -43,16 +36,6 @@
               :offer="offer"
               :displayed-offerer-addresses="ownerAddressList"
             />
-            <div class="row-actions">
-              <Button
-                class="icon-button"
-                :disabled="pending"
-                @click="actCancel(offer.id)"
-              >
-                <Icon name="lucide:x" />
-                <span>Cancel offer</span>
-              </Button>
-            </div>
           </li>
         </ul>
       </section>
@@ -91,30 +74,15 @@
           </li>
         </ul>
       </section>
-
-      <EvmTransactionFlowDialog
-        ref="dialogRef"
-        :request="transactionRequest"
-        :text="transactionText"
-        skip-confirmation
-        @complete="onComplete"
-      />
     </div>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
-import type { Hash, TransactionReceipt } from 'viem'
-import type { TransactionFlowText } from '~/types/transactionFlow'
-import { transactionTitleForPlan } from '~/utils/transactionFlowText'
-
 useOwnProfileGuard()
 
 const { ownAccount, resolvedAddress, vault, stash } = useProfileContext()
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
-
-const { sdk } = usePunksSdk()
-const { execute } = useWritePlan()
 
 const { offers, pending: offersPending, refresh: refreshOffers } = useOffers()
 
@@ -158,51 +126,6 @@ const received = computed(() => {
     return offer.slots.some((slot) => slot.includeIds.some((id) => ids.has(id)))
   })
 })
-
-const pending = ref(false)
-const error = ref<string | null>(null)
-
-type TransactionDialogRef = {
-  initializeRequest: () => void
-} | null
-const dialogRef = ref<TransactionDialogRef>(null)
-const transactionRequest = ref<(() => Promise<Hash>) | undefined>()
-const transactionText = ref<TransactionFlowText>({})
-
-async function actCancel(offerId: bigint) {
-  if (pending.value) return
-  try {
-    pending.value = true
-    error.value = null
-    const plan = sdk.value.auctions.prepareCancelOffer(offerId)
-    const title = transactionTitleForPlan(plan)
-    transactionRequest.value = () => execute(plan)
-    transactionText.value = {
-      title: {
-        confirm: title,
-        requesting: title,
-        waiting: title,
-        complete: 'Offer cancelled',
-      },
-      lead: {
-        confirm: plan.description,
-        requesting: plan.description,
-        waiting: plan.description,
-        complete: 'Locked ETH refunded to your wallet.',
-      },
-    }
-    await nextTick()
-    dialogRef.value?.initializeRequest()
-  } catch (e) {
-    error.value = (e as Error).message
-  } finally {
-    pending.value = false
-  }
-}
-
-function onComplete(_receipt: TransactionReceipt) {
-  void refreshOffers()
-}
 </script>
 
 <style scoped>
@@ -271,11 +194,5 @@ function onComplete(_receipt: TransactionReceipt) {
   display: inline-flex;
   align-items: center;
   gap: var(--size-1);
-}
-
-.error {
-  color: var(--accent);
-  font-size: var(--font-sm);
-  margin: 0;
 }
 </style>
