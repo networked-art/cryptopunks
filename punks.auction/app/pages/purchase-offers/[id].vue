@@ -6,14 +6,39 @@
     <header class="head">
       <span class="eyebrow">Offer #{{ offer.id }}</span>
       <h1 class="title">
-        <EthAmount :wei="offer.amountWei" />
-      </h1>
-      <p class="byline muted">
-        <NuxtLink :to="`/profile/${offer.offerer}`">
-          <Account :address="offer.offerer" />
+        <NuxtLink
+          v-if="exactOfferItem"
+          :to="punkHref(exactOfferItem.standard, exactOfferItem.punkId)"
+        >
+          Punk <span class="dim">#</span>{{ exactOfferItem.punkId }}
+          <Tag
+            v-if="exactOfferItem.standard === TokenStandard.CryptoPunksV1"
+            small
+            class="v1-tag"
+            >V1</Tag
+          >
         </NuxtLink>
-      </p>
+        <template v-else>{{ offerTitle }}</template>
+      </h1>
     </header>
+
+    <dl class="facts">
+      <div class="fact">
+        <dt>Offer amount</dt>
+        <dd>
+          <EthAmount :wei="offer.amountWei" />
+        </dd>
+      </div>
+
+      <div class="fact">
+        <dt>Offerer</dt>
+        <dd>
+          <NuxtLink :to="`/profile/${offer.offerer}`">
+            <Account :address="offer.offerer" />
+          </NuxtLink>
+        </dd>
+      </div>
+    </dl>
 
     <OfferActions
       :offer="offer"
@@ -57,6 +82,8 @@ import {
   lotMatchesOffer,
   offerSlotCriteriaToQuery,
   offerSlotMatchingIds,
+  punkHref,
+  TokenStandard,
   type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
@@ -116,12 +143,27 @@ const previewItems = computed<LotItem[]>(() => {
   }))
 })
 
-const showOfferSlots = computed(() => {
+const exactOfferItem = computed(() => {
   const current = offer.value
-  if (!current || current.slots.length !== 1) return true
+  if (!current || current.slots.length !== 1) return null
 
   const [slot] = current.slots
-  return !slot || !offerSlotExactItem(slot)
+  return slot ? offerSlotExactItem(slot) : null
+})
+
+const offerTitle = computed(() => {
+  const current = offer.value
+  if (!current) return ''
+  if (current.slots.length > 1) return 'Multi item offer'
+
+  const [slot] = current.slots
+  return slot && !filterIsEmpty(slot.criteria)
+    ? 'Trait offer'
+    : 'Collection offer'
+})
+
+const showOfferSlots = computed(() => {
+  return !exactOfferItem.value
 })
 
 const matchingLots = computed(() => {
@@ -201,26 +243,56 @@ useSeoMeta({
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
   margin: 0;
   font-size: var(--font-3xl);
   font-weight: var(--font-weight-bolder);
-  letter-spacing: 0;
-  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tighter);
 }
 
-.title :deep(.eth-amount) {
-  gap: var(--size-2);
-}
-
-.byline {
+.title a {
   display: flex;
   align-items: center;
-  gap: var(--size-1);
+  gap: var(--size-2);
+  color: inherit;
+  border: 0;
+}
+
+.v1-tag {
+  font-size: var(--font-xs);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
+  gap: var(--size-3);
+}
+
+.fact {
+  min-width: 0;
+  padding: var(--size-3);
+  border: var(--border);
+  background: var(--bg-elevated);
+}
+
+.fact dt {
+  margin-bottom: var(--size-1);
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
+  text-transform: uppercase;
+}
+
+.fact dd {
+  margin: 0;
+  min-width: 0;
   font-size: var(--font-sm);
 }
 
-.byline a {
+.fact a {
   border: 0;
 }
 
@@ -237,6 +309,10 @@ useSeoMeta({
 }
 
 @media (max-width: 540px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
   .title {
     font-size: var(--font-2xl);
   }
