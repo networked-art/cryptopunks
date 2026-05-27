@@ -7,10 +7,10 @@ import {
 } from '~/utils/auction'
 import {
   countOfferSlotMatches,
+  isOfferSlotSet,
   offerSlotDetail,
   offerSlotExactItem,
   offerSlotFallbackIcon,
-  offerSlotIncludedItems,
   offerSlotTitle,
   standardQualifier,
   type OfferSlotPreviewItem,
@@ -54,9 +54,7 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
         title: offerSlotTitle(slot, offline),
         detail: offerSlotDetail(slot, countOfferSlotMatches(slot, offline)),
         icon: offerSlotFallbackIcon(slot),
-        thumbs: filterIsEmpty(slot.criteria)
-          ? offerSlotIncludedItems(slot)
-          : [],
+        thumbs: [],
       }
     }
 
@@ -93,7 +91,7 @@ function offerSlotCoverItem(
   slot: OfferSlot,
   offline: ReturnType<typeof usePunksOffline>,
 ): OfferCardCoverItem | null {
-  if (!filterIsEmpty(slot.criteria)) {
+  if (!filterIsEmpty(slot.criteria) || isOfferSlotSet(slot)) {
     return {
       kind: 'icon',
       icon: offerSlotFallbackIcon(slot),
