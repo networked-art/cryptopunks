@@ -41,7 +41,6 @@
 
     <div class="bid-meta">
       <EthAmount
-        class="bid-amount"
         :wei="bid.bidWei"
         :precision="4"
       />
@@ -55,39 +54,39 @@
         />
         settlement
       </span>
+      <Actions
+        v-if="isOwnBid"
+        class="bid-actions"
+      >
+        <BidAdjustForm
+          :bid="bid"
+          @adjusted="onAdjusted"
+        />
+        <EvmTransactionFlowDialog
+          keep-open
+          skip-confirmation
+          :request="withdraw"
+          :text="dialogText"
+          @complete="onWithdrawn"
+        >
+          <template #start="{ start }">
+            <Button
+              class="small"
+              @click="start"
+            >
+              Withdraw
+            </Button>
+          </template>
+        </EvmTransactionFlowDialog>
+      </Actions>
       <NuxtLink
+        v-else
         class="bid-bidder"
         :to="`/profile/${bid.bidder}`"
       >
         <AccountBadge :address="bid.bidder" />
       </NuxtLink>
     </div>
-
-    <Actions
-      v-if="isOwnBid"
-      class="bid-actions"
-    >
-      <BidAdjustForm
-        :bid="bid"
-        @adjusted="onAdjusted"
-      />
-      <EvmTransactionFlowDialog
-        keep-open
-        skip-confirmation
-        :request="withdraw"
-        :text="dialogText"
-        @complete="onWithdrawn"
-      >
-        <template #start="{ start }">
-          <Button
-            class="small"
-            @click="start"
-          >
-            Withdraw
-          </Button>
-        </template>
-      </EvmTransactionFlowDialog>
-    </Actions>
   </article>
 </template>
 
@@ -153,13 +152,10 @@ function onAdjusted(tx: Hash) {
   isolation: isolate;
   display: grid;
   grid-template-columns: var(--preview-size) minmax(0, 1fr) max-content;
-  grid-template-rows: minmax(var(--preview-size), auto) auto;
-  grid-template-areas:
-    'preview target meta'
-    'preview actions actions';
+  grid-template-areas: 'preview target meta';
   align-items: center;
   gap: var(--size-2) var(--size-4);
-  padding: var(--size-3) var(--size-4);
+  padding: var(--size-2) var(--size-3);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-color);
   --preview-size: 48px;
@@ -215,16 +211,19 @@ function onAdjusted(tx: Hash) {
   grid-area: target;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--size-0);
   min-width: 0;
   z-index: 2;
   pointer-events: none;
 }
 
+/* Mirrors `ActivityRow`'s `.kind` eyebrow so a bid row reads in the same
+   rhythm as an activity row: small uppercase label, default-weight detail,
+   muted meta. Keeps the punk preview and ETH amount as the dominant marks. */
 .bid-title {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -233,16 +232,14 @@ function onAdjusted(tx: Hash) {
 
 .bid-description {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .bid-matches {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -251,29 +248,16 @@ function onAdjusted(tx: Hash) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: var(--size-2);
   pointer-events: none;
 }
 
-.bid-amount {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.bid-amount :deep(.unit) {
-  font-size: 0.75em;
-}
-
 .bid-settlement {
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 .bid-bidder {
-  margin-top: 4px;
   border: 0;
   position: relative;
   z-index: 3;
@@ -285,7 +269,6 @@ function onAdjusted(tx: Hash) {
 }
 
 .bid-actions {
-  grid-area: actions;
   justify-self: end;
   position: relative;
   z-index: 3;
@@ -295,11 +278,9 @@ function onAdjusted(tx: Hash) {
 @media (max-width: 600px) {
   .bid-card {
     grid-template-columns: var(--preview-size) minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
     grid-template-areas:
       'preview target'
-      'preview meta'
-      'actions actions';
+      'preview meta';
     align-items: start;
   }
 

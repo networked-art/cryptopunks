@@ -249,7 +249,7 @@ const viewerOwnedAddress = computed<Address | null>(() => {
 .profile-head {
   display: flex;
   flex-direction: column;
-  gap: var(--size-1);
+  gap: var(--size-3);
 }
 
 .profile-title-row {
