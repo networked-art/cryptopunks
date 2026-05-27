@@ -46,6 +46,9 @@ function parseAddresses(value: string | undefined): `0x${string}`[] | null {
 //   - USD totals sum `events.usd_value_cents`, which is stamped at indexing
 //     time using the daily ETH/USD close — i.e. the dollar value at the
 //     moment of the trade, not today's price.
+//   - punksClaimedCount: assign events (initial V1/V2 mint claims) where
+//     the recipient ∈ addresses. Each punk was assigned exactly once per
+//     contract, so this counts distinct claims.
 //   - lastActiveAt: accounts.last_interaction_at for the EOA — tx-from
 //     rather than event-participant, which is the narrower "this user
 //     personally signed something" signal.
@@ -65,7 +68,7 @@ app.get('/stats', async (c) => {
   }
   const eoa = getAddress(eoaParam)
 
-  const [boughtRows, soldRows, accountRows] = await Promise.all([
+  const [boughtRows, soldRows, claimedRows, accountRows] = await Promise.all([
     db
       .select({
         total: sql<string>`COALESCE(SUM(${event.wei_amount}), 0)::numeric`,
@@ -96,6 +99,12 @@ app.get('/stats', async (c) => {
       ),
     db
       .select({
+        count: sql<string>`COUNT(*)::bigint`,
+      })
+      .from(event)
+      .where(and(eq(event.type, 'assign'), inArray(event.to, addresses))),
+    db
+      .select({
         last_interaction_at: account.last_interaction_at,
         first_seen_at: account.first_seen_at,
       })
@@ -106,6 +115,7 @@ app.get('/stats', async (c) => {
 
   const bought = boughtRows[0]
   const sold = soldRows[0]
+  const claimed = claimedRows[0]
   const last = accountRows[0]?.last_interaction_at ?? null
   const first = accountRows[0]?.first_seen_at ?? null
 
@@ -116,6 +126,7 @@ app.get('/stats', async (c) => {
     totalEarnedUsdCents: bigStr(sold?.totalUsdCents),
     salesBoughtCount: toInt(bought?.count),
     salesSoldCount: toInt(sold?.count),
+    punksClaimedCount: toInt(claimed?.count),
     lastActiveAt: last == null ? null : last.toString(),
     firstSeenAt: first == null ? null : first.toString(),
   })
