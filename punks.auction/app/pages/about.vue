@@ -89,15 +89,6 @@
             :href="`https://evm.now/address/${PUNKS_AUCTION_ADDRESS}/code`"
             target="_blank"
             rel="noopener"
-            ><code>{{ PUNKS_AUCTION_ADDRESS }}</code></a
-          >
-        </dd>
-        <dt class="eyebrow">ENS</dt>
-        <dd>
-          <a
-            href="https://evm.now/address/punksauction.eth/code"
-            target="_blank"
-            rel="noopener"
             ><code>punksauction.eth</code></a
           >
         </dd>
@@ -105,15 +96,6 @@
         <dd>
           <a
             :href="`https://evm.now/address/${PUNKS_AUCTION_ESCROW_ADDRESS}/code`"
-            target="_blank"
-            rel="noopener"
-            ><code>{{ PUNKS_AUCTION_ESCROW_ADDRESS }}</code></a
-          >
-        </dd>
-        <dt class="eyebrow">Escrow ENS</dt>
-        <dd>
-          <a
-            href="https://evm.now/address/escrow.punksauction.eth/code"
             target="_blank"
             rel="noopener"
             ><code>escrow.punksauction.eth</code></a
@@ -126,15 +108,6 @@
             target="_blank"
             rel="noopener"
             ><code>{{ PUNKS_VAULT_FACTORY_ADDRESS }}</code></a
-          >
-        </dd>
-        <dt class="eyebrow">Docs</dt>
-        <dd>
-          <a
-            href="https://docs.punksmarket.app/sdk/offers-and-auctions"
-            target="_blank"
-            rel="noopener"
-            >offers and auctions</a
           >
         </dd>
       </dl>
