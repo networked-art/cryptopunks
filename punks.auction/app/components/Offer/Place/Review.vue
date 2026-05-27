@@ -102,7 +102,12 @@ function slotFulfillmentText(slot: PlaceOfferDraft['slotSummaries'][number]) {
     return `one of the ${formatPunkCount(slot.previewIds.length)} in this selection`
   }
   if (slot.displayKind === 'criteria') {
-    return `one Punk matching ${formatOfferTraitTitle(slot.title)} (${formatEligibleCount(slot.previewIds.length)})`
+    const criteria = formatOfferTraitTitle(slot.title)
+    const target =
+      slot.criteriaKind === 'group'
+        ? `one Punk matching any of ${criteria}`
+        : `one Punk matching ${criteria}`
+    return `${target} (${formatEligibleCount(slot.previewIds.length)})`
   }
   return 'any Punk'
 }

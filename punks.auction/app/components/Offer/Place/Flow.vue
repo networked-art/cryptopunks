@@ -448,7 +448,11 @@ function amountStepTitle() {
   const singleSlot =
     draft.value.slotSummaries.length === 1 ? draft.value.slotSummaries[0] : null
   if (singleSlot?.displayKind === 'criteria' && singleSlot.title) {
-    return `${OFFER_SLOT_TEXT.traitOffer}: ${formatOfferTraitTitle(singleSlot.title)}`
+    const label =
+      singleSlot.criteriaKind === 'group'
+        ? OFFER_SLOT_TEXT.traitGroup
+        : OFFER_SLOT_TEXT.traitOffer
+    return `${label}: ${formatOfferTraitTitle(singleSlot.title)}`
   }
   if (singleSlot?.displayKind === 'selection') {
     if (singleSlot.previewIds.length === 1) return singleSlot.title

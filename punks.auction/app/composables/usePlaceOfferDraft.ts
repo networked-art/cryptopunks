@@ -14,6 +14,7 @@ export type PlaceOfferSlotDisplayKind =
   | 'selection'
   | 'criteria'
   | 'collection'
+export type PlaceOfferCriteriaKind = 'single' | 'group' | 'custom'
 
 export type PlaceOfferSlotDraft = {
   standard: TokenStandardValue
@@ -22,6 +23,7 @@ export type PlaceOfferSlotDraft = {
   exactPunkId: number | null
   traitSearchText: string
   traitText: string
+  traitCriteriaKind: PlaceOfferCriteriaKind
   traitQuery: PunkQuery | null
   traitMatchIds: number[]
   traitIncludeIds: number[]
@@ -38,6 +40,7 @@ export type PlaceOfferSlotSummary = {
   title: string
   detail: string
   displayKind: PlaceOfferSlotDisplayKind
+  criteriaKind?: PlaceOfferCriteriaKind
   targetMode: PlaceOfferTargetMode
   standard: TokenStandardValue
   previewIds: number[]
@@ -79,6 +82,7 @@ export function createPlaceOfferSlotDraft(
     exactPunkId: null,
     traitSearchText: '',
     traitText: '',
+    traitCriteriaKind: 'single',
     traitQuery: null,
     traitMatchIds: [],
     traitIncludeIds: [],
@@ -245,6 +249,7 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       title: text,
       detail: traitDetail(activeCount, includeIds.length, excludeIds.length),
       displayKind: 'criteria',
+      criteriaKind: slot.traitCriteriaKind,
       targetMode: 'traits',
       standard: slot.standard,
       previewIds,
