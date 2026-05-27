@@ -7,6 +7,7 @@ export type AccountStats = {
   salesBoughtCount: number
   salesSoldCount: number
   lastActiveAt: number | null
+  firstSeenAt: number | null
 }
 
 type RawStats = {
@@ -15,6 +16,7 @@ type RawStats = {
   salesBoughtCount: number
   salesSoldCount: number
   lastActiveAt: string | null
+  firstSeenAt: string | null
 }
 
 const EMPTY: AccountStats = {
@@ -23,6 +25,7 @@ const EMPTY: AccountStats = {
   salesBoughtCount: 0,
   salesSoldCount: 0,
   lastActiveAt: null,
+  firstSeenAt: null,
 }
 
 /**
@@ -69,6 +72,7 @@ export function useAccountStats(opts: {
         salesBoughtCount: raw.salesBoughtCount,
         salesSoldCount: raw.salesSoldCount,
         lastActiveAt: raw.lastActiveAt == null ? null : Number(raw.lastActiveAt),
+        firstSeenAt: raw.firstSeenAt == null ? null : Number(raw.firstSeenAt),
       }
     } catch (e) {
       if (t !== token) return

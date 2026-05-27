@@ -6,40 +6,7 @@
     >
       <section class="profile-section">
         <h2 class="section-title eyebrow">Stats</h2>
-        <dl class="stats-list">
-          <div class="stat-row">
-            <dt>Last active</dt>
-            <dd>{{ lastActiveLabel }}</dd>
-          </div>
-          <div class="stat-row">
-            <dt>Bought</dt>
-            <dd>
-              <EthAmount
-                v-if="stats.totalSpentWei > 0n"
-                :wei="stats.totalSpentWei"
-              />
-              <span
-                v-else
-                class="muted"
-                >—</span
-              >
-            </dd>
-          </div>
-          <div class="stat-row">
-            <dt>Sold</dt>
-            <dd>
-              <EthAmount
-                v-if="stats.totalEarnedWei > 0n"
-                :wei="stats.totalEarnedWei"
-              />
-              <span
-                v-else
-                class="muted"
-                >—</span
-              >
-            </dd>
-          </div>
-        </dl>
+        <ProfileStats :stats="stats" />
       </section>
 
       <section class="profile-section">
@@ -217,14 +184,6 @@ const { stats } = useAccountStats({
   eoa: profileAddress,
 })
 
-const lastActiveIso = computed(() =>
-  stats.value.lastActiveAt
-    ? new Date(stats.value.lastActiveAt * 1000).toISOString()
-    : undefined,
-)
-const lastActiveAgo = useTimeAgo(lastActiveIso)
-const lastActiveLabel = computed(() => lastActiveAgo.value || '—')
-
 const myLots = computed(() => {
   const addrs = ownerAddresses.value
   if (!addrs.size) return []
@@ -303,37 +262,6 @@ const myOffers = computed(() => {
 
 .section-title {
   margin: 0;
-}
-
-.stats-list {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  border: var(--border);
-  background: var(--bg-elevated);
-}
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--size-3);
-  padding: var(--size-2) var(--size-3);
-  border-bottom: var(--border);
-}
-
-.stat-row:last-child {
-  border-bottom: 0;
-}
-
-.stat-row dt {
-  color: var(--text-muted);
-  font-size: var(--font-sm);
-}
-
-.stat-row dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
 }
 
 .card-grid {
