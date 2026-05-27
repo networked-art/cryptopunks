@@ -1,59 +1,35 @@
 <template>
   <OfferPlaceTargetShell>
-    <OfferPlaceSearchToolbar
-      v-model="searchText"
-      placeholder="Any punk"
-      disabled
-    />
-
     <div class="collection-target">
-      <LazyPunkGrid
-        class="target-grid collection-grid"
-        :ids="ids"
-        :size="size"
-        scrollable
-        :interactive="false"
-      />
-      <div class="collection-overlay">
+      <span class="collection-title">Any Punk</span>
+      <span class="collection-copy">
         Make an offer on any punk.
-      </div>
+      </span>
     </div>
   </OfferPlaceTargetShell>
 </template>
 
-<script setup lang="ts">
-withDefaults(
-  defineProps<{
-    size?: number
-  }>(),
-  { size: 72 },
-)
-
-const searchText = ref('')
-const ids = Array.from({ length: 10000 }, (_, id) => id)
-</script>
-
 <style scoped>
 .collection-target {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-}
-
-.collection-grid {
-  height: 100%;
-}
-
-.collection-overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: var(--size-4);
-  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-2);
+  min-height: 100%;
+  padding: var(--size-5);
   color: var(--text);
+  text-align: center;
+}
+
+.collection-title {
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+}
+
+.collection-copy {
+  color: var(--text-muted);
   font-size: var(--font-sm);
   text-align: center;
-  pointer-events: none;
 }
 </style>
