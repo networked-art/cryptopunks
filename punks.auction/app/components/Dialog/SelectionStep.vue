@@ -12,7 +12,12 @@
         class="slot-section"
       >
         <div class="slot-head">
-          <span class="eyebrow">Slot {{ selectionSlot.index + 1 }}</span>
+          <span
+            v-if="slots.length > 1"
+            class="eyebrow"
+          >
+            Slot {{ selectionSlot.index + 1 }}
+          </span>
           <strong>{{ selectionSlot.title }}</strong>
           <span
             v-if="selectionSlot.detail"
@@ -183,7 +188,7 @@ function custodyLabel(custody: OfferFulfillmentCandidate['custody']) {
 
 .candidate.selected {
   border-color: var(--primary);
-  box-shadow: inset var(--border-width) 0 0 var(--primary);
+  box-shadow: inset 0 0 0 3px var(--primary);
 }
 
 .candidate :deep(.punk-thumb) {
