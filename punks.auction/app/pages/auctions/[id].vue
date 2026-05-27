@@ -89,6 +89,39 @@
     />
 
     <LotDetailItems :items="auction.items" />
+
+    <section class="bid-history">
+      <h2 class="section-title eyebrow">Bid history</h2>
+      <div
+        v-if="bidsPending && !bids.length"
+        class="bids-loading"
+      >
+        <Spinner label="Loading bids" />
+      </div>
+      <div
+        v-else-if="bidsError"
+        class="bids-error"
+      >
+        Failed to load bids: {{ bidsError }}
+      </div>
+      <ul
+        v-else-if="bids.length"
+        class="event-list"
+      >
+        <ActivityRow
+          v-for="event in bids"
+          :key="event.id"
+          :event="event"
+          hide-thumb
+        />
+      </ul>
+      <p
+        v-else
+        class="muted"
+      >
+        No bids placed yet.
+      </p>
+    </section>
   </LotDetailShell>
 
   <div
@@ -129,6 +162,13 @@ const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const { auction, minimumBidWei, pending, error, deployed, refresh } =
   useAuction(() => (validId.value ? id.value : undefined))
 
+const {
+  bids,
+  pending: bidsPending,
+  error: bidsError,
+  refresh: refreshBids,
+} = useAuctionBids(() => (validId.value ? id.value : undefined))
+
 const now = useSeconds()
 const status = computed<AuctionStatus>(() => {
   const current = auction.value
@@ -160,12 +200,14 @@ const endLabel = computed(() => {
 
 function onChanged() {
   void refresh()
+  void refreshBids()
 }
 
 useIntervalFn(() => {
   const current = auction.value
   if (!current || current.settled) return
   void refresh()
+  void refreshBids()
 }, REFRESH_INTERVAL_MS)
 
 function formatDateTime(timestamp: number) {
@@ -267,6 +309,35 @@ useSeoMeta({
   min-height: 60vh;
   padding: var(--size-8);
   text-align: center;
+}
+
+.bid-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+
+.section-title {
+  margin: 0;
+}
+
+.event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: var(--border);
+  border-bottom: 0;
+  background: var(--bg-elevated);
+}
+
+.bids-loading {
+  padding: var(--size-5);
+  text-align: center;
+}
+
+.bids-error {
+  color: var(--accent);
+  font-size: var(--font-sm);
 }
 
 @media (max-width: 540px) {
