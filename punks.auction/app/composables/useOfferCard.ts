@@ -1,4 +1,10 @@
-import { filterIsEmpty, type OfferRecord } from '~/utils/auction'
+import {
+  filterIsEmpty,
+  offerSlotCriteriaToQuery,
+  offerSlotMatchingIds,
+  type OfferRecord,
+  type OfferSlot,
+} from '~/utils/auction'
 import {
   countOfferSlotMatches,
   offerSlotDetail,
@@ -50,7 +56,7 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
     return {
       title: `${record.slots.length.toLocaleString()} Items`,
       detail: slotStandardsLabel(record.slots),
-      thumbs: exactItems,
+      thumbs: offerSlotCoverItems(record.slots, offline),
     }
   })
 
@@ -64,6 +70,42 @@ function exactOfferItems(offer: OfferRecord): OfferCardThumb[] {
   return offer.slots
     .map((slot) => offerSlotExactItem(slot))
     .filter((item): item is OfferCardThumb => !!item)
+}
+
+function offerSlotCoverItems(
+  slots: OfferRecord['slots'],
+  offline: ReturnType<typeof usePunksOffline>,
+): OfferCardThumb[] {
+  return slots
+    .map((slot) => offerSlotCoverItem(slot, offline))
+    .filter((item): item is OfferCardThumb => !!item)
+}
+
+function offerSlotCoverItem(
+  slot: OfferSlot,
+  offline: ReturnType<typeof usePunksOffline>,
+): OfferCardThumb | null {
+  const punkId = slot.includeIds[0] ?? searchSlotMatches(slot, offline)[0]
+  return punkId === undefined
+    ? null
+    : {
+        punkId,
+        standard: slot.standard,
+      }
+}
+
+function searchSlotMatches(
+  slot: OfferSlot,
+  offline: ReturnType<typeof usePunksOffline>,
+) {
+  try {
+    return offerSlotMatchingIds(
+      slot,
+      offline.search(offerSlotCriteriaToQuery(slot)),
+    )
+  } catch {
+    return []
+  }
 }
 
 function slotStandardsLabel(slots: OfferRecord['slots']) {
