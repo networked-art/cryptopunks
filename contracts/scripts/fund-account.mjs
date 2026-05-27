@@ -144,6 +144,10 @@ async function main() {
 
   const before = fromQuantity(await rpc('eth_getBalance', [account, 'latest']))
   await rpc('hardhat_setBalance', [account, toQuantity(amountWei)])
+  // `hardhat_setBalance` doesn't advance the chain head, so wallets and
+  // wagmi's `useBalance` (keyed by block number) won't refetch. Mine an
+  // empty block to tick listeners and surface the new balance.
+  await rpc('hardhat_mine', ['0x1'])
   const after = fromQuantity(await rpc('eth_getBalance', [account, 'latest']))
 
   console.log(`Set ${account} balance on chain ${chainId}.`)
