@@ -18,6 +18,8 @@ const GOLD_CHAIN_TRAIT_ID = data.resolveTraitSync('Gold Chain').id
 const HOT_LIPSTICK_TRAIT_ID = data.resolveTraitSync('Hot Lipstick').id
 const MEDICAL_MASK_TRAIT_ID = data.resolveTraitSync('Medical Mask').id
 const MOHAWK_TRAIT_ID = data.resolveTraitSync('Mohawk').id
+const BIG_SHADES_TRAIT_ID = data.resolveTraitSync('Big Shades').id
+const BUCK_TEETH_TRAIT_ID = data.resolveTraitSync('Buck Teeth').id
 const HEAD_VARIANT_TRAIT_OFFSET = 5
 const FEMALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 5 // HeadVariant.Female4
 const MALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 9 // HeadVariant.Male4
@@ -65,6 +67,31 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.equal(
       slot.criteria.anyOfTraitMask,
       mask(FEMALE4_TRAIT_ID, MALE4_TRAIT_ID),
+    )
+  })
+
+  it('compiles whole exact trait-name text as one required trait', () => {
+    const bigShades = compileOfferSlot(data, { query: { text: 'big shades' } })
+    assert.equal(
+      bigShades.criteria.requiredTraitMask,
+      mask(BIG_SHADES_TRAIT_ID),
+    )
+    assert.equal(bigShades.criteria.anyOfTraitMask, 0n)
+    assert.deepEqual(bigShades.includeIds, [])
+
+    const buckTeeth = compileOfferSlot(data, { query: { text: 'buck teeth' } })
+    assert.equal(buckTeeth.criteria.requiredTraitMask, mask(BUCK_TEETH_TRAIT_ID))
+    assert.equal(buckTeeth.criteria.anyOfTraitMask, 0n)
+    assert.deepEqual(buckTeeth.includeIds, [])
+  })
+
+  it('keeps added terms on the normal fuzzy text path', () => {
+    const slot = compileOfferSlot(data, { query: { text: 'big shades wild' } })
+    assert.equal(slot.criteria.requiredTraitMask, 0n)
+    assert.equal(slot.criteria.anyOfTraitMask, 0n)
+    assert.deepEqual(
+      slot.includeIds,
+      data.searchSync({ text: 'big shades wild' }),
     )
   })
 
