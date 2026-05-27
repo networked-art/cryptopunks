@@ -53,8 +53,8 @@ const root = {
   display: 'flex',
   flexDirection: 'column' as const,
   padding: '64px 64px 0 64px',
-  background: '#0a0a12',
-  color: '#f7f7f8',
+  background: '#f0f0f3',
+  color: '#0a0a12',
   fontFamily: 'JetBrains Mono, monospace',
 }
 
@@ -69,7 +69,7 @@ const header = {
 const dot = {
   width: '14px',
   height: '14px',
-  background: '#ff5fa8',
+  background: '#f14eba',
   marginRight: '14px',
 }
 
@@ -84,7 +84,7 @@ const titleEl = {
   fontWeight: 600,
   lineHeight: 1.05,
   letterSpacing: '-0.03em',
-  color: '#f7f7f8',
+  color: '#0a0a12',
   marginBottom: '20px',
   flexShrink: 0,
 }
@@ -92,7 +92,7 @@ const titleEl = {
 const descriptionEl = {
   fontSize: '24px',
   lineHeight: 1.35,
-  color: '#9a9ab0',
+  color: '#6a6a82',
   flexShrink: 0,
 }
 
@@ -120,5 +120,6 @@ const spriteImg = {
   marginTop: `-${STRIP_ROW * STRIP_HEIGHT}px`,
   flexShrink: 0,
   flexGrow: 0,
+  imageRendering: 'pixelated' as const,
 }
 </script>

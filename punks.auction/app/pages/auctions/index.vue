@@ -74,10 +74,10 @@ useSeoMeta({
   ogTitle: 'Auctions · Punks Auction',
   twitterTitle: 'Auctions · Punks Auction',
 })
-defineOgImage('Default', {
-  title: 'Live auctions',
-  description: 'Open lots and 24h auctions for CryptoPunks.',
-})
+// defineOgImage('Default', {
+//   title: 'Live auctions',
+//   description: 'Open lots and 24h auctions for CryptoPunks.',
+// })
 
 const {
   auctions,

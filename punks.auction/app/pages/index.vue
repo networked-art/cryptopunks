@@ -22,10 +22,10 @@ useSeoMeta({
   ogTitle: PAGE_TITLE,
   twitterTitle: PAGE_TITLE,
 })
-defineOgImage('Default', {
-  title: 'An Auction House for CryptoPunks',
-  description: '24h auctions, multi-Punk lots, native-ETH purchase offers.',
-})
+// defineOgImage('Default', {
+//   title: 'An Auction House for CryptoPunks',
+//   description: '24h auctions, multi-Punk lots, native-ETH purchase offers.',
+// })
 </script>
 
 <style scoped>

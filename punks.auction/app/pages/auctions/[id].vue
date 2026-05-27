@@ -245,14 +245,14 @@ const { data: ogAuction } = await useAsyncData(
   },
 )
 
-defineOgImage('Lot', {
-  kind: 'auction',
-  id: id.value,
-  items: ogAuction.value?.items ?? [],
-  priceWei: ogAuction.value?.latestBidWei ?? '0',
-  priceLabel: 'Current bid',
-  status: ogAuction.value?.status ?? null,
-})
+// defineOgImage('Lot', {
+//   kind: 'auction',
+//   id: id.value,
+//   items: ogAuction.value?.items ?? [],
+//   priceWei: ogAuction.value?.latestBidWei ?? '0',
+//   priceLabel: 'Current bid',
+//   status: ogAuction.value?.status ?? null,
+// })
 </script>
 
 <style scoped>

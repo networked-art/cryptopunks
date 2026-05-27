@@ -61,10 +61,10 @@ useSeoMeta({
   ogTitle: 'Purchase offers · Punks Auction',
   twitterTitle: 'Purchase offers · Punks Auction',
 })
-defineOgImage('Default', {
-  title: 'Purchase offers',
-  description: 'Standing bids that settle instantly or open an auction.',
-})
+// defineOgImage('Default', {
+//   title: 'Purchase offers',
+//   description: 'Standing bids that settle instantly or open an auction.',
+// })
 
 const { offers, pending, error } = useOffers()
 

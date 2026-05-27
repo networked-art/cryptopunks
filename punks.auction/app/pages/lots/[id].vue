@@ -169,14 +169,14 @@ const { data: ogLot } = await useAsyncData(
   },
 )
 
-defineOgImage('Lot', {
-  kind: 'lot',
-  id: id.value,
-  items: ogLot.value?.items ?? [],
-  priceWei: ogLot.value?.reserveWei ?? '0',
-  priceLabel: 'Reserve',
-  status: null,
-})
+// defineOgImage('Lot', {
+//   kind: 'lot',
+//   id: id.value,
+//   items: ogLot.value?.items ?? [],
+//   priceWei: ogLot.value?.reserveWei ?? '0',
+//   priceLabel: 'Reserve',
+//   status: null,
+// })
 </script>
 
 <style scoped>

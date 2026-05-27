@@ -123,9 +123,9 @@ const statusLabel = computed(() => {
 })
 
 const statusColor = computed(() => {
-  if (props.status === 'live') return '#ff5fa8'
-  if (props.status === 'ended') return '#9a9ab0'
-  return '#9a9ab0'
+  if (props.status === 'live') return '#f14eba'
+  if (props.status === 'ended') return '#6a6a82'
+  return '#6a6a82'
 })
 
 const root = {
@@ -133,7 +133,7 @@ const root = {
   height: '630px',
   display: 'flex',
   flexDirection: 'row' as const,
-  background: '#0a0a12',
+  background: '#f0f0f3',
   fontFamily: 'JetBrains Mono, monospace',
 }
 
@@ -185,6 +185,7 @@ function spriteImgFor(item: OgLotItem) {
     marginTop: `-${row * size}px`,
     flexShrink: 0,
     flexGrow: 0,
+    imageRendering: 'pixelated' as const,
   }
 }
 
@@ -195,7 +196,7 @@ const overflowBadge = {
   width: '100%',
   height: '100%',
   background: 'rgba(10, 10, 18, 0.72)',
-  color: '#f7f7f8',
+  color: '#f0f0f3',
   fontSize: '60px',
   fontWeight: 600,
   letterSpacing: '-0.02em',
@@ -207,7 +208,7 @@ const side = {
   flexDirection: 'column' as const,
   justifyContent: 'space-between',
   padding: '56px',
-  color: '#f7f7f8',
+  color: '#0a0a12',
 }
 
 const brandRow = {
@@ -220,7 +221,7 @@ const brandRow = {
 const dot = {
   width: '14px',
   height: '14px',
-  background: '#ff5fa8',
+  background: '#f14eba',
 }
 
 const brand = {
@@ -237,7 +238,7 @@ const titleBlock = {
 
 const eyebrow = {
   fontSize: '22px',
-  color: '#9a9ab0',
+  color: '#6a6a82',
   letterSpacing: '0.08em',
   textTransform: 'uppercase' as const,
 }
@@ -252,7 +253,7 @@ const idEl = {
 }
 
 const hash = {
-  color: '#9a9ab0',
+  color: '#6a6a82',
   marginRight: '6px',
 }
 
@@ -266,7 +267,7 @@ const statusChip = computed(() => ({
   alignSelf: 'flex-start',
   padding: '4px 12px',
   background: statusColor.value,
-  color: '#0a0a12',
+  color: '#f0f0f3',
   fontSize: '18px',
   fontWeight: 600,
   letterSpacing: '0.08em',
@@ -276,7 +277,7 @@ const statusChip = computed(() => ({
 
 const priceLabelEl = {
   fontSize: '20px',
-  color: '#9a9ab0',
+  color: '#6a6a82',
   letterSpacing: '0.05em',
 }
 
@@ -291,7 +292,7 @@ const priceValue = {
 }
 
 const ethSymbol = {
-  color: '#9a9ab0',
+  color: '#6a6a82',
   marginLeft: '12px',
   fontSize: '34px',
   letterSpacing: '0.05em',

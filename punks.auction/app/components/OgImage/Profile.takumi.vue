@@ -60,7 +60,7 @@ const root = {
   height: '630px',
   display: 'flex',
   flexDirection: 'row' as const,
-  background: '#0a0a12',
+  background: '#f0f0f3',
   fontFamily: 'JetBrains Mono, monospace',
 }
 
@@ -70,7 +70,7 @@ const left = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#ff5fa8',
+  background: '#f14eba',
   flexShrink: 0,
 }
 
@@ -86,7 +86,7 @@ const side = {
   flexDirection: 'column' as const,
   justifyContent: 'space-between',
   padding: '64px',
-  color: '#f7f7f8',
+  color: '#0a0a12',
 }
 
 const brandRow = {
@@ -99,7 +99,7 @@ const brandRow = {
 const dot = {
   width: '14px',
   height: '14px',
-  background: '#ff5fa8',
+  background: '#f14eba',
 }
 
 const brand = {
@@ -116,7 +116,7 @@ const titleBlock = {
 
 const eyebrow = {
   fontSize: '22px',
-  color: '#9a9ab0',
+  color: '#6a6a82',
   letterSpacing: '0.08em',
   textTransform: 'uppercase' as const,
 }
@@ -133,18 +133,18 @@ const addressLarge = {
   fontSize: '48px',
   fontWeight: 600,
   letterSpacing: '-0.02em',
-  color: '#f7f7f8',
+  color: '#0a0a12',
 }
 
 const addressDim = {
   fontSize: '26px',
-  color: '#9a9ab0',
+  color: '#6a6a82',
   letterSpacing: '0.02em',
 }
 
 const footer = {
   fontSize: '18px',
-  color: '#9a9ab0',
+  color: '#6a6a82',
   letterSpacing: '0.05em',
 }
 </script>

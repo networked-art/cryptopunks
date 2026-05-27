@@ -196,11 +196,11 @@ const { data: ogProfile } = await useAsyncData(
   },
 )
 
-defineOgImage('Profile', {
-  address:
-    ogProfile.value?.address ?? '0x0000000000000000000000000000000000000000',
-  ens: ogProfile.value?.ens ?? null,
-})
+// defineOgImage('Profile', {
+//   address:
+//     ogProfile.value?.address ?? '0x0000000000000000000000000000000000000000',
+//   ens: ogProfile.value?.ens ?? null,
+// })
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
