@@ -31,8 +31,8 @@ const PLAN_TITLES: Record<PlanKind, string> = {
   'accept-offer': 'Accept Offer',
   'accept-offer-from-lot': 'Accept Offer',
   'start-auction-from-offer': 'Start Auction',
-  'create-lot-and-accept-offer': 'List & Accept Offer',
-  'create-lot-and-start-auction-from-offer': 'List & Start Auction',
+  'create-lot-and-accept-offer': 'Accept Offer',
+  'create-lot-and-start-auction-from-offer': 'Start Auction',
   'settle-auction': 'Settle Auction',
   'withdraw-auction-balance': 'Withdraw Balance',
 
