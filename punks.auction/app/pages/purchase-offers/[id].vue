@@ -32,7 +32,9 @@
     <template v-if="!validId">
       Offer #{{ route.params.id }} does not exist. Offer ids start at 1.
     </template>
-    <template v-else-if="pending">Loading offer…</template>
+    <template v-else-if="pending">
+      <Spinner label="Loading offer" />
+    </template>
     <template v-else-if="!deployed">
       Offers appear once <code>PunksAuction</code> is deployed.
     </template>

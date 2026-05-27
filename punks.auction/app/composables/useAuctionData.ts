@@ -81,16 +81,18 @@ export function useOffers() {
 export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
   const client = useReadClient()
   const offer = ref<OfferRecord | null>(null)
-  const pending = ref(false)
+  const pending = ref(true)
   const error = ref<string | null>(null)
 
   async function load() {
-    const c = client.value
     const offerId = resourceId(id)
-    if (!c || offerId === null) {
+    if (offerId === null) {
       offer.value = null
+      pending.value = false
       return
     }
+    const c = client.value
+    if (!c) return
 
     pending.value = true
     error.value = null
