@@ -30,6 +30,11 @@
       v-model:exclude-ids="traitExcludeIds"
       :size="size"
     />
+
+    <OfferPlaceCollectionTarget
+      v-else
+      :size="size"
+    />
   </div>
 </template>
 
