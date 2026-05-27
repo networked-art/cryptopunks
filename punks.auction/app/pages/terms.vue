@@ -1,8 +1,10 @@
 <template>
   <div class="container terms-page">
     <header class="page-head">
-      <h1>Terms</h1>
-      <p class="muted">Use Punks Auction at your own risk.</p>
+      <div class="page-head-text">
+        <h1>Terms</h1>
+        <p class="muted">Use Punks Auction at your own risk.</p>
+      </div>
     </header>
 
     <section class="terms-section">
