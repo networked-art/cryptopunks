@@ -438,7 +438,7 @@ function amountStepTitle() {
       return `Trait offer: ${formatTraitTitle(singleSlot.title)}`
     }
 
-    return `Set offer: ${singleSlot.title}`
+    return `Selection offer: ${singleSlot.title}`
   }
   if (draft.value.title) return draft.value.title
   if (quantityMode.value === 'multiple') return 'Multiple Punks'
