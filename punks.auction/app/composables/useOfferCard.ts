@@ -1,4 +1,4 @@
-import type { OfferRecord } from '~/utils/auction'
+import { filterIsEmpty, type OfferRecord } from '~/utils/auction'
 import {
   countOfferSlotMatches,
   offerSlotDetail,
@@ -41,12 +41,14 @@ export function useOfferCard(offer: MaybeRefOrGetter<OfferRecord>) {
       return {
         title: offerSlotTitle(slot, offline),
         detail: offerSlotDetail(slot, countOfferSlotMatches(slot, offline)),
-        thumbs: offerSlotIncludedItems(slot),
+        thumbs: filterIsEmpty(slot.criteria)
+          ? offerSlotIncludedItems(slot)
+          : [],
       }
     }
 
     return {
-      title: `${record.slots.length.toLocaleString()} Punks`,
+      title: `${record.slots.length.toLocaleString()} Items`,
       detail: slotStandardsLabel(record.slots),
       thumbs: exactItems,
     }

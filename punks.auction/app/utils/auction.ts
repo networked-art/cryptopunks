@@ -74,7 +74,7 @@ export function formatLotItemLabel(item: Pick<LotItem, 'standard' | 'punkId'>) {
 export function formatLotItemsLabel(items: readonly LotItem[]) {
   const [item] = items
   if (items.length === 1 && item) return formatLotItemLabel(item)
-  return `${items.length.toLocaleString()} Punks`
+  return `${items.length.toLocaleString()} Items`
 }
 
 export function lotItemBackground(standard: TokenStandardValue): string {
