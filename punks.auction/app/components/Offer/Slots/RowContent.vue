@@ -65,7 +65,7 @@ defineProps<{
   place-items: center;
   inline-size: var(--size-8);
   block-size: var(--size-8);
-  background: var(--bg-elevated);
+  background: var(--gray-z-2);
   overflow: hidden;
 }
 
