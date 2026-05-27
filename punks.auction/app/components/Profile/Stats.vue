@@ -8,6 +8,15 @@
       <dt>Last active</dt>
       <dd class="full">{{ lastActiveLabel }}</dd>
     </div>
+    <div
+      v-if="stats.punksClaimedCount > 0"
+      class="stat-row text-row"
+    >
+      <dt>Claimed</dt>
+      <dd class="full">
+        {{ stats.punksClaimedCount }} {{ punksWord }}
+      </dd>
+    </div>
     <div class="stat-row amount-row">
       <dt>
         <span>Bought</span>
@@ -151,6 +160,10 @@ const firstSeenLabel = computed(() => {
   if (!props.stats.firstSeenAt) return '—'
   return DATE_FORMAT.format(new Date(props.stats.firstSeenAt * 1000))
 })
+
+const punksWord = computed(() =>
+  props.stats.punksClaimedCount === 1 ? 'punk' : 'punks',
+)
 </script>
 
 <style scoped>

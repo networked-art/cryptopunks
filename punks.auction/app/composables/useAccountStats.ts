@@ -8,6 +8,7 @@ export type AccountStats = {
   totalEarnedUsdCents: bigint
   salesBoughtCount: number
   salesSoldCount: number
+  punksClaimedCount: number
   lastActiveAt: number | null
   firstSeenAt: number | null
 }
@@ -19,6 +20,7 @@ type RawStats = {
   totalEarnedUsdCents: string
   salesBoughtCount: number
   salesSoldCount: number
+  punksClaimedCount: number
   lastActiveAt: string | null
   firstSeenAt: string | null
 }
@@ -30,6 +32,7 @@ const EMPTY: AccountStats = {
   totalEarnedUsdCents: 0n,
   salesBoughtCount: 0,
   salesSoldCount: 0,
+  punksClaimedCount: 0,
   lastActiveAt: null,
   firstSeenAt: null,
 }
@@ -81,6 +84,7 @@ export function useAccountStats(opts: {
         totalEarnedUsdCents: BigInt(raw.totalEarnedUsdCents),
         salesBoughtCount: raw.salesBoughtCount,
         salesSoldCount: raw.salesSoldCount,
+        punksClaimedCount: raw.punksClaimedCount,
         lastActiveAt: raw.lastActiveAt == null ? null : Number(raw.lastActiveAt),
         firstSeenAt: raw.firstSeenAt == null ? null : Number(raw.firstSeenAt),
       }
