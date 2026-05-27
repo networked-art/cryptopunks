@@ -1435,6 +1435,9 @@ export class OfflinePunksDataClient {
     if (typeof text !== 'string') {
       throw new PunksDataValidationError('text search must be a string')
     }
+    const exactTrait = resolveExactTextTraitSync(this, text)
+    if (exactTrait) return this.store.traitBitmaps[exactTrait.id]
+
     const parsed = parseSearchText(text)
     const groupBitmaps = parsed.orGroups
       .map((group) => this.bitmapForTextGroupSync(group))
@@ -2297,6 +2300,15 @@ export function normalizeSearchText(value: string): string {
     .replaceAll(/[_-]+/g, ' ')
     .replaceAll(/[^#a-z0-9]+/g, ' ')
     .trim()
+}
+
+export function resolveExactTextTraitSync(
+  data: Pick<OfflinePunksDataClient, 'findTraitsByTextSync'>,
+  text: string,
+): TraitRecord | undefined {
+  const trimmed = text.trim()
+  if (!trimmed) return undefined
+  return data.findTraitsByTextSync(trimmed, { exact: true })[0]
 }
 
 function matchesTextIndexKey(
