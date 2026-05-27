@@ -187,4 +187,8 @@ function onComplete() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.match-count a {
+  color: var(--accent);
+}
+</style>
