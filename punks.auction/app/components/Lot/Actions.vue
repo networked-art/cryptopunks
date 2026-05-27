@@ -43,13 +43,7 @@
       </div>
 
       <template v-if="matchingOffers.length">
-        <div
-          class="action-divider"
-          aria-hidden="true"
-        />
-
         <div class="action-block">
-          <h3 class="action-title">Accept an offer</h3>
           <p class="block-note muted">
             Pick a matching standing offer to settle instantly or seed an
             auction.
@@ -136,11 +130,6 @@
             <Button @click="openCancelDialog">Cancel Lot</Button>
           </div>
         </div>
-
-        <div
-          class="action-divider"
-          aria-hidden="true"
-        />
       </template>
 
       <Dialog
@@ -489,12 +478,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   margin: 0;
   font-size: var(--font-sm);
   font-weight: var(--font-weight-bold);
-}
-
-.action-divider {
-  height: 1px;
-  background: var(--border-color, currentColor);
-  opacity: 0.15;
 }
 
 .button-row,
