@@ -60,10 +60,9 @@ const props = defineProps<{
   maxSlots: number
 }>()
 
-const quantityMode = defineModel<PlaceOfferQuantityMode | null>(
-  'quantityMode',
-  { required: true },
-)
+const quantityMode = defineModel<PlaceOfferQuantityMode>('quantityMode', {
+  required: true,
+})
 const slotCount = defineModel<number>('slotCount', { required: true })
 const slotCountText = ref(String(slotCount.value))
 

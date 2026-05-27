@@ -9,10 +9,9 @@
       />
 
       <OfferPlaceActionCard
-        v-if="hasActionCard"
-        :title="stepTitle"
-        :primary-label="primaryLabel"
-        :primary-disabled="primaryDisabled"
+        :title="cardState.title"
+        :primary-label="cardState.primaryLabel"
+        :primary-disabled="cardState.primaryDisabled"
         @primary="actPrimary"
       >
         <OfferPlaceSlotTargetStep
@@ -36,7 +35,7 @@
 
         <template #secondary>
           <Button
-            v-if="showBackButton"
+            v-if="cardState.showBackButton"
             class="secondary"
             @click="goBack"
           >
@@ -46,10 +45,10 @@
 
         <template #primary-prefix>
           <span
-            v-if="footerSelection"
+            v-if="cardState.footerSelection"
             class="footer-selection"
           >
-            {{ footerSelection }}
+            {{ cardState.footerSelection }}
           </span>
         </template>
 
@@ -71,7 +70,7 @@
             <Button
               v-if="address"
               class="primary"
-              :disabled="primaryDisabled"
+              :disabled="cardState.primaryDisabled"
               @click="actPrimary"
             >
               Place offer
@@ -128,7 +127,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 
-const quantityMode = ref<PlaceOfferQuantityMode | null>('one')
+const quantityMode = ref<PlaceOfferQuantityMode>('one')
 const actionStep = ref<ActionStep>('target')
 const amountEth = ref('')
 const error = ref<string | null>(null)
@@ -146,7 +145,6 @@ type TransactionDialogRef = {
 } | null
 const transactionDialogRef = ref<TransactionDialogRef>(null)
 
-const hasActionCard = computed(() => !!quantityMode.value)
 const activeSlotCount = computed(() =>
   quantityMode.value === 'multiple' ? slotCount.value : 1,
 )
@@ -186,47 +184,34 @@ const canUseCurrentSlot = computed(
   () =>
     currentSlotDraft.value.canPlaceOffer && !currentSlotValidationError.value,
 )
-const stepTitle = computed(() => {
-  if (actionStep.value === 'target') {
-    return quantityMode.value === 'multiple'
-      ? itemLabel(activeSlotIndex.value)
-      : 'Target'
-  }
-  return amountStepTitle()
-})
-const primaryLabel = computed(() => {
-  if (actionStep.value === 'amount') return 'Place offer'
-  return activeSlotIndex.value >= activeSlotCount.value - 1
-    ? 'Review'
-    : 'Continue'
-})
 const isFinalTargetStep = computed(
   () =>
     actionStep.value === 'target' &&
     activeSlotIndex.value >= activeSlotCount.value - 1,
 )
-const primaryDisabled = computed(() => {
+const cardState = computed(() => {
   if (actionStep.value === 'target') {
-    return (
-      !canUseCurrentSlot.value ||
-      (isFinalTargetStep.value && !canUseDraft.value)
-    )
+    return {
+      title: targetStepTitle(),
+      primaryLabel: isFinalTargetStep.value ? 'Review' : 'Continue',
+      primaryDisabled:
+        !canUseCurrentSlot.value ||
+        (isFinalTargetStep.value && !canUseDraft.value),
+      showBackButton: activeSlotIndex.value > 0,
+      footerSelection: slotFooterSelection(currentSlotDraft.value),
+    }
   }
-  if (actionStep.value === 'amount') {
-    return !canUseDraft.value || !amountWei.value
+
+  return {
+    title: amountStepTitle(),
+    primaryLabel: 'Place offer',
+    primaryDisabled: !canUseDraft.value || !amountWei.value,
+    showBackButton: true,
+    footerSelection: '',
   }
-  return false
-})
-const showBackButton = computed(() => {
-  return actionStep.value === 'amount' || activeSlotIndex.value > 0
-})
-const footerSelection = computed(() => {
-  if (actionStep.value !== 'target') return ''
-  return slotFooterSelection(currentSlotDraft.value)
 })
 const visibleError = computed(() => {
   if (error.value) return error.value
-  if (!hasActionCard.value) return null
   if (actionStep.value === 'target') {
     if (!currentSlotDraft.value.canPlaceOffer) {
       return visibleSlotDraftError(currentSlotDraft.value.error)
@@ -246,7 +231,6 @@ watch(
   quantityMode,
   (quantity) => {
     error.value = null
-    if (!quantity) return
     ensureSlotDrafts(activeSlotCount.value, { trim: quantity === 'one' })
     activeSlotIndex.value = 0
     actionStep.value = 'target'
@@ -342,13 +326,19 @@ function onComplete(receipt: TransactionReceipt) {
 }
 
 function resetFlow() {
-  quantityMode.value = null
+  quantityMode.value = 'one'
   actionStep.value = 'target'
   amountEth.value = ''
   error.value = null
   slotCount.value = PLACE_OFFER_MIN_MULTI_SLOTS
   activeSlotIndex.value = 0
   slotDrafts.value = [createPlaceOfferSlotDraft()]
+}
+
+function targetStepTitle() {
+  return quantityMode.value === 'multiple'
+    ? itemLabel(activeSlotIndex.value)
+    : 'Target'
 }
 
 function amountStepTitle() {
