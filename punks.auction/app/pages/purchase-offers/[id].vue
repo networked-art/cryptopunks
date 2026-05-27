@@ -104,7 +104,7 @@ const previewItems = computed<LotItem[]>(() => {
   if (!current) return []
   const candidates = current.slots
     .map((slot) => {
-      const punkId = slot.includeIds[0] ?? slotPreviewMatches(slot)[0]
+      const punkId = slotPreviewPunkId(slot)
       return punkId === undefined ? null : { standard: slot.standard, punkId }
     })
     .filter((item): item is Pick<LotItem, 'standard' | 'punkId'> => !!item)
@@ -146,6 +146,21 @@ function slotPreviewMatches(slot: OfferSlot) {
   return (
     slotMatchCache.value.get(slot)?.previewMatches ?? searchSlotMatches(slot)
   )
+}
+
+function slotPreviewPunkId(slot: OfferSlot) {
+  if (filterIsEmpty(slot.criteria)) {
+    return slot.includeIds[0] ?? slotPreviewMatches(slot)[0]
+  }
+
+  return slotCriteriaPreviewMatches(slot)[0] ?? slotPreviewMatches(slot)[0]
+}
+
+function slotCriteriaPreviewMatches(slot: OfferSlot) {
+  const matches = slotMatchCache.value.get(slot)?.criteriaMatches
+  const ids = matches ? [...matches] : searchCriteriaMatches(slot)
+  const excluded = new Set(slot.excludeIds)
+  return ids.filter((punkId) => !excluded.has(punkId))
 }
 
 function slotCriteriaMatchesPunk(slot: OfferSlot, punkId: number) {
