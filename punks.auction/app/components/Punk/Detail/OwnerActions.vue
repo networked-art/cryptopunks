@@ -472,9 +472,6 @@ function scheduleMarketRefresh() {
 
 .label {
   margin-bottom: var(--size-1);
-  text-transform: uppercase;
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
   color: var(--text-dim);
 }
 

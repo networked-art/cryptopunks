@@ -11,7 +11,7 @@
           :src="avatarUri"
           :alt="`Avatar for ${address}`"
         />
-        <span class="label">{{ display }}</span>
+        <span class="handle">{{ display }}</span>
       </span>
     </template>
   </EvmAccount>
@@ -54,7 +54,7 @@ const avatarUri = computed(() =>
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
-.label {
+.handle {
   display: inline-block;
   max-width: 18ch;
   min-width: 0;

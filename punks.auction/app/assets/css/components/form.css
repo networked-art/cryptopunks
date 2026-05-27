@@ -1,6 +1,3 @@
 label > .label {
-  text-transform: uppercase;
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
   color: var(--text-dim);
 }

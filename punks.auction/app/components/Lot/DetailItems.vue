@@ -21,7 +21,7 @@
               :size="48"
               :link="false"
             />
-            <span class="item-label">
+            <span class="item-label label">
               Punk #{{ item.punkId }}
               <span
                 v-if="item.standard === TokenStandard.CryptoPunksV1"
@@ -111,10 +111,6 @@ function itemBackground(item: LotItem) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-md);
-  text-transform: uppercase;
 }
 
 .item-standard {

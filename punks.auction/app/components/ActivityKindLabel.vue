@@ -1,6 +1,6 @@
 <template>
   <span
-    class="kind"
+    class="label"
     :class="`kind-${kind}`"
     >{{ label }}</span
   >
@@ -32,11 +32,3 @@ const KIND_LABEL: Record<ActivityKind, string> = {
 const label = computed(() => KIND_LABEL[props.kind] ?? props.kind)
 </script>
 
-<style scoped>
-.kind {
-  text-transform: uppercase;
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
-  color: var(--text);
-}
-</style>

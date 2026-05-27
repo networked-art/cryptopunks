@@ -75,14 +75,7 @@
                 v-for="offer in sortedPunkOffers"
                 :key="String(offer.id)"
               >
-                <NuxtLink
-                  class="offer-row"
-                  :to="`/purchase-offers/${offer.id}`"
-                >
-                  <EthAmount :wei="offer.amountWei" />
-                  <span class="dim"> by </span>
-                  <Account :address="offer.offerer" />
-                </NuxtLink>
+                <OfferRow :offer="offer" />
               </li>
             </ul>
           </div>
@@ -252,9 +245,6 @@ function onCreated(tx: Hash) {
 
 .label {
   margin-bottom: var(--size-1);
-  text-transform: uppercase;
-  font-size: var(--font-xs);
-  letter-spacing: var(--letter-spacing-md);
   color: var(--text-dim);
 }
 
@@ -286,26 +276,6 @@ function onCreated(tx: Hash) {
 
 .offer-list > li + li {
   border-top: var(--border);
-}
-
-.offer-row {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2);
-  padding: var(--size-2) var(--size-3);
-  color: inherit;
-  border: 0;
-  text-decoration: none;
-}
-
-.offer-row:hover,
-.offer-row:focus-visible {
-  color: inherit;
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
-.offer-row :deep(.avvatar) {
-  height: 1em;
 }
 
 .actions {

@@ -49,63 +49,53 @@
             auction.
           </p>
 
+          <p
+            v-if="!instantEligible"
+            class="hint muted"
+          >
+            This lot is too large for instant settlement; start an auction from
+            the offer instead.
+          </p>
+          <p
+            v-else-if="!v1ActionsAllowed"
+            class="hint muted"
+          >
+            Enable V1 rendering in settings to use V1 lots.
+          </p>
+          <p
+            v-else-if="address && !isSeller"
+            class="hint muted"
+          >
+            Only the seller can instantly accept; any connected wallet can
+            start the auction.
+          </p>
+
+          <div
+            v-if="!address"
+            class="connect-row"
+          >
+            <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+            <span class="muted">Connect a wallet to use the offer.</span>
+          </div>
+
           <ul class="offer-list">
             <li
               v-for="offer in matchingOffers"
               :key="String(offer.id)"
-              class="offer-action"
+              class="offer-item"
             >
-              <div class="offer-head">
-                <NuxtLink
-                  class="offer-link"
-                  :to="`/purchase-offers/${offer.id}`"
-                >
-                  Offer #{{ offer.id }}
-                </NuxtLink>
-                <EthAmount :wei="offer.amountWei" />
-              </div>
-
-              <p
-                v-if="!instantEligible"
-                class="hint muted"
-              >
-                This lot is too large for instant settlement; start an auction
-                from the offer instead.
-              </p>
-              <p
-                v-else-if="!v1ActionsAllowed"
-                class="hint muted"
-              >
-                Enable V1 rendering in settings to use V1 lots.
-              </p>
-              <p
-                v-else-if="!isSeller"
-                class="hint muted"
-              >
-                Only the seller can instantly accept; any connected wallet can
-                start the auction.
-              </p>
+              <OfferRow :offer="offer" />
 
               <div
-                v-if="!address"
-                class="connect-row"
-              >
-                <EvmConnectDialog class-name="primary"
-                  >Connect</EvmConnectDialog
-                >
-                <span class="muted">Connect a wallet to use the offer.</span>
-              </div>
-
-              <div
-                v-else
-                class="button-row"
+                v-if="address"
+                class="offer-actions"
               >
                 <Button
                   class="primary"
                   :disabled="!isSeller || !instantEligible || !v1ActionsAllowed"
                   @click="actAcceptOffer(offer)"
                 >
-                  Accept instantly <EthAmount :wei="offer.amountWei" />
+                  Accept <EthAmount :wei="offer.amountWei" />
                 </Button>
                 <Button
                   :disabled="!v1ActionsAllowed"
@@ -526,34 +516,25 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .offer-list {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
   margin: 0;
   padding: 0;
+  background: white;
 }
 
-.offer-action {
+.offer-list > li + li {
+  border-top: var(--border);
+}
+
+.offer-item {
   display: flex;
   flex-direction: column;
-  gap: var(--size-2);
-  padding: var(--size-2);
-  border: var(--border);
-  background: var(--bg);
 }
 
-.offer-head {
+.offer-actions {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--size-2);
   flex-wrap: wrap;
-  font-size: var(--font-sm);
-}
-
-.offer-link {
-  border: 0;
-  font-weight: var(--font-weight-bold);
+  gap: var(--size-2);
+  padding: 0 var(--size-3) var(--size-3);
 }
 
 .actions-stack :deep(button .eth-amount) {
