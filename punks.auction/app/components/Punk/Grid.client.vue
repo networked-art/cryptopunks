@@ -210,11 +210,13 @@ function measure() {
   /// `.punk-grid` carries padding, but the cells are laid out inside its
   /// content box (`.grid-scroll`). Measure the content box so the column math
   /// doesn't overshoot the padded width and spill cells off the page.
+  /// `clientWidth` (not `rect.width`) excludes the vertical scrollbar in
+  /// scrollable mode, so the rightmost column doesn't slip under it.
   const cs = getComputedStyle(el)
   const padLeft = parseFloat(cs.paddingLeft) || 0
   const padRight = parseFloat(cs.paddingRight) || 0
   const padTop = parseFloat(cs.paddingTop) || 0
-  containerWidth.value = rect.width - padLeft - padRight
+  containerWidth.value = el.clientWidth - padLeft - padRight
 
   if (props.scrollable) {
     visibleTop.value = el.scrollTop
