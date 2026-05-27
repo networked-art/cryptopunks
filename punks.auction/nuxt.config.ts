@@ -13,9 +13,9 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  site: {
-    url: process.env.NUXT_PUBLIC_PUBLIC_URL || 'http://localhost:3000',
-  },
+  // `site.url` (used by nuxt-og-image to build absolute og:image URLs) is set
+  // at runtime via the `NUXT_SITE_URL` env var, which nuxt-site-config reads
+  // on every request. In dev, the origin auto-detects from the request host.
 
   ogImage: {
     defaults: { width: 1200, height: 630, cacheMaxAgeSeconds: 60 * 60 * 24 },
