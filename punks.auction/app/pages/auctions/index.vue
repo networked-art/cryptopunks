@@ -41,7 +41,7 @@
         v-else-if="marketEntries.length"
         class="market-stack"
       >
-        <div class="card-grid">
+        <div :class="['card-grid', { fill: marketEntries.length >= 3 }]">
           <template
             v-for="entry in marketEntries"
             :key="entry.key"
@@ -208,7 +208,7 @@ function compareBigint(a: bigint, b: bigint): number {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  grid-template-columns: repeat(auto-fill, min(100%, 15rem));
   justify-content: start;
   gap: var(--size-8) var(--size-4);
   min-width: 0;
@@ -216,6 +216,10 @@ function compareBigint(a: bigint, b: bigint): number {
   @media (min-width: 960px) {
     gap: var(--size-8);
   }
+}
+
+.card-grid.fill {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
 .card-grid > * {
