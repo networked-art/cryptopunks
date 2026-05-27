@@ -5,6 +5,7 @@ import {
   type PunkQuery,
 } from '@networked-art/punks-sdk'
 import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
+import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 
 export type PlaceOfferQuantityMode = 'one' | 'multiple'
 export type PlaceOfferTargetMode = 'exact' | 'traits' | 'any'
@@ -255,7 +256,7 @@ function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
     input: { standard: slot.standard },
     summary: {
       label,
-      title: 'Collection Offer',
+      title: OFFER_SLOT_TEXT.collectionOffer,
       detail: '',
       targetMode: 'any',
       previewIds: [],

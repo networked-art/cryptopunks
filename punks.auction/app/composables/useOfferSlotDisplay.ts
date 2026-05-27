@@ -9,6 +9,7 @@ import {
   type OfferSlot,
   type TokenStandardValue,
 } from '~/utils/auction'
+import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 import { punkSearchHref } from '~/utils/punkSearch'
 
 export type OfferSlotPreviewItem = {
@@ -106,7 +107,7 @@ export function offerSlotFallbackIcon(
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   const exact = offerSlotExactItem(slot)
   if (exact) return `Punk #${exact.punkId}`
-  if (isOfferSlotSet(slot)) return 'Selection Offer'
+  if (isOfferSlotSet(slot)) return OFFER_SLOT_TEXT.selectionOffer
 
   const hasCriteria = !filterIsEmpty(slot.criteria)
   const parts = [
@@ -114,7 +115,7 @@ export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
       ? criteriaTitle(slot, offline)
       : slot.includeIds.length > 1
         ? `${slot.includeIds.length.toLocaleString()} included Punks`
-        : 'Collection Offer',
+        : OFFER_SLOT_TEXT.collectionOffer,
   ]
 
   if (hasCriteria) {
@@ -145,12 +146,12 @@ export function offerSlotHeading(
     if (description) parts.push({ text: description })
     for (const text of slotIdListTitleParts(slot)) parts.push({ text })
     if (matchingPart) parts.push(matchingPart)
-    return { title: 'Trait offer', subtitleParts: parts }
+    return { title: OFFER_SLOT_TEXT.traitOffer, subtitleParts: parts }
   }
 
   if (isOfferSlotSet(slot)) {
     return {
-      title: 'Selection offer',
+      title: OFFER_SLOT_TEXT.selectionOffer,
       subtitleParts: offerSlotSetIds(slot).map((punkId) => ({
         text: `Punk #${punkId}`,
         href: punkHref(slot.standard, punkId),
@@ -161,7 +162,7 @@ export function offerSlotHeading(
   const title =
     slot.includeIds.length > 1
       ? `${slot.includeIds.length.toLocaleString()} included Punks`
-      : 'Collection Offer'
+      : OFFER_SLOT_TEXT.collectionOffer
   const parts: OfferSlotDetailPart[] = []
   const excluded = countLabel(slot.excludeIds.length, 'excluded')
   if (excluded) parts.push({ text: excluded })
@@ -285,7 +286,9 @@ function searchOfferSlot(
 
 function criteriaTitle(slot: OfferSlot, offline: PunksSdk) {
   const description = criteriaDescription(slot, offline)
-  return description ? `Trait offer: ${description}` : 'Trait offer'
+  return description
+    ? `${OFFER_SLOT_TEXT.traitOffer}: ${description}`
+    : OFFER_SLOT_TEXT.traitOffer
 }
 
 function criteriaDescription(slot: OfferSlot, offline: PunksSdk) {

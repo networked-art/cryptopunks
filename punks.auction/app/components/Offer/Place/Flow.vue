@@ -131,6 +131,7 @@ import {
   type PlaceOfferQuantityMode,
   type PlaceOfferSlotDraft,
 } from '~/composables/usePlaceOfferDraft'
+import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 
 type ActionStep = 'target' | 'amount'
 type PlaceOfferResult = {
@@ -435,10 +436,10 @@ function amountStepTitle() {
   if (singleSlot?.targetMode === 'traits' && singleSlot.title) {
     const [slotInput] = draft.value.slots
     if (slotInput?.query) {
-      return `Trait offer: ${formatTraitTitle(singleSlot.title)}`
+      return `${OFFER_SLOT_TEXT.traitOffer}: ${formatTraitTitle(singleSlot.title)}`
     }
 
-    return `Selection offer: ${singleSlot.title}`
+    return `${OFFER_SLOT_TEXT.selectionOffer}: ${singleSlot.title}`
   }
   if (draft.value.title) return draft.value.title
   if (quantityMode.value === 'multiple') return 'Multiple Punks'

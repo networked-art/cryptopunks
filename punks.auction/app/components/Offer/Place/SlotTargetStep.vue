@@ -45,6 +45,7 @@ import {
   type PlaceOfferSlotDraft,
   type PlaceOfferTargetMode,
 } from '~/composables/usePlaceOfferDraft'
+import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 
 withDefaults(
   defineProps<{
@@ -60,9 +61,9 @@ const targetOptions: {
   value: PlaceOfferTargetMode
   label: string
 }[] = [
-  { value: 'exact', label: 'Specific Punk' },
-  { value: 'traits', label: 'Selection or Trait Offer' },
-  { value: 'any', label: 'Collection Offer' },
+  { value: 'exact', label: OFFER_SLOT_TEXT.specificPunk },
+  { value: 'traits', label: OFFER_SLOT_TEXT.selectionOrTraitOffer },
+  { value: 'any', label: OFFER_SLOT_TEXT.collectionOffer },
 ]
 
 const targetMode = computed({
