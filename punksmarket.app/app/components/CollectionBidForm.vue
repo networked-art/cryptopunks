@@ -11,7 +11,7 @@
         :disabled="!canStart"
         @click="start"
       >
-        {{ address ? 'Bid' : 'Connect wallet' }}
+        {{ address ? buttonLabel : 'Connect wallet' }}
       </Button>
     </template>
 
@@ -30,6 +30,13 @@
         <strong>{{ matchCount.toLocaleString() }}</strong> matching punk{{
           matchCount === 1 ? '' : 's'
         }}.
+      </p>
+      <p
+        v-else
+        class="muted match-count"
+      >
+        Bid applies to any punk in the collection.
+        <NuxtLink to="/">Search by traits</NuxtLink> to narrow it down.
       </p>
 
       <label class="bid-amount">
@@ -141,6 +148,8 @@ const canStart = computed(
 const matchingPunksText = computed(
   () => `matching punk${matchCount.value === 1 ? '' : 's'}`,
 )
+
+const buttonLabel = computed(() => (props.query ? 'Bid' : 'New Collection Bid'))
 
 const dialogText = computed(() => ({
   title: { confirm: 'Place collection bid' },
