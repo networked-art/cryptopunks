@@ -106,7 +106,7 @@ export function offerSlotFallbackIcon(
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   const exact = offerSlotExactItem(slot)
   if (exact) return `Punk #${exact.punkId}`
-  if (isOfferSlotSet(slot)) return `Selection Offer: ${punkCountLabel(slot)}`
+  if (isOfferSlotSet(slot)) return 'Selection Offer'
 
   const hasCriteria = !filterIsEmpty(slot.criteria)
   const parts = [
