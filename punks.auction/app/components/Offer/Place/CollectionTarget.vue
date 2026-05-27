@@ -1,12 +1,9 @@
 <template>
-  <OfferPlaceTargetShell>
-    <div class="collection-target">
-      <span class="collection-title">Any Punk</span>
-      <span class="collection-copy">
-        Make an offer on any punk.
-      </span>
-    </div>
-  </OfferPlaceTargetShell>
+  <div class="collection-target">
+    <span class="collection-copy">
+      Make an offer on any punk.
+    </span>
+  </div>
 </template>
 
 <style scoped>
@@ -20,11 +17,6 @@
   padding: var(--size-5);
   color: var(--text);
   text-align: center;
-}
-
-.collection-title {
-  font-size: var(--font-sm);
-  text-transform: uppercase;
 }
 
 .collection-copy {
