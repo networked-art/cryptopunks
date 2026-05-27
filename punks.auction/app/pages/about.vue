@@ -1,10 +1,12 @@
 <template>
   <div class="container about-page">
     <header class="page-head">
-      <h1>About</h1>
-      <p class="muted">
-        An open-source auction house on the world computer, for CryptoPunks.
-      </p>
+      <div class="page-head-text">
+        <h1>About</h1>
+        <p class="muted">
+          An open-source auction house on the world computer, for CryptoPunks.
+        </p>
+      </div>
     </header>
 
     <section class="about-section">
