@@ -49,10 +49,10 @@ const rows = computed<OfferSlotRow[]>(() =>
 
 .slots {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
   margin: 0;
   padding: 0;
+  border: var(--border);
+  border-bottom: 0;
+  background: var(--bg-elevated);
 }
 </style>

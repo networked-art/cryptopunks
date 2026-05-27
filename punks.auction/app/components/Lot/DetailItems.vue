@@ -87,11 +87,11 @@ function itemBackground(item: LotItem) {
 
 .items {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
   margin: 0;
   padding: 0;
+  border: var(--border);
+  border-bottom: 0;
+  background: var(--bg-elevated);
 }
 
 .item-link {
@@ -111,8 +111,9 @@ function itemBackground(item: LotItem) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-sm);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
+  text-transform: uppercase;
 }
 
 .item-standard {
