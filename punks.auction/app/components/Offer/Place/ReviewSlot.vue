@@ -224,12 +224,16 @@ onBeforeUnmount(() => {
 }
 
 .review-slot.is-single.is-criteria .review-slot-preview,
-.review-slot.is-single.is-selection .review-slot-preview,
 .review-slot.is-collection .review-slot-preview,
 .review-slot.is-selection:not(.is-single) .review-slot-preview,
 .review-slot.is-exact:not(.is-single) .review-slot-preview {
   align-items: flex-start;
   justify-content: flex-start;
+}
+
+.review-slot.is-single.is-selection .review-slot-preview {
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .review-slot.is-single .single-punk {
