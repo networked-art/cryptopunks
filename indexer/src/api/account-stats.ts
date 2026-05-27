@@ -39,8 +39,13 @@ function parseAddresses(value: string | undefined): `0x${string}`[] | null {
 // GET /accounts/stats?addresses=0xA,0xB,0xC&eoa=0xA
 //
 // Per-account aggregates derived from the unified `events` table:
-//   - totalSpentWei / salesBoughtCount: sales where buyer ∈ addresses
-//   - totalEarnedWei / salesSoldCount: sales where seller ∈ addresses
+//   - totalSpentWei / totalSpentUsdCents / salesBoughtCount: sales where
+//     buyer ∈ addresses
+//   - totalEarnedWei / totalEarnedUsdCents / salesSoldCount: sales where
+//     seller ∈ addresses
+//   - USD totals sum `events.usd_value_cents`, which is stamped at indexing
+//     time using the daily ETH/USD close — i.e. the dollar value at the
+//     moment of the trade, not today's price.
 //   - lastActiveAt: accounts.last_interaction_at for the EOA — tx-from
 //     rather than event-participant, which is the narrower "this user
 //     personally signed something" signal.
@@ -64,6 +69,7 @@ app.get('/stats', async (c) => {
     db
       .select({
         total: sql<string>`COALESCE(SUM(${event.wei_amount}), 0)::numeric`,
+        totalUsdCents: sql<string>`COALESCE(SUM(${event.usd_value_cents}), 0)::numeric`,
         count: sql<string>`COUNT(*)::bigint`,
       })
       .from(event)
@@ -77,6 +83,7 @@ app.get('/stats', async (c) => {
     db
       .select({
         total: sql<string>`COALESCE(SUM(${event.wei_amount}), 0)::numeric`,
+        totalUsdCents: sql<string>`COALESCE(SUM(${event.usd_value_cents}), 0)::numeric`,
         count: sql<string>`COUNT(*)::bigint`,
       })
       .from(event)
@@ -104,7 +111,9 @@ app.get('/stats', async (c) => {
 
   return c.json({
     totalSpentWei: bigStr(bought?.total),
+    totalSpentUsdCents: bigStr(bought?.totalUsdCents),
     totalEarnedWei: bigStr(sold?.total),
+    totalEarnedUsdCents: bigStr(sold?.totalUsdCents),
     salesBoughtCount: toInt(bought?.count),
     salesSoldCount: toInt(sold?.count),
     lastActiveAt: last == null ? null : last.toString(),
