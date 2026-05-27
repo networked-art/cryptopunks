@@ -5,7 +5,6 @@
       :title="decisionTitle"
       class="offer-fulfillment-dialog"
       compat
-      large
       @closed="resetDecision"
     >
       <p
@@ -291,17 +290,6 @@ async function start(nextMode: OfferFulfillmentMode) {
 
     const slots = buildSelectionSlots()
     selectionSlots.value = slots
-    const deterministic = deterministicKeys(slots)
-    if (deterministic.length === props.offer.slots.length) {
-      selectedKeys.value = deterministic
-      prepareWeights()
-      if (props.offer.slots.length > 1) {
-        decisionStep.value = 'hammer'
-      } else {
-        await actCreateFromSelection()
-      }
-      return
-    }
 
     if (
       !slots.every((slot) =>
@@ -460,18 +448,6 @@ function unavailableReason(
   }
   if (item.custody === 'unsupported') return 'Unsupported custody'
   return undefined
-}
-
-function deterministicKeys(slots: OfferFulfillmentSlot[]) {
-  const keys = slots.map((slot) => {
-    const available = slot.candidates.filter(
-      (candidate) => !candidate.unavailableReason,
-    )
-    return available.length === 1 ? available[0]!.key : ''
-  })
-  return keys.every(Boolean) && uniqueKeys(keys).length === keys.length
-    ? keys
-    : []
 }
 
 function prepareWeights() {
