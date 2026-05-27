@@ -119,6 +119,39 @@ export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   return parts.filter(Boolean).join(' · ')
 }
 
+export function offerSlotHeading(
+  slot: OfferSlot,
+  offline: PunksSdk,
+): { title: string; subtitleParts: OfferSlotDetailPart[] } {
+  const exact = offerSlotExactItem(slot)
+  if (exact) return { title: `Punk #${exact.punkId}`, subtitleParts: [] }
+
+  const matching = matchCountLabel(slot, countOfferSlotMatches(slot, offline))
+  const matchingPart: OfferSlotDetailPart | null = matching
+    ? { text: matching, href: offerSlotSearchHref(slot, offline) }
+    : null
+  const hasCriteria = !filterIsEmpty(slot.criteria)
+
+  if (hasCriteria) {
+    const description = criteriaDescription(slot, offline)
+    const parts: OfferSlotDetailPart[] = []
+    if (description) parts.push({ text: description })
+    for (const text of slotIdListTitleParts(slot)) parts.push({ text })
+    if (matchingPart) parts.push(matchingPart)
+    return { title: 'Trait offer', subtitleParts: parts }
+  }
+
+  const title =
+    slot.includeIds.length > 1
+      ? `${slot.includeIds.length.toLocaleString()} included Punks`
+      : 'Collection offer'
+  const parts: OfferSlotDetailPart[] = []
+  const excluded = countLabel(slot.excludeIds.length, 'excluded')
+  if (excluded) parts.push({ text: excluded })
+  if (matchingPart) parts.push(matchingPart)
+  return { title, subtitleParts: parts }
+}
+
 export function offerSlotDetail(
   slot: OfferSlot,
   matchCount: number | undefined,
@@ -231,14 +264,18 @@ function searchOfferSlot(
 }
 
 function criteriaTitle(slot: OfferSlot, offline: PunksSdk) {
+  const description = criteriaDescription(slot, offline)
+  return description ? `Trait offer: ${description}` : 'Trait offer'
+}
+
+function criteriaDescription(slot: OfferSlot, offline: PunksSdk) {
   try {
     const label = formatSearchText(offline.dataset.source, {
       criteria: slot.criteria,
     })
-    const humanLabel = humanizeCriteriaLabel(label)
-    return humanLabel ? `Trait offer: ${humanLabel}` : 'Trait offer'
+    return humanizeCriteriaLabel(label)
   } catch {
-    return 'Trait offer'
+    return ''
   }
 }
 

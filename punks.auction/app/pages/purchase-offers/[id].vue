@@ -18,8 +18,31 @@
             >V1</Tag
           >
         </NuxtLink>
-        <template v-else>{{ offerTitle }}</template>
+        <template v-else>{{ offerHeading.title }}</template>
       </h1>
+      <p
+        v-if="offerHeading.subtitleParts.length"
+        class="subtitle"
+      >
+        <template
+          v-for="(part, index) in offerHeading.subtitleParts"
+          :key="`${part.text}-${index}`"
+        >
+          <NuxtLink
+            v-if="part.href"
+            class="subtitle-link"
+            :to="part.href"
+          >
+            {{ part.text }}
+          </NuxtLink>
+          <span v-else>{{ part.text }}</span>
+          <span
+            v-if="index < offerHeading.subtitleParts.length - 1"
+            class="subtitle-separator"
+            >·</span
+          >
+        </template>
+      </p>
     </header>
 
     <dl class="facts">
@@ -84,7 +107,10 @@ import {
   type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
-import { offerSlotExactItem } from '~/composables/useOfferSlotDisplay'
+import {
+  offerSlotExactItem,
+  offerSlotHeading,
+} from '~/composables/useOfferSlotDisplay'
 
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
@@ -140,41 +166,23 @@ const previewItems = computed<LotItem[]>(() => {
   }))
 })
 
-const exactOfferItem = computed(() => {
+const singleSlot = computed<OfferSlot | null>(() => {
   const current = offer.value
-  if (!current || current.slots.length !== 1) return null
-
-  const [slot] = current.slots
-  return slot ? offerSlotExactItem(slot) : null
+  return current && current.slots.length === 1 ? current.slots[0]! : null
 })
 
-const offerTitle = computed(() => {
-  const current = offer.value
-  if (!current) return ''
-  if (current.slots.length > 1) return 'Multi item offer'
+const exactOfferItem = computed(() =>
+  singleSlot.value ? offerSlotExactItem(singleSlot.value) : null,
+)
 
-  const [slot] = current.slots
-  return slot && !filterIsEmpty(slot.criteria)
-    ? 'Trait offer'
-    : 'Collection offer'
+const offerHeading = computed(() => {
+  const slot = singleSlot.value
+  return slot
+    ? offerSlotHeading(slot, offline)
+    : { title: 'Multi item offer', subtitleParts: [] }
 })
 
-const singleSimpleCollectionOffer = computed(() => {
-  const current = offer.value
-  if (!current || current.slots.length !== 1) return false
-
-  const [slot] = current.slots
-  return (
-    !!slot &&
-    filterIsEmpty(slot.criteria) &&
-    slot.includeIds.length === 0 &&
-    slot.excludeIds.length === 0
-  )
-})
-
-const showOfferSlots = computed(() => {
-  return !exactOfferItem.value && !singleSimpleCollectionOffer.value
-})
+const showOfferSlots = computed(() => !singleSlot.value)
 
 const matchingLots = computed(() => {
   const current = offer.value
@@ -272,6 +280,30 @@ useSeoMeta({
 
 .v1-tag {
   font-size: var(--font-xs);
+}
+
+.subtitle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--size-1);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.subtitle-link {
+  color: inherit;
+  border: 0;
+}
+
+.subtitle-link:hover,
+.subtitle-link:focus-visible {
+  color: var(--accent);
+}
+
+.subtitle-separator {
+  color: var(--text-dim);
 }
 
 .facts {
