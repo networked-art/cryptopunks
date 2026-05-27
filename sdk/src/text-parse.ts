@@ -47,6 +47,13 @@ export type ParsedSearchText = {
 
 export type SearchSynonymsMap = Record<string, string>
 
+type ExactTraitTextResolver = {
+  findTraitsByTextSync(
+    text: string,
+    options?: { exact?: boolean },
+  ): readonly { name: string }[]
+}
+
 /// Offchain folk-trait aliases. Keys are user-facing search phrases; values
 /// are normal search text, so contributors can compose existing canonical
 /// traits with quotes for exact multi-word trait names.
@@ -94,6 +101,32 @@ export function parseSearchText(input: string): ParsedSearchText {
     orGroups.push(parseSearchTextGroup(current))
   }
   return { orGroups }
+}
+
+/// Parses search text, first folding a whole-query exact trait-name match into
+/// the same shape produced by explicit quotes. This keeps `Dark Hair` equivalent
+/// to `"Dark Hair"` while leaving partial or compound queries on the fuzzy path.
+export function parseSearchTextWithExactTraitsSync(
+  input: string,
+  data: ExactTraitTextResolver,
+): ParsedSearchText {
+  if (typeof input !== 'string') {
+    throw new PunksDataValidationError('text search must be a string')
+  }
+  const trimmed = input.trim()
+  const exactTrait = trimmed
+    ? data.findTraitsByTextSync(trimmed, { exact: true })[0]
+    : undefined
+  if (exactTrait !== undefined) {
+    return {
+      orGroups: [
+        {
+          freeTerms: [{ text: exactTrait.name, exact: true }],
+        },
+      ],
+    }
+  }
+  return parseSearchText(input)
 }
 
 /// Tokenizes a search text string the same way as the offline text-search

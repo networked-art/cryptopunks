@@ -20,6 +20,7 @@ const MEDICAL_MASK_TRAIT_ID = data.resolveTraitSync('Medical Mask').id
 const MOHAWK_TRAIT_ID = data.resolveTraitSync('Mohawk').id
 const BIG_SHADES_TRAIT_ID = data.resolveTraitSync('Big Shades').id
 const BUCK_TEETH_TRAIT_ID = data.resolveTraitSync('Buck Teeth').id
+const DARK_HAIR_TRAIT_ID = data.resolveTraitSync('Dark Hair').id
 const HEAD_VARIANT_TRAIT_OFFSET = 5
 const FEMALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 5 // HeadVariant.Female4
 const MALE4_TRAIT_ID = HEAD_VARIANT_TRAIT_OFFSET + 9 // HeadVariant.Male4
@@ -83,6 +84,13 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.equal(buckTeeth.criteria.requiredTraitMask, mask(BUCK_TEETH_TRAIT_ID))
     assert.equal(buckTeeth.criteria.anyOfTraitMask, 0n)
     assert.deepEqual(buckTeeth.includeIds, [])
+
+    const darkHair = compileOfferSlot(data, {
+      query: { text: '  dArK hAiR  ' },
+    })
+    assert.equal(darkHair.criteria.requiredTraitMask, mask(DARK_HAIR_TRAIT_ID))
+    assert.equal(darkHair.criteria.anyOfTraitMask, 0n)
+    assert.deepEqual(darkHair.includeIds, [])
   })
 
   it('keeps added terms on the normal fuzzy text path', () => {

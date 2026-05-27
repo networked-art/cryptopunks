@@ -18,12 +18,11 @@ import {
 } from './constants'
 import {
   normalizeSearchText,
-  resolveExactTextTraitSync,
   type OfflinePunksDataClient,
   type OfflinePunksSearchQuery,
 } from './offline'
 import {
-  parseSearchText,
+  parseSearchTextWithExactTraitsSync,
   type ParsedNumericConstraint,
   type SearchTextTerm,
 } from './text-parse'
@@ -348,17 +347,7 @@ function foldTextIntoQuery(
   if (query.text === undefined || query.text.trim() === '') {
     return { query, ...empty }
   }
-  const exactTrait = resolveExactTextTraitSync(data, query.text)
-  if (exactTrait) {
-    const { text: _omitted, ...rest } = query
-    return {
-      query: rest,
-      ...empty,
-      freeTermRequired: [exactTrait.id],
-    }
-  }
-
-  const parsed = parseSearchText(query.text)
+  const parsed = parseSearchTextWithExactTraitsSync(query.text, data)
   const nonEmpty = parsed.orGroups.filter(
     (group) =>
       group.freeTerms.length > 0 ||

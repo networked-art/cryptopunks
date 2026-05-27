@@ -80,6 +80,14 @@ describe('OfflinePunksDataClient', () => {
     )
     assert.equal(sdk.countSync({ text: '"glasses"' }), 0)
     assert.deepEqual(
+      sdk.searchSync({ text: '  dArK hAiR  ' }),
+      sdk.searchSync({ text: '"Dark Hair"' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'Dark Hair' }),
+      sdk.countSync({ attributes: { required: ['Dark Hair'] } }),
+    )
+    assert.deepEqual(
       sdk.searchSync({ text: 'big shades' }),
       sdk.searchSync({ attributes: { required: ['Big Shades'] } }),
     )
