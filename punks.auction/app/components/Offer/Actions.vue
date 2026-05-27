@@ -34,12 +34,9 @@
       <template v-if="isOfferer">
         <label class="amount-field">
           <span class="label">Offer amount</span>
-          <input
+          <EvmEthInput
             v-model="amountEth"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
+            v-model:wei="parsedAmountWei"
           />
         </label>
         <div class="button-row">
@@ -83,7 +80,7 @@
 
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
-import { formatEther, parseEther, type Address, type Hash } from 'viem'
+import { formatEther, type Address, type Hash } from 'viem'
 import {
   TokenStandard,
   ZERO_ADDRESS,
@@ -106,6 +103,7 @@ const renderV1 = useV1Rendering()
 const { matchesItem: slotMatchesItem } = useOfferSlotMatching()
 const inventory = useAccountPunkInventory(() => address.value)
 const amountEth = ref('')
+const parsedAmountWei = ref<bigint | null>(null)
 
 const fulfillmentDialogRef = ref<{
   start: (mode: OfferFulfillmentMode) => Promise<void>
@@ -135,7 +133,6 @@ watch(
   { immediate: true },
 )
 
-const parsedAmountWei = computed(() => parsePositiveEth(amountEth.value))
 const isOfferer = computed(() =>
   sameAddress(address.value, props.offer.offerer),
 )
@@ -227,17 +224,6 @@ function actAdjustAmount() {
 
 function onChanged(tx: Hash) {
   emit('changed', tx)
-}
-
-function parsePositiveEth(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
 }
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
