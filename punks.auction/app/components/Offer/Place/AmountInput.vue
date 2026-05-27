@@ -2,6 +2,7 @@
   <label class="amount-input">
     <input
       v-model="model"
+      class="unstyled"
       aria-label="Offer amount in ETH"
       type="text"
       inputmode="decimal"
@@ -24,7 +25,7 @@ withDefaults(
   defineProps<{
     placeholder?: string
   }>(),
-  { placeholder: '0.5' },
+  { placeholder: '10' },
 )
 
 const model = defineModel<string>({ required: true })
@@ -39,14 +40,14 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   align-self: stretch;
-  flex: 1 1 calc(var(--form-item-height) * 3.5);
+  flex: 1 1 16ch;
   min-inline-size: 0;
   block-size: var(--form-item-height);
   padding: var(--ui-padding-block) var(--ui-padding-inline);
   border-radius: var(--button-border-radius);
   background: var(--input-background);
   box-shadow: var(--border-shadow);
-  color: var(--ui-color);
+  color: var(--text);
   cursor: text;
   font-family: var(--ui-font-family);
   font-size: var(--ui-font-size);
@@ -66,9 +67,10 @@ const emit = defineEmits<{
 }
 
 .amount-input input {
+  display: block;
   flex: 1 1 auto;
   min-inline-size: 0;
-  block-size: 100%;
+  block-size: auto;
   padding: 0;
   border: 0;
   border-radius: 0;

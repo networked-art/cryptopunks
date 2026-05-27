@@ -452,7 +452,7 @@ function parsePositiveEth(input: unknown): bigint | null {
 
 .amount-action {
   flex: 0 1 auto;
-  inline-size: min(100%, calc(var(--form-item-height) * 6));
+  inline-size: min(100%, 25ch);
 }
 
 .amount-action :deep(.amount-input:has(+ button)),
