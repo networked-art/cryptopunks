@@ -40,6 +40,7 @@ type OfferSlotDisplayOptions = {
 
 export const OFFER_SLOT_COLLECTION_ICON = 'lucide:grid-3x3'
 export const OFFER_SLOT_TRAIT_ICON = 'lucide:list-filter'
+export const OFFER_SLOT_SET_ICON = OFFER_SLOT_TRAIT_ICON
 
 export function offerSlotDisplay(
   slot: OfferSlot,
@@ -73,6 +74,10 @@ export function offerSlotExactItem(
   return { punkId: slot.includeIds[0]!, standard: slot.standard }
 }
 
+export function isOfferSlotSet(slot: OfferSlot) {
+  return filterIsEmpty(slot.criteria) && offerSlotSetIds(slot).length > 1
+}
+
 export function offerSlotIncludedItems(
   slot: OfferSlot,
 ): OfferSlotPreviewItem[] {
@@ -90,16 +95,18 @@ export function countOfferSlotMatches(
 }
 
 export function offerSlotFallbackIcon(
-  slot: Pick<OfferSlot, 'criteria'>,
+  slot: Pick<OfferSlot, 'criteria'> & { includeIds?: readonly number[] },
 ): string {
-  return filterIsEmpty(slot.criteria)
-    ? OFFER_SLOT_COLLECTION_ICON
-    : OFFER_SLOT_TRAIT_ICON
+  if (!filterIsEmpty(slot.criteria)) return OFFER_SLOT_TRAIT_ICON
+  return (slot.includeIds?.length ?? 0) > 1
+    ? OFFER_SLOT_SET_ICON
+    : OFFER_SLOT_COLLECTION_ICON
 }
 
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   const exact = offerSlotExactItem(slot)
   if (exact) return `Punk #${exact.punkId}`
+  if (isOfferSlotSet(slot)) return `Set Offer: ${punkCountLabel(slot)}`
 
   const hasCriteria = !filterIsEmpty(slot.criteria)
   const parts = [
@@ -141,6 +148,16 @@ export function offerSlotHeading(
     return { title: 'Trait offer', subtitleParts: parts }
   }
 
+  if (isOfferSlotSet(slot)) {
+    return {
+      title: 'Set offer',
+      subtitleParts: offerSlotSetIds(slot).map((punkId) => ({
+        text: `Punk #${punkId}`,
+        href: punkHref(slot.standard, punkId),
+      })),
+    }
+  }
+
   const title =
     slot.includeIds.length > 1
       ? `${slot.includeIds.length.toLocaleString()} included Punks`
@@ -175,6 +192,7 @@ function offerSlotPreviewItems(
   slot: OfferSlot,
   limit: number,
 ): OfferSlotPreviewItem[] {
+  if (isOfferSlotSet(slot)) return []
   const ids = filterIsEmpty(slot.criteria) ? slot.includeIds : []
   return ids.slice(0, limit).map((punkId) => ({
     punkId,
@@ -304,7 +322,21 @@ function humanizeCriteriaLabel(label: string) {
 }
 
 function matchCountLabel(slot: OfferSlot, count: number | undefined) {
+  if (isExactOfferSlot(slot)) return ''
+  if (isOfferSlotSet(slot))
+    return `${offerSlotSetIds(slot).length.toLocaleString()} matching`
   if (filterIsEmpty(slot.criteria) && slot.includeIds.length > 0) return ''
   if (count === undefined) return ''
   return `${count.toLocaleString()} matching`
+}
+
+function offerSlotSetIds(slot: OfferSlot) {
+  if (!slot.excludeIds.length) return slot.includeIds
+  const excluded = new Set(slot.excludeIds)
+  return slot.includeIds.filter((punkId) => !excluded.has(punkId))
+}
+
+function punkCountLabel(slot: OfferSlot) {
+  const count = offerSlotSetIds(slot).length
+  return `${count.toLocaleString()} ${count === 1 ? 'Punk' : 'Punks'}`
 }
