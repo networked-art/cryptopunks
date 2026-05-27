@@ -1,7 +1,8 @@
 import { formatSearchText, type PunksSdk } from '@networked-art/punks-sdk'
 import {
   filterIsEmpty,
-  offerSlotToQuery,
+  offerSlotCriteriaToQuery,
+  offerSlotMatchingIds,
   punkHref,
   standardLabel,
   TokenStandard,
@@ -84,21 +85,29 @@ export function countOfferSlotMatches(
   slot: OfferSlot,
   offline: PunksSdk,
 ): number | undefined {
-  try {
-    return offline.count(offerSlotToQuery(slot))
-  } catch {
-    return undefined
-  }
+  return searchOfferSlot(slot, offline)?.length
 }
 
 export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
   const exact = offerSlotExactItem(slot)
   if (exact) return `Punk #${exact.punkId}`
-  if (!filterIsEmpty(slot.criteria)) return criteriaTitle(slot, offline)
-  if (slot.includeIds.length > 1) {
-    return `${slot.includeIds.length.toLocaleString()} included Punks`
+
+  const hasCriteria = !filterIsEmpty(slot.criteria)
+  const parts = [
+    hasCriteria
+      ? criteriaTitle(slot, offline)
+      : slot.includeIds.length > 1
+        ? `${slot.includeIds.length.toLocaleString()} included Punks`
+        : 'Any Punk',
+  ]
+
+  if (hasCriteria) {
+    parts.push(...slotIdListTitleParts(slot))
+  } else if (slot.excludeIds.length) {
+    parts.push(countLabel(slot.excludeIds.length, 'excluded'))
   }
-  return 'Any Punk'
+
+  return parts.filter(Boolean).join(' · ')
 }
 
 export function offerSlotDetail(
@@ -125,7 +134,7 @@ function offerSlotPreviewItems(
   matches: readonly number[],
   limit: number,
 ): OfferSlotPreviewItem[] {
-  const ids = slot.includeIds.length ? slot.includeIds : matches
+  const ids = filterIsEmpty(slot.criteria) ? matches : []
   return ids.slice(0, limit).map((punkId) => ({
     punkId,
     standard: slot.standard,
@@ -161,15 +170,29 @@ function offerSlotPlainDetailParts(
 
 function offerSlotSearchHref(slot: OfferSlot, offline: PunksSdk) {
   try {
-    const text = formatSearchText(offline.dataset.source, {
-      criteria: slot.criteria,
-      includeIds: slot.includeIds,
-      excludeIds: slot.excludeIds,
-    })
+    const text = offerSlotSearchText(slot, offline)
     return text ? punkSearchHref(normalizeSearchText(text)) : undefined
   } catch {
     return undefined
   }
+}
+
+function offerSlotSearchText(slot: OfferSlot, offline: PunksSdk) {
+  const excludeTokens = slot.excludeIds.map((id) => `-#${id}`)
+  const includeTokens = slot.includeIds.map((id) => `#${id}`)
+
+  if (filterIsEmpty(slot.criteria)) {
+    return [...includeTokens, ...excludeTokens].join(' ')
+  }
+
+  const criteriaText = formatSearchText(offline.dataset.source, {
+    criteria: slot.criteria,
+  })
+  const criteriaGroup = [criteriaText, ...excludeTokens].filter(Boolean).join(' ')
+  if (!includeTokens.length) return criteriaGroup
+
+  const includeGroup = [...includeTokens, ...excludeTokens].join(' ')
+  return [criteriaGroup, includeGroup].filter(Boolean).join(' OR ')
 }
 
 function normalizeSearchText(text: string) {
@@ -178,7 +201,11 @@ function normalizeSearchText(text: string) {
 }
 
 function isExactOfferSlot(slot: OfferSlot) {
-  return filterIsEmpty(slot.criteria) && slot.includeIds.length === 1
+  return (
+    filterIsEmpty(slot.criteria) &&
+    slot.includeIds.length === 1 &&
+    slot.excludeIds.length === 0
+  )
 }
 
 function searchOfferSlot(
@@ -186,7 +213,10 @@ function searchOfferSlot(
   offline: PunksSdk,
 ): number[] | undefined {
   try {
-    return offline.search(offerSlotToQuery(slot))
+    return offerSlotMatchingIds(
+      slot,
+      offline.search(offerSlotCriteriaToQuery(slot)),
+    )
   } catch {
     return undefined
   }
@@ -202,6 +232,17 @@ function criteriaTitle(slot: OfferSlot, offline: PunksSdk) {
   } catch {
     return 'Trait criteria'
   }
+}
+
+function slotIdListTitleParts(slot: OfferSlot) {
+  return [
+    countLabel(slot.includeIds.length, 'included'),
+    countLabel(slot.excludeIds.length, 'excluded'),
+  ].filter((part): part is string => !!part)
+}
+
+function countLabel(count: number, label: string) {
+  return count > 0 ? `${count.toLocaleString()} ${label}` : ''
 }
 
 function humanizeCriteriaLabel(label: string) {

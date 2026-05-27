@@ -52,7 +52,8 @@ import {
   equalLotWeights,
   filterIsEmpty,
   lotMatchesOffer,
-  offerSlotToQuery,
+  offerSlotCriteriaToQuery,
+  offerSlotMatchingIds,
   type LotItem,
   type OfferSlot,
 } from '~/utils/auction'
@@ -143,7 +144,10 @@ function slotCriteriaMatchesPunk(slot: OfferSlot, punkId: number) {
 
 function searchSlotMatches(slot: OfferSlot) {
   try {
-    return offline.search(offerSlotToQuery(slot))
+    return offerSlotMatchingIds(
+      slot,
+      offline.search(offerSlotCriteriaToQuery(slot)),
+    )
   } catch {
     return []
   }

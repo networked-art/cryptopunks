@@ -123,9 +123,8 @@ export function auctionStatus(
   return nowSec > auction.endTimestamp ? 'ended' : 'live'
 }
 
-/// Rebuilds an offline `PunkQuery` from an offer slot so the UI can count
-/// matches and link to the search page. `max === 0` means "no constraint" in
-/// the on-chain `PunksFilter`.
+/// Rebuilds an offline `PunkQuery` from a slot's criteria. `max === 0` means
+/// "no constraint" in the on-chain `PunksFilter`.
 export function offerSlotCriteriaToQuery(
   slot: Pick<OfferSlot, 'criteria'>,
 ): PunkQuery {
@@ -167,6 +166,23 @@ export function offerSlotToQuery(slot: OfferSlot): PunkQuery {
   if (slot.includeIds.length) query.ids = slot.includeIds
   if (slot.excludeIds.length) query.excludeIds = slot.excludeIds
   return query
+}
+
+/// Mirrors contract matching for display counts: explicit excludes always win,
+/// explicit includes extend non-empty criteria, and include-only slots stay exact.
+export function offerSlotMatchingIds(
+  slot: OfferSlot,
+  criteriaMatches: readonly number[],
+): number[] {
+  const excluded = new Set(slot.excludeIds)
+  const ids =
+    filterIsEmpty(slot.criteria) && slot.includeIds.length
+      ? slot.includeIds
+      : [...criteriaMatches, ...slot.includeIds]
+
+  return [...new Set(ids)]
+    .filter((punkId) => !excluded.has(punkId))
+    .sort((a, b) => a - b)
 }
 
 /// A short human label for an offer slot.
