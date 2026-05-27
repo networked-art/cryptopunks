@@ -5,6 +5,7 @@ import {
   readAuction,
   readAuctionForLot,
   readAuctions,
+  readLastOfferId,
   readOffer,
   readLot,
   readLots,
@@ -81,6 +82,7 @@ export function useOffers() {
 export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
   const client = useReadClient()
   const offer = ref<OfferRecord | null>(null)
+  const lastOfferId = ref<bigint | null>(null)
   const pending = ref(true)
   const error = ref<string | null>(null)
 
@@ -97,7 +99,12 @@ export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
     pending.value = true
     error.value = null
     try {
-      offer.value = await readOffer(c, offerId)
+      const [nextOffer, nextLastId] = await Promise.all([
+        readOffer(c, offerId),
+        readLastOfferId(c),
+      ])
+      offer.value = nextOffer
+      lastOfferId.value = nextLastId
     } catch (e) {
       error.value = (e as Error).message
       offer.value = null
@@ -112,6 +119,7 @@ export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
 
   return {
     offer,
+    lastOfferId,
     pending,
     error,
     deployed: isAuctionDeployed(),

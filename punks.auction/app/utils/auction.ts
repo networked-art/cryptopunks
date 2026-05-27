@@ -521,6 +521,11 @@ export async function readOffers(client: PublicClient): Promise<OfferRecord[]> {
   })
 }
 
+export async function readLastOfferId(client: PublicClient): Promise<bigint> {
+  if (!isAuctionDeployed()) return 0n
+  return lastId(client, 'lastOfferId')
+}
+
 export async function readOffer(
   client: PublicClient,
   id: bigint | number,

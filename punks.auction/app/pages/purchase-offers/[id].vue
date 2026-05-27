@@ -39,6 +39,10 @@
       Offers appear once <code>PunksAuction</code> is deployed.
     </template>
     <template v-else-if="error">Failed to load offer: {{ error }}</template>
+    <p v-else-if="acted || wasAssigned">
+      Offer #{{ id }} is no longer active.
+      <NuxtLink to="/purchase-offers">View all offers</NuxtLink>
+    </p>
     <template v-else>Offer #{{ id }} was not found.</template>
   </div>
 </template>
@@ -58,11 +62,15 @@ const id = computed(() => Number(route.params.id))
 const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const offline = usePunksOffline()
 
-const { offer, pending, error, deployed, refresh } = useOffer(() =>
+const { offer, lastOfferId, pending, error, deployed, refresh } = useOffer(() =>
   validId.value ? id.value : undefined,
 )
 const { lots, refresh: refreshLots } = useLots()
 const { criteriaMatchesPunk, searchCriteriaMatches } = useOfferSlotMatching()
+const acted = ref(false)
+const wasAssigned = computed(
+  () => lastOfferId.value !== null && BigInt(id.value) <= lastOfferId.value,
+)
 
 type SlotMatchCache = {
   previewMatches: number[]
@@ -116,6 +124,7 @@ const matchingLots = computed(() => {
 })
 
 function onChanged() {
+  acted.value = true
   void refresh()
   void refreshLots()
 }
@@ -190,6 +199,10 @@ useSeoMeta({
   min-height: 60vh;
   padding: var(--size-8);
   text-align: center;
+}
+
+.state p {
+  margin: 0;
 }
 
 @media (max-width: 540px) {
