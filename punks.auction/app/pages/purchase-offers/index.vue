@@ -13,7 +13,7 @@
         </Button>
       </div>
       <p class="muted">
-        Standing bids that can be immediately settled or resolved into an
+        Standing bids that can be immediately accepted or begin a 24 hour
         auction.
       </p>
     </header>
