@@ -8,7 +8,8 @@
           to="/purchase-offers/new"
         >
           <Icon name="lucide:plus" />
-          <span>Place offer</span>
+          <span class="label-full">Place offer</span>
+          <span class="label-short">New</span>
         </Button>
       </div>
       <p class="muted">
@@ -92,7 +93,24 @@ const sortedOffers = computed(() =>
   align-items: center;
   justify-content: space-between;
   gap: var(--size-4);
-  flex-wrap: wrap;
+}
+
+.label-short {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .page-head .muted {
+    display: none;
+  }
+
+  .label-full {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
+  }
 }
 
 .state {

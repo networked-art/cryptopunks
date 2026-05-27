@@ -9,7 +9,8 @@
             to="/lots/new"
           >
             <Icon name="lucide:plus" />
-            <span>Create lot</span>
+            <span class="label-full">Create lot</span>
+            <span class="label-short">New</span>
           </Button>
         </div>
       </div>
@@ -206,6 +207,10 @@ function compareBigint(a: bigint, b: bigint): number {
   align-self: flex-end;
 }
 
+.label-short {
+  display: none;
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, min(100%, 15rem));
@@ -247,7 +252,35 @@ function compareBigint(a: bigint, b: bigint): number {
 }
 
 @media (max-width: 860px) {
+  .page-head .muted {
+    display: none;
+  }
+
   .page-head-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .label-full {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, min(100%, 11rem));
+  }
+
+  .card-grid.fill {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .card-grid,
+  .card-grid.fill {
     grid-template-columns: 1fr;
   }
 }
