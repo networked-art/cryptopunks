@@ -17,7 +17,9 @@
       <div class="punks">
         <span class="label">
           Punks
-          <span class="muted">({{ selectedItems.length }} / {{ MAX_LOT_ITEMS }})</span>
+          <span class="muted"
+            >({{ selectedItems.length }} / {{ MAX_LOT_ITEMS }})</span
+          >
         </span>
 
         <div class="picker-row">
@@ -29,7 +31,7 @@
             <PunkThumb
               :punk-id="item.punkId"
               :standard="item.standard"
-              :size="56"
+              :size="80"
               :link="false"
             />
             <button
@@ -41,7 +43,9 @@
             >
               <Icon name="lucide:x" />
             </button>
-            <span class="picked-meta muted">{{ custodyShort(item.custody) }}</span>
+            <span class="picked-meta muted">{{
+              custodyShort(item.custody)
+            }}</span>
           </div>
 
           <Button
@@ -51,7 +55,9 @@
             @click="pickerOpen = true"
           >
             <Icon name="lucide:plus" />
-            <span>{{ selectedItems.length === 0 ? 'Select Punks' : 'Add Punk' }}</span>
+            <span>{{
+              selectedItems.length === 0 ? 'Select Punks' : 'Add Punk'
+            }}</span>
           </Button>
         </div>
 
@@ -61,12 +67,9 @@
       <div class="form-grid">
         <label class="field">
           <span class="label">Reserve ETH</span>
-          <input
+          <EvmEthInput
             v-model="reserveEth"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
+            v-model:wei="reserveWei"
           />
         </label>
       </div>
@@ -185,7 +188,11 @@ import {
   type ContractWritePlan,
 } from '@networked-art/punks-sdk'
 import { useConfig, useConnection } from '@wagmi/vue'
-import { decodeEventLog, isAddress, parseEther, type TransactionReceipt } from 'viem'
+import {
+  decodeEventLog,
+  isAddress,
+  type TransactionReceipt,
+} from 'viem'
 import type { PunkInventoryCustody } from '~/composables/useAccountPunkInventory'
 import { resolveAddressInput } from '~/utils/addressInput'
 import {
@@ -208,6 +215,7 @@ const standard = ref<StandardDraft>('cryptopunks')
 const selectedPunkIds = ref<number[]>([])
 const pickerOpen = ref(false)
 const reserveEth = ref('')
+const reserveWei = ref<bigint | null>(null)
 const onlySellTo = ref('')
 const showAdvanced = ref(false)
 const buildError = ref<string | null>(null)
@@ -232,13 +240,10 @@ const pickerIds = computed(() => eligibleItems.value.map((item) => item.punkId))
 
 const selectedItems = computed(() =>
   selectedPunkIds.value
-    .map((id) =>
-      eligibleItems.value.find((item) => item.punkId === id) ?? null,
-    )
+    .map((id) => eligibleItems.value.find((item) => item.punkId === id) ?? null)
     .filter((item): item is NonNullable<typeof item> => !!item),
 )
 
-const reserveWei = computed(() => parsePositiveEth(reserveEth.value))
 const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
   return !trimmed || isAddress(trimmed) || trimmed.includes('.')
@@ -458,16 +463,6 @@ async function resolveOnlySellTo() {
   })
 }
 
-function parsePositiveEth(input: unknown): bigint | null {
-  const trimmed = String(input ?? '').trim()
-  if (!trimmed) return null
-  try {
-    const wei = parseEther(trimmed)
-    return wei > 0n ? wei : null
-  } catch {
-    return null
-  }
-}
 </script>
 
 <style scoped>
@@ -517,25 +512,29 @@ function parsePositiveEth(input: unknown): bigint | null {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--size-1);
   box-shadow: inset 0 0 0 3px var(--primary);
+  background: var(--bg);
+  width: 5rem;
 }
 
 .picked :deep(.punk-thumb) {
-  border-radius: 0;
   display: block;
 }
 
 .picked-meta {
-  font-size: 10px;
+  font-size: var(--font-xs);
+  text-align: center;
+  text-wrap: balance;
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-md);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: var(--size-1);
 }
 
 .remove {
   position: absolute;
-  inset-block-start: 0px;
-  inset-inline-end: 0px;
+  inset-block-start: var(--size-1);
+  inset-inline-end: var(--size-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -546,7 +545,7 @@ function parsePositiveEth(input: unknown): bigint | null {
   outline: none;
   background: var(--primary);
   color: white;
-  border-radius: 50%;
+  border-radius: 0;
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
