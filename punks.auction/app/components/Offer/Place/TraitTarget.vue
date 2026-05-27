@@ -25,10 +25,9 @@
       selectable
       scrollable
       outline-hover
-      :dim-unselected="!!selectedQuery"
+      :dim-unselected="!!selectedQuery || includeIds.length > 0"
       :selected-ids="activeSelectedIds"
       :excluded-ids="excludeIds"
-      :disabled="!selectedQuery"
       @toggle="toggleGridId"
     />
   </OfferPlaceTargetShell>
@@ -88,10 +87,12 @@ function selectCurrentCriteria() {
 }
 
 function toggleGridId(id: number) {
-  if (!selectedQuery.value) return
+  if (selectedQuery.value && selectedMatchSet.value.has(id)) {
+    toggleExcluded(id)
+    return
+  }
 
-  if (selectedMatchSet.value.has(id)) toggleExcluded(id)
-  else toggleIncluded(id)
+  toggleIncluded(id)
 }
 
 function toggleIncluded(id: number) {

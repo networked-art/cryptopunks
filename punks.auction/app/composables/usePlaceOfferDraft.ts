@@ -185,6 +185,7 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
   const includeIds = uniqueSortedIds(slot.traitIncludeIds)
   const excludeIds = uniqueSortedIds(slot.traitExcludeIds)
   const matchIds = uniqueSortedIds(slot.traitMatchIds)
+  const hasCriteria = !!text && !!slot.traitQuery
   const matchSet = new Set(matchIds)
   const activeMatchIds = matchIds.filter((id) => !excludeIds.includes(id))
   const extraIncludeIds = includeIds.filter(
@@ -193,9 +194,6 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
   const previewIds = uniqueSortedIds([...activeMatchIds, ...extraIncludeIds])
   const activeCount = previewIds.length
 
-  if (!text || !slot.traitQuery) {
-    return invalidSlot(label, 'Select trait criteria.')
-  }
   if (includeIds.length > PLACE_OFFER_MAX_SLOT_IDS) {
     return invalidSlot(
       label,
@@ -208,12 +206,37 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       `Exclude ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`,
     )
   }
+
+  if (!hasCriteria) {
+    if (includeIds.length === 0) {
+      return invalidSlot(label, 'Select Punks or criteria.')
+    }
+
+    return {
+      input: {
+        standard: slot.standard,
+        includeIds,
+      },
+      summary: {
+        label,
+        title:
+          includeIds.length === 1
+            ? `Punk #${includeIds[0]}`
+            : `${includeIds.length.toLocaleString()} Punks`,
+        detail: '',
+        targetMode: 'traits',
+        previewIds: includeIds,
+        singlePunkId: includeIds.length === 1 ? includeIds[0] : null,
+      },
+    }
+  }
+
   if (activeCount <= 0) return invalidSlot(label, 'No Punks match this item.')
 
   return {
     input: {
       standard: slot.standard,
-      query: slot.traitQuery,
+      query: slot.traitQuery!,
       includeIds: includeIds.length ? includeIds : undefined,
       excludeIds: excludeIds.length ? excludeIds : undefined,
     },
