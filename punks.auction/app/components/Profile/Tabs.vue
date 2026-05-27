@@ -94,12 +94,17 @@ const tabs = computed(() => {
 }
 
 @media (max-width: 520px) {
-  .tab span {
-    display: none;
+  .profile-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    /* Bleed past the page's horizontal padding so the underline still spans edge-to-edge. */
+    margin-inline: calc(var(--size-4) * -1);
+    padding-inline: var(--size-4);
+    scrollbar-width: none;
   }
 
-  .tab {
-    padding: var(--size-2);
+  .profile-tabs::-webkit-scrollbar {
+    display: none;
   }
 }
 </style>
