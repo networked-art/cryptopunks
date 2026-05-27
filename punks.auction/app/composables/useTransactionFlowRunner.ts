@@ -21,10 +21,15 @@ type TransactionFlowRunnerText = {
   dialogTitle?: string
 }
 
+type TransactionFlowRunnerErrorSource = 'prepare' | 'transaction'
+
 export function useTransactionFlowRunner(
   opts: {
     onComplete?: (tx: Hash) => void
-    onError?: (message: string) => void
+    onError?: (
+      message: string,
+      source: TransactionFlowRunnerErrorSource,
+    ) => void
   } = {},
 ) {
   const { execute } = useWritePlan()
@@ -83,7 +88,7 @@ export function useTransactionFlowRunner(
     } catch (e) {
       const message = (e as Error).message
       error.value = message
-      opts.onError?.(message)
+      opts.onError?.(message, 'prepare')
     } finally {
       pending.value = false
     }
@@ -112,7 +117,7 @@ export function useTransactionFlowRunner(
 
   function onFlowError(message: string) {
     error.value = message
-    opts.onError?.(message)
+    opts.onError?.(message, 'transaction')
   }
 
   return {
