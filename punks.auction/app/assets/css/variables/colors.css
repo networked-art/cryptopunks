@@ -5,8 +5,8 @@
   --background: #f0f0f3;
   --color: #0a0a12;
   --muted: #6a6a82;
-  --primary: #ea34b0;
 
+  --primary: #f14eba; /* #ea34b0; */
   /* Light-theme gray ramp the layer's component tokens key off of. */
   --gray-z-0: #f7f7f8;
   --gray-z-2: #e5e5ec;
@@ -19,7 +19,7 @@
   /* App-specific tokens used directly throughout punks.auction. */
   --accent: var(--primary);
   --accent-strong: #ea34b0;
-  --accent-soft: #ea34b0;
+  --accent-soft: #f14eba;
 
   /* CryptoPunks marketplace backgrounds. */
   --punk-bg: #6a8494;
