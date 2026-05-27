@@ -190,20 +190,6 @@ function compareBigint(a: bigint, b: bigint): number {
   min-width: 0;
 }
 
-.page-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: last baseline;
-  column-gap: var(--size-4);
-}
-
-.page-head-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  min-width: 0;
-}
-
 .page-head-text > h1 {
   margin: 0;
 }

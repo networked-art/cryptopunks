@@ -1,3 +1,17 @@
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-end;
+  column-gap: var(--size-4);
+}
+
+.page-head-action {
+  overflow: hidden;
+  @media (min-width: 840px) {
+    margin-bottom: 0.4em;
+  }
+}
+
 .page-head h1 {
   margin: 0;
   font-weight: var(--font-weight-bold);

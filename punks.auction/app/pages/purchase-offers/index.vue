@@ -1,21 +1,21 @@
 <template>
   <div class="container offers-page">
     <header class="page-head">
-      <div class="page-head-row">
-        <h1>Purchase offers</h1>
-        <Button
-          class="primary icon-button"
-          to="/purchase-offers/new"
-        >
-          <Icon name="lucide:plus" />
-          <span class="label-full">Place offer</span>
-          <span class="label-short">New</span>
-        </Button>
+      <div class="page-head-text">
+        <h1>Purchase Offers</h1>
+        <p class="muted">
+          Standing bids that can be immediately accepted or begin a 24 hour
+          auction.
+        </p>
       </div>
-      <p class="muted">
-        Standing bids that can be immediately accepted or begin a 24 hour
-        auction.
-      </p>
+      <Button
+        class="primary icon-button page-head-action"
+        to="/purchase-offers/new"
+      >
+        <Icon name="lucide:plus" />
+        <span class="label-full">Place offer</span>
+        <span class="label-short">New</span>
+      </Button>
     </header>
 
     <ClientOnly>
@@ -61,6 +61,10 @@ useSeoMeta({
   ogTitle: 'Purchase offers · Punks Auction',
   twitterTitle: 'Purchase offers · Punks Auction',
 })
+defineOgImage('Default', {
+  title: 'Purchase offers',
+  description: 'Standing bids that settle instantly or open an auction.',
+})
 
 const { offers, pending, error } = useOffers()
 
@@ -88,11 +92,23 @@ const sortedOffers = computed(() =>
   min-width: 0;
 }
 
-.page-head-row {
+.page-head-text {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--size-4);
+  flex-direction: column;
+  gap: var(--size-2);
+  min-width: 0;
+}
+
+.page-head-text > h1 {
+  margin: 0;
+}
+
+.page-head-text > .muted {
+  margin: 0;
+}
+
+.page-head-action {
+  overflow: hidden;
 }
 
 .label-short {
@@ -100,7 +116,11 @@ const sortedOffers = computed(() =>
 }
 
 @media (max-width: 860px) {
-  .page-head .muted {
+  .page-head {
+    align-items: center;
+  }
+
+  .page-head-text > .muted {
     display: none;
   }
 
