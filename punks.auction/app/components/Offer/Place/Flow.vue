@@ -83,10 +83,28 @@
     <EvmTransactionFlowDialog
       ref="transactionDialogRef"
       :text="transactionText"
-      keep-open
+      :auto-close-success="false"
       skip-confirmation
       @complete="onComplete"
-    />
+    >
+      <template #actions="{ step, cancel }">
+        <template v-if="step === 'complete'">
+          <Button
+            class="secondary"
+            @click="onClickNewOffer(cancel)"
+          >
+            New offer
+          </Button>
+          <Button
+            class="primary"
+            :disabled="lastOfferId === null"
+            @click="onClickViewOffer(cancel)"
+          >
+            View offer
+          </Button>
+        </template>
+      </template>
+    </EvmTransactionFlowDialog>
   </ClientOnly>
 </template>
 
@@ -140,6 +158,8 @@ const error = ref<string | null>(null)
 const slotCount = ref(PLACE_OFFER_MIN_MULTI_SLOTS)
 const activeSlotIndex = ref(0)
 const slotDrafts = ref<PlaceOfferSlotDraft[]>([createPlaceOfferSlotDraft()])
+const lastOfferId = ref<bigint | null>(null)
+const router = useRouter()
 
 const transactionText = ref<{
   title?: Record<string, string>
@@ -318,6 +338,7 @@ function goBack() {
 
 function actPlace() {
   error.value = null
+  lastOfferId.value = null
   const wei = amountWei.value
   if (!wei) {
     error.value = 'Enter an offer amount greater than zero.'
@@ -353,6 +374,7 @@ function actPlace() {
 
 function onComplete(receipt: TransactionReceipt) {
   const offerId = offerIdFromReceipt(receipt)
+  lastOfferId.value = offerId
   resetFlow()
   emit('placed', {
     tx: receipt.transactionHash as Hash,
@@ -376,6 +398,18 @@ function offerIdFromReceipt(receipt: TransactionReceipt) {
     }
   }
   return null
+}
+
+function onClickNewOffer(cancel: () => void) {
+  lastOfferId.value = null
+  cancel()
+}
+
+function onClickViewOffer(cancel: () => void) {
+  const id = lastOfferId.value
+  if (id === null) return
+  cancel()
+  void router.push(`/purchase-offers/${id}`)
 }
 
 function resetFlow() {

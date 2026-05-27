@@ -11,37 +11,11 @@
       <h1>Place offer</h1>
     </header>
 
-    <OfferPlaceFlow @placed="onPlaced" />
-
-    <p
-      v-if="fallbackTx"
-      class="success"
-    >
-      Offer submitted. <NuxtLink to="/purchase-offers">View offers</NuxtLink>
-      <code>{{ fallbackTx }}</code>
-    </p>
+    <OfferPlaceFlow />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Hash } from 'viem'
-
-type PlaceOfferResult = {
-  tx: Hash
-  offerId: bigint | null
-}
-
-const router = useRouter()
-const fallbackTx = ref<Hash | null>(null)
-
-function onPlaced(result: PlaceOfferResult) {
-  if (result.offerId !== null) {
-    void router.replace(`/purchase-offers/${result.offerId}`)
-    return
-  }
-  fallbackTx.value = result.tx
-}
-
 useSeoMeta({
   title: 'Place offer · Punks Auction',
   ogTitle: 'Place offer · Punks Auction',
@@ -66,17 +40,4 @@ useSeoMeta({
   font-size: var(--font-sm);
 }
 
-.success {
-  margin: 0;
-  color: var(--text);
-  font-size: var(--font-sm);
-}
-
-.success a {
-  margin-inline: var(--size-1);
-}
-
-.success code {
-  color: var(--text-muted);
-}
 </style>
