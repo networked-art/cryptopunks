@@ -171,6 +171,11 @@ function slotPreviewIds(slot: PlaceOfferSlotSummary) {
   border-top: var(--border);
 }
 
+.summary-slot:first-child {
+  padding-block-start: 0;
+  border-top: 0;
+}
+
 .slot-heading {
   display: grid;
   grid-template-columns: calc(var(--form-item-height) * 2) minmax(0, 1fr);
