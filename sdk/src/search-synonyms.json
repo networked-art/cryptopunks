@@ -13,10 +13,13 @@
   "crazy red hair": "\"crazy hair\"",
   "girl": "female",
   "girls": "female",
+  "goth": "albino dark",
   "helena": "female \"wild hair\"",
   "helena bonham carter": "female \"wild hair\"",
   "marilyn": "female \"blonde bob\" \"hot lipstick\"",
   "marilyn monroe": "female \"blonde bob\" \"hot lipstick\"",
+  "marla": "female \"wild hair\" \"big shades\"",
+  "marla singer": "female \"wild hair\" \"big shades\"",
   "masks": "mask",
   "mister t": "male mohawk \"gold chain\"",
   "mr t": "male mohawk \"gold chain\"",
@@ -24,5 +27,6 @@
   "ringo": "male muttonchops \"regular shades\"",
   "ringo starr": "male muttonchops \"regular shades\"",
   "sunglass": "shades",
-  "sunglasses": "shades"
+  "sunglasses": "shades",
+  "velma": "female \"dark hair\" \"nerd glasses\"",
 }
