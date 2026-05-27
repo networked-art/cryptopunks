@@ -436,13 +436,13 @@ function targetStepTitle() {
 function amountStepTitle() {
   const singleSlot =
     draft.value.slotSummaries.length === 1 ? draft.value.slotSummaries[0] : null
-  if (singleSlot?.targetMode === 'traits' && singleSlot.title) {
-    const [slotInput] = draft.value.slots
-    if (slotInput?.query) {
-      return `${OFFER_SLOT_TEXT.traitOffer}: ${formatTraitTitle(singleSlot.title)}`
-    }
+  if (singleSlot?.displayKind === 'criteria' && singleSlot.title) {
+    return `${OFFER_SLOT_TEXT.traitOffer}: ${formatTraitTitle(singleSlot.title)}`
+  }
+  if (singleSlot?.displayKind === 'selection') {
+    if (singleSlot.previewIds.length === 1) return singleSlot.title
 
-    return `${OFFER_SLOT_TEXT.selectionOffer}: ${singleSlot.title}`
+    return OFFER_SLOT_TEXT.selectionOffer
   }
   if (draft.value.title) return draft.value.title
   if (quantityMode.value === 'multiple') return 'Multiple Punks'
