@@ -25,7 +25,7 @@ type TransactionFlowRunnerErrorSource = 'prepare' | 'transaction'
 
 export function useTransactionFlowRunner(
   opts: {
-    onComplete?: (tx: Hash) => void
+    onComplete?: (tx: Hash, receipts: readonly TransactionReceipt[]) => void
     onError?: (
       message: string,
       source: TransactionFlowRunnerErrorSource,
@@ -107,12 +107,14 @@ export function useTransactionFlowRunner(
   }
 
   function onTransactionComplete(receipt: TransactionReceipt) {
-    opts.onComplete?.(receipt.transactionHash as Hash)
+    opts.onComplete?.(receipt.transactionHash as Hash, [receipt])
   }
 
   function onMultiTransactionComplete(receipts: TransactionReceipt[]) {
     const lastReceipt = receipts.at(-1)
-    if (lastReceipt) opts.onComplete?.(lastReceipt.transactionHash as Hash)
+    if (lastReceipt) {
+      opts.onComplete?.(lastReceipt.transactionHash as Hash, receipts)
+    }
   }
 
   function onFlowError(message: string) {

@@ -94,9 +94,18 @@
 </template>
 
 <script setup lang="ts">
-import type { ContractWritePlan } from '@networked-art/punks-sdk'
+import {
+  punksAuctionAbi,
+  type ContractWritePlan,
+} from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
-import { formatEther, type Address, type Hash } from 'viem'
+import {
+  decodeEventLog,
+  formatEther,
+  type Address,
+  type Hash,
+  type TransactionReceipt,
+} from 'viem'
 import {
   MAX_INSTANT_ITEMS,
   TOTAL_WEIGHT_BPS,
@@ -138,8 +147,12 @@ const { matchesItem: slotMatchesItem, criteriaMatchesPunk } =
   useOfferSlotMatching()
 const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
+const router = useRouter()
 const transactionFlow = useTransactionFlowRunner({
-  onComplete: (tx) => emit('changed', tx),
+  onComplete: (tx, receipts) => {
+    emit('changed', tx)
+    void redirectAfterSettlement(receipts)
+  },
   onError: (message, source) => {
     if (source === 'transaction') return
 
@@ -615,6 +628,39 @@ function showEmpty(message: string) {
 
 function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase()
+}
+
+async function redirectAfterSettlement(
+  receipts: readonly TransactionReceipt[],
+) {
+  if (mode.value === 'accept') {
+    await router.replace(`/profile/${props.offer.offerer}`)
+    return
+  }
+  const auctionId = auctionIdFromReceipts(receipts)
+  if (auctionId !== null) {
+    await router.replace(`/auctions/${auctionId}`)
+  }
+}
+
+function auctionIdFromReceipts(receipts: readonly TransactionReceipt[]) {
+  for (const receipt of receipts) {
+    for (const log of receipt.logs) {
+      try {
+        const decoded = decodeEventLog({
+          abi: punksAuctionAbi,
+          data: log.data,
+          topics: log.topics,
+        })
+        if (decoded.eventName === 'AuctionInitialised') {
+          return (decoded.args as { auctionId: bigint }).auctionId
+        }
+      } catch {
+        // log is not from PunksAuction
+      }
+    }
+  }
+  return null
 }
 
 defineExpose({ start })
