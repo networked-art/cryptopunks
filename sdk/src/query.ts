@@ -24,6 +24,7 @@ import {
 import {
   parseSearchTextWithExactTraitsSync,
   type ParsedNumericConstraint,
+  type ParsedSearchTextGroup,
   type SearchTextTerm,
 } from './text-parse'
 import type {
@@ -314,7 +315,8 @@ function buildFilter(
 /// numeric, skin-tone, and id constraints with the existing structured query
 /// and returning the trait ids the free terms resolve to (using the same
 /// substring rules as offline search). Throws when:
-///   - the text contains OR groups (onchain filter cannot express that);
+///   - the text contains OR groups that cannot collapse into one trait any-of
+///     group;
 ///   - a free term doesn't match any trait name;
 ///   - a numeric / skin-tone constraint conflicts with the existing query.
 ///
@@ -363,9 +365,9 @@ function foldTextIntoQuery(
     return { query: rest, ...empty }
   }
   if (nonEmpty.length > 1) {
-    throw new PunksDataValidationError(
-      'OR groups in text cannot be represented as a single onchain filter; place them in separate offer slots',
-    )
+    const folded = foldTraitOrGroups(data, query, nonEmpty)
+    if (folded !== null) return folded
+    throwUnsupportedOrGroups()
   }
   const group = nonEmpty[0]
   const { freeTermRequired, freeTermAnyOfGroups } = resolveFreeTerms(
@@ -406,6 +408,70 @@ function foldTextIntoQuery(
     includeIds: group.includeIds ?? [],
     excludeIds: group.excludeIds ?? [],
   }
+}
+
+function foldTraitOrGroups(
+  data: OfflinePunksDataClient,
+  query: PunkQuery,
+  groups: readonly ParsedSearchTextGroup[],
+): FoldedText | null {
+  const anyOfTraitIds: number[] = []
+
+  for (const group of groups) {
+    const traitIds = traitAlternativesForOrGroup(data, group)
+    if (traitIds === null) return null
+    anyOfTraitIds.push(...traitIds)
+  }
+
+  const { text: _omitted, ...rest } = query
+  return {
+    query: rest,
+    freeTermRequired: [],
+    freeTermAnyOfGroups: [uniqueNumbers(anyOfTraitIds)],
+    includeIds: [],
+    excludeIds: [],
+  }
+}
+
+function traitAlternativesForOrGroup(
+  data: OfflinePunksDataClient,
+  group: ParsedSearchTextGroup,
+): number[] | null {
+  if (
+    group.attributeCount !== undefined ||
+    group.colorCount !== undefined ||
+    group.pixelCount !== undefined ||
+    group.skinTones !== undefined ||
+    group.includeIds !== undefined ||
+    group.excludeIds !== undefined ||
+    group.freeTerms.length === 0
+  ) {
+    return null
+  }
+
+  const exactPhrase = group.freeTerms.map((term) => term.text).join(' ')
+  const exactMatch = data.findTraitsByTextSync(exactPhrase, { exact: true })[0]
+  if (exactMatch !== undefined) return [exactMatch.id]
+
+  if (group.freeTerms.length !== 1) return null
+
+  const { freeTermRequired, freeTermAnyOfGroups } = resolveFreeTerms(
+    data,
+    group.freeTerms,
+  )
+  if (freeTermRequired.length === 1 && freeTermAnyOfGroups.length === 0) {
+    return freeTermRequired
+  }
+  if (freeTermRequired.length === 0 && freeTermAnyOfGroups.length === 1) {
+    return freeTermAnyOfGroups[0]
+  }
+  return null
+}
+
+function throwUnsupportedOrGroups(): never {
+  throw new PunksDataValidationError(
+    'OR groups in text cannot be represented as a single onchain filter; place them in separate offer slots',
+  )
 }
 
 function resolveFreeTerms(

@@ -18,6 +18,8 @@ const GOLD_CHAIN_TRAIT_ID = data.resolveTraitSync('Gold Chain').id
 const HOT_LIPSTICK_TRAIT_ID = data.resolveTraitSync('Hot Lipstick').id
 const MEDICAL_MASK_TRAIT_ID = data.resolveTraitSync('Medical Mask').id
 const MOHAWK_TRAIT_ID = data.resolveTraitSync('Mohawk').id
+const BEANIE_TRAIT_ID = data.resolveTraitSync('Beanie').id
+const HOODIE_TRAIT_ID = data.resolveTraitSync('Hoodie').id
 const BIG_SHADES_TRAIT_ID = data.resolveTraitSync('Big Shades').id
 const BUCK_TEETH_TRAIT_ID = data.resolveTraitSync('Buck Teeth').id
 const DARK_HAIR_TRAIT_ID = data.resolveTraitSync('Dark Hair').id
@@ -100,6 +102,38 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.deepEqual(
       slot.includeIds,
       data.searchSync({ text: 'big shades wild' }),
+    )
+  })
+
+  it('compiles exact trait OR text as one any-of group', () => {
+    const slot = compileOfferSlot(data, {
+      query: { text: 'Beanie or Hoodie' },
+    })
+    assert.equal(slot.criteria.requiredTraitMask, 0n)
+    assert.equal(
+      slot.criteria.anyOfTraitMask,
+      mask(BEANIE_TRAIT_ID, HOODIE_TRAIT_ID),
+    )
+    assert.deepEqual(slot.includeIds, [])
+    assert.deepEqual(slot.excludeIds, [])
+  })
+
+  it('compiles multi-word exact traits inside OR text', () => {
+    const slot = compileOfferSlot(data, {
+      query: { text: 'Big Shades or Hoodie' },
+    })
+    assert.equal(slot.criteria.requiredTraitMask, 0n)
+    assert.equal(
+      slot.criteria.anyOfTraitMask,
+      mask(BIG_SHADES_TRAIT_ID, HOODIE_TRAIT_ID),
+    )
+    assert.deepEqual(slot.includeIds, [])
+  })
+
+  it('rejects OR text with non-trait constraints', () => {
+    assert.throws(
+      () => compileOfferSlot(data, { query: { text: 'Beanie or 2 colors' } }),
+      /OR groups/,
     )
   })
 
