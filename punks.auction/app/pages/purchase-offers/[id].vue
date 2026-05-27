@@ -162,8 +162,21 @@ const offerTitle = computed(() => {
     : 'Collection offer'
 })
 
+const singleSimpleCollectionOffer = computed(() => {
+  const current = offer.value
+  if (!current || current.slots.length !== 1) return false
+
+  const [slot] = current.slots
+  return (
+    !!slot &&
+    filterIsEmpty(slot.criteria) &&
+    slot.includeIds.length === 0 &&
+    slot.excludeIds.length === 0
+  )
+})
+
 const showOfferSlots = computed(() => {
-  return !exactOfferItem.value
+  return !exactOfferItem.value && !singleSimpleCollectionOffer.value
 })
 
 const matchingLots = computed(() => {
