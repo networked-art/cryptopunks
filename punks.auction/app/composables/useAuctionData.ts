@@ -23,7 +23,7 @@ function useChainResource<T>(read: (client: PublicClient) => Promise<T[]>) {
   const client = useReadClient()
 
   const items = ref<T[]>([]) as Ref<T[]>
-  const pending = ref(false)
+  const pending = ref(true)
   const error = ref<string | null>(null)
 
   async function load() {
