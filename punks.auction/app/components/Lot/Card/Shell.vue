@@ -30,6 +30,10 @@ defineProps<{
   gap: var(--size-2);
   block-size: 100%;
   max-width: 19rem;
+
+  @media (max-width: 860px) {
+    max-width: none;
+  }
 }
 
 .lot-card-shell-lift {
