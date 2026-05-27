@@ -74,9 +74,6 @@ async function downloadImage() {
   --art-width: min(420px, 42vw, 52vh);
   position: relative;
   margin: 0;
-  padding: calc(var(--art-width) * 2 / 24);
-  background: #fff;
-  border: var(--border);
   box-shadow:
     0 1px 2px rgba(10, 10, 18, 0.05),
     0 24px 48px -28px rgba(10, 10, 18, 0.4);
