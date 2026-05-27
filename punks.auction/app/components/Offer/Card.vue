@@ -34,9 +34,7 @@ const { detailHref, target } = useOfferCard(() => props.offer)
   border: 0;
   background: white;
   text-decoration: none;
-  transition:
-    background-color 120ms ease,
-    box-shadow 120ms ease;
+  transition: box-shadow 120ms ease;
 }
 
 .offer-card + .offer-card {
@@ -46,7 +44,7 @@ const { detailHref, target } = useOfferCard(() => props.offer)
 .offer-card:hover,
 .offer-card:focus-visible {
   color: inherit;
-  background: var(--bg-elevated);
+  background: white;
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
