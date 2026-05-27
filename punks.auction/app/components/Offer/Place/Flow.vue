@@ -129,6 +129,7 @@ import {
   PLACE_OFFER_DIFFERENT_TARGET_ERROR,
   PLACE_OFFER_MAX_SLOTS,
   PLACE_OFFER_MIN_MULTI_SLOTS,
+  PLACE_OFFER_SLOT_ID_LIMIT_ERROR,
   buildPlaceOfferDraft,
   createPlaceOfferSlotDraft,
   itemLabel,
@@ -466,7 +467,12 @@ function slotFooterSelection(value: PlaceOfferDraft) {
 }
 
 function targetFooterSelection() {
-  if (targetProgressValidationError.value === PLACE_OFFER_DIFFERENT_TARGET_ERROR) {
+  if (currentSlotDraft.value.error === PLACE_OFFER_SLOT_ID_LIMIT_ERROR) {
+    return PLACE_OFFER_SLOT_ID_LIMIT_ERROR
+  }
+  if (
+    targetProgressValidationError.value === PLACE_OFFER_DIFFERENT_TARGET_ERROR
+  ) {
     return PLACE_OFFER_DIFFERENT_TARGET_ERROR
   }
   if (
@@ -479,11 +485,12 @@ function targetFooterSelection() {
   return slotFooterSelection(currentSlotDraft.value)
 }
 
-function visibleSlotDraftError(message: string | undefined) {
+function visibleSlotDraftError(message: string | null | undefined) {
   if (
     !message ||
     message.startsWith('Choose ') ||
     message === PLACE_OFFER_DIFFERENT_TARGET_ERROR ||
+    message === PLACE_OFFER_SLOT_ID_LIMIT_ERROR ||
     message === 'Select Punks or criteria.' ||
     message === 'Select trait criteria.'
   ) {

@@ -66,6 +66,8 @@ export const PLACE_OFFER_MAX_SLOT_IDS = PUNKS_AUCTION_MAX_SLOT_IDS
 export const DEFAULT_PLACE_OFFER_STANDARD = TokenStandard.CryptoPunks
 export const PLACE_OFFER_DIFFERENT_TARGET_ERROR =
   'Choose a different item target.'
+export const PLACE_OFFER_SLOT_ID_LIMIT_ERROR =
+  `Select ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`
 
 export function createPlaceOfferSlotDraft(
   standard: TokenStandardValue = DEFAULT_PLACE_OFFER_STANDARD,
@@ -192,10 +194,7 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
   const activeCount = previewIds.length
 
   if (includeIds.length > PLACE_OFFER_MAX_SLOT_IDS) {
-    return invalidSlot(
-      label,
-      `Include ${PLACE_OFFER_MAX_SLOT_IDS} or fewer Punks.`,
-    )
+    return invalidSlot(label, PLACE_OFFER_SLOT_ID_LIMIT_ERROR)
   }
   if (excludeIds.length > PLACE_OFFER_MAX_SLOT_IDS) {
     return invalidSlot(
