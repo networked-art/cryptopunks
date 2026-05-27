@@ -23,18 +23,11 @@
         >
           Could not load owned Punks: {{ ownedError }}
         </p>
-        <template v-else-if="owned.length">
-          <LazyPunkGrid
-            :ids="owned"
-            :size="48"
-          />
-          <p
-            v-if="breakdownLabel"
-            class="muted breakdown"
-          >
-            {{ breakdownLabel }}
-          </p>
-        </template>
+        <LazyPunkGrid
+          v-else-if="owned.length"
+          :ids="owned"
+          :size="48"
+        />
         <p
           v-else
           class="muted"
@@ -135,19 +128,9 @@ const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
 const {
   ids: owned,
-  breakdown,
   loading: ownedLoading,
   error: ownedError,
 } = useAccountPunks({ account: profileAddress, vault, stash })
-
-const breakdownLabel = computed(() => {
-  const parts: string[] = []
-  if (breakdown.value.wallet) parts.push(`${breakdown.value.wallet} in wallet`)
-  if (breakdown.value.vault) parts.push(`${breakdown.value.vault} in vault`)
-  if (breakdown.value.wrapped) parts.push(`${breakdown.value.wrapped} wrapped`)
-  if (breakdown.value.stash) parts.push(`${breakdown.value.stash} in stash`)
-  return parts.join(' · ')
-})
 
 const ownedTitle = computed(() => {
   const count = owned.value.length
@@ -282,11 +265,5 @@ const myOffers = computed(() => {
 .error {
   color: var(--accent);
   font-size: var(--font-sm);
-}
-
-.breakdown {
-  margin: 0;
-  margin-top: var(--size-2);
-  font-size: var(--font-xs);
 }
 </style>
