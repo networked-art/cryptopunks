@@ -1,23 +1,21 @@
 <template>
   <dl class="stats-list">
-    <div class="stat-row text-row">
+    <div class="stat-row">
       <dt>First seen</dt>
-      <dd class="full">{{ firstSeenLabel }}</dd>
+      <dd>{{ firstSeenLabel }}</dd>
     </div>
-    <div class="stat-row text-row">
+    <div class="stat-row">
       <dt>Last active</dt>
-      <dd class="full">{{ lastActiveLabel }}</dd>
+      <dd>{{ lastActiveLabel }}</dd>
     </div>
     <div
       v-if="stats.punksClaimedCount > 0"
-      class="stat-row text-row"
+      class="stat-row"
     >
       <dt>Claimed</dt>
-      <dd class="full">
-        {{ stats.punksClaimedCount }} {{ punksWord }}
-      </dd>
+      <dd>{{ stats.punksClaimedCount }} {{ punksWord }}</dd>
     </div>
-    <div class="stat-row amount-row">
+    <div class="stat-row">
       <dt>
         <span>Bought</span>
         <span v-if="stats.salesBoughtCount > 0">
@@ -49,18 +47,18 @@
             >—</span
           >
         </dd>
-        <dd class="eth">
+        <dd>
           <EthAmount :wei="stats.totalSpentWei" />
         </dd>
       </template>
       <dd
         v-else
-        class="full muted"
+        class="muted"
       >
         —
       </dd>
     </div>
-    <div class="stat-row amount-row">
+    <div class="stat-row">
       <dt>
         <span>Sold</span>
         <span v-if="stats.salesSoldCount > 0">
@@ -92,13 +90,13 @@
             >—</span
           >
         </dd>
-        <dd class="eth">
+        <dd>
           <EthAmount :wei="stats.totalEarnedWei" />
         </dd>
       </template>
       <dd
         v-else
-        class="full muted"
+        class="muted"
       >
         —
       </dd>
@@ -170,39 +168,27 @@ const punksWord = computed(() =>
 .stats-list {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr;
   border: var(--border);
-  background: var(--bg-elevated);
+  background: var(--white);
 }
 
 .stat-row {
-  display: contents;
-}
-
-.stat-row > * {
   display: flex;
   align-items: center;
-  padding: var(--size-2) 0;
+  gap: var(--size-3);
+  min-width: 0;
+  padding: var(--size-2) var(--size-3);
   border-bottom: var(--border);
 }
 
-.stat-row > *:first-child {
-  padding-left: var(--size-3);
-}
-
-.stat-row > *:last-child {
-  padding-right: var(--size-3);
-}
-
-.stat-row > * + * {
-  padding-left: var(--size-3);
-}
-
-.stat-row:last-child > * {
+.stat-row:last-child {
   border-bottom: 0;
 }
 
 dt {
+  flex: 1;
+  min-width: 0;
   color: var(--text-dim);
   font-size: var(--font-xs);
   text-transform: uppercase;
@@ -217,15 +203,10 @@ dd {
   margin: 0;
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
-  justify-content: flex-end;
-}
-
-.full {
-  grid-column: 2 / 4;
+  text-align: right;
 }
 
 .usd {
-  grid-column: 2;
   color: var(--text-dim);
   font-size: var(--font-xs);
 }
@@ -242,11 +223,24 @@ dd {
   font-variant-numeric: tabular-nums;
 }
 
-.eth {
-  grid-column: 3;
-}
+/* Desktop: 2-col when there are only 4 rows (no Claimed). With Claimed
+   present (5 rows), an awkward dangling cell would appear in 2-col, so the
+   layout stays single-column. :has() lets the grid react automatically.
+   Column-major flow puts the two date rows in the left column and the two
+   amount rows in the right column. */
+@media (min-width: 720px) {
+  .stats-list:not(:has(> :nth-child(5))) {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-auto-flow: column;
+  }
 
-.count {
-  color: var(--text-muted);
+  .stats-list:not(:has(> :nth-child(5))) > .stat-row:nth-child(-n + 2) {
+    border-right: var(--border);
+  }
+
+  .stats-list:not(:has(> :nth-child(5))) > .stat-row:nth-child(even) {
+    border-bottom: 0;
+  }
 }
 </style>
