@@ -107,7 +107,7 @@ export function offerSlotTitle(slot: OfferSlot, offline: PunksSdk) {
       ? criteriaTitle(slot, offline)
       : slot.includeIds.length > 1
         ? `${slot.includeIds.length.toLocaleString()} included Punks`
-        : 'Any Punk',
+        : 'Collection offer',
   ]
 
   if (hasCriteria) {
@@ -236,9 +236,9 @@ function criteriaTitle(slot: OfferSlot, offline: PunksSdk) {
       criteria: slot.criteria,
     })
     const humanLabel = humanizeCriteriaLabel(label)
-    return humanLabel ? `Trait criteria: ${humanLabel}` : 'Trait criteria'
+    return humanLabel ? `Trait offer: ${humanLabel}` : 'Trait offer'
   } catch {
-    return 'Trait criteria'
+    return 'Trait offer'
   }
 }
 
