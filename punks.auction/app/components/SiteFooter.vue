@@ -12,7 +12,7 @@
           >networked.art</a
         >
         <a
-          href="https://github.com/networked-art/cryptopunks/tree/master/punks.auction"
+          href="https://github.com/networked-art/cryptopunks"
           target="_blank"
         >
           Github
