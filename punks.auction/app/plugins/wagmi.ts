@@ -24,7 +24,12 @@ export default defineNuxtPlugin({
       ens?: { indexers?: string }
     }
     const publicUrl = (runtimeConfig.public as { publicUrl?: string }).publicUrl
-    const serverRpcUrl = (runtimeConfig as { rpcUrl?: string }).rpcUrl ?? ''
+    // Top-level (non-public) keys are server-only; reading on the client
+    // triggers a Nuxt warning. The value is only used in the server branch
+    // below, so leave it empty on the client.
+    const serverRpcUrl = import.meta.server
+      ? ((runtimeConfig as { rpcUrl?: string }).rpcUrl ?? '')
+      : ''
     const toAbsolute = (path: string) =>
       publicUrl ? new URL(path, publicUrl).toString() : path
 
