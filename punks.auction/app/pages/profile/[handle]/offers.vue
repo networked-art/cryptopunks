@@ -62,15 +62,6 @@
               :offer="offer"
               :displayed-offerer-addresses="ownerAddressList"
             />
-            <div class="row-actions">
-              <NuxtLink
-                class="details-link"
-                :to="`/purchase-offers/${offer.id}`"
-              >
-                Review and accept
-                <Icon name="lucide:arrow-right" />
-              </NuxtLink>
-            </div>
           </li>
         </ul>
       </section>
@@ -79,6 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import { offerSlotMatchingIds } from '~/utils/auction'
+
 useOwnProfileGuard()
 
 const { ownAccount, resolvedAddress, vault, stash } = useProfileContext()
@@ -111,11 +104,8 @@ const madeByMe = computed(() => {
   return offers.value.filter((offer) => addrs.has(offer.offerer.toLowerCase()))
 })
 
-// Offer slots can target specific punks by id or by trait criteria. The
-// trait-criteria path needs per-punk metadata to evaluate, so V1 of this tab
-// matches only the explicit `includeIds` path — covers single-punk and
-// hand-picked bundle offers, which are the common shape. Pure criteria-only
-// offers are surfaced via the offer detail page rather than here.
+const { searchCriteriaMatches } = useOfferSlotMatching()
+
 const ownedSet = computed(() => new Set(owned.value))
 const made = computed(() => new Set(madeByMe.value.map((o) => String(o.id))))
 const received = computed(() => {
@@ -123,7 +113,10 @@ const received = computed(() => {
   if (!ids.size) return []
   return offers.value.filter((offer) => {
     if (made.value.has(String(offer.id))) return false
-    return offer.slots.some((slot) => slot.includeIds.some((id) => ids.has(id)))
+    return offer.slots.some((slot) => {
+      const matches = offerSlotMatchingIds(slot, searchCriteriaMatches(slot))
+      return matches.some((id) => ids.has(id))
+    })
   })
 })
 </script>
@@ -173,21 +166,6 @@ const received = computed(() => {
   flex-direction: column;
   gap: var(--size-2);
   min-width: 0;
-}
-
-.row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--size-2);
-}
-
-.details-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-1);
-  border: 0;
-  font-size: var(--font-sm);
-  font-weight: var(--font-weight-bold);
 }
 
 .icon-button {
