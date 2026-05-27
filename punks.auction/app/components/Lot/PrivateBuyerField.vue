@@ -14,7 +14,7 @@
       v-if="open"
       class="private-buyer-field"
     >
-      <span class="private-buyer-label muted">Initial buyer</span>
+      <span class="private-buyer-label muted">Initial Bidder</span>
       <EvmAddressInput
         v-model="buyer"
         :placeholder="placeholder"
