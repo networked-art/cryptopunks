@@ -13,7 +13,7 @@ export function usePunkAuctionContext(
   punkId: MaybeRefOrGetter<number>,
   standard: MaybeRefOrGetter<TokenStandardValue>,
 ) {
-  const { auctions, pending: auctionsPending, deployed } = useAuctions()
+  const { auctions, pending: auctionsPending } = useAuctions()
   const { lots, pending: lotsPending } = useLots()
   const { offers, pending: offersPending } = useOffers()
   const { matchesItem: offerSlotMatchesItem } = useOfferSlotMatching()
@@ -52,5 +52,5 @@ export function usePunkAuctionContext(
     () => auctionsPending.value || lotsPending.value || offersPending.value,
   )
 
-  return { punkAuctions, punkLots, punkOffers, pending, deployed }
+  return { punkAuctions, punkLots, punkOffers, pending }
 }
