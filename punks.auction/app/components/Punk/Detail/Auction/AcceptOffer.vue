@@ -22,7 +22,7 @@
       <div class="choices">
         <button
           type="button"
-          class="choice"
+          class="choice unstyled"
           @click="pickMode('start')"
         >
           <span class="choice-title">Start auction</span>
@@ -34,7 +34,7 @@
 
         <button
           type="button"
-          class="choice"
+          class="choice unstyled"
           @click="pickMode('accept')"
         >
           <span class="choice-title">
@@ -139,12 +139,17 @@ function onChanged(tx: Hash) {
 .choice {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--size-1);
+  width: 100%;
+  min-width: 0;
   padding: var(--size-3) var(--size-4);
   background: white;
   border: var(--border);
   color: inherit;
+  font: inherit;
   text-align: left;
+  white-space: normal;
   cursor: pointer;
   transition: box-shadow 120ms ease;
 }
@@ -160,16 +165,19 @@ function onChanged(tx: Hash) {
 }
 
 .choice-title {
-  font-size: var(--font-md);
-  font-weight: var(--font-weight-bold);
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--size-2);
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight, 1.2);
 }
 
 .choice-description {
   font-size: var(--font-sm);
   color: var(--text-muted);
+  line-height: var(--line-height-md, 1.4);
 }
 
 .accept-offer-dialog :deep(section) {
