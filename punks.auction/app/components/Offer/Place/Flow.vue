@@ -135,7 +135,7 @@ import {
   type PlaceOfferQuantityMode,
   type PlaceOfferSlotDraft,
 } from '~/composables/usePlaceOfferDraft'
-import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
+import { OFFER_SLOT_TEXT, formatOfferTraitTitle } from '~/utils/offerSlotText'
 
 type ActionStep = 'target' | 'amount'
 type PlaceOfferResult = {
@@ -428,7 +428,7 @@ function amountStepTitle() {
   const singleSlot =
     draft.value.slotSummaries.length === 1 ? draft.value.slotSummaries[0] : null
   if (singleSlot?.displayKind === 'criteria' && singleSlot.title) {
-    return `${OFFER_SLOT_TEXT.traitOffer}: ${formatTraitTitle(singleSlot.title)}`
+    return `${OFFER_SLOT_TEXT.traitOffer}: ${formatOfferTraitTitle(singleSlot.title)}`
   }
   if (singleSlot?.displayKind === 'selection') {
     if (singleSlot.previewIds.length === 1) return singleSlot.title
@@ -438,11 +438,6 @@ function amountStepTitle() {
   if (draft.value.title) return draft.value.title
   if (quantityMode.value === 'multiple') return 'Multiple Punks'
   return 'Set Amount'
-}
-
-function formatTraitTitle(title: string) {
-  const text = title.trim()
-  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text
 }
 
 function slotFooterSelection(value: PlaceOfferDraft) {

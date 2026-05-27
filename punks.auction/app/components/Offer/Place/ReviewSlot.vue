@@ -17,7 +17,7 @@
           v-if="showSlotTitle"
           class="slot-title"
         >
-          {{ slot.title }}
+          {{ slotTitle }}
         </span>
         <span
           v-if="slot.detail"
@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
 import type { PlaceOfferSlotSummary } from '~/composables/usePlaceOfferDraft'
+import { formatOfferTraitTitle } from '~/utils/offerSlotText'
 
 const props = withDefaults(
   defineProps<{
@@ -108,6 +109,11 @@ const showSlotTitle = computed(
 )
 const showSlotCopy = computed(
   () => showSlotTitle.value || Boolean(props.slot.detail),
+)
+const slotTitle = computed(() =>
+  props.slot.displayKind === 'criteria'
+    ? formatOfferTraitTitle(props.slot.title)
+    : props.slot.title,
 )
 const singlePunkStyle = computed(() =>
   isSinglePunkPreview.value && singlePunkSize.value

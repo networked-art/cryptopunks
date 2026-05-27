@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import type { PlaceOfferDraft } from '~/composables/usePlaceOfferDraft'
+import { formatOfferTraitTitle } from '~/utils/offerSlotText'
 
 const props = withDefaults(
   defineProps<{
@@ -101,7 +102,7 @@ function slotFulfillmentText(slot: PlaceOfferDraft['slotSummaries'][number]) {
     return `one of the ${formatPunkCount(slot.previewIds.length)} in this selection`
   }
   if (slot.displayKind === 'criteria') {
-    return `one Punk matching ${formatCriteriaTitle(slot.title)} (${formatEligibleCount(slot.previewIds.length)})`
+    return `one Punk matching ${formatOfferTraitTitle(slot.title)} (${formatEligibleCount(slot.previewIds.length)})`
   }
   return 'any Punk'
 }
@@ -114,10 +115,6 @@ function formatEligibleCount(count: number) {
   return `${count.toLocaleString()} eligible`
 }
 
-function formatCriteriaTitle(title: string) {
-  const text = title.trim()
-  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text
-}
 </script>
 
 <style scoped>
