@@ -145,6 +145,12 @@
         </p>
       </section>
     </div>
+
+    <template #fallback>
+      <div class="profile-fallback">
+        <Spinner :label="`Loading profile`" />
+      </div>
+    </template>
   </ClientOnly>
 </template>
 
@@ -280,6 +286,13 @@ const myOffers = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--size-6);
+}
+
+.profile-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-6) 0;
 }
 
 .profile-section {

@@ -1,59 +1,62 @@
 <template>
   <div class="container profile-page">
     <header class="profile-head">
-      <img
-        v-if="profileAvatarUri"
-        class="profile-avvatar"
-        :src="profileAvatarUri"
-        :alt="`Avatar for ${titleLabel}`"
-      />
+      <template v-if="resolvedAddress">
+        <img
+          v-if="profileAvatarUri"
+          class="profile-avvatar"
+          :src="profileAvatarUri"
+          :alt="`Avatar for ${titleLabel}`"
+        />
 
-      <div class="profile-details">
-        <div class="profile-title">
-          <h1
-            v-if="ensProfile.data.value?.ens"
-            class="profile-name"
-          >
-            {{ ensProfile.data.value.ens }}
-          </h1>
-          <h1
-            v-else
-            class="profile-name muted"
-          >
-            {{ shortAddr }}
-          </h1>
-        </div>
+        <div class="profile-details">
+          <div class="profile-title">
+            <ClientOnly>
+              <h1
+                v-if="ensProfile.data.value?.ens"
+                class="profile-name"
+              >
+                {{ ensProfile.data.value.ens }}
+              </h1>
+              <h1
+                v-else
+                class="profile-name muted"
+              >
+                {{ shortAddr }}
+              </h1>
+              <template #fallback>
+                <h1 class="profile-name muted">{{ shortAddr }}</h1>
+              </template>
+            </ClientOnly>
+          </div>
 
-        <ClientOnly>
-          <p
-            v-if="resolvedAddress"
-            class="profile-address muted"
-          >
+          <p class="profile-address muted">
             {{ resolvedAddress }}
           </p>
-          <p
-            v-else-if="resolving"
-            class="muted"
-          >
-            Resolving…
-          </p>
-          <p
-            v-else
-            class="error"
-          >
-            Could not resolve {{ handle }}
-          </p>
-        </ClientOnly>
 
-        <LazyProfileStatusPills
-          v-if="resolvedAddress"
-          :vault="vault"
-          :stash="stash"
-          :wrapper-proxy="wrapperProxy"
-          :vault-deployed="vaultDeployed"
-          :stash-deployed="stashDeployed"
-        />
+          <LazyProfileStatusPills
+            :vault="vault"
+            :stash="stash"
+            :wrapper-proxy="wrapperProxy"
+            :vault-deployed="vaultDeployed"
+            :stash-deployed="stashDeployed"
+          />
+        </div>
+      </template>
+
+      <div
+        v-else-if="resolving"
+        class="profile-loading"
+      >
+        <Spinner :label="`Resolving ${handle}`" />
       </div>
+
+      <p
+        v-else
+        class="error"
+      >
+        Could not resolve {{ handle }}
+      </p>
     </header>
 
     <ClientOnly v-if="isOwnProfile">
@@ -82,59 +85,63 @@ const { address: connectedAddress } = useConnection()
 
 const ensProfile = useEnsWithAvatar(handle)
 
-const resolving = ref(true)
-const resolvedAddress = ref<Address | null>(null)
-// Token guard for the async watchEffect: each run bumps the counter and
+// Initialize state synchronously from `handle` so SSR can render the
+// header for address handles without waiting on async resolution.
+const initialIsAddress = isAddress(handle.value)
+const resolvedAddress = ref<Address | null>(
+  initialIsAddress ? (handle.value as Address) : null,
+)
+const resolving = ref(!initialIsAddress)
+
+// Token guard for the async resolver: each run bumps the counter and
 // checks it before writing back, so a slow earlier resolution (ENS round-trip
 // + indexer round-trip) can't clobber a newer one started after a quick
 // handle change.
 let resolveToken = 0
 
-watchEffect(async () => {
+async function resolveHandle() {
   const t = ++resolveToken
   const h = handle.value
   const handleIsAddress = isAddress(h)
+
+  if (handleIsAddress) {
+    resolvedAddress.value = h as Address
+    resolving.value = false
+
+    // Canonicalize URLs of the form `/profile/<vault|stash|wrapperProxy>` to
+    // `/profile/<owner>`. Indexer call is client-only so SSR doesn't depend
+    // on the indexer being reachable from the server runtime.
+    if (import.meta.client) {
+      const resolved = await resolveProfileAddress(h as Address)
+      if (t !== resolveToken) return
+      if (resolved.redirect) {
+        void router.replace(`/profile/${resolved.canonical}`)
+      }
+    }
+    return
+  }
+
+  resolvedAddress.value = null
   resolving.value = true
 
+  const client = getPublicClient(config) as PublicClient | undefined
+  if (!client) {
+    if (t === resolveToken) resolving.value = false
+    return
+  }
   let eoa: Address | null = null
-  if (handleIsAddress) {
-    eoa = h as Address
-  } else {
-    const client = getPublicClient(config) as PublicClient | undefined
-    if (!client) {
-      if (t === resolveToken) resolving.value = false
-      return
-    }
-    try {
-      const addr = await client.getEnsAddress({ name: h })
-      eoa = (addr as Address | null) ?? null
-    } catch {
-      eoa = null
-    }
-    if (t !== resolveToken) return
+  try {
+    const addr = await client.getEnsAddress({ name: h })
+    eoa = (addr as Address | null) ?? null
+  } catch {
+    eoa = null
   }
-
-  // Canonicalize URLs of the form `/profile/<vault|stash|wrapperProxy>` to
-  // `/profile/<owner>` so a single profile is always reachable via the same
-  // address. Only attempted when the handle is already an address — ENS
-  // handles are user-chosen and stay verbatim.
-  if (handleIsAddress && eoa) {
-    const resolved = await resolveProfileAddress(eoa)
-    if (t !== resolveToken) return
-    if (resolved.redirect) {
-      // Clear the spinner before navigating; the next `handle` change will
-      // re-run this effect with the canonical address. Without this, the
-      // template renders "Resolving…" indefinitely if `router.replace`
-      // resolves on the next microtask.
-      resolving.value = false
-      void router.replace(`/profile/${resolved.canonical}`)
-      return
-    }
-  }
-
+  if (t !== resolveToken) return
   resolvedAddress.value = eoa
   resolving.value = false
-})
+}
+
+watch(handle, () => void resolveHandle(), { immediate: true })
 
 const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
@@ -234,6 +241,12 @@ provide(ProfileContextKey, {
   margin: 0;
   font-size: var(--font-sm);
   overflow-wrap: anywhere;
+}
+
+.profile-loading {
+  display: flex;
+  align-items: center;
+  min-height: clamp(56px, 12vw, 90px);
 }
 
 .error {
