@@ -352,9 +352,19 @@ function resetFlow() {
 }
 
 function amountStepTitle() {
+  const singleSlot =
+    draft.value.slotSummaries.length === 1 ? draft.value.slotSummaries[0] : null
+  if (singleSlot?.targetMode === 'traits' && singleSlot.title) {
+    return `Trait offer: ${formatTraitTitle(singleSlot.title)}`
+  }
   if (draft.value.title) return draft.value.title
   if (quantityMode.value === 'multiple') return 'Multiple Punks'
   return 'Set Amount'
+}
+
+function formatTraitTitle(title: string) {
+  const text = title.trim()
+  return text ? `${text[0].toUpperCase()}${text.slice(1)}` : text
 }
 
 function slotFooterSelection(value: PlaceOfferDraft) {
