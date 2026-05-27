@@ -1,5 +1,4 @@
 import type { PublicClient } from 'viem'
-import { isAuctionDeployed } from '~/utils/addresses'
 import {
   minNextBidWei,
   readAuction,
@@ -48,7 +47,6 @@ function useChainResource<T>(read: (client: PublicClient) => Promise<T[]>) {
     items,
     pending,
     error,
-    deployed: isAuctionDeployed(),
     refresh: load,
   }
 }
@@ -62,21 +60,21 @@ function resourceId(value: MaybeRefOrGetter<bigint | number | undefined>) {
 }
 
 export function useAuctions() {
-  const { items, pending, error, deployed, refresh } =
+  const { items, pending, error, refresh } =
     useChainResource<AuctionRecord>(readAuctions)
-  return { auctions: items, pending, error, deployed, refresh }
+  return { auctions: items, pending, error, refresh }
 }
 
 export function useLots() {
-  const { items, pending, error, deployed, refresh } =
+  const { items, pending, error, refresh } =
     useChainResource<LotRecord>(readLots)
-  return { lots: items, pending, error, deployed, refresh }
+  return { lots: items, pending, error, refresh }
 }
 
 export function useOffers() {
-  const { items, pending, error, deployed, refresh } =
+  const { items, pending, error, refresh } =
     useChainResource<OfferRecord>(readOffers)
-  return { offers: items, pending, error, deployed, refresh }
+  return { offers: items, pending, error, refresh }
 }
 
 export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
@@ -122,7 +120,6 @@ export function useOffer(id: MaybeRefOrGetter<bigint | number | undefined>) {
     lastOfferId,
     pending,
     error,
-    deployed: isAuctionDeployed(),
     refresh: load,
   }
 }
@@ -169,7 +166,6 @@ export function useAuction(id: MaybeRefOrGetter<bigint | number | undefined>) {
     minimumBidWei,
     pending,
     error,
-    deployed: isAuctionDeployed(),
     refresh: load,
   }
 }
@@ -219,7 +215,6 @@ export function useLot(id: MaybeRefOrGetter<bigint | number | undefined>) {
     sourceAuction,
     pending,
     error,
-    deployed: isAuctionDeployed(),
     refresh: load,
   }
 }

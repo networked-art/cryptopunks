@@ -24,7 +24,6 @@ import {
 import {
   PUNKS_AUCTION_ADDRESS,
   PUNKS_AUCTION_START_BLOCK,
-  isAuctionDeployed,
 } from '~/utils/addresses'
 import { PUNK_BACKGROUNDS } from '~/utils/render'
 
@@ -259,7 +258,6 @@ export async function readLot(
   client: PublicClient,
   id: bigint | number,
 ): Promise<LotRecord | null> {
-  if (!isAuctionDeployed()) return null
   const lotId = BigInt(id)
   const core = await readLotCore(client, lotId)
   if (!core) return null
@@ -273,7 +271,6 @@ export async function readLot(
 }
 
 export async function readLots(client: PublicClient): Promise<LotRecord[]> {
-  if (!isAuctionDeployed()) return []
   const ids = idRange(await lastId(client, 'lastLotId'))
   if (!ids.length) return []
 
@@ -355,7 +352,6 @@ export async function readAuction(
   client: PublicClient,
   id: bigint | number,
 ): Promise<AuctionRecord | null> {
-  if (!isAuctionDeployed()) return null
   const auctionId = BigInt(id)
   const core = await readAuctionCore(client, auctionId)
   if (!core) return null
@@ -378,7 +374,6 @@ export async function readAuction(
 export async function readAuctions(
   client: PublicClient,
 ): Promise<AuctionRecord[]> {
-  if (!isAuctionDeployed()) return []
   const ids = idRange(await lastId(client, 'lastAuctionId'))
   if (!ids.length) return []
 
@@ -441,7 +436,6 @@ export async function readAuctionForLot(
   client: PublicClient,
   lotId: bigint | number,
 ): Promise<AuctionRecord | null> {
-  if (!isAuctionDeployed()) return null
   const logs = await client.getLogs({
     address: PUNKS_AUCTION_ADDRESS,
     event: AUCTION_INITIALISED,
@@ -493,7 +487,6 @@ async function readAuctionSourceLotIds(
 }
 
 export async function readOffers(client: PublicClient): Promise<OfferRecord[]> {
-  if (!isAuctionDeployed()) return []
   const ids = idRange(await lastId(client, 'lastOfferId'))
   if (!ids.length) return []
 
@@ -538,7 +531,6 @@ export async function readOffers(client: PublicClient): Promise<OfferRecord[]> {
 }
 
 export async function readLastOfferId(client: PublicClient): Promise<bigint> {
-  if (!isAuctionDeployed()) return 0n
   return lastId(client, 'lastOfferId')
 }
 
@@ -546,7 +538,6 @@ export async function readOffer(
   client: PublicClient,
   id: bigint | number,
 ): Promise<OfferRecord | null> {
-  if (!isAuctionDeployed()) return null
   const offerId = BigInt(id)
   const result = await client.readContract({
     ...auctionContract,
@@ -592,7 +583,6 @@ export async function readEscrowBalance(
   client: PublicClient,
   account: Address,
 ): Promise<bigint> {
-  if (!isAuctionDeployed()) return 0n
   return client.readContract({
     ...auctionContract,
     functionName: 'balances',

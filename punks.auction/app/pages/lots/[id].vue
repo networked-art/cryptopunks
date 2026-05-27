@@ -63,9 +63,6 @@
     <template v-else-if="pending">
       <Spinner label="Loading lot" />
     </template>
-    <template v-else-if="!deployed">
-      Lots appear once <code>PunksAuction</code> is deployed.
-    </template>
     <template v-else-if="error">Failed to load lot: {{ error }}</template>
     <template v-else-if="sourceAuction">
       Lot #{{ id }} was opened as
@@ -99,7 +96,7 @@ if (validId.value) {
   }
 }
 
-const { lot, sourceAuction, pending, error, deployed, refresh } = useLot(() =>
+const { lot, sourceAuction, pending, error, refresh } = useLot(() =>
   validId.value ? id.value : undefined,
 )
 const { offers, refresh: refreshOffers } = useOffers()

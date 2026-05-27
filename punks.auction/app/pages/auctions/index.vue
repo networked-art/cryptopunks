@@ -20,55 +20,45 @@
 
     <section class="section">
       <div
-        v-if="!deployed"
+        v-if="loadError"
+        class="error"
+      >
+        Failed to load {{ loadError }}
+      </div>
+      <div
+        v-if="pending && !marketEntries.length"
+        class="loading"
+      >
+        <Spinner label="Loading auctions and lots" />
+      </div>
+      <div
+        v-else-if="!loadError && !marketEntries.length"
         class="state empty muted"
       >
-        Auctions and lots appear here once <code>PunksAuction</code> is
-        deployed.
+        No auctions or open lots.
       </div>
-
-      <template v-else>
-        <div
-          v-if="loadError"
-          class="error"
-        >
-          Failed to load {{ loadError }}
+      <div
+        v-else-if="marketEntries.length"
+        class="market-stack"
+      >
+        <div class="card-grid">
+          <template
+            v-for="entry in marketEntries"
+            :key="entry.key"
+          >
+            <LazyAuctionCard
+              v-if="entry.kind === 'auction'"
+              :auction="entry.auction"
+              lift
+            />
+            <LazyLotCard
+              v-else
+              :lot="entry.lot"
+              lift
+            />
+          </template>
         </div>
-        <div
-          v-if="pending && !marketEntries.length"
-          class="loading"
-        >
-          <Spinner label="Loading auctions and lots" />
-        </div>
-        <div
-          v-else-if="!loadError && !marketEntries.length"
-          class="state empty muted"
-        >
-          No auctions or open lots.
-        </div>
-        <div
-          v-else-if="marketEntries.length"
-          class="market-stack"
-        >
-          <div class="card-grid">
-            <template
-              v-for="entry in marketEntries"
-              :key="entry.key"
-            >
-              <LazyAuctionCard
-                v-if="entry.kind === 'auction'"
-                :auction="entry.auction"
-                lift
-              />
-              <LazyLotCard
-                v-else
-                :lot="entry.lot"
-                lift
-              />
-            </template>
-          </div>
-        </div>
-      </template>
+      </div>
     </section>
   </div>
 </template>
@@ -90,14 +80,12 @@ const {
   auctions,
   pending: auctionsPending,
   error: auctionsError,
-  deployed: auctionsDeployed,
   refresh: refreshAuctions,
 } = useAuctions()
 const {
   lots,
   pending: lotsPending,
   error: lotsError,
-  deployed: lotsDeployed,
   refresh: refreshLots,
 } = useLots()
 
@@ -114,7 +102,6 @@ type MarketEntry =
     }
 
 const now = useSeconds()
-const deployed = computed(() => auctionsDeployed && lotsDeployed)
 const pending = computed(() => auctionsPending.value || lotsPending.value)
 const loadError = computed(() =>
   [

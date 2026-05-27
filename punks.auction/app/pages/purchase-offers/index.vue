@@ -26,12 +26,6 @@
           <Spinner label="Loading offers" />
         </div>
         <div
-          v-else-if="!deployed"
-          class="state empty muted"
-        >
-          Offers appear here once <code>PunksAuction</code> is deployed.
-        </div>
-        <div
           v-else-if="error"
           class="error"
         >
@@ -67,7 +61,7 @@ useSeoMeta({
   twitterTitle: 'Purchase offers · Punks Auction',
 })
 
-const { offers, pending, error, deployed } = useOffers()
+const { offers, pending, error } = useOffers()
 
 /// Highest offer first.
 const sortedOffers = computed(() =>

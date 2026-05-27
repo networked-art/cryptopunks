@@ -5,7 +5,6 @@ import {
   PUNKS_VAULT_FACTORY_ADDRESS as SDK_PUNKS_VAULT_FACTORY_ADDRESS,
   STASH_FACTORY_ADDRESS as SDK_STASH_FACTORY_ADDRESS,
   WRAPPED_PUNKS_ADDRESS as SDK_WRAPPED_PUNKS_ADDRESS,
-  ZERO_ADDRESS,
 } from '@networked-art/punks-sdk'
 
 /** Mainnet `PunksAuction` — the zero-fee auction house. */
@@ -29,8 +28,3 @@ export const STASH_FACTORY_ADDRESS = SDK_STASH_FACTORY_ADDRESS
 
 /** Original `WrappedCryptopunks` — also the per-user `WrapperProxy` registry. */
 export const WRAPPED_PUNKS_ADDRESS = SDK_WRAPPED_PUNKS_ADDRESS
-
-/** True once `PUNKS_AUCTION_ADDRESS` points at a real deployment. */
-export function isAuctionDeployed(): boolean {
-  return PUNKS_AUCTION_ADDRESS.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
-}

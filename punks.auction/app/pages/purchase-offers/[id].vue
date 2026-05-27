@@ -63,9 +63,6 @@
     <template v-else-if="pending">
       <Spinner label="Loading offer" />
     </template>
-    <template v-else-if="!deployed">
-      Offers appear once <code>PunksAuction</code> is deployed.
-    </template>
     <template v-else-if="error">Failed to load offer: {{ error }}</template>
     <p v-else-if="acted || wasAssigned">
       Offer #{{ id }} is no longer active.
@@ -94,7 +91,7 @@ const id = computed(() => Number(route.params.id))
 const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const offline = usePunksOffline()
 
-const { offer, lastOfferId, pending, error, deployed, refresh } = useOffer(() =>
+const { offer, lastOfferId, pending, error, refresh } = useOffer(() =>
   validId.value ? id.value : undefined,
 )
 const { lots, refresh: refreshLots } = useLots()
