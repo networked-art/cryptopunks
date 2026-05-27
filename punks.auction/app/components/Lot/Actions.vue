@@ -62,13 +62,6 @@
           >
             Enable V1 rendering in settings to use V1 lots.
           </p>
-          <p
-            v-else-if="address && !isSeller"
-            class="hint muted"
-          >
-            Only the seller can instantly accept; any connected wallet can
-            start the auction.
-          </p>
 
           <div
             v-if="!address"
@@ -80,7 +73,7 @@
 
           <ul class="offer-list">
             <li
-              v-for="offer in matchingOffers"
+              v-for="(offer, index) in matchingOffers"
               :key="String(offer.id)"
               class="offer-item"
             >
@@ -91,13 +84,15 @@
                 class="offer-actions"
               >
                 <Button
-                  class="primary"
-                  :disabled="!isSeller || !instantEligible || !v1ActionsAllowed"
+                  v-if="isSeller"
+                  class="primary small"
+                  :disabled="!instantEligible || !v1ActionsAllowed"
                   @click="actAcceptOffer(offer)"
                 >
                   Accept <EthAmount :wei="offer.amountWei" />
                 </Button>
                 <Button
+                  :class="['small', { primary: index === 0 && !isSeller }]"
                   :disabled="!v1ActionsAllowed"
                   @click="actStartAuctionFromOffer(offer)"
                 >
@@ -527,14 +522,19 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 
 .offer-item {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: var(--size-2);
+  padding-right: var(--size-3);
+}
+
+.offer-item :deep(.offer-row) {
+  flex: 1;
 }
 
 .offer-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2);
-  padding: 0 var(--size-3) var(--size-3);
 }
 
 .actions-stack :deep(button .eth-amount) {
