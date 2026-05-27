@@ -17,7 +17,23 @@
       </dt>
       <template v-if="stats.totalSpentWei > 0n">
         <dd class="usd">
-          <template v-if="totalSpentUsd">${{ totalSpentUsd }}</template>
+          <Tooltip
+            v-if="totalSpentUsdHistorical"
+            side="bottom"
+          >
+            <template #trigger>
+              <span class="usd-trigger">${{ totalSpentUsdHistorical }}</span>
+            </template>
+            <div class="tooltip-body">
+              <span class="eyebrow muted">Value today</span>
+              <span v-if="totalSpentUsdNow">${{ totalSpentUsdNow }}</span>
+              <span
+                v-else
+                class="muted"
+                >—</span
+              >
+            </div>
+          </Tooltip>
           <span
             v-else
             class="muted"
@@ -44,7 +60,23 @@
       </dt>
       <template v-if="stats.totalEarnedWei > 0n">
         <dd class="usd">
-          <template v-if="totalEarnedUsd">${{ totalEarnedUsd }}</template>
+          <Tooltip
+            v-if="totalEarnedUsdHistorical"
+            side="bottom"
+          >
+            <template #trigger>
+              <span class="usd-trigger">${{ totalEarnedUsdHistorical }}</span>
+            </template>
+            <div class="tooltip-body">
+              <span class="eyebrow muted">Value today</span>
+              <span v-if="totalEarnedUsdNow">${{ totalEarnedUsdNow }}</span>
+              <span
+                v-else
+                class="muted"
+                >—</span
+              >
+            </div>
+          </Tooltip>
           <span
             v-else
             class="muted"
@@ -75,13 +107,27 @@ onMounted(() => {
   void fetchPrice()
 })
 
-const totalSpentUsd = computed(() =>
+// Historical USD at trade time, summed from event.usd_value_cents.
+// Falls back to null when every contributing sale predates the price cache.
+function centsToUsd(cents: bigint): string | null {
+  if (cents <= 0n) return null
+  return formatPrice(Number(cents) / 100, 2)
+}
+
+const totalSpentUsdHistorical = computed(() =>
+  centsToUsd(props.stats.totalSpentUsdCents),
+)
+const totalEarnedUsdHistorical = computed(() =>
+  centsToUsd(props.stats.totalEarnedUsdCents),
+)
+
+// Today's USD equivalent — shown in the tooltip for comparison.
+const totalSpentUsdNow = computed(() =>
   ethUSDRaw.value && props.stats.totalSpentWei > 0n
     ? weiToUSD(props.stats.totalSpentWei)
     : null,
 )
-
-const totalEarnedUsd = computed(() =>
+const totalEarnedUsdNow = computed(() =>
   ethUSDRaw.value && props.stats.totalEarnedWei > 0n
     ? weiToUSD(props.stats.totalEarnedWei)
     : null,
@@ -169,6 +215,18 @@ dd {
   grid-column: 2;
   color: var(--text-dim);
   font-size: var(--font-xs);
+}
+
+.usd-trigger {
+  cursor: help;
+  border-bottom: 1px dotted var(--text-dim);
+}
+
+.tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  font-variant-numeric: tabular-nums;
 }
 
 .eth {

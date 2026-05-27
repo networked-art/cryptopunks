@@ -3,7 +3,9 @@ import { fetchIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export type AccountStats = {
   totalSpentWei: bigint
+  totalSpentUsdCents: bigint
   totalEarnedWei: bigint
+  totalEarnedUsdCents: bigint
   salesBoughtCount: number
   salesSoldCount: number
   lastActiveAt: number | null
@@ -12,7 +14,9 @@ export type AccountStats = {
 
 type RawStats = {
   totalSpentWei: string
+  totalSpentUsdCents: string
   totalEarnedWei: string
+  totalEarnedUsdCents: string
   salesBoughtCount: number
   salesSoldCount: number
   lastActiveAt: string | null
@@ -21,7 +25,9 @@ type RawStats = {
 
 const EMPTY: AccountStats = {
   totalSpentWei: 0n,
+  totalSpentUsdCents: 0n,
   totalEarnedWei: 0n,
+  totalEarnedUsdCents: 0n,
   salesBoughtCount: 0,
   salesSoldCount: 0,
   lastActiveAt: null,
@@ -31,7 +37,9 @@ const EMPTY: AccountStats = {
 /**
  * Lifetime aggregates for the profile address — sum of sale wei the user has
  * spent (as buyer) and earned (as seller) across V1/V2/PunksMarket, plus the
- * indexer's `accounts.last_interaction_at` for the EOA.
+ * indexer's `accounts.last_interaction_at` for the EOA. The `*UsdCents` totals
+ * are stamped at indexing time using the daily ETH/USD close, so they reflect
+ * dollar value at the moment of each trade rather than today's price.
  *
  * `addresses` is the custody set (EOA + vault + stash). `eoa` is just the
  * signing address; the indexer uses it for the last-active lookup, which
@@ -68,7 +76,9 @@ export function useAccountStats(opts: {
       if (t !== token) return
       stats.value = {
         totalSpentWei: BigInt(raw.totalSpentWei),
+        totalSpentUsdCents: BigInt(raw.totalSpentUsdCents),
         totalEarnedWei: BigInt(raw.totalEarnedWei),
+        totalEarnedUsdCents: BigInt(raw.totalEarnedUsdCents),
         salesBoughtCount: raw.salesBoughtCount,
         salesSoldCount: raw.salesSoldCount,
         lastActiveAt: raw.lastActiveAt == null ? null : Number(raw.lastActiveAt),
