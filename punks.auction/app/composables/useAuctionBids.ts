@@ -3,7 +3,6 @@ import type { ActivityEvent } from '~/composables/useActivityFeed'
 import {
   PUNKS_AUCTION_ADDRESS,
   PUNKS_AUCTION_START_BLOCK,
-  isAuctionDeployed,
 } from '~/utils/addresses'
 
 const BID_EVENT = parseAbiItem(
@@ -67,7 +66,7 @@ export function useAuctionBids(
 
   async function load() {
     const raw = toValue(id)
-    if (raw === undefined || !isAuctionDeployed()) {
+    if (raw === undefined) {
       bids.value = []
       pending.value = false
       return

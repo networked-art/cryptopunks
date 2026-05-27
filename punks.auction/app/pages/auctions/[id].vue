@@ -134,9 +134,6 @@
     <template v-else-if="pending">
       <Spinner label="Loading auction" />
     </template>
-    <template v-else-if="!deployed">
-      Auctions appear once <code>PunksAuction</code> is deployed.
-    </template>
     <template v-else-if="error">Failed to load auction: {{ error }}</template>
     <template v-else>Auction #{{ id }} was not found.</template>
   </div>
@@ -159,8 +156,9 @@ const route = useRoute()
 const id = computed(() => Number(route.params.id))
 const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 
-const { auction, minimumBidWei, pending, error, deployed, refresh } =
-  useAuction(() => (validId.value ? id.value : undefined))
+const { auction, minimumBidWei, pending, error, refresh } = useAuction(() =>
+  validId.value ? id.value : undefined,
+)
 
 const {
   bids,
