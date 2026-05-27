@@ -221,7 +221,7 @@ function compareBigint(a: bigint, b: bigint): number {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 19rem));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   justify-content: start;
   gap: var(--size-8) var(--size-4);
   min-width: 0;
