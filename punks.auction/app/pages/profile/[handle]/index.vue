@@ -39,22 +39,30 @@
       </section>
 
       <section class="profile-section">
-        <h2 class="section-title eyebrow">Active lots</h2>
+        <h2 class="section-title eyebrow">Auctions</h2>
         <div
-          v-if="myLots.length"
+          v-if="auctionEntries.length"
           class="card-grid"
         >
-          <LazyLotCard
-            v-for="lot in myLots"
-            :key="String(lot.id)"
-            :lot="lot"
-          />
+          <template
+            v-for="entry in auctionEntries"
+            :key="entry.key"
+          >
+            <LazyAuctionCard
+              v-if="entry.kind === 'auction'"
+              :auction="entry.auction"
+            />
+            <LazyLotCard
+              v-else
+              :lot="entry.lot"
+            />
+          </template>
         </div>
         <p
           v-else
           class="muted"
         >
-          No open lots.
+          No auctions or lots.
         </p>
       </section>
 
@@ -102,6 +110,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  auctionStatus,
+  type AuctionRecord,
+  type LotRecord,
+} from '~/utils/auction'
+
 const { resolvedAddress, vault, stash } = useProfileContext()
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
@@ -124,7 +138,9 @@ const breakdownLabel = computed(() => {
 
 const { events: activity } = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
+const { auctions } = useAuctions()
 const { offers } = useOffers()
+const now = useSeconds()
 
 // Lots/offers the profile owns are filtered by `seller`/`offerer` matching
 // any of the user's custody addresses: EOA, vault, or stash. (Wrapper proxy
@@ -146,6 +162,49 @@ const myLots = computed(() => {
   if (!addrs.size) return []
   return lots.value.filter((lot) => addrs.has(lot.seller.toLowerCase()))
 })
+
+const myAuctions = computed(() => {
+  const addrs = ownerAddresses.value
+  if (!addrs.size) return []
+  return auctions.value.filter((auction) =>
+    addrs.has(auction.seller.toLowerCase()),
+  )
+})
+
+const myActiveAuctions = computed(() =>
+  myAuctions.value
+    .filter((auction) => auctionStatus(auction, now.value) === 'live')
+    .sort((a, b) => a.endTimestamp - b.endTimestamp),
+)
+
+const myPastAuctions = computed(() =>
+  myAuctions.value
+    .filter((auction) => auctionStatus(auction, now.value) !== 'live')
+    .sort((a, b) => b.endTimestamp - a.endTimestamp),
+)
+
+type AuctionEntry =
+  | { kind: 'auction'; key: string; auction: AuctionRecord }
+  | { kind: 'lot'; key: string; lot: LotRecord }
+
+// Order: live auctions (ending soonest), then open lots, then ended/settled.
+const auctionEntries = computed<AuctionEntry[]>(() => [
+  ...myActiveAuctions.value.map((auction) => ({
+    kind: 'auction' as const,
+    key: `auction-${auction.id}`,
+    auction,
+  })),
+  ...myLots.value.map((lot) => ({
+    kind: 'lot' as const,
+    key: `lot-${lot.id}`,
+    lot,
+  })),
+  ...myPastAuctions.value.map((auction) => ({
+    kind: 'auction' as const,
+    key: `auction-${auction.id}`,
+    auction,
+  })),
+])
 
 const myOffers = computed(() => {
   const addrs = ownerAddresses.value
