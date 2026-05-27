@@ -64,6 +64,8 @@ export const PLACE_OFFER_MIN_MULTI_SLOTS = 2
 export const PLACE_OFFER_MAX_SLOTS = PUNKS_AUCTION_MAX_OFFER_SLOTS
 export const PLACE_OFFER_MAX_SLOT_IDS = PUNKS_AUCTION_MAX_SLOT_IDS
 export const DEFAULT_PLACE_OFFER_STANDARD = TokenStandard.CryptoPunks
+export const PLACE_OFFER_DIFFERENT_TARGET_ERROR =
+  'Choose a different item target.'
 
 export function createPlaceOfferSlotDraft(
   standard: TokenStandardValue = DEFAULT_PLACE_OFFER_STANDARD,
@@ -116,9 +118,8 @@ export function buildPlaceOfferDraft(
     })
   }
 
-  const duplicate = firstDuplicateSingletonSlot(built)
-  if (duplicate) {
-    return invalidDraft(`${duplicate} is selected more than once.`, {
+  if (!hasDistinctFiniteFulfillment(built)) {
+    return invalidDraft(PLACE_OFFER_DIFFERENT_TARGET_ERROR, {
       quantityMode: input.quantityMode,
       count,
     })
@@ -319,17 +320,51 @@ function invalidDraft(
   return emptyDraft(error, context)
 }
 
-function firstDuplicateSingletonSlot(slots: readonly BuiltSlot[]) {
-  const seen = new Set<string>()
-  for (const slot of slots) {
-    const ids = uniqueSortedIds(slot.summary.previewIds)
-    if (ids.length !== 1) continue
-    const id = ids[0]
-    const key = `${slot.input.standard ?? DEFAULT_PLACE_OFFER_STANDARD}-${id}`
-    if (seen.has(key)) return `Punk #${id}`
-    seen.add(key)
+function hasDistinctFiniteFulfillment(slots: readonly BuiltSlot[]) {
+  const finiteSlots = slots
+    .map((slot) => finiteSlotCandidateKeys(slot))
+    .filter((candidates) => candidates.length > 0)
+  const assignments = new Map<string, number>()
+
+  for (let i = 0; i < finiteSlots.length; i++) {
+    if (!assignFiniteSlot(i, finiteSlots, assignments, new Set())) {
+      return false
+    }
   }
-  return ''
+
+  return true
+}
+
+function assignFiniteSlot(
+  slotIndex: number,
+  slots: readonly string[][],
+  assignments: Map<string, number>,
+  seen: Set<string>,
+) {
+  for (const candidate of slots[slotIndex] ?? []) {
+    if (seen.has(candidate)) continue
+    seen.add(candidate)
+
+    const assignedSlot = assignments.get(candidate)
+    if (
+      assignedSlot === undefined ||
+      assignFiniteSlot(assignedSlot, slots, assignments, seen)
+    ) {
+      assignments.set(candidate, slotIndex)
+      return true
+    }
+  }
+
+  return false
+}
+
+function finiteSlotCandidateKeys(slot: BuiltSlot) {
+  const ids = uniqueSortedIds(slot.summary.previewIds)
+  if (!ids.length) return []
+
+  const standard =
+    slot.input.standard ?? slot.summary.standard ?? DEFAULT_PLACE_OFFER_STANDARD
+  return ids.map((id) => `${standard}-${id}`)
 }
 
 function traitDetail(

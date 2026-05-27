@@ -126,6 +126,7 @@ import {
   type TransactionReceipt,
 } from 'viem'
 import {
+  PLACE_OFFER_DIFFERENT_TARGET_ERROR,
   PLACE_OFFER_MAX_SLOTS,
   PLACE_OFFER_MIN_MULTI_SLOTS,
   buildPlaceOfferDraft,
@@ -205,6 +206,12 @@ const currentSlotDraft = computed(() =>
     slots: [currentSlot.value],
   }),
 )
+const targetProgressDraft = computed(() =>
+  buildPlaceOfferDraft({
+    quantityMode: activeSlotIndex.value > 0 ? 'multiple' : 'one',
+    slots: activeSlots.value.slice(0, activeSlotIndex.value + 1),
+  }),
+)
 const isSingleCollectionTargetStep = computed(
   () =>
     actionStep.value === 'target' &&
@@ -218,12 +225,21 @@ const slotValidationError = computed(() => validateDraftSlots(draft.value))
 const currentSlotValidationError = computed(() =>
   validateDraftSlots(currentSlotDraft.value),
 )
+const targetProgressValidationError = computed(() => {
+  if (activeSlotIndex.value === 0) return null
+  if (!targetProgressDraft.value.canPlaceOffer) {
+    return targetProgressDraft.value.error ?? null
+  }
+  return validateDraftSlots(targetProgressDraft.value)
+})
 const canUseDraft = computed(
   () => draft.value.canPlaceOffer && !slotValidationError.value,
 )
 const canUseCurrentSlot = computed(
   () =>
-    currentSlotDraft.value.canPlaceOffer && !currentSlotValidationError.value,
+    currentSlotDraft.value.canPlaceOffer &&
+    !currentSlotValidationError.value &&
+    !targetProgressValidationError.value,
 )
 const isFinalTargetStep = computed(
   () =>
@@ -249,7 +265,7 @@ const cardState = computed(() => {
         !canUseCurrentSlot.value ||
         (isFinalTargetStep.value && !canUseDraft.value),
       showBackButton: activeSlotIndex.value > 0,
-      footerSelection: slotFooterSelection(currentSlotDraft.value),
+      footerSelection: targetFooterSelection(),
     }
   }
 
@@ -269,8 +285,11 @@ const visibleError = computed(() => {
     }
     if (currentSlotValidationError.value)
       return currentSlotValidationError.value
+    if (targetProgressValidationError.value) {
+      return visibleSlotDraftError(targetProgressValidationError.value)
+    }
     if (isFinalTargetStep.value && !canUseDraft.value) {
-      return draft.value.error ?? slotValidationError.value
+      return visibleSlotDraftError(draft.value.error ?? slotValidationError.value)
     }
     return null
   }
@@ -446,10 +465,25 @@ function slotFooterSelection(value: PlaceOfferDraft) {
   return [value.title, slot?.detail ?? ''].filter(Boolean).join(' · ')
 }
 
+function targetFooterSelection() {
+  if (targetProgressValidationError.value === PLACE_OFFER_DIFFERENT_TARGET_ERROR) {
+    return PLACE_OFFER_DIFFERENT_TARGET_ERROR
+  }
+  if (
+    isFinalTargetStep.value &&
+    draft.value.error === PLACE_OFFER_DIFFERENT_TARGET_ERROR
+  ) {
+    return PLACE_OFFER_DIFFERENT_TARGET_ERROR
+  }
+
+  return slotFooterSelection(currentSlotDraft.value)
+}
+
 function visibleSlotDraftError(message: string | undefined) {
   if (
     !message ||
     message.startsWith('Choose ') ||
+    message === PLACE_OFFER_DIFFERENT_TARGET_ERROR ||
     message === 'Select Punks or criteria.' ||
     message === 'Select trait criteria.'
   ) {
