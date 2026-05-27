@@ -68,14 +68,13 @@ defineProps<{
 .summary-subject-text {
   position: relative;
   display: inline-block;
-  padding-block-end: var(--size-1);
 }
 
 .summary-subject-text::after {
   content: '';
   position: absolute;
   inset-inline: 0;
-  inset-block-end: 0;
+  inset-block-end: calc(-1 * var(--size-1));
   block-size: 2px;
   background: var(--accent);
   opacity: 0;
