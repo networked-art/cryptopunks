@@ -9,50 +9,19 @@
         :punk-id="event.punkId"
         :size="44"
       />
-      <component
-        v-else-if="iconKind !== 'default'"
-        :is="detailHref ? 'NuxtLink' : 'span'"
+      <NuxtLink
+        v-else-if="iconKind !== 'default' && detailHref"
         :to="detailHref"
         class="thumb-icon symbol-tile"
       >
-        <Spinner
-          v-if="iconKind === 'bid'"
-          class="bid-mark"
-          :loop="false"
-          idle-pattern="arrow-up"
-          decorative
-        />
-        <Spinner
-          v-else-if="iconKind === 'lot'"
-          class="lot-mark"
-          :loop="false"
-          idle-pattern="lot-create"
-          decorative
-        />
-        <Spinner
-          v-else-if="iconKind === 'auction'"
-          class="auction-mark"
-          :loop="false"
-          idle-pattern="auction-start"
-          decorative
-        />
-        <Spinner
-          v-else-if="iconKind === 'collection-offer'"
-          class="collection-mark"
-          :loop="false"
-          idle-pattern="full"
-          decorative
-        />
-        <span
-          v-else-if="iconKind === 'trait-offer'"
-          class="selection-badge"
-        >
-          <Icon
-            class="selection-check"
-            name="lucide:check"
-          />
-        </span>
-      </component>
+        <ActivityRowMark :icon-kind="iconKind" />
+      </NuxtLink>
+      <span
+        v-else-if="iconKind !== 'default'"
+        class="thumb-icon symbol-tile"
+      >
+        <ActivityRowMark :icon-kind="iconKind" />
+      </span>
       <span
         v-else
         class="thumb-icon"
@@ -63,8 +32,8 @@
 
     <div class="row-body">
       <div class="row-line">
-        <component
-          :is="detailHref ? 'NuxtLink' : 'span'"
+        <NuxtLink
+          v-if="detailHref"
           :to="detailHref"
           class="kind-link"
         >
@@ -72,7 +41,12 @@
             :kind="event.kind"
             :offer-kind="event.offerKind"
           />
-        </component>
+        </NuxtLink>
+        <ActivityKindLabel
+          v-else
+          :kind="event.kind"
+          :offer-kind="event.offerKind"
+        />
         <NuxtLink
           v-if="event.punkId !== undefined"
           :to="`/punks/${event.punkId}`"
@@ -267,31 +241,6 @@ a.thumb-icon.symbol-tile:hover,
 a.thumb-icon.symbol-tile:focus-visible {
   background: var(--gray-z-2);
   outline: none;
-}
-
-/* Mark sizing mirrors Offer/Target.vue so collection / trait / bid / lot /
- * auction icons all read at the same scale across the two surfaces. */
-.bid-mark,
-.collection-mark,
-.lot-mark,
-.auction-mark {
-  --spinner-pixel: var(--size-1);
-  --spinner-gap: var(--size-0);
-  width: auto;
-  height: auto;
-}
-
-.selection-badge {
-  display: grid;
-  place-items: center;
-  inline-size: calc(3 * var(--size-1) + 2 * var(--size-0));
-  block-size: calc(3 * var(--size-1) + 2 * var(--size-0));
-  background: var(--primary);
-  color: white;
-}
-
-.selection-check {
-  font-size: var(--font-xs);
 }
 
 .row-body {
