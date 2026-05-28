@@ -253,6 +253,7 @@ export type {
   ColorCriteriaInput,
   ColorRef,
   CuratedCollection,
+  CuratedCollectionInstitution,
   NumericRange,
   PaletteColor,
   PunkMetadata,

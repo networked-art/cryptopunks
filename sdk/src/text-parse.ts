@@ -389,27 +389,47 @@ type SearchCollectionEntry = {
 
 const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
 
-/// Builds the alias → id-set match table from the bundled collections. The
-/// matchable key for each slug and alias is normalized and stripped of the
-/// trailing `punk(s)` filler (so `burned punks`, `burned`, and the slug all
-/// reduce to the same key), mirroring how `freeTerms` look by the time this
-/// runs. Longest keys sort first so a multi-word alias wins over a shorter one.
+/// Builds the alias → id-set match table from the bundled collections and any
+/// institutions nested within them (so `museum punks` resolves to the whole
+/// set and `moma` resolves to just MoMA's). The matchable key for each slug and
+/// alias is normalized and stripped of the trailing `punk(s)` filler (so
+/// `burned punks`, `burned`, and the slug all reduce to the same key),
+/// mirroring how `freeTerms` look by the time this runs. Longest keys sort
+/// first so a multi-word alias wins over a shorter one.
 /// A new alias must not collide with what the group loop consumes first (a
 /// bare number, `#id`, `albino`, or an `<n> <axis>` / skin bigram), or it
 /// never reaches this table.
 function buildSearchCollectionEntries(): SearchCollectionEntry[] {
-  const byKey = new Map<string, { slug: string; ids: readonly number[] }>()
-  for (const collection of searchCollections) {
-    for (const phrase of [collection.slug, ...collection.aliases]) {
+  const byKey = new Map<string, { owner: string; ids: readonly number[] }>()
+  const register = (
+    owner: string,
+    phrases: readonly string[],
+    ids: readonly number[],
+  ): void => {
+    for (const phrase of phrases) {
       const key = normalizeCollectionPhrase(phrase)
       if (!key) continue
       const existing = byKey.get(key)
-      if (existing !== undefined && existing.slug !== collection.slug) {
+      if (existing !== undefined && existing.owner !== owner) {
         throw new PunksDataValidationError(
-          `collection alias "${key}" is claimed by both ${existing.slug} and ${collection.slug}`,
+          `collection alias "${key}" is claimed by both ${existing.owner} and ${owner}`,
         )
       }
-      byKey.set(key, { slug: collection.slug, ids: collection.ids })
+      byKey.set(key, { owner, ids })
+    }
+  }
+  for (const collection of searchCollections) {
+    register(
+      collection.slug,
+      [collection.slug, ...collection.aliases],
+      collection.ids,
+    )
+    for (const institution of collection.institutions ?? []) {
+      register(
+        `${collection.slug}/${institution.slug}`,
+        [institution.slug, ...institution.aliases],
+        institution.ids,
+      )
     }
   }
   return [...byKey.entries()]
