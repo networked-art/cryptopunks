@@ -369,7 +369,7 @@ const pickerHint = computed(() => {
 
 const pickerLead = computed(
   () =>
-    `Pick the CryptoPunks for this lot. Anything outside the auction vault will be moved in before the lot is created. Up to ${MAX_LOT_ITEMS} per lot.`,
+    `Pick the CryptoPunks for this lot. Anything outside your Punks Vault will be moved in before the lot is created. Up to ${MAX_LOT_ITEMS} per lot.`,
 )
 
 const custodySummary = computed(() => {
@@ -379,8 +379,8 @@ const custodySummary = computed(() => {
   if (needsMove === 0) return null
   const noun = needsMove === 1 ? 'Punk' : 'Punks'
   const vaultPart = inventory.vaultDeployed.value
-    ? 'your auction vault'
-    : 'a freshly deployed auction vault'
+    ? 'your Punks Vault'
+    : 'a freshly deployed Punks Vault'
   return `${needsMove} ${noun} will be moved into ${vaultPart} before the lot is created.`
 })
 

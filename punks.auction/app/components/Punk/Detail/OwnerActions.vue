@@ -242,7 +242,7 @@ const custodyLabel = computed(() => {
     case 'wallet':
       return 'Wallet'
     case 'vault':
-      return 'Auction vault'
+      return 'Punks Vault'
     case 'stash':
       return 'Stash'
     case 'wrapped-wallet':
@@ -312,11 +312,11 @@ function actVault() {
       dialogTitle: 'Vault Punk',
       single: {
         title: { complete: 'Vault complete' },
-        lead: { complete: 'Punk moved into the auction vault.' },
+        lead: { complete: 'Punk moved into your Punks Vault.' },
       },
       multi: {
         title: { complete: 'Vault complete' },
-        lead: { complete: 'Punk moved into the auction vault.' },
+        lead: { complete: 'Punk moved into your Punks Vault.' },
       },
     },
   )
@@ -341,11 +341,11 @@ async function actReclaim() {
     dialogTitle: 'Reclaim Punk',
     single: {
       title: { complete: 'Reclaim complete' },
-      lead: { complete: 'Punk reclaimed from the auction vault.' },
+      lead: { complete: 'Punk reclaimed from your Punks Vault.' },
     },
     multi: {
       title: { complete: 'Reclaim complete' },
-      lead: { complete: 'Punk reclaimed from the auction vault.' },
+      lead: { complete: 'Punk reclaimed from your Punks Vault.' },
     },
   })
 }

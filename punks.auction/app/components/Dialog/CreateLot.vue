@@ -160,8 +160,8 @@ const custodySummary = computed(() => {
   const item = ownerItem.value
   if (!item || item.custody === 'vault') return null
   return inventory.vaultDeployed.value
-    ? 'The Punk will be moved into your auction vault before the lot is created.'
-    : 'Your auction vault will be deployed and the Punk moved into it before the lot is created.'
+    ? 'The Punk will be moved into your Punks Vault before the lot is created.'
+    : 'Your Punks Vault will be deployed and the Punk moved into it before the lot is created.'
 })
 
 async function start() {
