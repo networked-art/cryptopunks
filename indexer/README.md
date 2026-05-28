@@ -220,6 +220,25 @@ These are all in-place SQL mutations against the local DB. The original
 snapshot zip is untouched, so you can always `pnpm restore:fork` to start
 over.
 
+### Fresh re-index mode (`start:fork:fresh`)
+
+When local schema or handlers have drifted from the snapshot — new tables,
+new columns, new sources — `start:fork`'s crash recovery against the
+snapshot schema breaks (Ponder's recovery SQL references columns from the
+current schema against the snapshot's older tables). Use `pnpm
+start:fork:fresh` instead. It leaves the snapshot alone and indexes into
+a separate `ponder_local` schema, replaying handlers over the
+`ponder_sync` cache that `restore:fork` already populated. The only RPC
+traffic is for sources the snapshot didn't cover (e.g. contracts added
+after the dump) plus the tiny post-`safe_block` delta the fork has
+advanced past.
+
+Idempotent: subsequent boots with unchanged code reuse `ponder_local` via
+crash recovery; any build_id change drops and rebuilds it. Requires
+`pnpm restore:fork` to have run at least once (the snapshot schema's
+`safe_checkpoint` is used to trim `ponder_sync.intervals`, same as the
+snapshot path).
+
 ### Caveats
 
 - **Schema name pins to the snapshot.** `DATABASE_SCHEMA` in `.env.local`

@@ -18,6 +18,7 @@
     "postgres:reset": "docker compose down -v && docker compose up -d",
     "restore:fork": "bash scripts/restore-fork.sh",
     "start:fork": "bash scripts/start-fork.sh",
+    "start:fork:fresh": "bash scripts/start-fork-fresh.sh",
     "kamal:setup": "set -a && . ./.env.production && set +a && kamal setup",
     "kamal:deploy": "set -a && . ./.env.production && set +a && kamal deploy",
     "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
