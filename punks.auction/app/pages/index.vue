@@ -9,8 +9,18 @@
       24-hour auctions. Zero fees. Real price discovery.
     </p>
     <div class="cta-buttons">
-      <NuxtLink to="/punks" class="btn btn-primary">Browse Punks</NuxtLink>
-      <NuxtLink to="/about" class="btn btn-secondary">Learn More</NuxtLink>
+      <Button
+        class="primary large"
+        to="/punks"
+      >
+        Browse Punks
+      </Button>
+      <Button
+        class="large"
+        to="/about"
+      >
+        Learn More
+      </Button>
     </div>
   </div>
 </template>
@@ -65,34 +75,5 @@ useSeoMeta({
   display: flex;
   gap: var(--size-3);
   margin-top: var(--size-2);
-}
-
-.btn {
-  padding: var(--size-3) var(--size-5);
-  font-size: var(--font-base);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  transition: all 0.15s ease;
-}
-
-.btn-primary {
-  background: var(--accent-strong);
-  color: var(--bg);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover {
-  color: var(--text);
-  border-color: var(--text-muted);
 }
 </style>
