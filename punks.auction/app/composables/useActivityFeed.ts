@@ -46,7 +46,7 @@ const ACTIVITY_SOURCES = [
 
 const WRAPPED_SOURCES = new Set(['wrapped_punks', 'cryptopunks_721'])
 
-export type OfferKind = 'collection' | 'trait' | 'selection'
+export type OfferKind = 'collection' | 'specific' | 'selection' | 'trait'
 
 export type ActivityEvent = {
   id: string

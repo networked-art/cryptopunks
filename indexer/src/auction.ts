@@ -398,6 +398,7 @@ ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
       amount_wei: event.args.amountWei,
       slot_count: event.args.slotCount,
       kind: null,
+      specific_punk_id: null,
       active: true,
       ...meta,
       updated_at: event.block.timestamp,
@@ -407,6 +408,7 @@ ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
       amount_wei: event.args.amountWei,
       slot_count: event.args.slotCount,
       kind: null,
+      specific_punk_id: null,
       active: true,
       ...meta,
       updated_at: event.block.timestamp,
@@ -436,21 +438,40 @@ ponder.on('PunksAuction:OfferSlotDetail', async ({ event, context }) => {
     event.args.criteria,
     event.args.includeIds.length,
   )
-  const combinedKind = combineOfferKind(existing.kind, slotKind)
+  const combinedKind = combineOfferKind(
+    existing.kind,
+    slotKind,
+    existing.slot_count,
+  )
 
-  if (combinedKind !== existing.kind) {
+  // Single-slot offers that target exactly one Punk get a punk_id stamped on
+  // their activity row so it renders the PunkThumb (same shape as a V2 bid).
+  const specificPunkId =
+    existing.slot_count === 1 && slotKind === 'specific'
+      ? BigInt(event.args.includeIds[0]!)
+      : null
+
+  const offerPatch: Partial<typeof auctionOffer.$inferInsert> = {}
+  if (combinedKind !== existing.kind) offerPatch.kind = combinedKind
+  if (specificPunkId !== null && existing.specific_punk_id !== specificPunkId)
+    offerPatch.specific_punk_id = specificPunkId
+  if (Object.keys(offerPatch).length) {
     await context.db
       .update(auctionOffer, { offer_id: event.args.offerId })
-      .set({ kind: combinedKind })
+      .set(offerPatch)
   }
 
   // The OfferPlaced activity row was inserted earlier in the same tx with the
   // same block_number / log_index recorded on `auctionOffer`. Patch it so the
   // feed can pick the right icon without a second lookup.
   const placedEventId = `${existing.block_number}-${existing.log_index}`
+  const activityPatch: Partial<typeof activityEvent.$inferInsert> = {
+    offer_kind: combinedKind,
+  }
+  if (specificPunkId !== null) activityPatch.punk_id = specificPunkId
   await context.db
     .update(activityEvent, { id: placedEventId })
-    .set({ offer_kind: combinedKind })
+    .set(activityPatch)
 })
 
 ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
@@ -476,6 +497,7 @@ ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
     bid_wei: existing?.amount_wei ?? null,
     offer_id: event.args.offerId,
     offer_kind: existing?.kind ?? null,
+    punk_id: existing?.specific_punk_id ?? null,
     ...meta,
   })
 })
@@ -508,6 +530,7 @@ ponder.on('PunksAuction:OfferAmountAdjusted', async ({ event, context }) => {
     bid_wei: event.args.newAmountWei,
     offer_id: event.args.offerId,
     offer_kind: existing?.kind ?? null,
+    punk_id: existing?.specific_punk_id ?? null,
     ...meta,
   })
 })
@@ -727,11 +750,12 @@ type PunksFilter = {
   maxColorCount: number
 }
 
-type OfferKind = 'collection' | 'trait' | 'selection'
+type OfferKind = 'collection' | 'specific' | 'selection' | 'trait'
 
 function offerSlotKind(criteria: PunksFilter, includeCount: number): OfferKind {
   if (!isFilterEmpty(criteria)) return 'trait'
   if (includeCount > 1) return 'selection'
+  if (includeCount === 1) return 'specific'
   return 'collection'
 }
 
@@ -751,16 +775,24 @@ function isFilterEmpty(filter: PunksFilter): boolean {
 
 const OFFER_KIND_RANK: Record<OfferKind, number> = {
   collection: 0,
-  selection: 1,
-  trait: 2,
+  specific: 1,
+  selection: 2,
+  trait: 3,
 }
 
-function combineOfferKind(current: string | null, next: OfferKind): OfferKind {
-  if (!current) return next
-  const currentKind = current as OfferKind
-  return OFFER_KIND_RANK[next] > OFFER_KIND_RANK[currentKind]
-    ? next
-    : currentKind
+function combineOfferKind(
+  current: string | null,
+  next: OfferKind,
+  slotCount: number,
+): OfferKind {
+  const merged: OfferKind = current
+    ? OFFER_KIND_RANK[next] > OFFER_KIND_RANK[current as OfferKind]
+      ? next
+      : (current as OfferKind)
+    : next
+  // `specific` only makes sense for a single-slot offer that targets exactly
+  // one Punk; on a multi-slot offer it's really a selection of specific Punks.
+  return slotCount > 1 && merged === 'specific' ? 'selection' : merged
 }
 
 function eventMeta(event: PonderEvent): EventMeta {

@@ -503,9 +503,12 @@ export const auctionOffer = onchainTable(
     amount_wei: t.bigint().notNull(),
     slot_count: t.integer().notNull(),
     // Aggregated kind across the offer's slots, populated as `OfferSlotDetail`
-    // events arrive. Precedence trait > selection > collection so the icon
-    // tracks the most specific slot.
+    // events arrive. Precedence trait > selection > specific > collection so
+    // the icon tracks the most specific slot.
     kind: t.text(),
+    // For single-slot offers where the slot targets exactly one Punk, this
+    // holds that Punk id so cancel/adjust rows can resurface the same thumb.
+    specific_punk_id: t.bigint(),
     active: t.boolean().notNull(),
     tx_hash: t.hex().notNull(),
     block_number: t.bigint().notNull(),
