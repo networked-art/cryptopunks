@@ -116,6 +116,20 @@ export default defineConfig({
           { text: 'punksmarket.app', link: '/ui/punksmarket-app' },
         ],
       },
+      {
+        text: 'Indexer',
+        items: [
+          {
+            text: 'Overview',
+            link: '/indexer',
+            collapsed: false,
+            items: [
+              { text: 'Schema', link: '/indexer/schema' },
+              { text: 'API', link: '/indexer/api' },
+            ],
+          },
+        ],
+      },
     ],
   },
 })

@@ -1,7 +1,8 @@
 # @networked-art/punks-indexer
 
-Ponder indexer that tracks `CryptoPunks`, `CryptoPunksMarket`, wrappers, and
-the repo's `PunksMarket` in one process.
+Ponder indexer that tracks `CryptoPunks`, `CryptoPunksMarket`, the wrappers,
+and the repo's `PunksMarket` and `PunksAuction` — plus the vault and stash
+custody factories — in one process.
 
 An example deployment runs at <https://indexer.punksmarket.app>.
 
@@ -22,6 +23,9 @@ The combined indexer watches:
 - [CryptoPunks721.sol](https://evm.now/address/0x000000000000003607fce1aC9E043a86675C5C2F) (`0x000000000000003607fce1aC9E043a86675C5C2F`)
 - [PunksV1Wrapper.sol](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) (`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`)
 - [PunksMarket.sol](https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218) (`0x64e507FEBF26521b73FbdfA533106B2042533218`)
+- [PunksAuction.sol](https://evm.now/address/0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873) (`0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873`)
+- [PunksVaultFactory.sol](https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66) (`0xf3381B259B2FE142c0A87bffF463695d935D6F66`)
+- [StashFactory.sol](https://evm.now/address/0x000000000000A6fA31F5fC51c1640aAc76866750) (`0x000000000000A6fA31F5fC51c1640aAc76866750`)
 
 While a Punk is wrapped, the user-facing `punks.owner` column reflects the
 ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
@@ -33,11 +37,14 @@ ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
 
 All user-facing activity flows into a single `events` table with a unified
 shape (one row per indexed log). `source` ∈ `{ cryptopunks_v1,
-cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }`.
-Per-Punk current state lives in `punks` and `v1_punks`; native marketplace
-state lives in `listings` / `punk_bids` for V2 and `v1_listings` /
-`v1_punk_bids` for V1. `PunksMarket` criteria bids live in `market_bids` with
-predicate side tables for SQL matching.
+cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market,
+punks_auction, stash, vault }`. Per-Punk current state lives in `punks` and
+`v1_punks`; native marketplace state lives in `listings` / `punk_bids` for V2
+and `v1_listings` / `v1_punk_bids` for V1. `PunksMarket` criteria bids live in
+`market_bids` with predicate side tables for SQL matching. `PunksAuction`
+state lives in `auction_lots` / `auction_lot_items` / `auction_auctions` /
+`auction_offers`, and per-EOA custody (vault / stash / proxy) is tracked in
+`accounts`.
 
 ## USD pricing
 
@@ -89,11 +96,18 @@ event.usd_value_cents =
 
 API:
 
-- `GET /bids` and `GET /bids/matching/*` — `PunksMarket` criteria-bid routes.
+- `GET /` — the generated GraphQL endpoint over every table.
+- `GET /sql/*` — read-only SQL over the public schema (`eth_usd_prices` and
+  every other table are reachable here — no custom route needed).
+- `GET /bids`, `GET /bids/matching/{punk,trait,color}/:id`, `GET /bids/:id` —
+  `PunksMarket` criteria-bid routes.
 - `GET /sales` — recent sale events with `usd_value_cents` already on the
   row (no JOIN). Pagination via `?limit=`, `?offset=`.
-- The `eth_usd_prices` table is exposed via the standard GraphQL endpoint
-  and `/sql/*` for raw SQL — no custom route needed.
+- `GET /stats`, `GET /stats/:window`, `GET /stats/history/:interval` —
+  collection volume and activity statistics.
+- `GET /punks/market-state` — compact canonical-market snapshot.
+- `GET /accounts/stats` — per-account aggregates for a profile.
+- `GET /profiles/*` — ENS profile resolution.
 
 ## Setup
 

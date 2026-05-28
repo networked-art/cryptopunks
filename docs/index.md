@@ -60,3 +60,12 @@ All contracts target Ethereum mainnet only.
 - [punksmarket.app](/ui/punksmarket-app) covers the web interface for
   trading Punks on the broken June 9th 2017 `CryptoPunks` contract through
   `PunksMarket`.
+
+## Indexer
+
+- [Indexer](/indexer) covers the Ponder service that tracks both markets,
+  the wrappers, `PunksMarket`, and `PunksAuction` in one process.
+- [Schema](/indexer/schema) covers the unified event log, current-state
+  tables, the `PunksMarket` and auction tables, and denormalized USD pricing.
+- [API](/indexer/api) covers the GraphQL, raw-SQL, and purpose-built REST
+  routes the service exposes.

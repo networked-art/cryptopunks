@@ -10,6 +10,8 @@ auto-registered UI primitives.
 
 - `/` — search and grid (`PunkGrid`, `PunkSearch`).
 - `/punk/[id]` — single Punk: listing, bids, transfer, ownership.
+- `/listings` — active asks on the June 9th 2017 contract, routed through
+  `PunksMarket`, sorted by price.
 - `/bids` — collection and criterion bids.
 - `/activity` — recent sales / listings / wraps from the indexer.
 - `/profile/[handle]` — owned Punks and bids for an address or ENS name.
