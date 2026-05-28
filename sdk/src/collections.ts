@@ -24,7 +24,7 @@ function asString(value: unknown, slug: string, field: string): string {
       `collection ${slug} is missing a non-empty ${field}`,
     )
   }
-  return value
+  return value.trim()
 }
 
 function asAliases(value: unknown, slug: string): string[] {
@@ -47,12 +47,20 @@ function asIds(value: unknown, slug: string): number[] {
   return [...new Set(value as number[])].sort((a, b) => a - b)
 }
 
+/// Deep-freezes a collection so the shared bundle, and the `searchCollections`
+/// export that aliases it, can't be mutated. The facade still hands out clones.
+function freeze(collection: CuratedCollection): CuratedCollection {
+  Object.freeze(collection.aliases)
+  Object.freeze(collection.ids)
+  return Object.freeze(collection)
+}
+
 function buildCollections(
   raw: Record<string, RawCuratedCollection>,
 ): CuratedCollection[] {
   const collections: CuratedCollection[] = []
   for (const [slug, entry] of Object.entries(raw)) {
-    if (typeof slug !== 'string' || slug.trim() === '') continue
+    if (slug.trim() === '') continue
     collections.push({
       slug,
       title: asString(entry.title, slug, 'title'),
@@ -63,11 +71,13 @@ function buildCollections(
       ids: asIds(entry.ids, slug),
     })
   }
-  return collections.sort((a, b) => a.slug.localeCompare(b.slug))
+  return collections.sort((a, b) => a.slug.localeCompare(b.slug)).map(freeze)
 }
 
-const COLLECTIONS = buildCollections(
-  searchCollectionsJson as Record<string, RawCuratedCollection>,
+const COLLECTIONS: readonly CuratedCollection[] = Object.freeze(
+  buildCollections(
+    searchCollectionsJson as Record<string, RawCuratedCollection>,
+  ),
 )
 
 const COLLECTIONS_BY_SLUG = new Map(
@@ -82,8 +92,8 @@ function clone(collection: CuratedCollection): CuratedCollection {
   }
 }
 
-/// All bundled curated collections, validated at module load. Read-only data —
-/// callers receive fresh copies through {@link PunksCollections}.
+/// All bundled collections, validated and deep-frozen at module load. For a
+/// mutable copy, go through {@link PunksCollections}.
 export const searchCollections: readonly CuratedCollection[] = COLLECTIONS
 
 /// Looks up a collection by slug, case-insensitively. Returns `undefined` for

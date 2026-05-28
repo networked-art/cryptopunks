@@ -99,4 +99,17 @@ describe('curated collections', () => {
       false,
     )
   })
+
+  it('deep-freezes the standalone searchCollections export', () => {
+    const [burned] = searchCollections
+    assert.ok(Object.isFrozen(searchCollections))
+    assert.ok(Object.isFrozen(burned))
+    assert.ok(Object.isFrozen(burned.ids))
+    assert.ok(Object.isFrozen(burned.aliases))
+
+    // The shared bundle can't be corrupted through the direct export.
+    assert.throws(() => burned.ids.push(9999), TypeError)
+    assert.throws(() => searchCollections.push(burned), TypeError)
+    assert.equal(getSearchCollection('burned').ids.length, 12)
+  })
 })

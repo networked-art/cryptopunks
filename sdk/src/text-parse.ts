@@ -394,6 +394,9 @@ const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
 /// trailing `punk(s)` filler (so `burned punks`, `burned`, and the slug all
 /// reduce to the same key), mirroring how `freeTerms` look by the time this
 /// runs. Longest keys sort first so a multi-word alias wins over a shorter one.
+/// A new alias must not collide with what the group loop consumes first (a
+/// bare number, `#id`, `albino`, or an `<n> <axis>` / skin bigram), or it
+/// never reaches this table.
 function buildSearchCollectionEntries(): SearchCollectionEntry[] {
   const byKey = new Map<string, { slug: string; ids: readonly number[] }>()
   for (const collection of searchCollections) {
