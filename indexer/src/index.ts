@@ -15,6 +15,9 @@ import { StashProxyAbi } from '../abis/StashFactoryAbi'
 import { WrappedPunksAbi } from '../abis/WrappedPunksAbi'
 import {
   CRYPTOPUNKS_V2_ADDRESS,
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_AUCTION_ESCROW_ADDRESS,
+  PUNKS_MARKET_ADDRESS,
   WRAPPER_ADDRESSES_LOWER,
   ZERO_ADDRESS,
   wrapperKindFor,
@@ -32,6 +35,7 @@ import {
   usdValueCentsForBlock,
 } from './prices'
 import './v1'
+import './auction'
 
 type Address = `0x${string}`
 
@@ -834,6 +838,35 @@ async function isWrapperUnwrapByproduct(
   )
 }
 
+// PunksMarket / PunksAuction settlements shuffle Punks through their own
+// contracts (and PunksAuctionEscrow for the auction stack) before delivery,
+// so the V2 / wrapper handlers see redundant transfer / sale logs that have
+// nothing to do with the user-facing trade. Drop those — the canonical event
+// is emitted by the originating market.
+const SUPPRESS_ADDRESSES_LOWER = new Set<string>([
+  PUNKS_MARKET_ADDRESS.toLowerCase(),
+  PUNKS_AUCTION_ADDRESS.toLowerCase(),
+  PUNKS_AUCTION_ESCROW_ADDRESS.toLowerCase(),
+])
+
+function touchesSuppressedAddress(addr: string | null | undefined): boolean {
+  return !!addr && SUPPRESS_ADDRESSES_LOWER.has(addr.toLowerCase())
+}
+
+function shouldSuppressV2Activity(
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
+): boolean {
+  return (
+    touchesSuppressedAddress(values.from) ||
+    touchesSuppressedAddress(values.to) ||
+    touchesSuppressedAddress(values.seller) ||
+    touchesSuppressedAddress(values.buyer)
+  )
+}
+
 async function insertActivity(
   context: Context,
   values: Omit<
@@ -841,6 +874,7 @@ async function insertActivity(
     'day_unix' | 'usd_value_cents'
   >,
 ) {
+  if (shouldSuppressV2Activity(values)) return
   // Compute USD cents whenever the event carries a wei amount. Cache lookup
   // first (zero RPC for any day in `eth_usd_prices`); on miss the helper
   // reads Chainlink's `latestRoundData` at this block and back-fills the

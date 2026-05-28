@@ -22,6 +22,8 @@ import { CryptoPunksV1Abi } from '../abis/CryptoPunksV1Abi'
 import { V1WrapperAbi } from '../abis/V1WrapperAbi'
 import {
   CRYPTOPUNKS_V1_ADDRESS,
+  PUNKS_AUCTION_ADDRESS,
+  PUNKS_AUCTION_ESCROW_ADDRESS,
   PUNKS_MARKET_ADDRESS,
   V1_WRAPPER_ADDRESS,
   ZERO_ADDRESS,
@@ -1048,9 +1050,16 @@ function normalizeZeroEthSale(
   }
 }
 
-// PunksMarket settlements shuffle the punk through the market contract before
-// delivery, emitting redundant V1 / wrapper logs alongside the market's own
-// sale event. Drop those so a single settlement is one activity row.
+// PunksMarket / PunksAuction settlements shuffle the punk through their own
+// contracts (and PunksAuctionEscrow for the auction stack) before delivery,
+// emitting redundant V1 / wrapper logs alongside the market's own sale event.
+// Drop those so a single settlement is one activity row.
+const SUPPRESS_ADDRESSES = new Set<string>([
+  PUNKS_MARKET_ADDRESS.toLowerCase(),
+  PUNKS_AUCTION_ADDRESS.toLowerCase(),
+  PUNKS_AUCTION_ESCROW_ADDRESS.toLowerCase(),
+])
+
 function shouldSuppressActivity(
   values: Omit<
     typeof activityEvent.$inferInsert,
@@ -1061,8 +1070,12 @@ function shouldSuppressActivity(
     return false
   }
   return (
-    values.from === PUNKS_MARKET_ADDRESS || values.to === PUNKS_MARKET_ADDRESS
+    touchesSuppressedAddress(values.from) || touchesSuppressedAddress(values.to)
   )
+}
+
+function touchesSuppressedAddress(addr: string | null | undefined): boolean {
+  return !!addr && SUPPRESS_ADDRESSES.has(addr.toLowerCase())
 }
 
 function eventId(event: PonderEvent): string {

@@ -1,0 +1,621 @@
+import { ponder } from 'ponder:registry'
+import type { Context } from 'ponder:registry'
+import {
+  auctionAuction,
+  auctionLot,
+  auctionOffer,
+  event as activityEvent,
+} from 'ponder:schema'
+import { getAddress } from 'viem'
+
+import { ZERO_ADDRESS } from '../utils/contracts'
+import { ensureAccounts, recordSelfInitiatedInteraction } from './accounts'
+import { dayUnix, usdValueCentsForBlock } from './prices'
+
+type Address = `0x${string}`
+
+type EventMeta = {
+  tx_hash: Address
+  block_number: bigint
+  log_index: number
+  timestamp: bigint
+}
+
+type PonderEvent = {
+  transaction: { hash: Address; from: Address }
+  block: { number: bigint; timestamp: bigint }
+  log: { logIndex: number }
+}
+
+const SOURCE_AUCTION = 'punks_auction'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lots
+// ─────────────────────────────────────────────────────────────────────────────
+
+ponder.on('PunksAuction:LotCreated', async ({ event, context }) => {
+  const seller = normalize(event.args.seller)
+  const onlySellTo = nullableAddress(event.args.onlySellTo)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [seller, onlySellTo],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await context.db
+    .insert(auctionLot)
+    .values({
+      lot_id: event.args.lotId,
+      seller,
+      reserve_wei: event.args.reserveWei,
+      only_sell_to: onlySellTo,
+      item_count: event.args.itemCount,
+      active: true,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+    .onConflictDoUpdate({
+      seller,
+      reserve_wei: event.args.reserveWei,
+      only_sell_to: onlySellTo,
+      item_count: event.args.itemCount,
+      active: true,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'LotCreated',
+    type: 'lot_created',
+    actor: seller,
+    seller,
+    listing_wei: event.args.reserveWei,
+    only_sell_to: onlySellTo,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:LotUpdated', async ({ event, context }) => {
+  const existing = await context.db.find(auctionLot, {
+    lot_id: event.args.lotId,
+  })
+  const onlySellTo = nullableAddress(event.args.onlySellTo)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [onlySellTo],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  if (existing) {
+    await context.db.update(auctionLot, { lot_id: event.args.lotId }).set({
+      reserve_wei: event.args.reserveWei,
+      only_sell_to: onlySellTo,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'LotUpdated',
+    type: 'lot_updated',
+    actor: existing?.seller ?? null,
+    seller: existing?.seller ?? null,
+    listing_wei: event.args.reserveWei,
+    only_sell_to: onlySellTo,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:LotCancelled', async ({ event, context }) => {
+  const existing = await context.db.find(auctionLot, {
+    lot_id: event.args.lotId,
+  })
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+
+  if (existing) {
+    await context.db
+      .update(auctionLot, { lot_id: event.args.lotId })
+      .set({ active: false, updated_at: event.block.timestamp })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'LotCancelled',
+    type: 'lot_cancelled',
+    actor: existing?.seller ?? null,
+    seller: existing?.seller ?? null,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:LotCleared', async ({ event, context }) => {
+  const cleaner = normalize(event.args.cleaner)
+  const existing = await context.db.find(auctionLot, {
+    lot_id: event.args.lotId,
+  })
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [cleaner],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  if (existing) {
+    await context.db
+      .update(auctionLot, { lot_id: event.args.lotId })
+      .set({ active: false, updated_at: event.block.timestamp })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'LotCleared',
+    type: 'lot_cleared',
+    actor: cleaner,
+    seller: existing?.seller ?? null,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auctions
+// ─────────────────────────────────────────────────────────────────────────────
+
+ponder.on('PunksAuction:AuctionInitialised', async ({ event, context }) => {
+  const seller = normalize(event.args.seller)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [seller],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  // The lot has been consumed into the auction; mark it inactive.
+  const existingLot = await context.db.find(auctionLot, {
+    lot_id: event.args.lotId,
+  })
+  if (existingLot) {
+    await context.db
+      .update(auctionLot, { lot_id: event.args.lotId })
+      .set({ active: false, updated_at: event.block.timestamp })
+  }
+
+  await context.db
+    .insert(auctionAuction)
+    .values({
+      auction_id: event.args.auctionId,
+      lot_id: event.args.lotId,
+      seller,
+      latest_bidder: ZERO_ADDRESS,
+      latest_bid_wei: 0n,
+      end_timestamp: BigInt(event.args.endTimestamp),
+      settled: false,
+      item_count: event.args.itemCount,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+    .onConflictDoUpdate({
+      seller,
+      end_timestamp: BigInt(event.args.endTimestamp),
+      item_count: event.args.itemCount,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'AuctionInitialised',
+    type: 'auction_started',
+    actor: seller,
+    seller,
+    auction_id: event.args.auctionId,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:Bid', async ({ event, context }) => {
+  const bidder = normalize(event.args.bidder)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [bidder],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  const existing = await context.db.find(auctionAuction, {
+    auction_id: event.args.auctionId,
+  })
+  if (existing) {
+    await context.db
+      .update(auctionAuction, { auction_id: event.args.auctionId })
+      .set({
+        latest_bidder: bidder,
+        latest_bid_wei: event.args.amountWei,
+        updated_at: event.block.timestamp,
+      })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'Bid',
+    type: 'bid',
+    actor: bidder,
+    bidder,
+    seller: existing?.seller ?? null,
+    wei_amount: event.args.amountWei,
+    bid_wei: event.args.amountWei,
+    auction_id: event.args.auctionId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:AuctionExtended', async ({ event, context }) => {
+  const existing = await context.db.find(auctionAuction, {
+    auction_id: event.args.auctionId,
+  })
+  if (existing) {
+    await context.db
+      .update(auctionAuction, { auction_id: event.args.auctionId })
+      .set({
+        end_timestamp: BigInt(event.args.endTimestamp),
+        updated_at: event.block.timestamp,
+      })
+  }
+})
+
+ponder.on('PunksAuction:AuctionItemDelivered', async ({ event, context }) => {
+  const recipient = normalize(event.args.recipient)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [recipient],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  const auction = await context.db.find(auctionAuction, {
+    auction_id: event.args.auctionId,
+  })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'AuctionItemDelivered',
+    type: 'sale',
+    punk_id: BigInt(event.args.punkId),
+    actor: recipient,
+    buyer: recipient,
+    seller: auction?.seller ?? null,
+    from: auction?.seller ?? null,
+    to: recipient,
+    wei_amount: event.args.itemWei,
+    auction_id: event.args.auctionId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:AuctionSettled', async ({ event, context }) => {
+  const winner = normalize(event.args.winner)
+  const seller = normalize(event.args.seller)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [winner, seller],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await context.db
+    .update(auctionAuction, { auction_id: event.args.auctionId })
+    .set({
+      settled: true,
+      latest_bidder: winner,
+      latest_bid_wei: event.args.finalWei,
+      seller,
+      updated_at: event.block.timestamp,
+    })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'AuctionSettled',
+    type: 'auction_settled',
+    actor: winner,
+    buyer: winner,
+    seller,
+    wei_amount: event.args.finalWei,
+    auction_id: event.args.auctionId,
+    ...meta,
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Offers
+// ─────────────────────────────────────────────────────────────────────────────
+
+ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
+  const offerer = normalize(event.args.offerer)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [offerer],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await context.db
+    .insert(auctionOffer)
+    .values({
+      offer_id: event.args.offerId,
+      offerer,
+      amount_wei: event.args.amountWei,
+      slot_count: event.args.slotCount,
+      active: true,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+    .onConflictDoUpdate({
+      offerer,
+      amount_wei: event.args.amountWei,
+      slot_count: event.args.slotCount,
+      active: true,
+      ...meta,
+      updated_at: event.block.timestamp,
+    })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'OfferPlaced',
+    type: 'offer_placed',
+    actor: offerer,
+    bidder: offerer,
+    wei_amount: event.args.amountWei,
+    bid_wei: event.args.amountWei,
+    offer_id: event.args.offerId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
+  const existing = await context.db.find(auctionOffer, {
+    offer_id: event.args.offerId,
+  })
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+
+  if (existing) {
+    await context.db
+      .update(auctionOffer, { offer_id: event.args.offerId })
+      .set({ active: false, updated_at: event.block.timestamp })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'OfferCancelled',
+    type: 'offer_cancelled',
+    actor: existing?.offerer ?? null,
+    bidder: existing?.offerer ?? null,
+    bid_wei: existing?.amount_wei ?? null,
+    offer_id: event.args.offerId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:OfferAmountAdjusted', async ({ event, context }) => {
+  const existing = await context.db.find(auctionOffer, {
+    offer_id: event.args.offerId,
+  })
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+
+  if (existing) {
+    await context.db
+      .update(auctionOffer, { offer_id: event.args.offerId })
+      .set({
+        amount_wei: event.args.newAmountWei,
+        ...meta,
+        updated_at: event.block.timestamp,
+      })
+  }
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'OfferAmountAdjusted',
+    type: 'offer_adjusted',
+    actor: existing?.offerer ?? null,
+    bidder: existing?.offerer ?? null,
+    wei_amount: event.args.newAmountWei,
+    bid_wei: event.args.newAmountWei,
+    offer_id: event.args.offerId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:OfferAccepted', async ({ event, context }) => {
+  const seller = normalize(event.args.seller)
+  const offerer = normalize(event.args.offerer)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [seller, offerer],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await context.db
+    .update(auctionOffer, { offer_id: event.args.offerId })
+    .set({ active: false, updated_at: event.block.timestamp })
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'OfferAccepted',
+    type: 'sale',
+    punk_id: event.args.punkId,
+    actor: event.transaction.from,
+    buyer: offerer,
+    seller,
+    from: seller,
+    to: offerer,
+    wei_amount: event.args.amountWei,
+    offer_id: event.args.offerId,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:OfferAcceptedFromLot', async ({ event, context }) => {
+  const seller = normalize(event.args.seller)
+  const offerer = normalize(event.args.offerer)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [seller, offerer],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await context.db
+    .update(auctionOffer, { offer_id: event.args.offerId })
+    .set({ active: false, updated_at: event.block.timestamp })
+  const existingLot = await context.db.find(auctionLot, {
+    lot_id: event.args.lotId,
+  })
+  if (existingLot) {
+    await context.db
+      .update(auctionLot, { lot_id: event.args.lotId })
+      .set({ active: false, updated_at: event.block.timestamp })
+  }
+
+  // The lot may have multiple Punks; without per-item events we record the
+  // sale as one aggregate row with no punk_id. Per-Punk visibility would
+  // require indexing LotItemDetail into a side table — left for a follow-up.
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'OfferAcceptedFromLot',
+    type: 'sale',
+    actor: event.transaction.from,
+    buyer: offerer,
+    seller,
+    from: seller,
+    to: offerer,
+    wei_amount: event.args.amountWei,
+    offer_id: event.args.offerId,
+    lot_id: event.args.lotId,
+    ...meta,
+  })
+})
+
+ponder.on(
+  'PunksAuction:OfferAuctionInitialised',
+  async ({ event, context }) => {
+    const offerer = normalize(event.args.offerer)
+    await recordSelfInitiatedInteraction(context, event)
+    await ensureAccounts(
+      context,
+      [offerer],
+      event.block.number,
+      event.block.timestamp,
+    )
+
+    await context.db
+      .update(auctionOffer, { offer_id: event.args.offerId })
+      .set({ active: false, updated_at: event.block.timestamp })
+    const existingLot = await context.db.find(auctionLot, {
+      lot_id: event.args.lotId,
+    })
+    if (existingLot) {
+      await context.db
+        .update(auctionLot, { lot_id: event.args.lotId })
+        .set({ active: false, updated_at: event.block.timestamp })
+    }
+
+    // No activity row: AuctionInitialised + the opening Bid in the same tx
+    // already capture the auction-started + first-bid pair. This handler only
+    // marks the offer and lot as consumed.
+  },
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function insertActivity(
+  context: Context,
+  values: Omit<
+    typeof activityEvent.$inferInsert,
+    'day_unix' | 'usd_value_cents'
+  >,
+) {
+  let usdValueCents: bigint | null = null
+  if (values.wei_amount !== null && values.wei_amount !== undefined) {
+    usdValueCents = await usdValueCentsForBlock(
+      context,
+      { number: values.block_number, timestamp: values.timestamp },
+      values.wei_amount,
+    )
+  }
+
+  await context.db
+    .insert(activityEvent)
+    .values({
+      ...values,
+      day_unix: dayUnix(values.timestamp),
+      usd_value_cents: usdValueCents,
+    })
+    .onConflictDoNothing()
+}
+
+function eventId(event: PonderEvent): string {
+  return `${event.block.number}-${event.log.logIndex}`
+}
+
+function eventMeta(event: PonderEvent): EventMeta {
+  return {
+    tx_hash: event.transaction.hash,
+    block_number: event.block.number,
+    log_index: event.log.logIndex,
+    timestamp: event.block.timestamp,
+  }
+}
+
+function normalize(address: Address): Address {
+  return getAddress(address)
+}
+
+function nullableAddress(address: Address): Address | null {
+  return address === ZERO_ADDRESS ? null : normalize(address)
+}

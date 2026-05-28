@@ -29,6 +29,18 @@ export const PUNKS_MARKET_ADDRESS =
   '0x64e507FEBF26521b73FbdfA533106B2042533218' as const
 export const PUNKS_MARKET_START_BLOCK = 25_118_216
 
+export const PUNKS_AUCTION_ADDRESS =
+  '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as const
+export const PUNKS_AUCTION_START_BLOCK = 25_146_787
+
+// PunksAuctionEscrow — deployed by `PunksAuction`'s constructor; custodies
+// Punks during live auctions. Settlement shuffles each Punk
+// escrow → auction → recipient through the canonical markets, so the V1/V2
+// handlers suppress activity rows touching either address (the canonical
+// per-item events come from `PunksAuction` itself).
+export const PUNKS_AUCTION_ESCROW_ADDRESS =
+  '0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24' as const
+
 // PunksVaultFactory — deploys deterministic per-user `PunksVault` clones.
 // Watched so we can mark `accounts.vault_deployed = true` when a user (or a
 // third party on their behalf) actually deploys their vault. The address
