@@ -100,21 +100,45 @@
           >
             View lot
           </Button>
-          <LazyPunkDetailAuctionCreateLot
-            v-if="canCreateLot"
-            :punk-id="punkId"
-            :standard="standard"
-            @created="onCreated"
-          />
-          <LazyPunkDetailAuctionAcceptOffer
-            v-if="canCreateLot && topOffer"
-            :punk-id="punkId"
-            :standard="standard"
-            :offer="topOffer"
-            @changed="onCreated"
-          />
+
+          <template v-if="canCreateLot">
+            <Button
+              v-if="topOffer"
+              class="primary"
+              @click="actStartAuctionFromOffer(topOffer)"
+            >
+              Start auction
+            </Button>
+            <Button
+              v-if="topOffer"
+              @click="actSellNow(topOffer)"
+            >
+              Sell now <EthAmount :wei="topOffer.amountWei" />
+            </Button>
+            <Button
+              :class="topOffer ? '' : 'primary'"
+              @click="actListLot"
+            >
+              List lot
+            </Button>
+          </template>
         </div>
       </div>
+
+      <LazyDialogCreateLot
+        v-if="canCreateLot"
+        ref="createLotDialog"
+        :punk-id="punkId"
+        :standard="standard"
+        @created="onChanged"
+      />
+
+      <LazyDialogSettle
+        v-if="canCreateLot"
+        ref="settleDialog"
+        :lots="lots"
+        @changed="onChanged"
+      />
     </section>
   </ClientOnly>
 </template>
@@ -122,7 +146,8 @@
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
 import type { Hash } from 'viem'
-import type { TokenStandardValue } from '~/utils/auction'
+import type { TokenStandardValue, OfferRecord } from '~/utils/auction'
+import type { SettleRequest } from '~/utils/settle'
 
 const props = defineProps<{
   punkId: number
@@ -135,6 +160,7 @@ const {
   punkAuctions,
   punkLots,
   punkOffers,
+  lots,
   pending: contextPending,
 } = usePunkAuctionContext(
   () => props.punkId,
@@ -192,7 +218,41 @@ const canCreateLot = computed(
     isOwner.value && !punkAuctions.value.length && !punkLots.value.length,
 )
 
-function onCreated(tx: Hash) {
+const createLotDialog = ref<{ start: () => Promise<void> } | null>(null)
+const settleDialog = ref<{
+  start: (request: SettleRequest) => Promise<void>
+} | null>(null)
+
+const itemRef = computed(() => ({
+  standard: props.standard,
+  punkId: props.punkId,
+}))
+
+function actListLot() {
+  void createLotDialog.value?.start()
+}
+
+function actStartAuctionFromOffer(offer: OfferRecord) {
+  void settleDialog.value?.start(buildOfferRequest('start', offer))
+}
+
+function actSellNow(offer: OfferRecord) {
+  void settleDialog.value?.start(buildOfferRequest('accept', offer))
+}
+
+/// Single-slot offer + the page's punk: skip the inventory picker entirely.
+/// Multi-slot: fall back to discovery so the user can fill the other slots.
+function buildOfferRequest(
+  mode: 'start' | 'accept',
+  offer: OfferRecord,
+): SettleRequest {
+  if (offer.slots.length === 1) {
+    return { mode, offer, items: [itemRef.value] }
+  }
+  return { mode, offer }
+}
+
+function onChanged(tx: Hash) {
   emit('changed', tx)
 }
 </script>
@@ -283,6 +343,14 @@ function onCreated(tx: Hash) {
   align-items: center;
   gap: var(--size-2);
   flex-wrap: wrap;
+}
+
+.actions :deep(button .eth-amount) {
+  margin-left: var(--size-1);
+}
+
+.actions :deep(button .eth-amount .unit) {
+  color: inherit;
 }
 
 .auction-panel > * + * {

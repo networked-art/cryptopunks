@@ -1,19 +1,8 @@
 <template>
-  <div
-    v-if="showSection"
-    class="create-lot"
-  >
-    <Button
-      class="primary"
-      :disabled="pending"
-      @click="openCreateDialog"
-    >
-      Create lot
-    </Button>
-
+  <ClientOnly>
     <Dialog
       v-model:open="createDialogOpen"
-      title="Create lot"
+      title="List lot"
       class="create-lot-dialog"
       compat
       @closed="onDialogClosed"
@@ -67,7 +56,7 @@
           :disabled="!canCreate"
           @click="actCreate"
         >
-          Create lot <EthAmount :wei="reserveWei || 0n" />
+          List lot <EthAmount :wei="reserveWei || 0n" />
         </Button>
       </template>
     </Dialog>
@@ -89,7 +78,7 @@
       @complete="onMultiTransactionComplete"
       @error="onFlowError"
     />
-  </div>
+  </ClientOnly>
 </template>
 
 <script setup lang="ts">
@@ -128,8 +117,6 @@ const ownerItem = computed(() =>
     (item) => item.standard === props.standard && item.punkId === props.punkId,
   ),
 )
-
-const showSection = computed(() => !!ownerItem.value)
 
 const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
@@ -177,7 +164,8 @@ const custodySummary = computed(() => {
     : 'Your auction vault will be deployed and the Punk moved into it before the lot is created.'
 })
 
-function openCreateDialog() {
+async function start() {
+  await inventory.refresh()
   buildError.value = null
   createDialogOpen.value = true
 }
@@ -223,14 +211,14 @@ async function actCreate() {
 
   createDialogOpen.value = false
   await runPlans(plans, {
-    dialogTitle: 'Create lot',
+    dialogTitle: 'List lot',
     single: {
-      title: { complete: 'Lot created' },
-      lead: { complete: 'Your auction lot has been created.' },
+      title: { complete: 'Lot listed' },
+      lead: { complete: 'Your auction lot has been listed.' },
     },
     multi: {
-      title: { complete: 'Lot created' },
-      lead: { complete: 'Your auction lot has been created.' },
+      title: { complete: 'Lot listed' },
+      lead: { complete: 'Your auction lot has been listed.' },
     },
   })
 }
@@ -243,15 +231,10 @@ async function resolveOnlySellTo() {
   })
 }
 
+defineExpose({ start })
 </script>
 
 <style scoped>
-.create-lot {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--size-2);
-}
-
 .create-lot-dialog :deep(section) {
   display: flex;
   flex-direction: column;
