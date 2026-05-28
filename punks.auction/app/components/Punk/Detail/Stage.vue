@@ -36,7 +36,7 @@ const props = defineProps<{
   highlightedColor?: string | null
 }>()
 
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 const downloading = ref(false)
 
 async function downloadImage() {
@@ -45,7 +45,7 @@ async function downloadImage() {
   try {
     await downloadPunkPng(props.punkId, {
       size: 2048,
-      background: backgroundForPunk(props.punkId, props.standard),
+      background: backgroundForPunkState(props.punkId, props.standard),
     })
   } finally {
     downloading.value = false

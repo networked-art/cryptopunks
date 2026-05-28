@@ -79,6 +79,7 @@ const props = withDefaults(
     disabled?: boolean
     outlineHover?: boolean
     interactive?: boolean
+    showWrappedStateColors?: boolean
   }>(),
   {
     size: 72,
@@ -90,6 +91,7 @@ const props = withDefaults(
     disabled: false,
     outlineHover: false,
     interactive: true,
+    showWrappedStateColors: false,
   },
 )
 const emit = defineEmits<{
@@ -100,7 +102,7 @@ const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
 
 const containerRef = ref<HTMLElement | null>(null)
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 /// Where the visible window starts/ends inside the grid, in content
 /// coordinates. We compute these from the container's bounding rect against
 /// the viewport, so the math is identical whether the window or some ancestor
@@ -182,7 +184,9 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: backgroundForPunk(c.id),
+    backgroundColor: backgroundForPunkState(c.id, undefined, {
+      showWrappedStateColors: props.showWrappedStateColors,
+    }),
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,

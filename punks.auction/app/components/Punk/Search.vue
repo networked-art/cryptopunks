@@ -32,6 +32,7 @@
     <LazyPunkGrid
       :ids="ids"
       :size="size"
+      :show-wrapped-state-colors="showWrappedStateColors"
     />
   </section>
 </template>
@@ -55,6 +56,7 @@ const {
   ownerHandle,
   ids,
   counts,
+  showWrappedStateColors,
   onEnter,
   clearSearch,
 } = usePunkSearch({

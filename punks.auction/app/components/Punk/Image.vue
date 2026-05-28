@@ -207,12 +207,13 @@ const props = withDefaults(
   },
 )
 
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 const SPRITE_COLS = 100
 const SPRITE_SPAN = SPRITE_COLS - 1
 
 const resolvedBackground = computed(
-  () => props.background ?? backgroundForPunk(props.punkId, props.standard),
+  () =>
+    props.background ?? backgroundForPunkState(props.punkId, props.standard),
 )
 
 const rootStyle = computed(() => ({

@@ -45,7 +45,7 @@ const props = withDefaults(
 
 const SPRITE_COLS = 100
 const SPRITE_SPAN = SPRITE_COLS - 1
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 
 const to = computed(() =>
   props.link ? punkHref(props.standard, props.punkId) : undefined,
@@ -62,7 +62,7 @@ const style = computed(() => {
   const col = props.punkId % SPRITE_COLS
   const sheet = {
     backgroundColor:
-      props.background ?? backgroundForPunk(props.punkId, props.standard),
+      props.background ?? backgroundForPunkState(props.punkId, props.standard),
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
   }
 

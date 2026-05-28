@@ -23,11 +23,18 @@ const LISTED_QUALIFIER =
   /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
 const BID_QUALIFIER =
   /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
-const LEGACY_WRAPPED_QUALIFIER =
-  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+legacy)(?=$|[\s,])/gi
-const MODERN_WRAPPED_QUALIFIER =
-  /(^|[\s,])(?:modern\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+modern)(?=$|[\s,])/gi
-const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
+const WRAPPED_WORD = 'wrap(?:ped|per)?'
+const LEGACY_WRAPPER_SYNONYM = 'wrapped[_\\s-]*punks'
+const MODERN_WRAPPER_SYNONYM = '(?:erc[-\\s]?721|cryptopunks\\s*721)'
+const LEGACY_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${LEGACY_WRAPPER_SYNONYM})`
+const MODERN_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${MODERN_WRAPPER_SYNONYM})`
+const LEGACY_WRAPPED_QUALIFIER = qualifierPattern(
+  `(?:legacy\\s+${LEGACY_WRAPPED_WORD}|${LEGACY_WRAPPED_WORD}\\s+legacy|${LEGACY_WRAPPER_SYNONYM})`,
+)
+const MODERN_WRAPPED_QUALIFIER = qualifierPattern(
+  `(?:modern\\s+${MODERN_WRAPPED_WORD}|${MODERN_WRAPPED_WORD}\\s+modern|${MODERN_WRAPPER_SYNONYM})`,
+)
+const WRAPPED_QUALIFIER = qualifierPattern(WRAPPED_WORD)
 const ENS_HANDLE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i
 const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
 
@@ -225,6 +232,12 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     total: offline.dataset.count(baseQuery.value),
     filtered: ids.value.length,
   }))
+  const showWrappedStateColors = computed(
+    () =>
+      qualifiers.value.wrapped ||
+      qualifiers.value.legacyWrapped ||
+      qualifiers.value.modernWrapped,
+  )
 
   function onEnter() {
     if (!enableEnterNavigation) return
@@ -260,9 +273,14 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     offerQuery,
     ids,
     counts,
+    showWrappedStateColors,
     onEnter,
     clearSearch,
   }
+}
+
+function qualifierPattern(source: string): RegExp {
+  return new RegExp(`(^|[\\s,])${source}(?=$|[\\s,])`, 'gi')
 }
 
 function detectOwnerHandle(input: string): string | null {
