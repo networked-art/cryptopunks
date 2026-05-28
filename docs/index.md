@@ -2,8 +2,9 @@
 
 Developer documentation for the CryptoPunks contracts and the TypeScript SDK
 that wraps them. The contracts cover onchain trait and pixel data, the
-renderer, and a criteria-bid market that fixes the broken June 9th 2017
-`CryptoPunks` contract. The SDK is the matching client surface: local search
+renderer, a criteria-bid market that fixes the broken June 9th 2017
+`CryptoPunks` contract, and a zero-fee auction house. The SDK is the
+matching client surface: local search
 and rendering, original-market reads and writes, Stash custody, criterion
 offers, and auctions.
 
@@ -23,6 +24,9 @@ All contracts target Ethereum mainnet only.
 - [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) covers the batch
   helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their
   underlying Punks.
+- [`PunksAuction`](/contracts/punks-auction) covers the zero-fee auction
+  house with multi-item lots, criterion offers, and escrow-routed
+  settlement across both Punk markets.
 
 ## SDK
 

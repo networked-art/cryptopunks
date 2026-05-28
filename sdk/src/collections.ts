@@ -1,5 +1,5 @@
 import searchCollectionsJson from './search-collections.json'
-import type { PunkStandardRef } from './constants'
+import type { PunkStandardRef, PunkStandardValue } from './constants'
 import type { CuratedCollection, CuratedCollectionInstitution } from './types'
 import {
   PunksDataValidationError,
@@ -180,27 +180,46 @@ export function getSearchCollection(
 }
 
 /// Read-only lookup over the bundled curated collections. Mounted on
-/// {@link PunksSdk} as `punks.collections`.
+/// {@link PunksSdk} as `punks.collections`. When constructed with a `standard`,
+/// every lookup is scoped to collections of that standard; collections of other
+/// standards are invisible through this facade. The standalone
+/// {@link searchCollections} / {@link getSearchCollection} exports stay global.
 export class PunksCollections {
-  /// Every collection, sorted by slug. Each call returns fresh copies.
+  private readonly standard?: PunkStandardValue
+
+  constructor(standard?: PunkStandardRef) {
+    this.standard =
+      standard === undefined ? undefined : normalizePunkStandard(standard)
+  }
+
+  private inScope(collection: CuratedCollection): boolean {
+    return this.standard === undefined || collection.standard === this.standard
+  }
+
+  /// Every in-scope collection, sorted by slug. Each call returns fresh copies.
   list(): CuratedCollection[] {
-    return COLLECTIONS.map(clone)
-  }
-
-  /// A single collection by slug, or `undefined` if there is no such slug.
-  get(slug: string): CuratedCollection | undefined {
-    return getSearchCollection(slug)
-  }
-
-  /// Whether a collection with this slug exists.
-  has(slug: string): boolean {
-    return (
-      typeof slug === 'string' &&
-      COLLECTIONS_BY_SLUG.has(slug.trim().toLowerCase())
+    return COLLECTIONS.filter((collection) => this.inScope(collection)).map(
+      clone,
     )
+  }
+
+  /// A single collection by slug, or `undefined` if there is no such slug or it
+  /// is out of scope for this facade's standard.
+  get(slug: string): CuratedCollection | undefined {
+    const found = getSearchCollection(slug)
+    return found !== undefined && this.inScope(found) ? found : undefined
+  }
+
+  /// Whether an in-scope collection with this slug exists.
+  has(slug: string): boolean {
+    if (typeof slug !== 'string') return false
+    const found = COLLECTIONS_BY_SLUG.get(slug.trim().toLowerCase())
+    return found !== undefined && this.inScope(found)
   }
 }
 
-export function createPunksCollections(): PunksCollections {
-  return new PunksCollections()
+export function createPunksCollections(
+  standard?: PunkStandardRef,
+): PunksCollections {
+  return new PunksCollections(standard)
 }

@@ -71,9 +71,12 @@ export class PunksSdk {
   readonly contracts: PunksContractClients
 
   constructor(config: PunksSdkConfig = {}) {
-    this.dataset = new PunksDataset({ dataset: config.dataset })
+    this.dataset = new PunksDataset({
+      dataset: config.dataset,
+      standard: config.standard,
+    })
     this.render = new PunkImageRenderer(this.dataset)
-    this.collections = new PunksCollections()
+    this.collections = new PunksCollections(config.standard)
 
     const wallet = {
       publicClient: config.publicClient,

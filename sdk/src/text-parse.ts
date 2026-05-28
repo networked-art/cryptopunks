@@ -2,11 +2,13 @@ import {
   PUNK_COUNT,
   SkinTone,
   skinToneNames,
+  type PunkStandardRef,
+  type PunkStandardValue,
   type SkinToneValue,
 } from './constants'
 import { searchCollections } from './collections'
 import searchSynonymsJson from './search-synonyms.json'
-import { PunksDataValidationError } from './utils'
+import { normalizePunkStandard, PunksDataValidationError } from './utils'
 
 /// Single tokenized term from a search text query.
 export type SearchTextTerm = {
@@ -53,6 +55,10 @@ type ExactTraitTextResolver = {
     text: string,
     options?: { exact?: boolean },
   ): readonly { name: string }[]
+  /// When set, scopes curated-collection resolution to this standard. Carried
+  /// by the offline client so both the search and filter-compile paths inherit
+  /// the SDK's configured standard without a separate argument.
+  readonly standard?: PunkStandardValue
 }
 
 /// Offchain folk-trait aliases. Keys are user-facing search phrases; values
@@ -81,17 +87,32 @@ const SEARCH_SYNONYM_ENTRIES = buildSearchSynonymEntries(searchSynonyms)
 ///     `dark`, `brown`, `fair`, `albino` and resolve to the four human
 ///     head-variant slots (Female 1..4 / Male 1..4).
 /// Anything else is left in `freeTerms` for downstream interpretation.
-export function parseSearchText(input: string): ParsedSearchText {
+/// Options for {@link parseSearchText}.
+export type ParseSearchTextOptions = {
+  /// When set, only curated collections of this standard resolve to their id
+  /// set; an alias of any other standard falls through to a literal trait
+  /// lookup. Omitted means every collection resolves (the default).
+  standard?: PunkStandardRef
+}
+
+export function parseSearchText(
+  input: string,
+  options: ParseSearchTextOptions = {},
+): ParsedSearchText {
   if (typeof input !== 'string') {
     throw new PunksDataValidationError('text search must be a string')
   }
+  const standard =
+    options.standard === undefined
+      ? undefined
+      : normalizePunkStandard(options.standard)
   const tokens = tokenizeSearchText(input)
   const orGroups: ParsedSearchTextGroup[] = []
   let current: SearchTextTerm[] = []
   for (const token of tokens) {
     if (!token.exact && /^(or|\|\|)$/i.test(token.text)) {
       if (current.length > 0) {
-        orGroups.push(parseSearchTextGroup(current))
+        orGroups.push(parseSearchTextGroup(current, standard))
         current = []
       }
       continue
@@ -99,7 +120,7 @@ export function parseSearchText(input: string): ParsedSearchText {
     current.push(token)
   }
   if (current.length > 0 || orGroups.length === 0) {
-    orGroups.push(parseSearchTextGroup(current))
+    orGroups.push(parseSearchTextGroup(current, standard))
   }
   return { orGroups }
 }
@@ -127,7 +148,7 @@ export function parseSearchTextWithExactTraitsSync(
       ],
     }
   }
-  return parseSearchText(input)
+  return parseSearchText(input, { standard: data.standard })
 }
 
 /// Tokenizes a search text string the same way as the offline text-search
@@ -166,6 +187,7 @@ export function tokenizeSearchText(input: string): SearchTextTerm[] {
 
 function parseSearchTextGroup(
   tokens: readonly SearchTextTerm[],
+  standard?: PunkStandardValue,
 ): ParsedSearchTextGroup {
   const group: ParsedSearchTextGroup = { freeTerms: [] }
   let i = 0
@@ -303,7 +325,11 @@ function parseSearchTextGroup(
   // (`burned punks`) out as `includeIds` before the remaining terms reach the
   // trait-phrase synonym rewriter. The two never collide: collections own id
   // sets, synonyms own trait phrases.
-  group.freeTerms = resolveSearchCollectionTerms(group, group.freeTerms)
+  group.freeTerms = resolveSearchCollectionTerms(
+    group,
+    group.freeTerms,
+    standard,
+  )
   group.freeTerms = expandSearchSynonymTerms(group.freeTerms)
   return group
 }
@@ -385,6 +411,7 @@ type SearchCollectionEntry = {
   key: string
   tokens: string[]
   ids: readonly number[]
+  standard: PunkStandardValue
 }
 
 const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
@@ -400,11 +427,15 @@ const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
 /// bare number, `#id`, `albino`, or an `<n> <axis>` / skin bigram), or it
 /// never reaches this table.
 function buildSearchCollectionEntries(): SearchCollectionEntry[] {
-  const byKey = new Map<string, { owner: string; ids: readonly number[] }>()
+  const byKey = new Map<
+    string,
+    { owner: string; ids: readonly number[]; standard: PunkStandardValue }
+  >()
   const register = (
     owner: string,
     phrases: readonly string[],
     ids: readonly number[],
+    standard: PunkStandardValue,
   ): void => {
     for (const phrase of phrases) {
       const key = normalizeCollectionPhrase(phrase)
@@ -415,7 +446,7 @@ function buildSearchCollectionEntries(): SearchCollectionEntry[] {
           `collection alias "${key}" is claimed by both ${existing.owner} and ${owner}`,
         )
       }
-      byKey.set(key, { owner, ids })
+      byKey.set(key, { owner, ids, standard })
     }
   }
   for (const collection of searchCollections) {
@@ -423,12 +454,15 @@ function buildSearchCollectionEntries(): SearchCollectionEntry[] {
       collection.slug,
       [collection.slug, ...collection.aliases],
       collection.ids,
+      collection.standard,
     )
+    // Institutions resolve on their own but inherit the parent's standard.
     for (const institution of collection.institutions ?? []) {
       register(
         `${collection.slug}/${institution.slug}`,
         [institution.slug, ...institution.aliases],
         institution.ids,
+        collection.standard,
       )
     }
   }
@@ -437,6 +471,7 @@ function buildSearchCollectionEntries(): SearchCollectionEntry[] {
       key,
       tokens: key.split(/\s+/),
       ids: value.ids,
+      standard: value.standard,
     }))
     .sort((a, b) => {
       const tokenDelta = b.tokens.length - a.tokens.length
@@ -462,6 +497,7 @@ function normalizeCollectionPhrase(phrase: string): string {
 function resolveSearchCollectionTerms(
   group: ParsedSearchTextGroup,
   terms: readonly SearchTextTerm[],
+  standard?: PunkStandardValue,
 ): SearchTextTerm[] {
   if (terms.length === 0 || SEARCH_COLLECTION_ENTRIES.length === 0) {
     return [...terms]
@@ -469,7 +505,7 @@ function resolveSearchCollectionTerms(
   const remaining: SearchTextTerm[] = []
   let i = 0
   while (i < terms.length) {
-    const match = findSearchCollectionAt(terms, i)
+    const match = findSearchCollectionAt(terms, i, standard)
     if (match === undefined) {
       remaining.push(terms[i])
       i += 1
@@ -484,8 +520,12 @@ function resolveSearchCollectionTerms(
 function findSearchCollectionAt(
   terms: readonly SearchTextTerm[],
   start: number,
+  standard?: PunkStandardValue,
 ): { entry: SearchCollectionEntry; consumed: number } | undefined {
   for (const entry of SEARCH_COLLECTION_ENTRIES) {
+    // A scoped SDK skips collections of other standards; the alias then falls
+    // through to literal trait matching instead of resolving as an id set.
+    if (standard !== undefined && entry.standard !== standard) continue
     const consumed = matchSearchCollectionEntry(terms, start, entry)
     if (consumed !== undefined) return { entry, consumed }
   }

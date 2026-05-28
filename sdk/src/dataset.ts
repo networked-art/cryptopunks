@@ -20,9 +20,13 @@ import type {
 } from './types'
 import { toOfflineSearchQuery } from './query'
 import { indexedPixelsToRgba } from './client'
+import type { PunkStandardRef } from './constants'
 
 export type PunksDatasetConfig = {
   dataset?: OfflinePunksDataSource | OfflinePunksDataBundle
+  /// Scopes curated-collection text resolution to a single Punk standard,
+  /// forwarded to the offline client. Omitted resolves every collection.
+  standard?: PunkStandardRef
 }
 
 export class PunksDataset {
@@ -32,8 +36,10 @@ export class PunksDataset {
   constructor(config: PunksDatasetConfig = {}) {
     this.source =
       config.dataset === undefined
-        ? createOfflinePunksDataClient()
-        : createOfflinePunksDataClientFromDataset(config.dataset)
+        ? createOfflinePunksDataClient({ standard: config.standard })
+        : createOfflinePunksDataClientFromDataset(config.dataset, {
+            standard: config.standard,
+          })
     this.hash = this.source.getDatasetHashSync()
   }
 

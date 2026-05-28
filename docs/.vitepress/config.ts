@@ -73,6 +73,14 @@ export default defineConfig({
               },
             ],
           },
+          {
+            text: 'PunksAuction',
+            link: '/contracts/punks-auction',
+            collapsed: false,
+            items: [
+              { text: 'Reference', link: '/contracts/punks-auction/reference' },
+            ],
+          },
         ],
       },
       {

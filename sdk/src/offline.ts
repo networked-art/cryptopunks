@@ -18,6 +18,8 @@ import {
   traitKindNames,
   type HeadVariantName,
   type HeadVariantValue,
+  type PunkStandardRef,
+  type PunkStandardValue,
   type PunkTypeName,
   type PunkTypeValue,
   type SkinToneValue,
@@ -61,6 +63,7 @@ import {
   idsFromMask,
   maskFromIds,
   normalizeNumericRange,
+  normalizePunkStandard,
   normalizeRgbaHex,
   rgbaHexToParts,
   validateBitmapWordIndex,
@@ -165,6 +168,11 @@ export type OfflinePunksDataManifest = {
 export type OfflinePunksDataClientConfig = {
   dataset?: OfflinePunksDataSource | OfflinePunksDataBundle
   cache?: boolean
+  /// Scopes curated-collection text resolution to a single Punk standard. When
+  /// set, only collections of this standard resolve as id sets in `text`
+  /// search; aliases of other standards fall through to trait matching. Omitted
+  /// means every collection resolves.
+  standard?: PunkStandardRef
 }
 
 export type LoadOfflinePunksDataOptions = {
@@ -296,6 +304,9 @@ const VISIBLE_BITMAP_BYTES = 72
 
 export class OfflinePunksDataClient {
   readonly manifest: OfflinePunksDataManifest
+  /// The standard this client scopes curated-collection resolution to, read by
+  /// the text parser. Undefined resolves every collection.
+  readonly standard?: PunkStandardValue
 
   private readonly store: OfflineStore
   private readonly indexedPixelsCache = new Map<number, Uint8Array>()
@@ -303,6 +314,10 @@ export class OfflinePunksDataClient {
   constructor(config: OfflinePunksDataClientConfig = {}) {
     this.store = parseOfflineStore(config.dataset ?? bundledOfflinePunksData)
     this.manifest = this.store.manifest
+    this.standard =
+      config.standard === undefined
+        ? undefined
+        : normalizePunkStandard(config.standard)
   }
 
   clearCache(): void {

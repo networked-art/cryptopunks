@@ -152,6 +152,7 @@ export {
   tokenizeSearchText,
 } from './text-parse'
 export type {
+  ParseSearchTextOptions,
   ParsedNumericConstraint,
   ParsedSearchText,
   ParsedSearchTextGroup,
