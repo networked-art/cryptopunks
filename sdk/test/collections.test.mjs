@@ -20,11 +20,16 @@ const MUSEUM = [
 const MOMA = [74, 2786, 3407, 4018, 5160, 5616, 7178, 7899]
 const ZKM = [1286, 2554, 2838, 5449]
 
+const PERFECT_AND_PRICELESS = [
+  207, 269, 636, 652, 672, 722, 726, 728, 770, 795, 872, 910, 934, 1819, 2134,
+  2830, 3036, 3122, 4530, 4946, 5127, 6347, 6675, 8773,
+]
+
 describe('curated collections', () => {
   it('bundles the burned set as validated, normalized data', () => {
     assert.deepEqual(
       searchCollections.map((collection) => collection.slug),
-      ['burned', 'museum'],
+      ['burned', 'museum', 'perfect-and-priceless'],
     )
 
     const burned = getSearchCollection('burned')
@@ -90,10 +95,11 @@ describe('curated collections', () => {
 
     assert.deepEqual(
       punks.collections.list().map((collection) => collection.slug),
-      ['burned', 'museum'],
+      ['burned', 'museum', 'perfect-and-priceless'],
     )
     assert.equal(punks.collections.has('burned'), true)
     assert.equal(punks.collections.has('museum'), true)
+    assert.equal(punks.collections.has('perfect-and-priceless'), true)
     assert.equal(punks.collections.has('missing'), false)
     assert.equal(punks.collections.get('burned').ids.length, 12)
     assert.equal(punks.collections.get('missing'), undefined)
@@ -163,5 +169,34 @@ describe('curated collections', () => {
       sdk.searchSync({ text: 'zkm' }).filter((id) => BURNED.includes(id)),
       [2838, 5449],
     )
+  })
+
+  it('resolves the Perfect & Priceless set under all its names', () => {
+    const collection = getSearchCollection('perfect-and-priceless')
+    assert.equal(collection.title, 'Perfect & Priceless Punks')
+    assert.equal(
+      collection.source,
+      'https://www.katevassgalerie.com/perfect-and-priceless',
+    )
+    assert.equal(collection.standard, 0)
+    assert.deepEqual(collection.ids, PERFECT_AND_PRICELESS)
+
+    const sdk = createOfflinePunksDataClient()
+    // The gallery name (with `&` and spelled-out `and`), the gallery, and the
+    // informal "paper" name all resolve to the same set.
+    for (const phrase of [
+      'perfect & priceless',
+      'perfect and priceless',
+      'kate vass',
+      'kate vass galerie',
+      'paper punks',
+      'paper',
+    ]) {
+      assert.deepEqual(
+        sdk.searchSync({ text: phrase }),
+        PERFECT_AND_PRICELESS,
+        `"${phrase}" should resolve to the Perfect & Priceless set`,
+      )
+    }
   })
 })
