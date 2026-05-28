@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ActivityKind } from '~/composables/useActivityFeed'
+import type { KindFilter } from '~/composables/useActivityFeed'
 
 useSeoMeta({
   title: 'Activity · Punks Auction',
@@ -126,31 +126,47 @@ type FilterKey =
   | 'offers'
   | 'wraps'
 
-const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
-  { key: 'sales', label: 'Sales', kinds: ['sale'] },
+// `bid` / `bid_cancelled` fire from both the CryptoPunks marketplaces and the
+// PunksAuction contract, so we split them by source.
+const MARKETPLACE_SOURCES = [
+  'cryptopunks_v2',
+  'wrapped_punks',
+  'cryptopunks_721',
+]
+
+const FILTERS: { key: FilterKey; label: string; matchers: KindFilter[] }[] = [
+  { key: 'sales', label: 'Sales', matchers: [{ kinds: ['sale'] }] },
   {
     key: 'marketplace',
     label: 'Marketplace',
-    kinds: ['listing', 'listing_cancelled', 'bid', 'bid_cancelled'],
+    matchers: [
+      { kinds: ['listing', 'listing_cancelled'] },
+      { kinds: ['bid', 'bid_cancelled'], sources: MARKETPLACE_SOURCES },
+    ],
   },
   {
     key: 'auctions',
     label: 'Auctions',
-    kinds: [
-      'lot_created',
-      'lot_cancelled',
-      'lot_cleared',
-      'lot_updated',
-      'auction_started',
-      'auction_settled',
+    matchers: [
+      {
+        kinds: [
+          'lot_created',
+          'lot_cancelled',
+          'lot_cleared',
+          'lot_updated',
+          'auction_started',
+          'auction_settled',
+        ],
+      },
+      { kinds: ['bid', 'bid_cancelled'], sources: ['punks_auction'] },
     ],
   },
   {
     key: 'offers',
     label: 'Purchase Offers',
-    kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'],
+    matchers: [{ kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'] }],
   },
-  { key: 'wraps', label: 'Wraps', kinds: ['wrap', 'unwrap'] },
+  { key: 'wraps', label: 'Wraps', matchers: [{ kinds: ['wrap', 'unwrap'] }] },
 ]
 
 const FILTER_KEYS = new Set<FilterKey>(FILTERS.map((f) => f.key))
@@ -212,15 +228,13 @@ watch(hasSearchInput, (active) => {
   if (active) searchPanelOpen.value = true
 })
 
-const selectedKinds = computed<ActivityKind[] | undefined>(() => {
+const selectedKindFilters = computed<KindFilter[] | undefined>(() => {
   if (!activeFilters.value.size) return undefined
-  const kinds = new Set<ActivityKind>()
+  const matchers: KindFilter[] = []
   for (const f of FILTERS) {
-    if (activeFilters.value.has(f.key)) {
-      for (const k of f.kinds) kinds.add(k)
-    }
+    if (activeFilters.value.has(f.key)) matchers.push(...f.matchers)
   }
-  return [...kinds]
+  return matchers
 })
 
 function writeQuery(next: Set<FilterKey>) {
@@ -263,7 +277,7 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   useActivityFeed({
     punkIds: searchPunkIds,
     address: searchAddress,
-    kinds: selectedKinds,
+    kindFilters: selectedKindFilters,
   })
 </script>
 

@@ -109,12 +109,17 @@ const EVENTS_QUERY = `
   }
 `
 
+export type KindFilter = {
+  kinds: ActivityKind[]
+  sources?: ActivitySource[]
+}
+
 export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
     punkIds?: MaybeRefOrGetter<readonly number[] | undefined>
     address?: MaybeRefOrGetter<Address | undefined>
-    kinds?: MaybeRefOrGetter<ActivityKind[] | undefined>
+    kindFilters?: MaybeRefOrGetter<KindFilter[] | undefined>
     limit?: number
   } = {},
 ) {
@@ -146,9 +151,6 @@ export function useActivityFeed(
       }
     }
 
-    const kinds = toValue(opts.kinds)
-    if (kinds && kinds.length) where.type_in = kinds
-
     // Hide 0-wei `listing` rows — `offerPunkForSaleToAddress` with minValue=0
     // is how punks get gifted/privately transferred, not a real listing.
     // Cancellations are kept (they carry no listing_wei).
@@ -156,24 +158,36 @@ export function useActivityFeed(
       OR: [{ type_not_in: ['listing'] }, { listing_wei_gt: '0' }],
     }
 
+    const and: Record<string, unknown>[] = [hideZeroListings]
+
+    const kindFilters = toValue(opts.kindFilters)
+    if (kindFilters && kindFilters.length) {
+      and.push({
+        // Ponder OR's the keys within each clause, so a clause that needs
+        // both `type_in` and `source_in` has to be wrapped in an explicit AND.
+        OR: kindFilters.map((f) =>
+          f.sources
+            ? { AND: [{ type_in: f.kinds }, { source_in: f.sources }] }
+            : { type_in: f.kinds },
+        ),
+      })
+    }
+
     const address = toValue(opts.address)?.toLowerCase()
     if (address) {
-      where.AND = [
-        {
-          OR: [
-            { actor: address },
-            { from: address },
-            { to: address },
-            { buyer: address },
-            { seller: address },
-            { bidder: address },
-          ],
-        },
-        hideZeroListings,
-      ]
-    } else {
-      where.OR = hideZeroListings.OR
+      and.push({
+        OR: [
+          { actor: address },
+          { from: address },
+          { to: address },
+          { buyer: address },
+          { seller: address },
+          { bidder: address },
+        ],
+      })
     }
+
+    where.AND = and
 
     return where
   }
@@ -254,7 +268,7 @@ export function useActivityFeed(
     void toValue(opts.punkId)
     void toValue(opts.punkIds)
     void toValue(opts.address)
-    void toValue(opts.kinds)
+    void toValue(opts.kindFilters)
     load()
   })
 
