@@ -380,6 +380,11 @@ export const event = onchainTable(
     lot_id: t.bigint(),
     auction_id: t.bigint(),
     offer_id: t.bigint(),
+    // `offer_kind` ∈ { collection, trait, selection }. Populated for
+    // `offer_placed` rows from the per-slot `OfferSlotDetail` events that
+    // follow `OfferPlaced` in the same tx, and copied onto `offer_cancelled`
+    // / `offer_adjusted` rows from the stored offer.
+    offer_kind: t.text(),
     tx_hash: t.hex().notNull(),
     block_number: t.bigint().notNull(),
     log_index: t.integer().notNull(),
@@ -497,6 +502,10 @@ export const auctionOffer = onchainTable(
     offerer: t.hex().notNull(),
     amount_wei: t.bigint().notNull(),
     slot_count: t.integer().notNull(),
+    // Aggregated kind across the offer's slots, populated as `OfferSlotDetail`
+    // events arrive. Precedence trait > selection > collection so the icon
+    // tracks the most specific slot.
+    kind: t.text(),
     active: t.boolean().notNull(),
     tx_hash: t.hex().notNull(),
     block_number: t.bigint().notNull(),

@@ -397,6 +397,7 @@ ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
       offerer,
       amount_wei: event.args.amountWei,
       slot_count: event.args.slotCount,
+      kind: null,
       active: true,
       ...meta,
       updated_at: event.block.timestamp,
@@ -405,6 +406,7 @@ ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
       offerer,
       amount_wei: event.args.amountWei,
       slot_count: event.args.slotCount,
+      kind: null,
       active: true,
       ...meta,
       updated_at: event.block.timestamp,
@@ -422,6 +424,33 @@ ponder.on('PunksAuction:OfferPlaced', async ({ event, context }) => {
     offer_id: event.args.offerId,
     ...meta,
   })
+})
+
+ponder.on('PunksAuction:OfferSlotDetail', async ({ event, context }) => {
+  const existing = await context.db.find(auctionOffer, {
+    offer_id: event.args.offerId,
+  })
+  if (!existing) return
+
+  const slotKind = offerSlotKind(
+    event.args.criteria,
+    event.args.includeIds.length,
+  )
+  const combinedKind = combineOfferKind(existing.kind, slotKind)
+
+  if (combinedKind !== existing.kind) {
+    await context.db
+      .update(auctionOffer, { offer_id: event.args.offerId })
+      .set({ kind: combinedKind })
+  }
+
+  // The OfferPlaced activity row was inserted earlier in the same tx with the
+  // same block_number / log_index recorded on `auctionOffer`. Patch it so the
+  // feed can pick the right icon without a second lookup.
+  const placedEventId = `${existing.block_number}-${existing.log_index}`
+  await context.db
+    .update(activityEvent, { id: placedEventId })
+    .set({ offer_kind: combinedKind })
 })
 
 ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
@@ -446,6 +475,7 @@ ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
     bidder: existing?.offerer ?? null,
     bid_wei: existing?.amount_wei ?? null,
     offer_id: event.args.offerId,
+    offer_kind: existing?.kind ?? null,
     ...meta,
   })
 })
@@ -477,6 +507,7 @@ ponder.on('PunksAuction:OfferAmountAdjusted', async ({ event, context }) => {
     wei_amount: event.args.newAmountWei,
     bid_wei: event.args.newAmountWei,
     offer_id: event.args.offerId,
+    offer_kind: existing?.kind ?? null,
     ...meta,
   })
 })
@@ -683,6 +714,53 @@ async function insertActivity(
 
 function eventId(event: PonderEvent): string {
   return `${event.block.number}-${event.log.logIndex}`
+}
+
+type PunksFilter = {
+  requiredTraitMask: bigint
+  forbiddenTraitMask: bigint
+  anyOfTraitMask: bigint
+  requiredColorMask: bigint
+  forbiddenColorMask: bigint
+  anyOfColorMask: bigint
+  maxPixelCount: number
+  maxColorCount: number
+}
+
+type OfferKind = 'collection' | 'trait' | 'selection'
+
+function offerSlotKind(criteria: PunksFilter, includeCount: number): OfferKind {
+  if (!isFilterEmpty(criteria)) return 'trait'
+  if (includeCount > 1) return 'selection'
+  return 'collection'
+}
+
+// Mirrors `isPunksFilterEmpty` in the SDK — keep the two in sync.
+function isFilterEmpty(filter: PunksFilter): boolean {
+  return (
+    filter.requiredTraitMask === 0n &&
+    filter.forbiddenTraitMask === 0n &&
+    filter.anyOfTraitMask === 0n &&
+    filter.requiredColorMask === 0n &&
+    filter.forbiddenColorMask === 0n &&
+    filter.anyOfColorMask === 0n &&
+    filter.maxPixelCount === 0 &&
+    filter.maxColorCount === 0
+  )
+}
+
+const OFFER_KIND_RANK: Record<OfferKind, number> = {
+  collection: 0,
+  selection: 1,
+  trait: 2,
+}
+
+function combineOfferKind(current: string | null, next: OfferKind): OfferKind {
+  if (!current) return next
+  const currentKind = current as OfferKind
+  return OFFER_KIND_RANK[next] > OFFER_KIND_RANK[currentKind]
+    ? next
+    : currentKind
 }
 
 function eventMeta(event: PonderEvent): EventMeta {

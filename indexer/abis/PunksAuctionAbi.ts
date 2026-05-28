@@ -12,6 +12,7 @@ export const PunksAuctionAbi = parseAbi([
   'event AuctionItemDelivered(uint256 indexed auctionId, uint8 indexed itemIndex, uint8 standard, uint16 punkId, address recipient, uint96 itemWei)',
   'event AuctionSettled(uint256 indexed auctionId, address indexed winner, address indexed seller, uint256 finalWei)',
   'event OfferPlaced(uint256 indexed offerId, address indexed offerer, uint96 amountWei, uint8 slotCount)',
+  'event OfferSlotDetail(uint256 indexed offerId, uint8 indexed slotIndex, uint8 standard, (uint256 requiredTraitMask, uint256 forbiddenTraitMask, uint256 anyOfTraitMask, uint256 requiredColorMask, uint256 forbiddenColorMask, uint256 anyOfColorMask, uint16 minPixelCount, uint16 maxPixelCount, uint8 minColorCount, uint8 maxColorCount) criteria, uint16[] includeIds, uint16[] excludeIds)',
   'event OfferCancelled(uint256 indexed offerId)',
   'event OfferAmountAdjusted(uint256 indexed offerId, uint96 newAmountWei)',
   'event OfferAccepted(uint256 indexed offerId, uint256 indexed punkId, address indexed seller, address offerer, uint256 amountWei)',
