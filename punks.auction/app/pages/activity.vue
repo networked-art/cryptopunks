@@ -119,12 +119,7 @@ useSeoMeta({
   twitterTitle: 'Activity · Punks Auction',
 })
 
-type FilterKey =
-  | 'sales'
-  | 'marketplace'
-  | 'auctions'
-  | 'offers'
-  | 'wraps'
+type FilterKey = 'sales' | 'marketplace' | 'auctions' | 'offers' | 'wraps'
 
 // `bid` / `bid_cancelled` fire from both the CryptoPunks marketplaces and the
 // PunksAuction contract, so we split them by source.
@@ -164,7 +159,9 @@ const FILTERS: { key: FilterKey; label: string; matchers: KindFilter[] }[] = [
   {
     key: 'offers',
     label: 'Purchase Offers',
-    matchers: [{ kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'] }],
+    matchers: [
+      { kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'] },
+    ],
   },
   { key: 'wraps', label: 'Wraps', matchers: [{ kinds: ['wrap', 'unwrap'] }] },
 ]
