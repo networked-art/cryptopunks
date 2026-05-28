@@ -15,3 +15,5 @@ searchable per-institution sub-sets.
 - Source data is MoMA, ZKM Karlsruhe, LACMA, Centre Pompidou, ICA Miami, and
   Toledo Museum of Art (museumpunks.com). Two of the museum Punks (#2838,
   #5449, both ZKM) are also in the `burned` set.
+
+By [@seanbonner](https://github.com/seanbonner).

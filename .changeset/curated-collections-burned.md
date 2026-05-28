@@ -15,3 +15,5 @@ in a new bundled `search-collections.json`.
   Standalone `searchCollections` and `getSearchCollection` are also exported.
 - New `CuratedCollection` type. `normalizePunkStandard` and the `PunkStandardRef`
   type are unchanged for consumers (re-exported from their previous module).
+
+By [@seanbonner](https://github.com/seanbonner).

@@ -11,3 +11,5 @@ framed print backed by its seed phrase sealed in an envelope.
   `paper`.
 - The collection alias matcher now skips punctuation-only tokens, so the `&`
   spelling of a name matches the same set as the spelled-out form.
+
+By [@seanbonner](https://github.com/seanbonner).
