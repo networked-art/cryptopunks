@@ -146,6 +146,22 @@ punks.collections.has('burned')
 Each collection carries a `standard` (`PunkStandard.CryptoPunks` /
 `CryptoPunksV1`) so burns and holdings stay attributed to the right contract.
 
+Pass `standard` to `createPunksSdk` (or the offline client) to scope a client to
+a single standard: only collections of that standard resolve in `text` search
+and appear in the lookup facade. Left unset, every collection resolves — the
+default. The standalone `searchCollections` / `getSearchCollection` exports stay
+global regardless.
+
+```ts
+const v2 = createPunksSdk({ standard: 'v2' }) // PunkStandard.CryptoPunks
+v2.search({ text: 'burned' }) // resolves — `burned` is of this standard
+v2.collections.list() // only collections of this standard
+
+const scoped = createPunksSdk({ standard: 'v1' }) // PunkStandard.CryptoPunksV1
+scoped.search({ text: 'burned' }) // [] — no collection of this standard matches
+scoped.collections.has('burned') // false
+```
+
 Use `dataset` directly when you want catalogs, palette data, or bitmaps:
 
 ```ts

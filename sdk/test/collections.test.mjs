@@ -199,4 +199,68 @@ describe('curated collections', () => {
       )
     }
   })
+
+  it('scopes curated-collection text resolution by standard', () => {
+    // Unscoped (default): every collection resolves, exactly as before.
+    const all = createOfflinePunksDataClient()
+    assert.deepEqual(all.searchSync({ text: 'burned' }), BURNED)
+    assert.deepEqual(all.searchSync({ text: 'museum punks' }), MUSEUM)
+    assert.deepEqual(all.searchSync({ text: 'paper' }), PERFECT_AND_PRICELESS)
+
+    // Scoped to v2 — where all three sets live — they still resolve.
+    const v2 = createOfflinePunksDataClient({ standard: 'v2' })
+    assert.deepEqual(v2.searchSync({ text: 'burned' }), BURNED)
+    assert.deepEqual(v2.searchSync({ text: 'museum punks' }), MUSEUM)
+    assert.deepEqual(v2.searchSync({ text: 'moma' }), MOMA)
+    assert.deepEqual(v2.searchSync({ text: 'paper' }), PERFECT_AND_PRICELESS)
+
+    // Scoped to v1: no v2 collection (or its institutions) resolves. The alias
+    // falls through to a literal trait lookup, which matches nothing.
+    const v1 = createOfflinePunksDataClient({ standard: 'v1' })
+    for (const phrase of ['burned', 'museum punks', 'moma', 'paper']) {
+      assert.deepEqual(
+        v1.searchSync({ text: phrase }),
+        [],
+        `"${phrase}" must not resolve as a collection in a v1-scoped client`,
+      )
+    }
+
+    // parseSearchText honors the option directly, too.
+    assert.deepEqual(
+      parseSearchText('burned punks', { standard: 0 }).orGroups[0].includeIds,
+      BURNED,
+    )
+    assert.equal(
+      parseSearchText('burned punks', { standard: 1 }).orGroups[0].includeIds,
+      undefined,
+    )
+  })
+
+  it('scopes the collections facade by standard', () => {
+    // Unscoped: the facade exposes every collection.
+    assert.deepEqual(
+      createPunksSdk()
+        .collections.list()
+        .map((collection) => collection.slug),
+      ['burned', 'museum', 'perfect-and-priceless'],
+    )
+
+    // Scoped to v2: all three are visible (they are all v2).
+    const v2 = createPunksSdk({ standard: 'v2' }).collections
+    assert.deepEqual(
+      v2.list().map((collection) => collection.slug),
+      ['burned', 'museum', 'perfect-and-priceless'],
+    )
+    assert.equal(v2.has('burned'), true)
+    assert.deepEqual(v2.get('museum').ids, MUSEUM)
+
+    // Scoped to v1: nothing is visible (no v1 collections exist yet).
+    const v1 = createPunksSdk({ standard: 'v1' }).collections
+    assert.deepEqual(v1.list(), [])
+    assert.equal(v1.has('burned'), false)
+    assert.equal(v1.get('burned'), undefined)
+
+    // The standalone lookup stays global regardless of any SDK scoping.
+    assert.equal(getSearchCollection('burned').slug, 'burned')
+  })
 })
