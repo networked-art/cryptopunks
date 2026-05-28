@@ -15,12 +15,12 @@
       <div class="activity-controls">
         <Tags class="filters">
           <Tag
-            v-for="f in FILTERS"
+            v-for="f in activityFilters"
             :key="f.key"
             :dismissable="activeFilters.has(f.key)"
             :class="{ active: activeFilters.has(f.key) }"
-            @click="!activeFilters.has(f.key) && toggle(f.key)"
-            @dismiss="toggle(f.key)"
+            @click="!activeFilters.has(f.key) && toggleFilter(f.key)"
+            @dismiss="toggleFilter(f.key)"
           >
             {{ f.label }}
           </Tag>
@@ -29,7 +29,7 @@
             class="filter-toggle"
             :class="{ active: searchPanelOpen || hasSearchInput }"
             @click="toggleSearchPanel"
-            @dismiss="dismissSearchFilter"
+            @dismiss="clearSearchPanel"
           >
             Filter
           </Tag>
@@ -111,161 +111,48 @@
 </template>
 
 <script setup lang="ts">
-import type { KindFilter } from '~/composables/useActivityFeed'
-
 useSeoMeta({
   title: 'Activity · Punks Auction',
   ogTitle: 'Activity · Punks Auction',
   twitterTitle: 'Activity · Punks Auction',
 })
 
-type FilterKey = 'sales' | 'marketplace' | 'auctions' | 'offers' | 'wraps'
-
-// `bid` / `bid_cancelled` fire from both the CryptoPunks marketplaces and the
-// PunksAuction contract, so we split them by source.
-const MARKETPLACE_SOURCES = [
-  'cryptopunks_v2',
-  'wrapped_punks',
-  'cryptopunks_721',
-]
-
-const FILTERS: { key: FilterKey; label: string; matchers: KindFilter[] }[] = [
-  { key: 'sales', label: 'Sales', matchers: [{ kinds: ['sale'] }] },
-  {
-    key: 'marketplace',
-    label: 'Marketplace',
-    matchers: [
-      { kinds: ['listing', 'listing_cancelled'] },
-      { kinds: ['bid', 'bid_cancelled'], sources: MARKETPLACE_SOURCES },
-    ],
-  },
-  {
-    key: 'auctions',
-    label: 'Auctions',
-    matchers: [
-      {
-        kinds: [
-          'lot_created',
-          'lot_cancelled',
-          'lot_cleared',
-          'lot_updated',
-          'auction_started',
-          'auction_settled',
-        ],
-      },
-      { kinds: ['bid', 'bid_cancelled'], sources: ['punks_auction'] },
-    ],
-  },
-  {
-    key: 'offers',
-    label: 'Purchase Offers',
-    matchers: [
-      { kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'] },
-    ],
-  },
-  { key: 'wraps', label: 'Wraps', matchers: [{ kinds: ['wrap', 'unwrap'] }] },
-]
-
-const FILTER_KEYS = new Set<FilterKey>(FILTERS.map((f) => f.key))
-
-const route = useRoute()
-const router = useRouter()
-
-function parseQuery(raw: unknown): FilterKey[] {
-  const str = Array.isArray(raw) ? raw[0] : raw
-  if (typeof str !== 'string' || !str) return []
-  const seen = new Set<FilterKey>()
-  for (const part of str.split(',')) {
-    const k = part.trim() as FilterKey
-    if (FILTER_KEYS.has(k)) seen.add(k)
-  }
-  return [...seen]
-}
-
-const activeFilters = computed(() => new Set(parseQuery(route.query.t)))
+const {
+  filters: activityFilters,
+  activeFilters,
+  hasFilters,
+  selectedKindFilters,
+  toggleFilter,
+  clearFilters,
+} = useActivityFilters()
 
 const {
-  text: searchText,
-  debouncedText: debouncedSearchText,
-  placeholder: searchPlaceholder,
-  ownerHandle: searchOwnerHandle,
-  ownerAddress: searchOwnerAddress,
-  ids: searchIds,
-  counts: searchCounts,
-  onEnter: onSearchEnter,
+  searchText,
+  searchPlaceholder,
+  searchOwnerHandle,
+  searchAddress,
+  searchPunkIds,
+  searchCounts,
   clearSearch,
-} = usePunkSearch({
-  syncRoute: true,
-  enableListedFilter: false,
-  enableEnterNavigation: false,
-})
+  hasSearchInput,
+  hasSearch,
+  searchPanelOpen,
+  onSearchEnter,
+  toggleSearchPanel,
+  clearSearchPanel,
+} = useActivitySearchScope()
 
-const hasSearchInput = computed(() => searchText.value.trim().length > 0)
-const hasSearch = computed(() => debouncedSearchText.value.trim().length > 0)
-const searchPanelOpen = ref(searchText.value.trim().length > 0)
 const hasActiveControls = computed(
-  () =>
-    activeFilters.value.size > 0 ||
-    hasSearchInput.value ||
-    searchPanelOpen.value,
+  () => hasFilters.value || hasSearchInput.value || searchPanelOpen.value,
 )
-const isAddressSearch = computed(
-  () => hasSearch.value && !!searchOwnerHandle.value,
-)
-const searchAddress = computed(() =>
-  isAddressSearch.value ? searchOwnerAddress.value : undefined,
-)
-const searchPunkIds = computed(() => {
-  if (!hasSearch.value) return undefined
-  if (isAddressSearch.value) return searchAddress.value ? undefined : []
-  return searchIds.value
-})
-
-watch(hasSearchInput, (active) => {
-  if (active) searchPanelOpen.value = true
-})
-
-const selectedKindFilters = computed<KindFilter[] | undefined>(() => {
-  if (!activeFilters.value.size) return undefined
-  const matchers: KindFilter[] = []
-  for (const f of FILTERS) {
-    if (activeFilters.value.has(f.key)) matchers.push(...f.matchers)
-  }
-  return matchers
-})
-
-function writeQuery(next: Set<FilterKey>) {
-  const ordered = FILTERS.filter((f) => next.has(f.key)).map((f) => f.key)
-  const t = ordered.join(',')
-  router.replace({
-    query: { ...route.query, t: t || undefined },
-  })
-}
-
-function toggle(key: FilterKey) {
-  const next = new Set(activeFilters.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  writeQuery(next)
-}
 
 function clear() {
-  clearSearch()
-  searchPanelOpen.value = false
-  writeQuery(new Set())
-}
-
-function toggleSearchPanel() {
-  searchPanelOpen.value = !searchPanelOpen.value
-}
-
-function dismissSearchFilter() {
-  clearSearch()
-  searchPanelOpen.value = false
+  clearSearchPanel()
+  clearFilters()
 }
 
 const emptyLabel = computed(() =>
-  hasSearch.value || activeFilters.value.size
+  hasSearch.value || hasFilters.value
     ? 'No matching activity.'
     : 'No activity yet.',
 )
@@ -328,6 +215,30 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 
 .activity-search-bar :deep(.search-input) {
   min-height: var(--form-item-height);
+  background: var(--input-background);
+  box-shadow: var(--border-shadow);
+  transition:
+    box-shadow var(--speed),
+    color var(--speed);
+}
+
+.activity-search-bar :deep(.search-input:is(:hover, :active, :focus, .active)),
+.activity-search-bar :deep(.search-field:focus-within .search-input) {
+  background: var(--input-background);
+  box-shadow: var(--border-shadow);
+}
+
+.activity-search-bar :deep(.search-field::after) {
+  display: none;
+}
+
+.activity-search-bar :deep(.search-group .search-bar-action) {
+  box-shadow: var(--border-shadow);
+}
+
+.activity-search-bar
+  :deep(.search-group .search-bar-action:is(:hover, :active, :focus, .active)) {
+  box-shadow: var(--border-shadow);
 }
 
 .activity-search-enter-active,

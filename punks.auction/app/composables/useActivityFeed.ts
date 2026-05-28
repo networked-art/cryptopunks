@@ -27,12 +27,13 @@ export type ActivityKind =
   | 'escrow_credit'
   | 'escrow_withdrawal'
 
-export type ActivitySource =
+export type KnownActivitySource =
   | 'cryptopunks_v2'
   | 'wrapped_punks'
   | 'cryptopunks_721'
   | 'punks_auction'
-  | string
+
+export type ActivitySource = string
 
 // CryptoPunks (V2), its ERC-721 wrappers, and the PunksAuction stack. V1
 // activity hangs off its own profile/punk pages — this feed covers normal
@@ -42,9 +43,12 @@ const ACTIVITY_SOURCES = [
   'wrapped_punks',
   'cryptopunks_721',
   'punks_auction',
-]
+] as const satisfies readonly KnownActivitySource[]
 
-const WRAPPED_SOURCES = new Set(['wrapped_punks', 'cryptopunks_721'])
+const WRAPPED_SOURCES = new Set<ActivitySource>([
+  'wrapped_punks',
+  'cryptopunks_721',
+])
 
 export type OfferKind = 'collection' | 'specific' | 'selection' | 'trait'
 
@@ -124,8 +128,8 @@ const EVENTS_QUERY = `
 `
 
 export type KindFilter = {
-  kinds: ActivityKind[]
-  sources?: ActivitySource[]
+  kinds: readonly ActivityKind[]
+  sources?: readonly KnownActivitySource[]
 }
 
 export function useActivityFeed(
@@ -151,59 +155,24 @@ export function useActivityFeed(
   let requestToken = 0
 
   function buildWhere(): Record<string, unknown> | null {
-    const where: Record<string, unknown> = {
+    const punkWhere = buildPunkWhere(
+      toValue(opts.punkId),
+      toValue(opts.punkIds),
+    )
+    if (!punkWhere) return null
+
+    const and: Record<string, unknown>[] = [hideZeroListingsWhere()]
+    const kindWhere = buildKindFilterWhere(toValue(opts.kindFilters))
+    const addressWhere = buildAddressWhere(toValue(opts.address))
+
+    if (kindWhere) and.push(kindWhere)
+    if (addressWhere) and.push(addressWhere)
+
+    return {
       source_in: ACTIVITY_SOURCES,
+      ...punkWhere,
+      AND: and,
     }
-
-    const punkId = toValue(opts.punkId)
-    if (punkId !== undefined) where.punk_id = String(punkId)
-    else {
-      const punkIds = toValue(opts.punkIds)
-      if (punkIds) {
-        if (!punkIds.length) return null
-        where.punk_id_in = [...new Set(punkIds)].map(String)
-      }
-    }
-
-    // Hide 0-wei `listing` rows — `offerPunkForSaleToAddress` with minValue=0
-    // is how punks get gifted/privately transferred, not a real listing.
-    // Cancellations are kept (they carry no listing_wei).
-    const hideZeroListings = {
-      OR: [{ type_not_in: ['listing'] }, { listing_wei_gt: '0' }],
-    }
-
-    const and: Record<string, unknown>[] = [hideZeroListings]
-
-    const kindFilters = toValue(opts.kindFilters)
-    if (kindFilters && kindFilters.length) {
-      and.push({
-        // Ponder OR's the keys within each clause, so a clause that needs
-        // both `type_in` and `source_in` has to be wrapped in an explicit AND.
-        OR: kindFilters.map((f) =>
-          f.sources
-            ? { AND: [{ type_in: f.kinds }, { source_in: f.sources }] }
-            : { type_in: f.kinds },
-        ),
-      })
-    }
-
-    const address = toValue(opts.address)?.toLowerCase()
-    if (address) {
-      and.push({
-        OR: [
-          { actor: address },
-          { from: address },
-          { to: address },
-          { buyer: address },
-          { seller: address },
-          { bidder: address },
-        ],
-      })
-    }
-
-    where.AND = and
-
-    return where
   }
 
   async function fetchPage(after: string | null) {
@@ -294,6 +263,66 @@ export function useActivityFeed(
     hasMore,
     refresh: load,
     loadMore,
+  }
+}
+
+function buildPunkWhere(
+  punkId: number | undefined,
+  punkIds: readonly number[] | undefined,
+): Record<string, unknown> | null {
+  const where: Record<string, unknown> = {}
+  if (punkId !== undefined) {
+    where.punk_id = String(punkId)
+    return where
+  }
+
+  if (!punkIds) return where
+  if (!punkIds.length) return null
+
+  where.punk_id_in = [...new Set(punkIds)].map(String)
+  return where
+}
+
+function hideZeroListingsWhere(): Record<string, unknown> {
+  // Hide 0-wei `listing` rows — `offerPunkForSaleToAddress` with minValue=0
+  // is how punks get gifted/privately transferred, not a real listing.
+  // Cancellations are kept (they carry no listing_wei).
+  return {
+    OR: [{ type_not_in: ['listing'] }, { listing_wei_gt: '0' }],
+  }
+}
+
+function buildKindFilterWhere(
+  kindFilters: readonly KindFilter[] | undefined,
+): Record<string, unknown> | undefined {
+  if (!kindFilters?.length) return undefined
+
+  return {
+    // Ponder OR's the keys within each clause, so a clause that needs both
+    // `type_in` and `source_in` has to be wrapped in an explicit AND.
+    OR: kindFilters.map((filter) =>
+      filter.sources
+        ? { AND: [{ type_in: filter.kinds }, { source_in: filter.sources }] }
+        : { type_in: filter.kinds },
+    ),
+  }
+}
+
+function buildAddressWhere(
+  address: Address | undefined,
+): Record<string, unknown> | undefined {
+  const normalized = address?.toLowerCase()
+  if (!normalized) return undefined
+
+  return {
+    OR: [
+      { actor: normalized },
+      { from: normalized },
+      { to: normalized },
+      { buyer: normalized },
+      { seller: normalized },
+      { bidder: normalized },
+    ],
   }
 }
 
