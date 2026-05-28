@@ -12,7 +12,9 @@ servers:
 proxy:
   ssl: true
   hosts:
-    - <%= ENV.fetch("DOCS_HOST", "docs.punksmarket.app") %>
+    - <%= ENV.fetch("DOCS_HOST", "cryptopunks.networked.art") %>
+    - docs.punksmarket.app
+    - docs.punks.auction
   app_port: 80
   healthcheck:
     path: /
