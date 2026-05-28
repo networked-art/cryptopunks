@@ -2,7 +2,7 @@
   <ClientOnly>
     <Dialog
       v-model:open="createDialogOpen"
-      title="List lot"
+      title="Create lot"
       class="create-lot-dialog"
       compat
       @closed="onDialogClosed"
@@ -56,7 +56,7 @@
           :disabled="!canCreate"
           @click="actCreate"
         >
-          List lot <EthAmount :wei="reserveWei || 0n" />
+          Create lot <EthAmount :wei="reserveWei || 0n" />
         </Button>
       </template>
     </Dialog>
@@ -211,14 +211,14 @@ async function actCreate() {
 
   createDialogOpen.value = false
   await runPlans(plans, {
-    dialogTitle: 'List lot',
+    dialogTitle: 'Create lot',
     single: {
-      title: { complete: 'Lot listed' },
-      lead: { complete: 'Your auction lot has been listed.' },
+      title: { complete: 'Lot created' },
+      lead: { complete: 'Your auction lot has been created.' },
     },
     multi: {
-      title: { complete: 'Lot listed' },
-      lead: { complete: 'Your auction lot has been listed.' },
+      title: { complete: 'Lot created' },
+      lead: { complete: 'Your auction lot has been created.' },
     },
   })
 }

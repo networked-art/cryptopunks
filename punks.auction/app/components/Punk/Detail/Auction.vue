@@ -119,7 +119,7 @@
               :class="topOffer ? '' : 'primary'"
               @click="actListLot"
             >
-              List lot
+              Create lot
             </Button>
           </template>
         </div>
