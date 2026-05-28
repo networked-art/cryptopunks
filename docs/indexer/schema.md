@@ -14,7 +14,7 @@ type without joining.
 
 ```text
 source ∈ { cryptopunks_v1, cryptopunks_v2, wrapped_punks, cryptopunks_721,
-           v1_wrapper, punks_market, punks_auction, stash, vault }
+           v1_wrapper, punks_market, punks_auction }
 
 type   ∈ { assign, transfer, stashed, unstashed, vaulted, unvaulted,
            escrowed, listing, listing_cancelled, bid, bid_adjusted,
@@ -34,7 +34,7 @@ type   ∈ { assign, transfer, stashed, unstashed, vaulted, unvaulted,
 | `usd_value_cents`                                       | Denormalized USD-cent value of `wei_amount` (see [USD pricing](#usd-pricing)) |
 | `only_sell_to`                                          | Directed-listing / restricted-lot target, when set                     |
 | `bid_id`, `lot_id`, `auction_id`, `offer_id`            | The `PunksMarket` / `PunksAuction` entity ids                          |
-| `offer_kind`                                            | `collection` / `trait` / `selection` for offer rows                    |
+| `offer_kind`                                            | `collection` / `specific` / `selection` / `trait` for offer rows                    |
 | `tx_hash`, `block_number`, `log_index`                  | Onchain location                                                       |
 | `timestamp`, `day_unix`                                 | Event time and its UTC day (the JOIN key against `eth_usd_prices`)      |
 
@@ -49,7 +49,8 @@ ids `0..9999` and carry independent market state:
 
 - `punks` — canonical CryptoPunks (`punk_id` PK, `owner`, `native_owner`,
   `native_standard`, `is_wrapped`, `wrapper`, `last_sale_wei`, …).
-- `v1_punks` — June 9th 2017 Punks, with the same shape.
+- `v1_punks` — June 9th 2017 Punks, with nearly the same shape, minus the
+  V2-only `native_standard` column.
 
 In both, `owner` is the public owner (the ERC-721 owner while wrapped, the
 native owner otherwise) and `native_owner` preserves the underlying holder.
@@ -103,7 +104,7 @@ re-reading from chain (the contract has often deleted the entity by then):
 | -------------------- | -------------------------------------------------------------------------------------- |
 | `auction_lots`       | `lot_id` PK, `seller`, `reserve_wei`, `only_sell_to`, `item_count`, `active`           |
 | `auction_lot_items`  | One row per `(lot_id, item_index)`: `standard`, `punk_id`, `weight_bps`                |
-| `auction_auctions`   | `auction_id` PK, `lot_id`, `seller`, `latest_bidder`, `latest_bid_wei`, `end_timestamp`, `settled` |
+| `auction_auctions`   | `auction_id` PK, `lot_id`, `seller`, `item_count`, `latest_bidder`, `latest_bid_wei`, `end_timestamp`, `settled` |
 | `auction_offers`     | `offer_id` PK, `offerer`, `amount_wei`, `slot_count`, `kind`, `specific_punk_id`, `active` |
 
 `auction_lots` and `auction_offers` are kept around after an entity is

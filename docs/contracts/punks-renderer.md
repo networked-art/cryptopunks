@@ -67,7 +67,7 @@ The mainnet Ignition module defaults are:
 ## Read API
 
 ```solidity
-// Dependency accessors. The first three are auto-generated public-immutable
+// Dependency accessors. The first four are auto-generated public-immutable
 // getters; `dataContract()` is the canonical accessor on `IPunksRenderer`.
 function PUNKS_DATA()    external view returns (address);
 function PUNKS_MARKET()  external view returns (address);

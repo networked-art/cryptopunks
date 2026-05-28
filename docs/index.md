@@ -34,12 +34,16 @@ All contracts target Ethereum mainnet only.
   rendering, original-market actions, and auction/offer flows.
 - [Data And Search](/sdk/data-search) covers local query filtering, facets,
   dataset reads, and offer-slot compilation.
+- [Similarity](/sdk/similarity) covers nearest-Punk scoring, recommendations,
+  and human-readable score explanations.
 - [Rendering And Metadata](/sdk/rendering) covers local SVG, PNG, RGBA,
   metadata, token URI generation, and exact onchain renderer reads.
 - [Original Marketplace](/sdk/original-marketplace) covers original-market
   reads and writes.
 - [V1 Market](/sdk/v1-market) covers the criteria-bid market that enables trading through the
   broken June 9th 2017 `CryptoPunks` contract.
+- [V1 Wrapper](/sdk/v1-wrapper) covers wrapping and unwrapping June 9th 2017
+  Punks via `PunksV1Wrapper`, including batch unwrap flows.
 - [Punk Data Contracts](/sdk/punk-data-contracts) explains local dataset
   usage, `PunksData`, and legacy `CryptopunksData`.
 - [Wrappers](/sdk/wrappers) covers modern Stash wrapping, legacy proxy

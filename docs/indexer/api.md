@@ -28,9 +28,9 @@ GET /sales?limit=&offset=
 
 Recent `sale` events, newest first. Each item carries `usd_value_cents`
 already on the row — no JOIN, no follow-up RPC. `limit` defaults to `50`
-and caps at `200`. Returns `{ items, limit, offset }`, each item with
-`source`, `punk_id`, `buyer`, `seller`, `wei_amount`, `usd_value_cents`,
-`tx_hash`, `block_number`, `timestamp`, and `day_unix`.
+and caps at `200`. Returns `{ items, limit, offset }`, each item with `id`,
+`source`, `type`, `punk_id`, `buyer`, `seller`, `wei_amount`,
+`usd_value_cents`, `tx_hash`, `block_number`, `timestamp`, and `day_unix`.
 
 ## Bids
 

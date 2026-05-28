@@ -16,7 +16,7 @@ both Punk markets. It is a Nuxt 4 app that extends the shared
 | `/lots/new`            | Create a lot from vaulted Punks; `/lots/[id]` is a single lot.                      |
 | `/purchase-offers`     | Open native-ETH offers; `/purchase-offers/new` places one, `/[id]` opens one.       |
 | `/activity`            | Recent auction-house and market activity.                                           |
-| `/profile/[handle]`    | An address or ENS name: owned Punks, vault custody and `/vault`, `/offers`, claimable escrow, `/settings`. |
+| `/profile/[handle]`    | An address or ENS name: owned Punks and claimable escrow, with `/vault`, `/offers`, `/wrappers`, and `/settings` sub-pages. |
 | `/about`, `/terms`     | Project context and terms.                                                          |
 
 A Punk's detail page surfaces any auction, lot, or offer it currently

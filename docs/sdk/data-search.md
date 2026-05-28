@@ -54,8 +54,8 @@ const facets = punks.facets({ text: 'mohawk' })
 Text search also expands a small offchain synonym map before matching canonical
 traits. Folk names such as `marilyn`, `covid`, `claude`, `mr t`,
 `ringo starr`, and `helena bonham carter` are mapped to normal search text like
-`"medical mask"` or `female "blonde bob"
-"hot lipstick"`. The map lives at `sdk/src/search-synonyms.json` as simple
+`"medical mask"` or `female "blonde bob" "hot lipstick"`. The map lives at
+`sdk/src/search-synonyms.json` as simple
 key/value JSON so it can be extended by PR.
 
 ## Dataset Reads

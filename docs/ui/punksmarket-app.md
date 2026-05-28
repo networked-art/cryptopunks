@@ -29,8 +29,8 @@ primitives.
   unwrapping — go directly to the connected wallet's own RPC via viem and
   never touch the app's proxy.
 - **Activity feed.** `/activity` is served by the shared indexer
-  (`NUXT_PUBLIC_INDEXER_URL`, a Ponder/Postgres service) — see
-  [`indexer/`](https://github.com/networked-art/cryptopunks/tree/master/indexer).
+  (`NUXT_PUBLIC_INDEXER_URL`, a Ponder/Postgres service) — see the
+  [Indexer](/indexer) docs.
 - **Rendering.** The grid composites a CDN-hosted sprite sheet with
   pre-baked glitch outline and stripe overlays in CSS; detail views render
   through the SDK's offline renderer.

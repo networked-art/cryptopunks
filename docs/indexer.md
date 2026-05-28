@@ -21,9 +21,9 @@ and Kamal deployment — that these pages do not.
 | `WrappedPunk`         | [`0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6`](https://evm.now/address/0xb7f7F6C52F2e2fdb1963Eab30438024864c313F6) | ERC-721 wrapper for canonical Punks              |
 | `CryptoPunks721`      | [`0x000000000000003607fce1aC9E043a86675C5C2F`](https://evm.now/address/0x000000000000003607fce1aC9E043a86675C5C2F) | ERC-721 wrapper for canonical Punks              |
 | `PunksV1Wrapper`      | [`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) | ERC-721 wrapper for June 9th 2017 Punks          |
-| `PunksMarket`         | [`0x64e507FEBF26521b73FbdfA533106B2042533218`](https://evm.now/address/punksmarket.eth)                            | Criteria-bid market over the June 9th contract   |
+| `PunksMarket`         | [`0x64e507FEBF26521b73FbdfA533106B2042533218`](https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218) | Criteria-bid market over the June 9th contract   |
 | `PunksAuction`        | [`0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873`](https://evm.now/address/0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873) | Auction house: lots, auctions, offers            |
-| `PunksVaultFactory`   | [`0xf3381B259B2FE142c0A87bffF463695d935D6F66`](https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66) | Auction vault custody                            |
+| `PunksVaultFactory`   | [`0xf3381B259B2FE142c0A87bffF463695d935D6F66`](https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66) | Punks Vault custody                              |
 | `StashFactory`        | [`0x000000000000A6fA31F5fC51c1640aAc76866750`](https://evm.now/address/0x000000000000A6fA31F5fC51c1640aAc76866750) | Stash custody                                    |
 
 ## Provenance model
