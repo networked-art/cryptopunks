@@ -1,0 +1,12 @@
+{
+  "burned": {
+    "title": "Burned Punks",
+    "description": "Punks provably sent to a burn address or otherwise removed from circulation.",
+    "aliases": ["burned punks", "destroyed punks"],
+    "source": "https://burnedpunks.com",
+    "standard": "v2",
+    "ids": [
+      685, 2317, 2761, 2838, 3493, 3808, 5041, 5237, 5449, 7755, 8611, 9146
+    ]
+  }
+}

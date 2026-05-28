@@ -2,6 +2,7 @@ import type { Address, Hex, PublicClient } from 'viem'
 import type {
   HeadVariantName,
   HeadVariantValue,
+  PunkStandardValue,
   PunkTypeName,
   PunkTypeValue,
   SkinToneName,
@@ -208,6 +209,30 @@ export type PunkMetadataAttribute = {
   trait_type: string
   value: string | number
   display_type?: string
+}
+
+/// A named, sourced set of Punk ids — for example `burned` or `museum`. Unlike
+/// a trait-phrase synonym, a collection resolves to explicit ids, so it flows
+/// through the existing `PunksSearchQuery.ids` path in both search and offer
+/// slots. Bundled in `search-collections.json` and surfaced through
+/// `PunksSdk.collections`.
+export type CuratedCollection = {
+  /// Stable kebab-case key, e.g. `burned`.
+  slug: string
+  /// Human-facing label, e.g. `Burned Punks`.
+  title: string
+  description: string
+  /// Free-text phrases that resolve to this collection in `query.text`
+  /// (matched as whole phrases, the trailing `punk(s)` filler optional).
+  aliases: string[]
+  /// Where the set is curated, for attribution in a UI.
+  source: string
+  /// Which contract the set is attributed to, normalized from the bundle's
+  /// `standard` field. Burns and institutional holdings must point at the
+  /// right contract (`PunkStandard.CryptoPunks` / `CryptoPunksV1`).
+  standard: PunkStandardValue
+  /// The member Punk ids, deduplicated and ascending.
+  ids: number[]
 }
 
 export type PunkMetadata = {

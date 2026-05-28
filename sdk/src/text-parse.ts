@@ -4,6 +4,7 @@ import {
   skinToneNames,
   type SkinToneValue,
 } from './constants'
+import { searchCollections } from './collections'
 import searchSynonymsJson from './search-synonyms.json'
 import { PunksDataValidationError } from './utils'
 
@@ -298,6 +299,11 @@ function parseSearchTextGroup(
     i += 1
   }
 
+  // Curated collections resolve first, pulling whole-phrase aliases
+  // (`burned punks`) out as `includeIds` before the remaining terms reach the
+  // trait-phrase synonym rewriter. The two never collide: collections own id
+  // sets, synonyms own trait phrases.
+  group.freeTerms = resolveSearchCollectionTerms(group, group.freeTerms)
   group.freeTerms = expandSearchSynonymTerms(group.freeTerms)
   return group
 }
@@ -367,6 +373,116 @@ function matchSearchSynonymEntry(
   const maxTerms = Math.min(entry.tokens.length, terms.length - start)
   for (let consumed = 1; consumed <= maxTerms; consumed++) {
     const normalized = normalizeSynonymText(terms[start + consumed - 1].text)
+    if (!normalized) return undefined
+    phrase = phrase ? `${phrase} ${normalized}` : normalized
+    if (phrase === entry.key) return consumed
+    if (!entry.key.startsWith(`${phrase} `)) return undefined
+  }
+  return undefined
+}
+
+type SearchCollectionEntry = {
+  key: string
+  tokens: string[]
+  ids: readonly number[]
+}
+
+const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
+
+/// Builds the alias → id-set match table from the bundled collections. The
+/// matchable key for each slug and alias is normalized and stripped of the
+/// trailing `punk(s)` filler (so `burned punks`, `burned`, and the slug all
+/// reduce to the same key), mirroring how `freeTerms` look by the time this
+/// runs. Longest keys sort first so a multi-word alias wins over a shorter one.
+/// A new alias must not collide with what the group loop consumes first (a
+/// bare number, `#id`, `albino`, or an `<n> <axis>` / skin bigram), or it
+/// never reaches this table.
+function buildSearchCollectionEntries(): SearchCollectionEntry[] {
+  const byKey = new Map<string, { slug: string; ids: readonly number[] }>()
+  for (const collection of searchCollections) {
+    for (const phrase of [collection.slug, ...collection.aliases]) {
+      const key = normalizeCollectionPhrase(phrase)
+      if (!key) continue
+      const existing = byKey.get(key)
+      if (existing !== undefined && existing.slug !== collection.slug) {
+        throw new PunksDataValidationError(
+          `collection alias "${key}" is claimed by both ${existing.slug} and ${collection.slug}`,
+        )
+      }
+      byKey.set(key, { slug: collection.slug, ids: collection.ids })
+    }
+  }
+  return [...byKey.entries()]
+    .map(([key, value]) => ({
+      key,
+      tokens: key.split(/\s+/),
+      ids: value.ids,
+    }))
+    .sort((a, b) => {
+      const tokenDelta = b.tokens.length - a.tokens.length
+      if (tokenDelta !== 0) return tokenDelta
+      return b.key.length - a.key.length
+    })
+}
+
+/// Normalizes a collection slug/alias the same way `freeTerms` are normalized
+/// at match time, then drops the `punk(s)` filler the group parser already
+/// removes from user input. Returns `''` when nothing matchable remains.
+function normalizeCollectionPhrase(phrase: string): string {
+  return normalizeSynonymText(phrase)
+    .split(/\s+/)
+    .filter((token) => token && token !== 'punk' && token !== 'punks')
+    .join(' ')
+}
+
+/// Replaces whole-phrase collection aliases in `terms` with their id set,
+/// pushed onto `group.includeIds`, and returns the terms left for downstream
+/// trait/synonym resolution. Only non-exact terms match, so a quoted `"burned"`
+/// stays a literal trait lookup.
+function resolveSearchCollectionTerms(
+  group: ParsedSearchTextGroup,
+  terms: readonly SearchTextTerm[],
+): SearchTextTerm[] {
+  if (terms.length === 0 || SEARCH_COLLECTION_ENTRIES.length === 0) {
+    return [...terms]
+  }
+  const remaining: SearchTextTerm[] = []
+  let i = 0
+  while (i < terms.length) {
+    const match = findSearchCollectionAt(terms, i)
+    if (match === undefined) {
+      remaining.push(terms[i])
+      i += 1
+      continue
+    }
+    for (const id of match.entry.ids) addIncludeId(group, id)
+    i += match.consumed
+  }
+  return remaining
+}
+
+function findSearchCollectionAt(
+  terms: readonly SearchTextTerm[],
+  start: number,
+): { entry: SearchCollectionEntry; consumed: number } | undefined {
+  for (const entry of SEARCH_COLLECTION_ENTRIES) {
+    const consumed = matchSearchCollectionEntry(terms, start, entry)
+    if (consumed !== undefined) return { entry, consumed }
+  }
+  return undefined
+}
+
+function matchSearchCollectionEntry(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  entry: SearchCollectionEntry,
+): number | undefined {
+  let phrase = ''
+  const maxTerms = Math.min(entry.tokens.length, terms.length - start)
+  for (let consumed = 1; consumed <= maxTerms; consumed++) {
+    const term = terms[start + consumed - 1]
+    if (term.exact) return undefined
+    const normalized = normalizeSynonymText(term.text)
     if (!normalized) return undefined
     phrase = phrase ? `${phrase} ${normalized}` : normalized
     if (phrase === entry.key) return consumed

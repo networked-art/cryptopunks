@@ -101,11 +101,37 @@ compiles 1:1 to an onchain `Punks.Filter`. Recognized phrases:
 | `dark skin`, `albino skin`, `skin fair`, `albino` | `skinTone` (expands to Female + Male slot)            |
 | `#1234`, bare `1234`                              | offer-slot `includeIds[]`                             |
 | `-1234`, `-#1234`                                 | offer-slot `excludeIds[]`                             |
+| `burned`, `burned punks`                          | curated-collection id set (see below)                 |
 | Anything else                                     | case-insensitive trait name match                     |
 
 Skin tones map to the four human head-variant slots: `Dark → 1`, `Brown → 2`,
 `Fair → 3`, `Albino → 4`. Aliens, Apes, and Zombies are never selected by a
 skin tone.
+
+### Curated collections
+
+Curated collections are named, sourced sets of Punk ids — `burned` today, more
+to come. A collection alias resolves to its id set through the existing
+`includeIds` path, so it composes with the rest of a query:
+
+```ts
+punks.search({ text: 'burned punks' }) // the burned set
+punks.search({ text: 'burned alien' }) // burned ∩ alien
+punks.count({ text: 'burned OR alien' })
+```
+
+Matching is whole-phrase and on by default; the trailing `punk(s)` is optional
+and quoting (`"burned"`) opts back out to a literal trait lookup. Look the sets
+up directly for UI — each call returns a fresh, mutable copy:
+
+```ts
+punks.collections.list() // [{ slug, title, description, aliases, source, standard, ids }]
+punks.collections.get('burned') // one collection, or undefined
+punks.collections.has('burned')
+```
+
+Each collection carries a `standard` (`PunkStandard.CryptoPunks` /
+`CryptoPunksV1`) so burns and holdings stay attributed to the right contract.
 
 Use `dataset` directly when you want catalogs, palette data, or bitmaps:
 
