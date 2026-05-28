@@ -211,6 +211,22 @@ export type PunkMetadataAttribute = {
   display_type?: string
 }
 
+/// A sub-set within a collection that resolves on its own — for example the
+/// individual institutions inside `museum`, so `search("MOMA")` returns just
+/// MoMA's Punks. Its `aliases` resolve to `ids` the same way the parent's do.
+export type CuratedCollectionInstitution = {
+  /// Stable key within the collection, e.g. `moma`.
+  slug: string
+  /// Human-facing label, e.g. `Museum of Modern Art (MoMA)`.
+  title: string
+  /// Free-text phrases that resolve to this sub-set in `query.text`.
+  aliases: string[]
+  /// Where the sub-set is curated, for attribution in a UI.
+  source: string
+  /// This sub-set's member Punk ids, deduplicated and ascending.
+  ids: number[]
+}
+
 /// A named, sourced set of Punk ids — for example `burned` or `museum`. Unlike
 /// a trait-phrase synonym, a collection resolves to explicit ids, so it flows
 /// through the existing `PunksSearchQuery.ids` path in both search and offer
@@ -231,8 +247,12 @@ export type CuratedCollection = {
   /// `standard` field. Burns and institutional holdings must point at the
   /// right contract (`PunkStandard.CryptoPunks` / `CryptoPunksV1`).
   standard: PunkStandardValue
-  /// The member Punk ids, deduplicated and ascending.
+  /// The member Punk ids, deduplicated and ascending. When the collection has
+  /// `institutions`, this is the union of their ids.
   ids: number[]
+  /// Independently resolvable sub-sets, when present (e.g. the institutions in
+  /// `museum`). Omitted for flat collections like `burned`.
+  institutions?: CuratedCollectionInstitution[]
 }
 
 export type PunkMetadata = {

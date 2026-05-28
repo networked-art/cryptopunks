@@ -12,11 +12,19 @@ const BURNED = [
   685, 2317, 2761, 2838, 3493, 3808, 5041, 5237, 5449, 7755, 8611, 9146,
 ]
 
+const MUSEUM = [
+  74, 110, 305, 1286, 2554, 2786, 2838, 3407, 3831, 4018, 5160, 5449, 5616,
+  7178, 7899, 9833,
+]
+
+const MOMA = [74, 2786, 3407, 4018, 5160, 5616, 7178, 7899]
+const ZKM = [1286, 2554, 2838, 5449]
+
 describe('curated collections', () => {
   it('bundles the burned set as validated, normalized data', () => {
     assert.deepEqual(
       searchCollections.map((collection) => collection.slug),
-      ['burned'],
+      ['burned', 'museum'],
     )
 
     const burned = getSearchCollection('burned')
@@ -82,10 +90,11 @@ describe('curated collections', () => {
 
     assert.deepEqual(
       punks.collections.list().map((collection) => collection.slug),
-      ['burned'],
+      ['burned', 'museum'],
     )
     assert.equal(punks.collections.has('burned'), true)
-    assert.equal(punks.collections.has('museum'), false)
+    assert.equal(punks.collections.has('museum'), true)
+    assert.equal(punks.collections.has('missing'), false)
     assert.equal(punks.collections.get('burned').ids.length, 12)
     assert.equal(punks.collections.get('missing'), undefined)
 
@@ -111,5 +120,48 @@ describe('curated collections', () => {
     assert.throws(() => burned.ids.push(9999), TypeError)
     assert.throws(() => searchCollections.push(burned), TypeError)
     assert.equal(getSearchCollection('burned').ids.length, 12)
+
+    // The freeze reaches into nested institutions too.
+    const museum = searchCollections.find((c) => c.slug === 'museum')
+    assert.ok(Object.isFrozen(museum.institutions))
+    assert.ok(Object.isFrozen(museum.institutions[0]))
+    assert.ok(Object.isFrozen(museum.institutions[0].ids))
+    assert.throws(() => museum.institutions[0].ids.push(1), TypeError)
+  })
+
+  it('nests museum institutions and resolves each on its own', () => {
+    const museum = getSearchCollection('museum')
+    assert.equal(museum.title, 'Museum Punks')
+    assert.equal(museum.standard, 0)
+    // The collection id set is the union of its institutions.
+    assert.deepEqual(museum.ids, MUSEUM)
+    assert.deepEqual(
+      museum.institutions.map((institution) => institution.slug),
+      ['centrepompidou', 'icam', 'lacma', 'moma', 'tma', 'zkm'],
+    )
+    const moma = museum.institutions.find((i) => i.slug === 'moma')
+    assert.equal(moma.title, 'Museum of Modern Art (MoMA)')
+    assert.deepEqual(moma.ids, MOMA)
+    // A flat collection has no institutions.
+    assert.equal(getSearchCollection('burned').institutions, undefined)
+  })
+
+  it('searches the whole museum set and individual institutions', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    assert.deepEqual(sdk.searchSync({ text: 'museum punks' }), MUSEUM)
+    // Institution name and abbreviation, case-insensitively.
+    assert.deepEqual(sdk.searchSync({ text: 'MOMA' }), MOMA)
+    assert.deepEqual(sdk.searchSync({ text: 'museum of modern art' }), MOMA)
+    assert.deepEqual(sdk.searchSync({ text: 'zkm' }), ZKM)
+    assert.deepEqual(sdk.searchSync({ text: 'pompidou' }), [110])
+    assert.deepEqual(sdk.searchSync({ text: 'toledo museum of art' }), [9833])
+
+    // Both ZKM Punks #2838 and #5449 are also burned (sent to the market
+    // contract), so the two sets overlap exactly there.
+    assert.deepEqual(
+      sdk.searchSync({ text: 'zkm' }).filter((id) => BURNED.includes(id)),
+      [2838, 5449],
+    )
   })
 })

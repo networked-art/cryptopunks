@@ -110,9 +110,9 @@ skin tone.
 
 ### Curated collections
 
-Curated collections are named, sourced sets of Punk ids — `burned` today, more
-to come. A collection alias resolves to its id set through the existing
-`includeIds` path, so it composes with the rest of a query:
+Curated collections are named, sourced sets of Punk ids — `burned` and `museum`
+today, more to come. A collection alias resolves to its id set through the
+existing `includeIds` path, so it composes with the rest of a query:
 
 ```ts
 punks.search({ text: 'burned punks' }) // the burned set
@@ -120,13 +120,22 @@ punks.search({ text: 'burned alien' }) // burned ∩ alien
 punks.count({ text: 'burned OR alien' })
 ```
 
+Collections can nest independently resolvable institutions, so `museum` matches
+the whole set while each institution matches its own holdings:
+
+```ts
+punks.search({ text: 'museum punks' }) // every institution-held Punk
+punks.search({ text: 'MOMA' }) // just MoMA's
+punks.search({ text: 'zkm' }) // just ZKM's
+```
+
 Matching is whole-phrase and on by default; the trailing `punk(s)` is optional
 and quoting (`"burned"`) opts back out to a literal trait lookup. Look the sets
 up directly for UI — each call returns a fresh, mutable copy:
 
 ```ts
-punks.collections.list() // [{ slug, title, description, aliases, source, standard, ids }]
-punks.collections.get('burned') // one collection, or undefined
+punks.collections.list() // [{ slug, title, description, aliases, source, standard, ids, institutions? }]
+punks.collections.get('museum') // one collection (with its institutions), or undefined
 punks.collections.has('burned')
 ```
 
