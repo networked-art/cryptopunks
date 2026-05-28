@@ -104,22 +104,21 @@ const inventory = useAccountPunkInventory(() => address.value)
 const custodyPlan = usePunkCustodyPlan()
 const { refreshMarketState } = usePunkMarketState()
 const optimistic = useOptimisticMarketPatch()
+const detail = usePunkDetailDataContext()
 const {
   owner: resolvedOwner,
   nativeOwner,
-  isWrapped: chainIsWrapped,
-  isVaulted: chainIsVaulted,
-} = usePunkOwner(
-  () => props.punkId,
-  () => props.standard,
-)
+  isWrapped: detailIsWrapped,
+  isVaulted: detailIsVaulted,
+  reconcileOwner,
+} = detail
 
 const activeAction = ref<'unwrap' | 'vault' | 'reclaim' | null>(null)
 
-// Synthesize an inventory item from chain state when the user is the resolved
+// Synthesize an inventory item from detail state when the user is the resolved
 // holder of a custodied Punk. Keeps owner actions available even when the
 // indexer-backed inventory hasn't reached this punk yet.
-const chainOwnerItem = computed<AccountPunkInventoryItem | null>(() => {
+const detailOwnerItem = computed<AccountPunkInventoryItem | null>(() => {
   if (
     !address.value ||
     !resolvedOwner.value ||
@@ -136,7 +135,7 @@ const chainOwnerItem = computed<AccountPunkInventoryItem | null>(() => {
     nativeOwner: nativeOwner.value,
     nativeStandard: null,
   } as const
-  if (chainIsWrapped.value) {
+  if (detailIsWrapped.value) {
     const wrapper = chainWrapperFor(nativeOwner.value)
     if (!wrapper) return null
     return {
@@ -146,7 +145,7 @@ const chainOwnerItem = computed<AccountPunkInventoryItem | null>(() => {
       custody: 'wrapped-wallet',
     }
   }
-  if (chainIsVaulted.value) {
+  if (detailIsVaulted.value) {
     return {
       ...base,
       isWrapped: false,
@@ -163,7 +162,7 @@ const ownerItem = computed(
       (item) =>
         item.standard === props.standard && item.punkId === props.punkId,
     ) ??
-    chainOwnerItem.value ??
+    detailOwnerItem.value ??
     undefined,
 )
 
@@ -217,6 +216,7 @@ const {
     activeAction.value = null
     optimistic.flush()
     void inventory.refresh()
+    void detail.refresh()
     scheduleMarketRefresh()
     emit('changed', tx)
   },
@@ -274,7 +274,8 @@ const reclaimButtonLabel = computed(() =>
     : 'Reclaim',
 )
 
-function actUnwrap() {
+async function actUnwrap() {
+  if (!(await reconcileOwner())) return
   const item = ownerItem.value
   if (!item || !unwrapAvailable.value || pending.value) return
 
@@ -293,7 +294,8 @@ function actUnwrap() {
   })
 }
 
-function actVault() {
+async function actVault() {
+  if (!(await reconcileOwner())) return
   const item = ownerItem.value
   const owner = address.value
   if (!item || !owner || !vaultAvailable.value || pending.value) return
@@ -323,6 +325,7 @@ function actVault() {
 }
 
 async function actReclaim() {
+  if (!(await reconcileOwner())) return
   const item = ownerItem.value
   const owner = address.value
   if (!item || !owner || !reclaimAvailable.value || pending.value) return

@@ -41,13 +41,12 @@
 </template>
 
 <script setup lang="ts">
-import type { Address, Hash } from 'viem'
+import type { Hash } from 'viem'
 import { useConfig, useConnection } from '@wagmi/vue'
 import { resolveAddressInput } from '~/utils/addressInput'
 
 const props = defineProps<{
   punkId: number
-  viaVault?: Address | null
 }>()
 const emit = defineEmits<{ transferred: [tx: Hash] }>()
 
@@ -55,6 +54,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const config = useConfig()
 const { address } = useConnection()
+const detail = usePunkDetailDataContext()
 
 const to = ref('')
 
@@ -68,8 +68,12 @@ async function transfer(): Promise<Hash> {
   const recipient = await resolveAddressInput(config, to.value, {
     invalidMessage: 'Enter a valid recipient address or ENS name.',
   })
-  const plan = props.viaVault
-    ? sdk.value.vault.at(props.viaVault).prepareTransferPunk({
+  if (!(await detail.reconcileOwner())) {
+    throw new Error('Current owner state could not be verified.')
+  }
+  const viaVault = detail.isVaulted.value ? detail.nativeOwner.value : null
+  const plan = viaVault
+    ? sdk.value.vault.at(viaVault).prepareTransferPunk({
         punkId: props.punkId,
         to: recipient,
       })
