@@ -127,6 +127,7 @@ const TRANSFER_KINDS = new Set([
   'unstashed',
   'vaulted',
   'unvaulted',
+  'escrowed',
 ])
 
 function pickInitiator(event: ActivityEvent): Address | undefined {

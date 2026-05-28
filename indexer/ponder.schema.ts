@@ -347,10 +347,10 @@ export const backfillMarker = onchainTable('backfill_markers', (t) => ({
 // cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market,
 // punks_auction }.
 // `type` ∈ { assign, transfer, stashed, unstashed, vaulted, unvaulted,
-// listing, listing_cancelled, bid, bid_adjusted, bid_cancelled, sale, wrap,
-// unwrap, escrow_credit, escrow_withdrawal, lot_created, lot_cancelled,
-// lot_cleared, lot_updated, auction_started, auction_settled, offer_placed,
-// offer_cancelled, offer_adjusted }.
+// escrowed, listing, listing_cancelled, bid, bid_adjusted, bid_cancelled,
+// sale, wrap, unwrap, escrow_credit, escrow_withdrawal, lot_created,
+// lot_cancelled, lot_cleared, lot_updated, auction_started, auction_settled,
+// offer_placed, offer_cancelled, offer_adjusted }.
 // `day_unix` is the UTC day of `timestamp` — stable JOIN key against
 // `eth_usd_prices`. `usd_value_cents` is the Stripe-style USD-cent equivalent
 // of `wei_amount` at the day's ETH/USD price, cached on the row at indexing

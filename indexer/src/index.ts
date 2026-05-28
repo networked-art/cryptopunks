@@ -58,6 +58,7 @@ type TransferActivityType =
   | 'unstashed'
   | 'vaulted'
   | 'unvaulted'
+  | 'escrowed'
 
 type CustodyAccount = Pick<
   typeof account.$inferSelect,
@@ -786,6 +787,13 @@ async function classifyNativeTransfer(
     return { type: 'unstashed', actor: custodyOwner.address }
   }
   if (custodyOwner && sameAddress(custodyOwner.vault, from)) {
+    // Vault → PunksAuctionEscrow is a lot deposit, not a generic unvault.
+    // Surface it as its own kind so the activity feed can label it "Escrowed"
+    // and keep the broader escrow-suppression rule intact for settlement
+    // shuffles (escrow → buyer is already covered by `AuctionItemDelivered`).
+    if (sameAddress(to, PUNKS_AUCTION_ESCROW_ADDRESS)) {
+      return { type: 'escrowed', actor: custodyOwner.address }
+    }
     return { type: 'unvaulted', actor: custodyOwner.address }
   }
 
@@ -859,6 +867,9 @@ function shouldSuppressV2Activity(
     'day_unix' | 'usd_value_cents'
   >,
 ): boolean {
+  // `escrowed` is the lot-deposit (vault → escrow) row we explicitly want to
+  // surface — keep it even though `to` is the suppressed escrow address.
+  if (values.type === 'escrowed') return false
   return (
     touchesSuppressedAddress(values.from) ||
     touchesSuppressedAddress(values.to) ||

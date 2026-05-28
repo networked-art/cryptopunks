@@ -21,6 +21,7 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   unstashed: 'Unstashed',
   vaulted: 'Vaulted',
   unvaulted: 'Unvaulted',
+  escrowed: 'Escrowed',
   wrap: 'Wrapped',
   unwrap: 'Unwrapped',
   listing: 'Listed',

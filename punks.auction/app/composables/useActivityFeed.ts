@@ -8,6 +8,7 @@ export type ActivityKind =
   | 'unstashed'
   | 'vaulted'
   | 'unvaulted'
+  | 'escrowed'
   | 'wrap'
   | 'unwrap'
   | 'listing'
