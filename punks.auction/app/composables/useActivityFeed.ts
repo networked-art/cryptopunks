@@ -15,19 +15,33 @@ export type ActivityKind =
   | 'bid'
   | 'bid_cancelled'
   | 'sale'
+  | 'lot_created'
+  | 'lot_cancelled'
+  | 'lot_cleared'
+  | 'lot_updated'
+  | 'auction_started'
+  | 'auction_settled'
+  | 'offer_placed'
+  | 'offer_cancelled'
+  | 'offer_adjusted'
+  | 'escrow_credit'
+  | 'escrow_withdrawal'
 
 export type ActivitySource =
   | 'cryptopunks_v2'
   | 'wrapped_punks'
   | 'cryptopunks_721'
+  | 'punks_auction'
   | string
 
-// CryptoPunks (V2) and both its ERC-721 wrappers. `PunksAuction` is a separate
-// source the indexer will add later; this feed covers native market activity.
-const V2_ACTIVITY_SOURCES = [
+// CryptoPunks (V2), its ERC-721 wrappers, and the PunksAuction stack. V1
+// activity hangs off its own profile/punk pages — this feed covers normal
+// CryptoPunks market activity plus the auction house.
+const ACTIVITY_SOURCES = [
   'cryptopunks_v2',
   'wrapped_punks',
   'cryptopunks_721',
+  'punks_auction',
 ]
 
 const WRAPPED_SOURCES = new Set(['wrapped_punks', 'cryptopunks_721'])
@@ -118,7 +132,7 @@ export function useActivityFeed(
 
   function buildWhere() {
     const where: Record<string, unknown> = {
-      source_in: V2_ACTIVITY_SOURCES,
+      source_in: ACTIVITY_SOURCES,
     }
 
     const punkId = toValue(opts.punkId)
@@ -265,15 +279,32 @@ function isWrappedEvent(row: RawEvent): boolean {
 function pickFrom(row: RawEvent): Address | undefined {
   if (row.type === 'sale')
     return (row.seller ?? row.from) as Address | undefined
-  if (row.type === 'bid' || row.type === 'bid_cancelled')
+  if (
+    row.type === 'bid' ||
+    row.type === 'bid_cancelled' ||
+    row.type === 'offer_placed' ||
+    row.type === 'offer_cancelled' ||
+    row.type === 'offer_adjusted'
+  )
     return (row.bidder ?? row.actor) as Address | undefined
-  if (row.type === 'listing' || row.type === 'listing_cancelled')
-    return (row.actor ?? row.seller ?? row.from) as Address | undefined
+  if (
+    row.type === 'listing' ||
+    row.type === 'listing_cancelled' ||
+    row.type === 'lot_created' ||
+    row.type === 'lot_cancelled' ||
+    row.type === 'lot_cleared' ||
+    row.type === 'lot_updated' ||
+    row.type === 'auction_started'
+  )
+    return (row.seller ?? row.actor ?? row.from) as Address | undefined
+  if (row.type === 'auction_settled')
+    return (row.seller ?? row.from) as Address | undefined
   return (row.from ?? row.actor) as Address | undefined
 }
 
 function pickTo(row: RawEvent): Address | undefined {
-  if (row.type === 'sale') return (row.buyer ?? row.to) as Address | undefined
+  if (row.type === 'sale' || row.type === 'auction_settled')
+    return (row.buyer ?? row.to) as Address | undefined
   return (row.to ?? undefined) as Address | undefined
 }
 

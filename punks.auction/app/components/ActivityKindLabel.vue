@@ -27,6 +27,17 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   bid: 'Bid placed',
   bid_cancelled: 'Bid cancelled',
   sale: 'Sold',
+  lot_created: 'Lot created',
+  lot_cancelled: 'Lot cancelled',
+  lot_cleared: 'Lot cleared',
+  lot_updated: 'Lot updated',
+  auction_started: 'Auction started',
+  auction_settled: 'Auction settled',
+  offer_placed: 'Offer placed',
+  offer_cancelled: 'Offer cancelled',
+  offer_adjusted: 'Offer adjusted',
+  escrow_credit: 'Escrow credited',
+  escrow_withdrawal: 'Escrow withdrawn',
 }
 
 const label = computed(() => KIND_LABEL[props.kind] ?? props.kind)

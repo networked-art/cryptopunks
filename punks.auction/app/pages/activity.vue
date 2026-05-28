@@ -4,9 +4,9 @@
       <div class="page-head-text">
         <h1>Activity</h1>
         <p class="muted">
-          Every <code>CryptoPunks</code> market event — claims, transfers,
-          listings, bids, sales, and wraps — newest first.
-          <code>PunksAuction</code> activity joins here once it's live.
+          Every <code>CryptoPunks</code> and <code>PunksAuction</code> market
+          event — claims, transfers, listings, bids, sales, wraps, lots, and
+          purchase offers — newest first.
         </p>
       </div>
     </header>
@@ -86,8 +86,11 @@ useSeoMeta({
 type FilterKey =
   | 'sales'
   | 'listings'
-  | 'transfers'
+  | 'lots'
+  | 'auctions'
   | 'bids'
+  | 'offers'
+  | 'transfers'
   | 'wraps'
   | 'unwraps'
 
@@ -99,11 +102,26 @@ const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
     kinds: ['listing', 'listing_cancelled'],
   },
   {
+    key: 'lots',
+    label: 'Lots',
+    kinds: ['lot_created', 'lot_cancelled', 'lot_cleared', 'lot_updated'],
+  },
+  {
+    key: 'auctions',
+    label: 'Auctions',
+    kinds: ['auction_started', 'auction_settled'],
+  },
+  { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_cancelled'] },
+  {
+    key: 'offers',
+    label: 'Offers',
+    kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'],
+  },
+  {
     key: 'transfers',
     label: 'Transfers',
     kinds: ['transfer', 'stashed', 'unstashed', 'vaulted', 'unvaulted'],
   },
-  { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_cancelled'] },
   { key: 'wraps', label: 'Wraps', kinds: ['wrap'] },
   { key: 'unwraps', label: 'Unwraps', kinds: ['unwrap'] },
 ]
