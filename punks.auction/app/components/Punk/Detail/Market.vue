@@ -78,7 +78,6 @@
               <LazyPunkDetailMarketListForm
                 :punk-id="punkId"
                 :current-price-wei="liveListing?.priceWei ?? null"
-                :via-vault="vaultAddress"
                 @listed="onChanged"
               />
               <Button
@@ -99,7 +98,6 @@
 
             <LazyPunkDetailMarketTransferForm
               :punk-id="punkId"
-              :via-vault="vaultAddress"
               @transferred="onChanged"
             />
           </template>
@@ -153,15 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ZERO_ADDRESS,
-  type ContractWritePlan,
-  type PunkListing,
-  type PunkMarketBid,
-} from '@networked-art/punks-sdk'
+import { ZERO_ADDRESS, type ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import type { Address, Hash, TransactionReceipt } from 'viem'
-import { TokenStandard } from '~/utils/auction'
 import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
@@ -169,25 +161,25 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
-const { sdk, publicClient } = usePunksSdk()
+const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
+const detail = usePunkDetailDataContext()
 const {
   owner: resolvedOwner,
   nativeOwner,
   isVaulted,
-  pending: ownerPending,
-  refresh: refreshOwner,
-} = usePunkOwner(() => props.punkId, TokenStandard.CryptoPunks)
+  ownerPending,
+  reconcileOwner,
+  reconcileMarket,
+} = detail
 
 const vaultAddress = computed<Address | null>(() =>
   isVaulted.value ? nativeOwner.value : null,
 )
 
-const listing = ref<PunkListing | null>(null)
-const bid = ref<PunkMarketBid | null>(null)
-const marketPending = ref(false)
-const error = ref<string | null>(null)
+const { listing, bid, marketPending } = detail
+const error = computed(() => detail.marketError.value)
 const pending = computed(() => ownerPending.value || marketPending.value)
 
 const isOwner = computed(
@@ -228,41 +220,6 @@ const canBuy = computed(() => {
   )
 })
 
-let refreshToken = 0
-
-async function refresh() {
-  const token = ++refreshToken
-  const c = publicClient.value
-  if (!c || !Number.isInteger(props.punkId)) {
-    listing.value = null
-    bid.value = null
-    return
-  }
-
-  marketPending.value = true
-  error.value = null
-  try {
-    const [nextListing, nextBid] = await Promise.all([
-      sdk.value.market.listing(props.punkId),
-      sdk.value.market.bid(props.punkId),
-    ])
-    if (token !== refreshToken) return
-    listing.value = nextListing
-    bid.value = nextBid
-  } catch (e) {
-    if (token !== refreshToken) return
-    error.value = (e as Error).message
-    listing.value = null
-    bid.value = null
-  } finally {
-    if (token === refreshToken) marketPending.value = false
-  }
-}
-
-watch([() => props.punkId, address, publicClient, sdk], () => void refresh(), {
-  immediate: true,
-})
-
 type DialogRef = {
   initializeRequest: (request?: () => Promise<Hash>) => void
 } | null
@@ -286,8 +243,8 @@ function run(plan: ContractWritePlan) {
 }
 
 function onChanged(tx: Hash) {
-  refresh()
-  refreshOwner()
+  void reconcileMarket()
+  void reconcileOwner()
   emit('changed', tx)
 }
 
@@ -295,7 +252,13 @@ function onComplete(receipt: TransactionReceipt) {
   onChanged(receipt.transactionHash as Hash)
 }
 
-function actUnlist() {
+async function actUnlist() {
+  const [ownerOk, marketOk] = await Promise.all([
+    reconcileOwner(),
+    reconcileMarket(),
+  ])
+  if (!ownerOk || !marketOk) return
+  if (!liveListing.value || !isOwner.value) return
   const plan = vaultAddress.value
     ? sdk.value.vault
         .at(vaultAddress.value)
@@ -304,7 +267,8 @@ function actUnlist() {
   run(plan)
 }
 
-function actBuy() {
+async function actBuy() {
+  if (!(await reconcileMarket())) return
   const current = liveListing.value
   if (!current || !canBuy.value) return
   run(
@@ -315,7 +279,12 @@ function actBuy() {
   )
 }
 
-function actAcceptBid() {
+async function actAcceptBid() {
+  const [ownerOk, marketOk] = await Promise.all([
+    reconcileOwner(),
+    reconcileMarket(),
+  ])
+  if (!ownerOk || !marketOk) return
   const current = activeBid.value
   if (!current || !isOwner.value) return
   const plan = vaultAddress.value
@@ -330,7 +299,8 @@ function actAcceptBid() {
   run(plan)
 }
 
-function actWithdrawBid() {
+async function actWithdrawBid() {
+  if (!(await reconcileMarket())) return
   if (!isHighBidder.value) return
   run(sdk.value.market.prepareWithdrawBid(props.punkId))
 }

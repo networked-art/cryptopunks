@@ -146,7 +146,11 @@
 <script setup lang="ts">
 import { useConnection } from '@wagmi/vue'
 import type { Hash } from 'viem'
-import type { TokenStandardValue, OfferRecord } from '~/utils/auction'
+import type {
+  LotRecord,
+  OfferRecord,
+  TokenStandardValue,
+} from '~/utils/auction'
 import type { SettleRequest } from '~/utils/settle'
 
 const props = defineProps<{
@@ -156,15 +160,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
-const {
-  punkAuctions,
-  punkLots,
-  punkOffers,
-  lots,
-  pending: contextPending,
-} = usePunkAuctionContext(
-  () => props.punkId,
-  () => props.standard,
+const detail = usePunkDetailDataContext()
+const { punkAuctions, punkLots, punkOffers, settleLots: lots } = detail
+const contextPending = computed(
+  () => detail.pending.value || detail.auctionPending.value,
 )
 const isContextEmpty = computed(
   () =>
@@ -203,10 +202,7 @@ const sortedPunkOffers = computed(() =>
 )
 
 const { address } = useConnection()
-const { owner } = usePunkOwner(
-  () => props.punkId,
-  () => props.standard,
-)
+const { owner } = detail
 const isOwner = computed(
   () =>
     !!address.value &&
@@ -214,8 +210,7 @@ const isOwner = computed(
     owner.value.toLowerCase() === address.value.toLowerCase(),
 )
 const canCreateLot = computed(
-  () =>
-    isOwner.value && !punkAuctions.value.length && !punkLots.value.length,
+  () => isOwner.value && !punkAuctions.value.length && !punkLots.value.length,
 )
 
 const createLotDialog = ref<{ start: () => Promise<void> } | null>(null)
@@ -228,16 +223,28 @@ const itemRef = computed(() => ({
   punkId: props.punkId,
 }))
 
-function actListLot() {
+async function actListLot() {
+  if (!(await detail.reconcileOwner())) return
+  if (!canCreateLot.value) return
+  const latestLots = await detail.ensureFullLots()
+  if (hasCurrentSellerLot(latestLots)) return
   void createLotDialog.value?.start()
 }
 
-function actStartAuctionFromOffer(offer: OfferRecord) {
-  void settleDialog.value?.start(buildOfferRequest('start', offer))
+async function actStartAuctionFromOffer(offer: OfferRecord) {
+  if (!(await detail.reconcileOwner())) return
+  if (!canCreateLot.value) return
+  const latestLots = await detail.ensureFullLots()
+  await nextTick()
+  void settleDialog.value?.start(buildOfferRequest('start', offer, latestLots))
 }
 
-function actSellNow(offer: OfferRecord) {
-  void settleDialog.value?.start(buildOfferRequest('accept', offer))
+async function actSellNow(offer: OfferRecord) {
+  if (!(await detail.reconcileOwner())) return
+  if (!canCreateLot.value) return
+  const latestLots = await detail.ensureFullLots()
+  await nextTick()
+  void settleDialog.value?.start(buildOfferRequest('accept', offer, latestLots))
 }
 
 /// Single-slot offer + the page's punk: skip the inventory picker entirely.
@@ -245,11 +252,27 @@ function actSellNow(offer: OfferRecord) {
 function buildOfferRequest(
   mode: 'start' | 'accept',
   offer: OfferRecord,
+  latestLots: readonly LotRecord[],
 ): SettleRequest {
-  if (offer.slots.length === 1) {
+  if (offer.slots.length === 1 && !hasCurrentSellerLot(latestLots)) {
     return { mode, offer, items: [itemRef.value] }
   }
   return { mode, offer }
+}
+
+function hasCurrentSellerLot(latestLots: readonly LotRecord[]) {
+  return latestLots.some(
+    (lot) =>
+      sameAddress(lot.seller, address.value) &&
+      lot.items.some(
+        (item) =>
+          item.standard === props.standard && item.punkId === props.punkId,
+      ),
+  )
+}
+
+function sameAddress(a?: string | null, b?: string | null) {
+  return !!a && !!b && a.toLowerCase() === b.toLowerCase()
 }
 
 function onChanged(tx: Hash) {
