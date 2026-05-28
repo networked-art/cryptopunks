@@ -3,9 +3,11 @@ import type { Context } from 'ponder:registry'
 import {
   auctionAuction,
   auctionLot,
+  auctionLotItem,
   auctionOffer,
   event as activityEvent,
 } from 'ponder:schema'
+import { asc, eq } from 'ponder'
 import { getAddress } from 'viem'
 
 import { ZERO_ADDRESS } from '../utils/contracts'
@@ -79,6 +81,23 @@ ponder.on('PunksAuction:LotCreated', async ({ event, context }) => {
     lot_id: event.args.lotId,
     ...meta,
   })
+})
+
+ponder.on('PunksAuction:LotItemDetail', async ({ event, context }) => {
+  await context.db
+    .insert(auctionLotItem)
+    .values({
+      lot_id: event.args.lotId,
+      item_index: event.args.itemIndex,
+      standard: standardName(event.args.standard),
+      punk_id: BigInt(event.args.punkId),
+      weight_bps: event.args.weightBps,
+    })
+    .onConflictDoUpdate({
+      standard: standardName(event.args.standard),
+      punk_id: BigInt(event.args.punkId),
+      weight_bps: event.args.weightBps,
+    })
 })
 
 ponder.on('PunksAuction:LotUpdated', async ({ event, context }) => {
@@ -519,24 +538,37 @@ ponder.on('PunksAuction:OfferAcceptedFromLot', async ({ event, context }) => {
       .set({ active: false, updated_at: event.block.timestamp })
   }
 
-  // The lot may have multiple Punks; without per-item events we record the
-  // sale as one aggregate row with no punk_id. Per-Punk visibility would
-  // require indexing LotItemDetail into a side table — left for a follow-up.
-  await insertActivity(context, {
-    id: eventId(event),
-    source: SOURCE_AUCTION,
-    source_event: 'OfferAcceptedFromLot',
-    type: 'sale',
-    actor: event.transaction.from,
-    buyer: offerer,
-    seller,
-    from: seller,
-    to: offerer,
-    wei_amount: event.args.amountWei,
-    offer_id: event.args.offerId,
-    lot_id: event.args.lotId,
-    ...meta,
-  })
+  const items = await context.db.sql
+    .select()
+    .from(auctionLotItem)
+    .where(eq(auctionLotItem.lot_id, event.args.lotId))
+    .orderBy(asc(auctionLotItem.item_index))
+
+  // Mirror the contract's _settleBundleDelivery allocation: each non-last
+  // item gets totalWei * weightBps / TOTAL_WEIGHT_BPS, the last gets the
+  // remainder so per-item sums round to exactly amountWei.
+  const totalWei = BigInt(event.args.amountWei)
+  const allocations = allocateBundleWei(items, totalWei)
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!
+    await insertActivity(context, {
+      id: `${eventId(event)}-item-${item.item_index}`,
+      source: SOURCE_AUCTION,
+      source_event: 'OfferAcceptedFromLot',
+      type: 'sale',
+      punk_id: item.punk_id,
+      actor: event.transaction.from,
+      buyer: offerer,
+      seller,
+      from: seller,
+      to: offerer,
+      wei_amount: allocations[i]!,
+      offer_id: event.args.offerId,
+      lot_id: event.args.lotId,
+      ...meta,
+    })
+  }
 })
 
 ponder.on(
@@ -568,6 +600,56 @@ ponder.on(
     // marks the offer and lot as consumed.
   },
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Push/pull escrow
+// ─────────────────────────────────────────────────────────────────────────────
+
+ponder.on('PunksAuction:Credited', async ({ event, context }) => {
+  const account = normalize(event.args.account)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [account],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'Credited',
+    type: 'escrow_credit',
+    actor: account,
+    to: account,
+    wei_amount: event.args.amount,
+    ...meta,
+  })
+})
+
+ponder.on('PunksAuction:Withdrawal', async ({ event, context }) => {
+  const account = normalize(event.args.account)
+  const meta = eventMeta(event)
+  await recordSelfInitiatedInteraction(context, event)
+  await ensureAccounts(
+    context,
+    [account],
+    event.block.number,
+    event.block.timestamp,
+  )
+
+  await insertActivity(context, {
+    id: eventId(event),
+    source: SOURCE_AUCTION,
+    source_event: 'Withdrawal',
+    type: 'escrow_withdrawal',
+    actor: account,
+    from: account,
+    wei_amount: event.args.amount,
+    ...meta,
+  })
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -618,4 +700,32 @@ function normalize(address: Address): Address {
 
 function nullableAddress(address: Address): Address | null {
   return address === ZERO_ADDRESS ? null : normalize(address)
+}
+
+// Mirrors the `TokenStandard` enum on `IPunksAuction`: 0 = canonical
+// CryptoPunks, 1 = the bugged V1 market.
+function standardName(value: number): string {
+  return value === 0 ? 'cryptopunks' : 'cryptopunks_v1'
+}
+
+// Mirrors `PunkLots.TOTAL_WEIGHT_BPS`.
+const TOTAL_WEIGHT_BPS = 10_000n
+
+// Replicates the contract's `_settleBundleDelivery` allocation: per-item wei is
+// `total * weightBps / TOTAL_WEIGHT_BPS`, with the final item absorbing the
+// rounding remainder so the per-item sum exactly matches `total`.
+function allocateBundleWei(
+  items: ReadonlyArray<{ weight_bps: number }>,
+  total: bigint,
+): bigint[] {
+  const allocations: bigint[] = []
+  let allocated = 0n
+  for (let i = 0; i < items.length; i++) {
+    const isLast = i === items.length - 1
+    const weight = BigInt(items[i]!.weight_bps)
+    const wei = isLast ? total - allocated : (total * weight) / TOTAL_WEIGHT_BPS
+    allocations.push(wei)
+    allocated += wei
+  }
+  return allocations
 }

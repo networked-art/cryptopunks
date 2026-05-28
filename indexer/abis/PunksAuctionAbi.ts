@@ -17,4 +17,6 @@ export const PunksAuctionAbi = parseAbi([
   'event OfferAccepted(uint256 indexed offerId, uint256 indexed punkId, address indexed seller, address offerer, uint256 amountWei)',
   'event OfferAcceptedFromLot(uint256 indexed offerId, uint256 indexed lotId, address indexed seller, address offerer, uint96 amountWei)',
   'event OfferAuctionInitialised(uint256 indexed offerId, uint256 indexed auctionId, uint256 indexed lotId, address seller, address offerer, uint96 amountWei)',
+  'event Credited(address indexed account, uint256 amount)',
+  'event Withdrawal(address indexed account, uint256 amount)',
 ])

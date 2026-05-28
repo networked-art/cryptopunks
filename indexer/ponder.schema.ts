@@ -440,6 +440,28 @@ export const auctionLot = onchainTable(
   }),
 )
 
+// One row per Punk stored on a lot, populated from `LotItemDetail`. Read at
+// instant-settle / cancellation time so handlers can emit per-Punk activity
+// without re-reading lot items from chain (the contract has already deleted
+// them by the time those events fire).
+// `standard` ∈ { cryptopunks, cryptopunks_v1 } — mirrors the `TokenStandard`
+// enum in `IPunksAuction`.
+export const auctionLotItem = onchainTable(
+  'auction_lot_items',
+  (t) => ({
+    lot_id: t.bigint().notNull(),
+    item_index: t.integer().notNull(),
+    standard: t.text().notNull(),
+    punk_id: t.bigint().notNull(),
+    weight_bps: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.lot_id, table.item_index] }),
+    lotIdx: index('auction_lot_item_lot_idx').on(table.lot_id),
+    punkIdx: index('auction_lot_item_punk_idx').on(table.punk_id),
+  }),
+)
+
 // PunksAuction live auction state. Mirrors the contract `Auction` struct so
 // settlement handlers can recover the seller for each delivered item.
 export const auctionAuction = onchainTable(

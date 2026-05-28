@@ -1069,8 +1069,15 @@ function shouldSuppressActivity(
   if (values.source !== SOURCE_V1 && values.source !== SOURCE_WRAPPER) {
     return false
   }
+  // Listings carry the seller in `seller`/`actor` rather than `from`/`to`; sales
+  // populate both buyer and seller. Check every party so settlement byproducts
+  // (e.g. `PunkOffered` from `PunksAuctionEscrow.listForSettlement`) drop too.
   return (
-    touchesSuppressedAddress(values.from) || touchesSuppressedAddress(values.to)
+    touchesSuppressedAddress(values.from) ||
+    touchesSuppressedAddress(values.to) ||
+    touchesSuppressedAddress(values.seller) ||
+    touchesSuppressedAddress(values.buyer) ||
+    touchesSuppressedAddress(values.actor)
   )
 }
 
