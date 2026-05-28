@@ -121,45 +121,36 @@ useSeoMeta({
 
 type FilterKey =
   | 'sales'
-  | 'listings'
-  | 'lots'
+  | 'marketplace'
   | 'auctions'
-  | 'bids'
   | 'offers'
-  | 'transfers'
   | 'wraps'
-  | 'unwraps'
 
 const FILTERS: { key: FilterKey; label: string; kinds: ActivityKind[] }[] = [
   { key: 'sales', label: 'Sales', kinds: ['sale'] },
   {
-    key: 'listings',
-    label: 'Listings',
-    kinds: ['listing', 'listing_cancelled'],
-  },
-  {
-    key: 'lots',
-    label: 'Lots',
-    kinds: ['lot_created', 'lot_cancelled', 'lot_cleared', 'lot_updated'],
+    key: 'marketplace',
+    label: 'Marketplace',
+    kinds: ['listing', 'listing_cancelled', 'bid', 'bid_cancelled'],
   },
   {
     key: 'auctions',
     label: 'Auctions',
-    kinds: ['auction_started', 'auction_settled'],
+    kinds: [
+      'lot_created',
+      'lot_cancelled',
+      'lot_cleared',
+      'lot_updated',
+      'auction_started',
+      'auction_settled',
+    ],
   },
-  { key: 'bids', label: 'Bids', kinds: ['bid', 'bid_cancelled'] },
   {
     key: 'offers',
-    label: 'Offers',
+    label: 'Purchase Offers',
     kinds: ['offer_placed', 'offer_cancelled', 'offer_adjusted'],
   },
-  {
-    key: 'transfers',
-    label: 'Transfers',
-    kinds: ['transfer', 'stashed', 'unstashed', 'vaulted', 'unvaulted'],
-  },
-  { key: 'wraps', label: 'Wraps', kinds: ['wrap'] },
-  { key: 'unwraps', label: 'Unwraps', kinds: ['unwrap'] },
+  { key: 'wraps', label: 'Wraps', kinds: ['wrap', 'unwrap'] },
 ]
 
 const FILTER_KEYS = new Set<FilterKey>(FILTERS.map((f) => f.key))
