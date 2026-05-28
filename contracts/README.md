@@ -24,13 +24,13 @@ pnpm typecheck
 
 ## Local mainnet fork
 
-`pnpm dev:fork` boots a long-running `hardhat node` forked from mainnet at block `25171056` (matching `hardhatMainnet.forking.blockNumber` in `hardhat.config.ts`), then seeds it with Punks so a recipient wallet has things to play with. The node keeps running on `http://127.0.0.1:8545` until Ctrl-C.
+`pnpm dev:fork` boots a long-running `hardhat node` forked from mainnet at the `hardhatMainnet.forking.blockNumber` configured in `hardhat.config.ts`, syncs the local chain timestamp to the current wall clock with automine enabled, then seeds it with Punks so a recipient wallet has things to play with. The node keeps running on `http://127.0.0.1:8545` until Ctrl-C.
 
 ```sh
 pnpm dev:fork
 ```
 
-The fork block matches the `indexer/dumps/ponder-prod-block-25171056.zip` Postgres snapshot, so the indexer and the fork can be brought up against the same state.
+Use a Postgres snapshot taken at the configured fork block so the indexer and the fork can be brought up against the same state.
 
 Re-run the seed against an already-running fork:
 
@@ -39,6 +39,13 @@ pnpm seed:fork
 ```
 
 The seed is idempotent — Punks already owned by the recipient are skipped.
+
+Sync the localhost chain to the current wall-clock time and re-enable automine
+against an already-running fork:
+
+```sh
+pnpm sync:fork-time
+```
 
 Fast-forward the localhost chain time and mine one block:
 
