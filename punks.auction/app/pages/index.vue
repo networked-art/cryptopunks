@@ -1,9 +1,11 @@
 <template>
   <div class="landing">
     <HeroPunks />
-    <h1 class="headline">
-      An Auction House
-      <span class="headline-em">for CryptoPunks</span>
+    <h1
+      class="headline"
+      aria-label="An Auction House for CryptoPunks"
+    >
+      <Wordmark />
     </h1>
     <p class="subline">
       24-hour auctions. Zero fees. Real price discovery.
@@ -52,15 +54,8 @@ useSeoMeta({
 
 .headline {
   margin: var(--size-4) 0 0;
-  max-width: 600px;
-  font-size: var(--font-display);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-tighter);
-  line-height: var(--line-height-tight);
-}
-
-.headline-em {
-  color: var(--accent);
+  width: 600px;
+  max-width: 100%;
 }
 
 .subline {
