@@ -12,25 +12,61 @@
     </header>
 
     <ClientOnly>
-      <Tags class="filters">
-        <Tag
-          v-for="f in FILTERS"
-          :key="f.key"
-          :dismissable="activeFilters.has(f.key)"
-          :class="{ active: activeFilters.has(f.key) }"
-          @click="!activeFilters.has(f.key) && toggle(f.key)"
-          @dismiss="toggle(f.key)"
-        >
-          {{ f.label }}
-        </Tag>
-        <Button
-          v-if="activeFilters.size"
-          class="small link muted"
-          @click="clear"
-        >
-          Clear
-        </Button>
-      </Tags>
+      <div class="activity-controls">
+        <Tags class="filters">
+          <Tag
+            v-for="f in FILTERS"
+            :key="f.key"
+            :dismissable="activeFilters.has(f.key)"
+            :class="{ active: activeFilters.has(f.key) }"
+            @click="!activeFilters.has(f.key) && toggle(f.key)"
+            @dismiss="toggle(f.key)"
+          >
+            {{ f.label }}
+          </Tag>
+          <Tag
+            :dismissable="hasSearchInput"
+            class="filter-toggle"
+            :class="{ active: searchPanelOpen || hasSearchInput }"
+            @click="toggleSearchPanel"
+            @dismiss="dismissSearchFilter"
+          >
+            Filter
+          </Tag>
+          <Button
+            v-if="hasActiveControls"
+            class="small link muted"
+            @click="clear"
+          >
+            Clear
+          </Button>
+        </Tags>
+
+        <Transition name="activity-search">
+          <PunkSearchBar
+            v-if="searchPanelOpen"
+            v-model="searchText"
+            class="activity-search-bar"
+            :placeholder="searchPlaceholder"
+            :counts="searchCounts"
+            actions-width="128px"
+            @enter="onSearchEnter"
+            @clear="clearSearch"
+          >
+            <template
+              v-if="searchOwnerHandle"
+              #action
+            >
+              <Button
+                class="search-bar-action"
+                :to="`/profile/${searchOwnerHandle}`"
+              >
+                View profile
+              </Button>
+            </template>
+          </PunkSearchBar>
+        </Transition>
+      </div>
 
       <div
         v-if="pending"
@@ -68,7 +104,7 @@
         v-else
         class="empty muted"
       >
-        No activity yet.
+        {{ emptyLabel }}
       </div>
     </ClientOnly>
   </div>
@@ -144,6 +180,47 @@ function parseQuery(raw: unknown): FilterKey[] {
 
 const activeFilters = computed(() => new Set(parseQuery(route.query.t)))
 
+const {
+  text: searchText,
+  debouncedText: debouncedSearchText,
+  placeholder: searchPlaceholder,
+  ownerHandle: searchOwnerHandle,
+  ownerAddress: searchOwnerAddress,
+  ids: searchIds,
+  counts: searchCounts,
+  onEnter: onSearchEnter,
+  clearSearch,
+} = usePunkSearch({
+  syncRoute: true,
+  enableListedFilter: false,
+  enableEnterNavigation: false,
+})
+
+const hasSearchInput = computed(() => searchText.value.trim().length > 0)
+const hasSearch = computed(() => debouncedSearchText.value.trim().length > 0)
+const searchPanelOpen = ref(searchText.value.trim().length > 0)
+const hasActiveControls = computed(
+  () =>
+    activeFilters.value.size > 0 ||
+    hasSearchInput.value ||
+    searchPanelOpen.value,
+)
+const isAddressSearch = computed(
+  () => hasSearch.value && !!searchOwnerHandle.value,
+)
+const searchAddress = computed(() =>
+  isAddressSearch.value ? searchOwnerAddress.value : undefined,
+)
+const searchPunkIds = computed(() => {
+  if (!hasSearch.value) return undefined
+  if (isAddressSearch.value) return searchAddress.value ? undefined : []
+  return searchIds.value
+})
+
+watch(hasSearchInput, (active) => {
+  if (active) searchPanelOpen.value = true
+})
+
 const selectedKinds = computed<ActivityKind[] | undefined>(() => {
   if (!activeFilters.value.size) return undefined
   const kinds = new Set<ActivityKind>()
@@ -171,11 +248,30 @@ function toggle(key: FilterKey) {
 }
 
 function clear() {
+  clearSearch()
+  searchPanelOpen.value = false
   writeQuery(new Set())
 }
 
+function toggleSearchPanel() {
+  searchPanelOpen.value = !searchPanelOpen.value
+}
+
+function dismissSearchFilter() {
+  clearSearch()
+  searchPanelOpen.value = false
+}
+
+const emptyLabel = computed(() =>
+  hasSearch.value || activeFilters.value.size
+    ? 'No matching activity.'
+    : 'No activity yet.',
+)
+
 const { events, pending, loadingMore, error, hasMore, loadMore } =
   useActivityFeed({
+    punkIds: searchPunkIds,
+    address: searchAddress,
     kinds: selectedKinds,
   })
 </script>
@@ -190,10 +286,59 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 
 .filters {
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .filters :deep(button.link) {
   font-size: var(--font-sm);
+}
+
+.activity-controls {
+  position: sticky;
+  top: calc(56px + var(--border-width));
+  z-index: var(--z-index-ui);
+  padding-block: var(--size-2);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.activity-search-bar.search-bar {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + var(--size-1));
+  z-index: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-search-bar :deep(.search-group) {
+  --search-control-height: var(--form-item-height);
+
+  box-shadow: none;
+}
+
+.activity-search-bar :deep(.search-group:focus-within) {
+  box-shadow: none;
+}
+
+.activity-search-bar :deep(.search-input) {
+  min-height: var(--form-item-height);
+}
+
+.activity-search-enter-active,
+.activity-search-leave-active {
+  transition:
+    opacity var(--speed),
+    transform var(--speed);
+}
+
+.activity-search-enter-from,
+.activity-search-leave-to {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--size-1)));
 }
 
 .event-list {

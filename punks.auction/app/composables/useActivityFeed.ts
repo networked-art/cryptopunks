@@ -112,6 +112,7 @@ const EVENTS_QUERY = `
 export function useActivityFeed(
   opts: {
     punkId?: MaybeRefOrGetter<number | undefined>
+    punkIds?: MaybeRefOrGetter<readonly number[] | undefined>
     address?: MaybeRefOrGetter<Address | undefined>
     kinds?: MaybeRefOrGetter<ActivityKind[] | undefined>
     limit?: number
@@ -130,13 +131,20 @@ export function useActivityFeed(
   // off before an ENS handle resolves) can't clobber a newer scoped one.
   let requestToken = 0
 
-  function buildWhere() {
+  function buildWhere(): Record<string, unknown> | null {
     const where: Record<string, unknown> = {
       source_in: ACTIVITY_SOURCES,
     }
 
     const punkId = toValue(opts.punkId)
     if (punkId !== undefined) where.punk_id = String(punkId)
+    else {
+      const punkIds = toValue(opts.punkIds)
+      if (punkIds) {
+        if (!punkIds.length) return null
+        where.punk_id_in = [...new Set(punkIds)].map(String)
+      }
+    }
 
     const kinds = toValue(opts.kinds)
     if (kinds && kinds.length) where.type_in = kinds
@@ -171,13 +179,21 @@ export function useActivityFeed(
   }
 
   async function fetchPage(after: string | null) {
+    const where = buildWhere()
+    if (!where) {
+      return {
+        mapped: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      }
+    }
+
     const data = await queryIndexer<{
       events: {
         items: RawEvent[]
         pageInfo: { hasNextPage: boolean; endCursor: string | null }
       }
     }>(EVENTS_QUERY, {
-      where: buildWhere(),
+      where,
       limit: pageSize,
       after,
     })
@@ -236,6 +252,7 @@ export function useActivityFeed(
 
   watchEffect(() => {
     void toValue(opts.punkId)
+    void toValue(opts.punkIds)
     void toValue(opts.address)
     void toValue(opts.kinds)
     load()
