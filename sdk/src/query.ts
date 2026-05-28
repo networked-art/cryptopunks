@@ -57,6 +57,7 @@ const HEAD_VARIANT_TRAIT_OFFSET = 5
 const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
 const ATTRIBUTE_COUNT_MIN = 0
 const ATTRIBUTE_COUNT_MAX = 7
+const OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX = 64
 
 export type PunksFilter = {
   requiredTraitMask: bigint
@@ -157,6 +158,19 @@ export function emptyPunksFilter(): PunksFilter {
     minColorCount: 0,
     maxColorCount: 0,
   }
+}
+
+export function isPunksFilterEmpty(filter: PunksFilter): boolean {
+  return (
+    filter.requiredTraitMask === 0n &&
+    filter.forbiddenTraitMask === 0n &&
+    filter.anyOfTraitMask === 0n &&
+    filter.requiredColorMask === 0n &&
+    filter.forbiddenColorMask === 0n &&
+    filter.anyOfColorMask === 0n &&
+    filter.maxPixelCount === 0 &&
+    filter.maxColorCount === 0
+  )
 }
 
 export function compilePunksFilter(
@@ -593,8 +607,13 @@ export function compileOfferSlot(
   rejectUnchainableQueryFields(query, { allowIds: true })
   const folded = foldTextIntoQuery(data, query)
 
+  const explicitIncludeIds = uniqueIds(
+    [...(query.ids ?? []), ...(input.includeIds ?? [])],
+    'includeIds',
+  )
+  const textIncludeIds = uniqueIds(folded.includeIds, 'includeIds')
   const includeIds = uniqueIds(
-    [...(query.ids ?? []), ...(input.includeIds ?? []), ...folded.includeIds],
+    [...explicitIncludeIds, ...textIncludeIds],
     'includeIds',
   )
   const excludeIds = uniqueIds(
@@ -606,18 +625,14 @@ export function compileOfferSlot(
     'excludeIds',
   )
   const standard = normalizePunkStandard(input.standard ?? 'cryptopunks')
+  let criteria: PunksFilter
   try {
-    return {
-      criteria: buildFilter(
-        data,
-        folded.query,
-        folded.freeTermRequired,
-        folded.freeTermAnyOfGroups,
-      ),
-      standard,
-      includeIds,
-      excludeIds,
-    }
+    criteria = buildFilter(
+      data,
+      folded.query,
+      folded.freeTermRequired,
+      folded.freeTermAnyOfGroups,
+    )
   } catch (filterError) {
     /// Last-resort fallback for queries that can't compress into one onchain
     /// filter (e.g. multiple non-redundant any-of groups). Run the same
@@ -630,14 +645,61 @@ export function compileOfferSlot(
     /// (`hair`, `earring`, …) still contribute — `folded.query` already had
     /// its text stripped into structured fields for the filter compile path.
     const matched = data.searchSync(toOfflineSearchQuery(query))
-    const merged = uniqueIds([...includeIds, ...matched], 'includeIds')
-    if (merged.length === 0 || merged.length > 64) throw filterError
+    const merged = uniqueIds([...explicitIncludeIds, ...matched], 'includeIds')
+    if (
+      merged.length === 0 ||
+      merged.length > OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX
+    ) {
+      throw filterError
+    }
     return {
       criteria: emptyPunksFilter(),
       standard,
       includeIds: merged,
       excludeIds,
     }
+  }
+  if (textIncludeIds.length > 0 && !isPunksFilterEmpty(criteria)) {
+    return materializeOfferSlot(
+      data,
+      query,
+      standard,
+      explicitIncludeIds,
+      excludeIds,
+    )
+  }
+  return {
+    criteria,
+    standard,
+    includeIds,
+    excludeIds,
+  }
+}
+
+function materializeOfferSlot(
+  data: OfflinePunksDataClient,
+  query: PunkQuery,
+  standard: PunkStandardValue,
+  explicitIncludeIds: readonly number[],
+  excludeIds: readonly number[],
+): CompiledOfferSlot {
+  const matched = data.searchSync(toOfflineSearchQuery(query))
+  const includeIds = uniqueIds([...explicitIncludeIds, ...matched], 'includeIds')
+  if (includeIds.length === 0) {
+    throw new PunksDataValidationError(
+      'query matches no punks; cannot compile an empty offer slot',
+    )
+  }
+  if (includeIds.length > OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX) {
+    throw new PunksDataValidationError(
+      `query matches ${includeIds.length} punks; refine it to ${OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX} or fewer ids`,
+    )
+  }
+  return {
+    criteria: emptyPunksFilter(),
+    standard,
+    includeIds,
+    excludeIds: [...excludeIds],
   }
 }
 

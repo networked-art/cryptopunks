@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   compileOfferSlot,
   compilePunksFilter,
+  emptyPunksFilter,
   PunkType,
 } from '../dist/index.js'
 import { createOfflinePunksDataClient } from '../dist/offline.js'
@@ -186,6 +187,28 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.equal(slot.criteria.anyOfColorMask, 0n)
     assert.deepEqual(slot.includeIds, search)
     assert.ok(slot.includeIds.length > 0 && slot.includeIds.length <= 64)
+  })
+
+  it('keeps collection-only text as an exact includeIds slot', () => {
+    const slot = compileOfferSlot(data, { query: { text: 'burned' } })
+    assert.deepEqual(slot.criteria, emptyPunksFilter())
+    assert.deepEqual(slot.includeIds, data.searchSync({ text: 'burned' }))
+    assert.equal(slot.includeIds.length, 12)
+  })
+
+  it('materializes collection ids combined with compiled criteria', () => {
+    const slot = compileOfferSlot(data, { query: { text: 'burned male' } })
+    const search = data.searchSync({ text: 'burned male' })
+    assert.deepEqual(slot.criteria, emptyPunksFilter())
+    assert.deepEqual(slot.includeIds, search)
+    assert.equal(search.length, 9)
+  })
+
+  it('rejects empty collection intersections instead of widening the offer', () => {
+    assert.throws(
+      () => compileOfferSlot(data, { query: { text: 'burned alien' } }),
+      /matches no punks/,
+    )
   })
 
   it('rethrows the filter error when the fallback would exceed 64 ids', () => {

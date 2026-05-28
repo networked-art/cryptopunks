@@ -1,7 +1,10 @@
 import type { Address } from 'viem'
 import { ZERO_ADDRESS } from './constants'
 import type { LotItem } from './actions'
-import type { CompiledOfferSlot, PunksFilter } from './query'
+import { isPunksFilterEmpty } from './query'
+import type { CompiledOfferSlot } from './query'
+
+export { isPunksFilterEmpty } from './query'
 
 /// Mirrors `PunksAuction`'s bidding constants.
 export const PUNKS_AUCTION_BID_INCREASE_BPS = 1_000n
@@ -36,19 +39,6 @@ export function minPunksAuctionBidWei(previousWei: bigint): bigint {
       PUNKS_AUCTION_BPS -
       1n) /
     PUNKS_AUCTION_BPS
-  )
-}
-
-export function isPunksFilterEmpty(filter: PunksFilter): boolean {
-  return (
-    filter.requiredTraitMask === 0n &&
-    filter.forbiddenTraitMask === 0n &&
-    filter.anyOfTraitMask === 0n &&
-    filter.requiredColorMask === 0n &&
-    filter.forbiddenColorMask === 0n &&
-    filter.anyOfColorMask === 0n &&
-    filter.maxPixelCount === 0 &&
-    filter.maxColorCount === 0
   )
 }
 
