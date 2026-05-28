@@ -34,8 +34,8 @@ const KNOWN_NON_EOA_LOWER = new Set<string>([
   STASH_FACTORY_ADDRESS.toLowerCase(),
   ZERO_ADDRESS.toLowerCase(),
   // 1001 deployments outside the indexer's tracked set.
-  '0xa6d304efa8c00fae128bc9a89a1d07e1e3922a9b', // PunksAuction
-  '0x4121c97ddf23d457d7e039f8dd718b8527ca9a24', // PunksAuctionEscrow
+  '0x6f99d7e85b4ba6ffd9ff60a09fc12201027b7873', // PunksAuction
+  '0x366662a518702ce9bc0be44930ec8d176ef56ad5', // PunksAuctionEscrow
   '0x6d263b22d1b2feb93881af6ff57666efa5a8f346', // UnwrapV1Punks
 ])
 

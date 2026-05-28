@@ -9,14 +9,14 @@ import {
 
 /** Mainnet `PunksAuction` — the zero-fee auction house. */
 export const PUNKS_AUCTION_ADDRESS =
-  '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as Address
+  '0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873' as Address
 
 /** Mainnet `PunksAuctionEscrow` — custody during live auctions. */
 export const PUNKS_AUCTION_ESCROW_ADDRESS =
-  '0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24' as Address
+  '0x366662a518702CE9bC0Be44930ec8d176eF56aD5' as Address
 
 /** First block containing the `PunksAuction` deployment. */
-export const PUNKS_AUCTION_START_BLOCK = 25_146_787n
+export const PUNKS_AUCTION_START_BLOCK = 25_196_591n
 
 /** Canonical `CryptoPunks` market (the fixed June 22nd 2017 redeploy). */
 export const CRYPTOPUNKS_ADDRESS = CRYPTOPUNKS_MARKET_ADDRESS as Address

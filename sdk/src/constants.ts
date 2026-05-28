@@ -29,10 +29,10 @@ export const PUNKS_VAULT_FACTORY_ADDRESS =
 export const PUNKS_VAULT_FACTORY_START_BLOCK = 25_103_673n
 /// Mainnet `PunksAuction` — the zero-fee auction house.
 export const PUNKS_AUCTION_ADDRESS =
-  '0xA6D304EFA8c00fAE128Bc9A89a1D07E1E3922A9b' as Address
+  '0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873' as Address
 /// Dedicated escrow deployed by `PunksAuction`.
 export const PUNKS_AUCTION_ESCROW_ADDRESS =
-  '0x4121c97DDf23d457D7E039f8dd718B8527Ca9A24' as Address
+  '0x366662a518702CE9bC0Be44930ec8d176eF56aD5' as Address
 // The V1-aware PunksMarket contract. ENS-resolvable; the literal address is
 // the zero address as a placeholder until the contract is deployed and the
 // constant can be filled in. Consumers should pass `address` explicitly to the
