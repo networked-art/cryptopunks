@@ -71,13 +71,20 @@
       </div>
 
       <div
-        v-if="minimumBidWei"
+        v-if="status === 'live' && minimumBidWei"
         class="fact"
       >
         <dt>Next bid</dt>
         <dd>
           <EthAmount :wei="minimumBidWei" />
         </dd>
+      </div>
+      <div
+        v-else-if="status !== 'live'"
+        class="fact"
+      >
+        <dt>Bid Count</dt>
+        <dd>{{ bids.length }}</dd>
       </div>
     </dl>
 
