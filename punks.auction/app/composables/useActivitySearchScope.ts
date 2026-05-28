@@ -15,6 +15,7 @@ export function useActivitySearchScope() {
     syncRoute: true,
     enableListedFilter: false,
     enableEnterNavigation: false,
+    debounceMs: 300,
   })
 
   const hasSearchInput = computed(() => searchText.value.trim().length > 0)

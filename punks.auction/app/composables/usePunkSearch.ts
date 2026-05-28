@@ -17,6 +17,7 @@ type PunkSearchOptions = {
   enableOwnerSearch?: boolean
   enableEnterNavigation?: boolean
   initialText?: string
+  debounceMs?: number
 }
 
 const LISTED_QUALIFIER =
@@ -49,6 +50,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   const enableMarketQualifiers = options.enableMarketQualifiers ?? true
   const enableOwnerSearch = options.enableOwnerSearch ?? true
   const enableEnterNavigation = options.enableEnterNavigation ?? true
+  const debounceMs = options.debounceMs ?? 80
 
   const baseQuery = computed(() => toValue(options.baseQuery))
   const text = ref(
@@ -57,7 +59,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   )
   const toggleListed = ref(enableListedFilter && route?.query.sale === '1')
 
-  const debouncedText = refDebounced(text, 80)
+  const debouncedText = refDebounced(text, debounceMs)
   const qualifiers = computed(() =>
     extractQualifiers(debouncedText.value, {
       enableMarketQualifiers,
