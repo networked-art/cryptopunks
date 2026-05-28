@@ -46,6 +46,8 @@ const ACTIVITY_SOURCES = [
 
 const WRAPPED_SOURCES = new Set(['wrapped_punks', 'cryptopunks_721'])
 
+export type OfferKind = 'collection' | 'trait' | 'selection'
+
 export type ActivityEvent = {
   id: string
   kind: ActivityKind
@@ -55,6 +57,10 @@ export type ActivityEvent = {
   from?: Address
   to?: Address
   amountWei?: bigint
+  offerKind?: OfferKind
+  offerId?: bigint
+  lotId?: bigint
+  auctionId?: bigint
   txHash: Hex
   blockNumber: bigint
   logIndex: number
@@ -74,6 +80,10 @@ type RawEvent = {
   bidder: string | null
   wei_amount: string | null
   listing_wei: string | null
+  offer_kind: OfferKind | null
+  offer_id: string | null
+  lot_id: string | null
+  auction_id: string | null
   tx_hash: string
   block_number: string
   log_index: number
@@ -96,6 +106,10 @@ const EVENTS_QUERY = `
         bidder
         wei_amount
         listing_wei
+        offer_kind
+        offer_id
+        lot_id
+        auction_id
         tx_hash
         block_number
         log_index
@@ -293,6 +307,10 @@ function mapEvent(row: RawEvent): ActivityEvent {
     from: pickFrom(row),
     to: pickTo(row),
     amountWei: pickAmount(row),
+    offerKind: row.offer_kind ?? undefined,
+    offerId: row.offer_id != null ? BigInt(row.offer_id) : undefined,
+    lotId: row.lot_id != null ? BigInt(row.lot_id) : undefined,
+    auctionId: row.auction_id != null ? BigInt(row.auction_id) : undefined,
     txHash: row.tx_hash as Hex,
     blockNumber: BigInt(row.block_number),
     logIndex: row.log_index,

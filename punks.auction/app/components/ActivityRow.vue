@@ -9,6 +9,50 @@
         :punk-id="event.punkId"
         :size="44"
       />
+      <component
+        v-else-if="iconKind !== 'default'"
+        :is="detailHref ? 'NuxtLink' : 'span'"
+        :to="detailHref"
+        class="thumb-icon symbol-tile"
+      >
+        <Spinner
+          v-if="iconKind === 'bid'"
+          class="bid-mark"
+          :loop="false"
+          idle-pattern="arrow-up"
+          decorative
+        />
+        <Spinner
+          v-else-if="iconKind === 'lot'"
+          class="lot-mark"
+          :loop="false"
+          idle-pattern="lot-create"
+          decorative
+        />
+        <Spinner
+          v-else-if="iconKind === 'auction'"
+          class="auction-mark"
+          :loop="false"
+          idle-pattern="auction-start"
+          decorative
+        />
+        <Spinner
+          v-else-if="iconKind === 'collection-offer'"
+          class="collection-mark"
+          :loop="false"
+          idle-pattern="full"
+          decorative
+        />
+        <span
+          v-else-if="iconKind === 'trait-offer'"
+          class="selection-badge"
+        >
+          <Icon
+            class="selection-check"
+            name="lucide:check"
+          />
+        </span>
+      </component>
       <span
         v-else
         class="thumb-icon"
@@ -19,7 +63,16 @@
 
     <div class="row-body">
       <div class="row-line">
-        <ActivityKindLabel :kind="event.kind" />
+        <component
+          :is="detailHref ? 'NuxtLink' : 'span'"
+          :to="detailHref"
+          class="kind-link"
+        >
+          <ActivityKindLabel
+            :kind="event.kind"
+            :offer-kind="event.offerKind"
+          />
+        </component>
         <NuxtLink
           v-if="event.punkId !== undefined"
           :to="`/punks/${event.punkId}`"
@@ -90,6 +143,58 @@ const sameParties = computed(
     props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
 
+type ThumbIconKind =
+  | 'bid'
+  | 'collection-offer'
+  | 'trait-offer'
+  | 'lot'
+  | 'auction'
+  | 'default'
+
+const OFFER_KINDS = new Set<ActivityEvent['kind']>([
+  'offer_placed',
+  'offer_cancelled',
+  'offer_adjusted',
+])
+
+const LOT_KINDS = new Set<ActivityEvent['kind']>([
+  'lot_created',
+  'lot_cancelled',
+  'lot_cleared',
+  'lot_updated',
+])
+
+const AUCTION_KINDS = new Set<ActivityEvent['kind']>([
+  'auction_started',
+  'auction_settled',
+])
+
+const iconKind = computed<ThumbIconKind>(() => {
+  const kind = props.event.kind
+  if (kind === 'bid' || kind === 'bid_cancelled') return 'bid'
+  if (OFFER_KINDS.has(kind)) {
+    const offerKind = props.event.offerKind
+    if (offerKind === 'collection') return 'collection-offer'
+    if (offerKind === 'trait' || offerKind === 'selection') return 'trait-offer'
+  }
+  if (LOT_KINDS.has(kind)) return 'lot'
+  if (AUCTION_KINDS.has(kind)) return 'auction'
+  return 'default'
+})
+
+const detailHref = computed(() => {
+  const e = props.event
+  if (OFFER_KINDS.has(e.kind) && e.offerId !== undefined)
+    return `/purchase-offers/${e.offerId}`
+  if (LOT_KINDS.has(e.kind) && e.lotId !== undefined)
+    return `/lots/${e.lotId}`
+  if (AUCTION_KINDS.has(e.kind) && e.auctionId !== undefined)
+    return `/auctions/${e.auctionId}`
+  if ((e.kind === 'bid' || e.kind === 'bid_cancelled') && e.auctionId !== undefined)
+    return `/auctions/${e.auctionId}`
+  return undefined
+})
+
 const isoTime = computed(() =>
   props.event.timestamp
     ? new Date(props.event.timestamp * 1000).toISOString()
@@ -144,6 +249,51 @@ const absoluteTime = computed(() =>
   color: var(--text-dim);
 }
 
+/* Sibling tile for the bid/collection/trait icons — same footprint as the
+ * fallback gavel tile, but a flat fill so the pixel/badge marks read like
+ * the ones in Offer/Target.vue rather than a "missing thumb" placeholder. */
+.thumb-icon.symbol-tile {
+  background: var(--gray-z-1);
+  border: 0;
+  color: var(--text-muted);
+}
+
+a.thumb-icon.symbol-tile {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.thumb-icon.symbol-tile:hover,
+a.thumb-icon.symbol-tile:focus-visible {
+  background: var(--gray-z-2);
+  outline: none;
+}
+
+/* Mark sizing mirrors Offer/Target.vue so collection / trait / bid / lot /
+ * auction icons all read at the same scale across the two surfaces. */
+.bid-mark,
+.collection-mark,
+.lot-mark,
+.auction-mark {
+  --spinner-pixel: var(--size-1);
+  --spinner-gap: var(--size-0);
+  width: auto;
+  height: auto;
+}
+
+.selection-badge {
+  display: grid;
+  place-items: center;
+  inline-size: calc(3 * var(--size-1) + 2 * var(--size-0));
+  block-size: calc(3 * var(--size-1) + 2 * var(--size-0));
+  background: var(--primary);
+  color: white;
+}
+
+.selection-check {
+  font-size: var(--font-xs);
+}
+
 .row-body {
   display: flex;
   flex-direction: column;
@@ -171,6 +321,18 @@ const absoluteTime = computed(() =>
   border: 0;
   color: var(--text-muted);
   font-size: var(--font-sm);
+}
+
+.kind-link {
+  border: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.kind-link:hover,
+.kind-link:focus-visible {
+  color: var(--accent);
+  outline: none;
 }
 
 .row-meta {
