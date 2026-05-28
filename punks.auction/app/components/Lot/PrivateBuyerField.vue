@@ -24,7 +24,7 @@
         />
       </label>
       <p class="private-buyer-help muted">
-        They alone can open the auction or have their offer matched. Once the
+        They alone can open the auction or have their offer accepted. Once the
         auction is open, anyone can outbid them.
       </p>
     </div>
