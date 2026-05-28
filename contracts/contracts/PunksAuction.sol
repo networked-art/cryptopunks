@@ -30,7 +30,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @notice Basis point denominator used for bid increments.
     uint256 internal constant BPS = 10_000;
     /// @notice Minimum increase over the previous bid.
-    uint256 internal constant BID_INCREASE_BPS = 1_000;
+    uint256 internal constant BID_INCREASE_BPS = 100;
     /// @notice Duration of every auction from initialization.
     uint40 internal constant AUCTION_DURATION = 24 hours;
     /// @notice Minimum time remaining after a late bid.

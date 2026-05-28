@@ -418,7 +418,7 @@ describe('PunksAuction', () => {
     )
   })
 
-  it('requires 10% bid increments, refunds the previous bidder, and extends late bids', async () => {
+  it('requires 1% bid increments, refunds the previous bidder, and extends late bids', async () => {
     const ctx = await deployAuctionStack()
     const { auctions, seller, bidder1, bidder2 } = ctx
 
@@ -435,7 +435,7 @@ describe('PunksAuction', () => {
       { client: { wallet: bidder2 } },
     )
     await ctx.viem.assertions.revertWithCustomError(
-      auctionsAsBidder2.write.bid([1n], { value: parseEther('1.09') }),
+      auctionsAsBidder2.write.bid([1n], { value: parseEther('1.009') }),
       auctions,
       'MinimumBidNotMet',
     )
@@ -448,7 +448,7 @@ describe('PunksAuction', () => {
     const bidder1Before = await publicClient.getBalance({
       address: bidder1.account.address,
     })
-    await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+    await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.01') })
     const bidder1After = await publicClient.getBalance({
       address: bidder1.account.address,
     })
@@ -457,7 +457,7 @@ describe('PunksAuction', () => {
 
     const after = await auctions.read.auctions([1n])
     assert.equal(after[1].toLowerCase(), bidder2.account.address.toLowerCase())
-    assert.equal(after[2], parseEther('1.1'))
+    assert.equal(after[2], parseEther('1.01'))
     assert.ok((after[3] as bigint) > originalEnd)
   })
 
@@ -485,7 +485,7 @@ describe('PunksAuction', () => {
       auctions.address,
       { client: { wallet: bidder2 } },
     )
-    await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+    await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.01') })
 
     assert.equal(
       await auctions.read.balances([rejectingBidder.address]),
@@ -2177,14 +2177,14 @@ describe('PunksAuction', () => {
         auctions.address,
         { client: { wallet: bidder2 } },
       )
-      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.01') })
 
       const auctionsAsBidder1 = await ctx.viem.getContractAt(
         'PunksAuction',
         auctions.address,
         { client: { wallet: bidder1 } },
       )
-      await auctionsAsBidder1.write.bid([1n], { value: parseEther('1.21') })
+      await auctionsAsBidder1.write.bid([1n], { value: parseEther('1.0201') })
 
       await ctx.connection.networkHelpers.time.increase(DAY + 1)
       await auctions.write.settle([1n])
@@ -3184,16 +3184,16 @@ describe('PunksAuction', () => {
       // live bid for an auction, never both the old and new bid.
       await openAuction(ctx, bidder1, 1n, parseEther('1'))
       assert.equal(await auctionBalance(), parseEther('4.5'))
-      await auctionsAsB2.write.bid([1n], { value: parseEther('1.1') })
-      assert.equal(await auctionBalance(), parseEther('4.6'))
+      await auctionsAsB2.write.bid([1n], { value: parseEther('1.01') })
+      assert.equal(await auctionBalance(), parseEther('4.51'))
 
       await openAuction(ctx, bidder1, 2n, parseEther('1'))
-      assert.equal(await auctionBalance(), parseEther('5.6'))
+      assert.equal(await auctionBalance(), parseEther('5.51'))
 
       // Adjusting an offer down and cancelling another refund immediately.
       await auctionsAsB2.write.adjustOfferAmount([o2, parseEther('2')])
       await auctionsAsB1.write.cancelOffer([o1])
-      assert.equal(await auctionBalance(), parseEther('4.1'))
+      assert.equal(await auctionBalance(), parseEther('4.01'))
 
       // Settle both auctions; only offer 2's locked ETH should remain.
       await ctx.connection.networkHelpers.time.increase(DAY + 1)
@@ -3410,7 +3410,7 @@ describe('PunksAuction', () => {
         auctions.address,
         { client: { wallet: bidder2 } },
       )
-      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.1') })
+      await auctionsAsBidder2.write.bid([1n], { value: parseEther('1.01') })
 
       // The reentry was attempted and rejected by the guard.
       assert.equal(await botBidder.read.reentryObserved(), true)
@@ -3419,7 +3419,7 @@ describe('PunksAuction', () => {
       // The honest bidder is the sole live bidder; the bot got its ETH back.
       const auction = await auctions.read.auctions([1n])
       assert.equal(auction[1].toLowerCase(), bidder2.account.address.toLowerCase())
-      assert.equal(auction[2], parseEther('1.1'))
+      assert.equal(auction[2], parseEther('1.01'))
       assert.equal(
         await publicClient.getBalance({ address: botBidder.address }),
         parseEther('1'),
@@ -3429,7 +3429,7 @@ describe('PunksAuction', () => {
       // Conservation: the house holds exactly the live bid.
       assert.equal(
         await publicClient.getBalance({ address: auctions.address }),
-        parseEther('1.1'),
+        parseEther('1.01'),
       )
     })
 
