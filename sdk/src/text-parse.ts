@@ -71,7 +71,7 @@ const SEARCH_SYNONYM_ENTRIES = buildSearchSynonymEntries(searchSynonyms)
 /// Parses a search text string into structured constraints + free-term
 /// fallback. Recognizes:
 ///   - `<n> color(s)`, `<n> attribute(s)`, `<n> attr(s)`, `<n> trait(s)`,
-///     `<n> pixel(s)` →
+///     `<n> pixel(s)` (`<n>` may be digits or a zero-through-seven word) →
 ///     numeric eq constraint on the matching axis;
 ///   - `<n>-<m> color(s)` etc. → numeric range;
 ///   - `<= <n> color(s)`, `>= <n> color(s)`, `< <n>`, `> <n>` → numeric
@@ -661,9 +661,27 @@ function matchSkinToneWord(word: string): SkinToneValue | undefined {
 }
 
 function parseNonNegativeInt(value: string): number | undefined {
-  if (!/^\d+$/.test(value)) return undefined
-  const n = Number.parseInt(value, 10)
-  return Number.isInteger(n) && n >= 0 ? n : undefined
+  if (/^\d+$/.test(value)) {
+    const n = Number.parseInt(value, 10)
+    return Number.isInteger(n) && n >= 0 ? n : undefined
+  }
+  return parseNumberWord(value)
+}
+
+const NUMBER_WORDS: Partial<Record<string, number>> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+}
+
+function parseNumberWord(value: string): number | undefined {
+  const normalized = normalizeWord(value)
+  return NUMBER_WORDS[normalized]
 }
 
 function normalizeWord(value: string): string {

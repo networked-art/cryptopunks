@@ -90,6 +90,12 @@ describe('PunksSdk', () => {
     assert.equal(twoColorSlot.criteria.minColorCount, 2)
     assert.equal(twoColorSlot.criteria.maxColorCount, 2)
 
+    const spelledTwoColorSlot = punks.offers.slot({
+      query: { text: 'two colors' },
+    })
+    assert.equal(spelledTwoColorSlot.criteria.minColorCount, 2)
+    assert.equal(spelledTwoColorSlot.criteria.maxColorCount, 2)
+
     // `#1234 #5678 -9999` → includeIds [1234, 5678], excludeIds [9999].
     const idsSlot = punks.offers.slot({
       query: { text: '#1234 #5678 -9999' },

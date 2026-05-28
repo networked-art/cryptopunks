@@ -137,6 +137,14 @@ describe('compileOfferSlot — text-search free terms', () => {
     )
   })
 
+  it('compiles spelled-out count words like their numeric equivalent', () => {
+    const numeric = compileOfferSlot(data, { query: { text: '2 colors' } })
+    const spelled = compileOfferSlot(data, { query: { text: 'two colors' } })
+    assert.equal(spelled.criteria.minColorCount, 2)
+    assert.equal(spelled.criteria.maxColorCount, 2)
+    assert.deepEqual(spelled, numeric)
+  })
+
   it('throws when a term matches no traits at all', () => {
     assert.throws(
       () => compileOfferSlot(data, { query: { text: 'foobarbazquux' } }),

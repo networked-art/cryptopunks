@@ -148,6 +148,14 @@ describe('OfflinePunksDataClient', () => {
       sdk.countSync({ colorCount: 2 }),
     )
     assert.equal(
+      sdk.countSync({ text: 'two colors' }),
+      sdk.countSync({ colorCount: 2 }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'zero attributes' }),
+      sdk.countSync({ attributeCount: 0 }),
+    )
+    assert.equal(
       sdk.countSync({ text: '7 attributes' }),
       sdk.countSync({ attributeCount: 7 }),
     )
