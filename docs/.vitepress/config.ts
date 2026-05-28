@@ -109,6 +109,13 @@ export default defineConfig({
           },
         ],
       },
+      {
+        text: 'UI',
+        items: [
+          { text: 'punks.auction', link: '/ui/punks-auction' },
+          { text: 'punksmarket.app', link: '/ui/punksmarket-app' },
+        ],
+      },
     ],
   },
 })
