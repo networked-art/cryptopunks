@@ -3,6 +3,7 @@ packages:
   - docs
   - images
   - indexer
+  - offchain
   - sdk
   - punksmarket.app
   - punks.auction
@@ -10,6 +11,7 @@ packages:
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@reown/appkit'
+  - better-sqlite3
   - esbuild
   - iso-constants
   - keccak

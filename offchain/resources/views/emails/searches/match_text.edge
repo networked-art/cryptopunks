@@ -1,0 +1,9 @@
+CryptoPunk #{{ punkId }} matches your saved search "{{ searchName }}".
+
+Event: {{ kind }} on {{ source }}
+@if(listingWei || weiAmount)
+Amount: {{ listingWei || weiAmount }} wei
+@end
+Transaction: https://etherscan.io/tx/{{ txHash }}
+
+Manage your searches at {{ publicUrl }}
