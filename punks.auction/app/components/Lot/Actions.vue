@@ -84,19 +84,19 @@
                 class="offer-actions"
               >
                 <Button
-                  v-if="isSeller"
-                  class="primary small"
-                  :disabled="!instantEligible || !v1ActionsAllowed"
-                  @click="actAcceptOffer(offer)"
-                >
-                  Accept <EthAmount :wei="offer.amountWei" />
-                </Button>
-                <Button
-                  :class="['small', { primary: index === 0 && !isSeller }]"
+                  :class="['small', { primary: index === 0 }]"
                   :disabled="!v1ActionsAllowed"
                   @click="actStartAuctionFromOffer(offer)"
                 >
                   Start auction
+                </Button>
+                <Button
+                  v-if="isSeller"
+                  class="small"
+                  :disabled="!instantEligible || !v1ActionsAllowed"
+                  @click="actAcceptOffer(offer)"
+                >
+                  Accept <EthAmount :wei="offer.amountWei" />
                 </Button>
               </div>
             </li>
@@ -197,7 +197,6 @@
         ref="dialogRef"
         :text="dialogText"
         keep-open
-        skip-confirmation
         @complete="onComplete"
       />
     </section>
@@ -290,6 +289,7 @@ const dialogText = ref<{
 
 function actOpenAuction() {
   if (!canOpen.value) return
+  const reserve = formatEther(props.lot.reserveWei)
   runPlan(
     sdk.value.auctions.prepareOpenAuction({
       lotId: props.lot.id,
@@ -297,7 +297,7 @@ function actOpenAuction() {
       bidWei: props.lot.reserveWei,
     }),
     `Open lot #${props.lot.id}`,
-    `Open this lot as a 24-hour auction with an opening bid of ${formatEther(props.lot.reserveWei)} ETH.`,
+    `Starts a 24-hour auction and places your own opening bid of ${reserve} ETH (sent with this transaction and refunded if you are outbid). The auction settles to the highest bidder when the timer ends.`,
     'Open auction',
   )
 }
@@ -313,7 +313,7 @@ function actAcceptOffer(offer: OfferRecord) {
       minAmountWei: props.lot.reserveWei,
     }),
     `Accept offer #${offer.id}`,
-    `Settle lot #${props.lot.id} instantly at ${formatEther(offer.amountWei)} ETH.`,
+    `Settles lot #${props.lot.id} immediately: the Punks in this lot transfer to the offerer and ${formatEther(offer.amountWei)} ETH lands in your account. No auction runs.`,
     'Accept',
   )
 }
@@ -327,7 +327,7 @@ function actStartAuctionFromOffer(offer: OfferRecord) {
       minAmountWei: props.lot.reserveWei,
     }),
     `Start auction from offer #${offer.id}`,
-    `Open lot #${props.lot.id} as a 24-hour auction with this offer as the opening bid.`,
+    `Opens lot #${props.lot.id} as a 24-hour auction seeded with this ${formatEther(offer.amountWei)} ETH offer as the opening bid. The offerer is treated as the leading bidder and is refunded if outbid; the auction settles to the highest bidder when the timer ends.`,
     'Start auction',
   )
 }
@@ -355,6 +355,10 @@ async function actUpdateLot() {
   }
 
   updateDialogOpen.value = false
+  const buyerLine =
+    buyer === ZERO_ADDRESS
+      ? 'Anyone can open the auction.'
+      : `Only ${buyer} can open the auction.`
   runPlan(
     sdk.value.auctions.prepareUpdateLot({
       lotId: props.lot.id,
@@ -362,7 +366,7 @@ async function actUpdateLot() {
       onlySellTo: buyer,
     }),
     `Update Lot #${props.lot.id}`,
-    `Set this lot reserve to ${reserveEth.value.trim()} ETH.`,
+    `Sets the reserve to ${reserveEth.value.trim()} ETH. ${buyerLine} The lot's Punk reservations are unchanged.`,
     'Update Lot',
   )
 }
@@ -372,7 +376,7 @@ function actCancelLot() {
   runPlan(
     sdk.value.auctions.prepareCancelLot(props.lot.id),
     `Cancel Lot #${props.lot.id}`,
-    'Cancel this lot and release its Punk reservations.',
+    `Withdraws lot #${props.lot.id} and releases its Punks back to your account. This cannot be undone — you would need to create a new lot to relist.`,
     'Cancel Lot',
   )
 }
@@ -520,6 +524,10 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2);
+}
+
+.offer-actions button {
+  min-width: 6.4rem;
 }
 
 .actions-stack :deep(button .eth-amount) {
