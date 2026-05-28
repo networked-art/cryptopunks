@@ -110,14 +110,18 @@ skin tone.
 
 ### Curated collections
 
-Curated collections are named, sourced sets of Punk ids — `burned` and `museum`
-today, more to come. A collection alias resolves to its id set through the
-existing `includeIds` path, so it composes with the rest of a query:
+Curated collections are named, sourced sets of Punk ids — `burned`, `museum`,
+and `perfect-and-priceless` today, more to come. A collection alias resolves to
+its id set through the existing `includeIds` path, so it composes with the rest
+of a query, and a set can carry several aliases:
 
 ```ts
 punks.search({ text: 'burned punks' }) // the burned set
 punks.search({ text: 'burned alien' }) // burned ∩ alien
 punks.count({ text: 'burned OR alien' })
+
+punks.search({ text: 'paper' }) // the Perfect & Priceless set
+punks.search({ text: 'kate vass' }) // same set, by its gallery
 ```
 
 Collections can nest independently resolvable institutions, so `museum` matches

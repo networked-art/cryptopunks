@@ -498,12 +498,16 @@ function matchSearchCollectionEntry(
   entry: SearchCollectionEntry,
 ): number | undefined {
   let phrase = ''
-  const maxTerms = Math.min(entry.tokens.length, terms.length - start)
-  for (let consumed = 1; consumed <= maxTerms; consumed++) {
-    const term = terms[start + consumed - 1]
+  let consumed = 0
+  while (start + consumed < terms.length) {
+    const term = terms[start + consumed]
     if (term.exact) return undefined
+    consumed++
+    // Punctuation-only tokens (e.g. the `&` in `perfect & priceless`) normalize
+    // to nothing; consume them but skip them in the phrase so the surrounding
+    // words still match the `&`-free alias key.
     const normalized = normalizeSynonymText(term.text)
-    if (!normalized) return undefined
+    if (!normalized) continue
     phrase = phrase ? `${phrase} ${normalized}` : normalized
     if (phrase === entry.key) return consumed
     if (!entry.key.startsWith(`${phrase} `)) return undefined

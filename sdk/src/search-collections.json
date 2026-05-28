@@ -53,5 +53,23 @@
         "ids": [9833]
       }
     }
+  },
+  "perfect-and-priceless": {
+    "title": "Perfect & Priceless Punks",
+    "description": "Punks printed and shown in Kate Vass Galerie's 2018-2019 'Perfect & Priceless' exhibition, each framed print backed by its seed phrase sealed in an envelope.",
+    "aliases": [
+      "perfect and priceless",
+      "perfect & priceless",
+      "kate vass",
+      "kate vass galerie",
+      "paper punks",
+      "paper"
+    ],
+    "source": "https://www.katevassgalerie.com/perfect-and-priceless",
+    "standard": "v2",
+    "ids": [
+      207, 269, 636, 652, 672, 722, 726, 728, 770, 795, 872, 910, 934, 1819,
+      2134, 2830, 3036, 3122, 4530, 4946, 5127, 6347, 6675, 8773
+    ]
   }
 }
