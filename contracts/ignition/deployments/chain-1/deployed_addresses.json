@@ -4,5 +4,7 @@
   "PunksVaultFactory#PunksVaultFactory": "0xf3381B259B2FE142c0A87bffF463695d935D6F66",
   "PunksVaultFactory#PunksVault": "0x5d646850ad7E7bDa91d83A182529e050785CfDC3",
   "PunksMarket#PunksMarket": "0x64e507FEBF26521b73FbdfA533106B2042533218",
-  "UnwrapV1Punks#UnwrapV1Punks": "0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346"
+  "UnwrapV1Punks#UnwrapV1Punks": "0x6D263B22D1b2fEb93881AF6ff57666EfA5A8F346",
+  "PunksAuction#PunksAuction": "0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873",
+  "PunksAuction#PunksAuctionEscrow": "0x366662a518702CE9bC0Be44930ec8d176eF56aD5"
 }
