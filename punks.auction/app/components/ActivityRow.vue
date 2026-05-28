@@ -8,6 +8,7 @@
         v-if="event.punkId !== undefined"
         :punk-id="event.punkId"
         :size="44"
+        :background="eventBackground"
       />
       <NuxtLink
         v-else-if="iconKind !== 'default' && detailHref"
@@ -102,11 +103,17 @@
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
+import type { ActivityRowMarkKind } from './ActivityRowMark.vue'
 
 const props = defineProps<{
   event: ActivityEvent
   hideThumb?: boolean
 }>()
+
+const { backgroundForActivityEvent } = usePunkBackgrounds()
+const eventBackground = computed(() =>
+  backgroundForActivityEvent(props.event),
+)
 
 /// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
 /// them so the row shows a single party.
@@ -117,13 +124,7 @@ const sameParties = computed(
     props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
 
-type ThumbIconKind =
-  | 'bid'
-  | 'collection-offer'
-  | 'trait-offer'
-  | 'lot'
-  | 'auction'
-  | 'default'
+type ThumbIconKind = ActivityRowMarkKind | 'default'
 
 const OFFER_KINDS = new Set<ActivityEvent['kind']>([
   'offer_placed',
