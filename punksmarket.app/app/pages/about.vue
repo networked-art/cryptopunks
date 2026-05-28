@@ -177,10 +177,10 @@
         <dt>Docs</dt>
         <dd>
           <a
-            href="https://docs.punksmarket.app/"
+            href="https://cryptopunks.networked.art/"
             target="_blank"
             rel="noopener"
-            >docs.punksmarket.app</a
+            >cryptopunks.networked.art</a
           >
         </dd>
       </dl>
