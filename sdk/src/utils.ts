@@ -12,9 +12,11 @@ import {
   PUNK_COUNT,
   PUNK_HEIGHT,
   PUNK_WIDTH,
+  PunkStandard,
   TRAIT_COUNT,
 } from './constants'
 import type { NumericRange } from './types'
+import type { PunkStandardRef, PunkStandardValue } from './constants'
 
 export class PunksDataSdkError extends Error {
   constructor(message: string) {
@@ -293,6 +295,40 @@ export function assertIndexedPixels(pixels: Uint8Array): void {
       `indexed pixel buffer must contain ${PIXELS_PER_PUNK} bytes`,
     )
   }
+}
+
+/// Collapses a free-form name to a comparison key: lowercased, with every
+/// non-alphanumeric character removed. Used to match user-supplied trait,
+/// type, skin-tone, and Punk-standard references against canonical names.
+export function normalizeName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+export function normalizePunkStandard(
+  standard: PunkStandardRef,
+): PunkStandardValue {
+  if (
+    standard === PunkStandard.CryptoPunks ||
+    standard === PunkStandard.CryptoPunksV1
+  ) {
+    return standard
+  }
+  if (typeof standard !== 'string') {
+    throw new PunksDataValidationError(
+      'standard must be cryptopunks or cryptopunks-v1',
+    )
+  }
+  const key = normalizeName(standard)
+  if (
+    key === 'cryptopunks' ||
+    key === 'punks' ||
+    key === 'v2' ||
+    key === 'cryptopunksv2'
+  ) {
+    return PunkStandard.CryptoPunks
+  }
+  if (key === 'cryptopunksv1' || key === 'v1') return PunkStandard.CryptoPunksV1
+  throw new PunksDataValidationError(`unknown Punk standard ${standard}`)
 }
 
 function stripHexPrefix(value: string): string {

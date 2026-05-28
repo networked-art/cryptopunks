@@ -4,7 +4,6 @@ import {
   HeadVariant,
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
-  PunkStandard,
   PunkType,
   SkinTone,
   headVariantNames,
@@ -12,6 +11,7 @@ import {
   skinToneHeadVariants,
   skinToneNames,
   type HeadVariantValue,
+  type PunkStandardRef,
   type PunkStandardValue,
   type PunkTypeValue,
   type SkinToneValue,
@@ -36,7 +36,9 @@ import type {
 import {
   PunksDataValidationError,
   maskFromIds,
+  normalizeName,
   normalizeNumericRange,
+  normalizePunkStandard,
   validateColorCount,
   validateColorCriteriaMasks,
   validatePixelCount,
@@ -45,19 +47,16 @@ import {
   validateTraitId,
 } from './utils'
 
+/// Re-exported from {@link ./utils} for back-compat: the normalizer moved to
+/// the leaf utils module so {@link ./collections} can reuse it without an
+/// import cycle through this module.
+export { normalizePunkStandard } from './utils'
+export type { PunkStandardRef } from './constants'
+
 const HEAD_VARIANT_TRAIT_OFFSET = 5
 const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
 const ATTRIBUTE_COUNT_MIN = 0
 const ATTRIBUTE_COUNT_MAX = 7
-
-export type PunkStandardRef =
-  | PunkStandardValue
-  | 'cryptopunks'
-  | 'punks'
-  | 'v2'
-  | 'cryptopunks-v2'
-  | 'cryptopunks-v1'
-  | 'v1'
 
 export type PunksFilter = {
   requiredTraitMask: bigint
@@ -642,33 +641,6 @@ export function compileOfferSlot(
   }
 }
 
-export function normalizePunkStandard(
-  standard: PunkStandardRef,
-): PunkStandardValue {
-  if (
-    standard === PunkStandard.CryptoPunks ||
-    standard === PunkStandard.CryptoPunksV1
-  ) {
-    return standard
-  }
-  if (typeof standard !== 'string') {
-    throw new PunksDataValidationError(
-      'standard must be cryptopunks or cryptopunks-v1',
-    )
-  }
-  const key = normalizeName(standard)
-  if (
-    key === 'cryptopunks' ||
-    key === 'punks' ||
-    key === 'v2' ||
-    key === 'cryptopunksv2'
-  ) {
-    return PunkStandard.CryptoPunks
-  }
-  if (key === 'cryptopunksv1' || key === 'v1') return PunkStandard.CryptoPunksV1
-  throw new PunksDataValidationError(`unknown Punk standard ${standard}`)
-}
-
 export function normalizePunkTypeRefs(
   value: PunkQuery['type'] | PunkQuery['punkType'],
 ): PunkTypeValue[] {
@@ -829,10 +801,6 @@ function uniqueIds(values: Iterable<number>, label: string): number[] {
 
 function uniqueNumbers(values: readonly number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b)
-}
-
-function normalizeName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 function assertQueryObject(query: PunkQuery): void {

@@ -88,6 +88,12 @@ export {
   createPunksSdk,
 } from './sdk'
 export { PunksDataset, createPunksDataset } from './dataset'
+export {
+  PunksCollections,
+  createPunksCollections,
+  getSearchCollection,
+  searchCollections,
+} from './collections'
 export { PunkSimilarityIndex, createPunksSimilarity } from './similarity'
 export { PunkImageRenderer, createPunkImageRenderer } from './render'
 export { PunksAuctionClient, PunksMarketClient } from './actions'
@@ -246,6 +252,7 @@ export type {
   BitmapToPunkIdsOptions,
   ColorCriteriaInput,
   ColorRef,
+  CuratedCollection,
   NumericRange,
   PaletteColor,
   PunkMetadata,

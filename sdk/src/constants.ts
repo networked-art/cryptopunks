@@ -177,5 +177,13 @@ export type HeadVariantName = (typeof headVariantNames)[number]
 export type TraitKindValue = (typeof TraitKind)[keyof typeof TraitKind]
 export type TraitKindName = (typeof traitKindNames)[number]
 export type PunkStandardValue = (typeof PunkStandard)[keyof typeof PunkStandard]
+export type PunkStandardRef =
+  | PunkStandardValue
+  | 'cryptopunks'
+  | 'punks'
+  | 'v2'
+  | 'cryptopunks-v2'
+  | 'cryptopunks-v1'
+  | 'v1'
 export type SkinToneValue = (typeof SkinTone)[keyof typeof SkinTone]
 export type SkinToneName = (typeof skinToneNames)[number]
