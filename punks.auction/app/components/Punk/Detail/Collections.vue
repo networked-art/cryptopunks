@@ -5,35 +5,14 @@
   >
     <h2 class="block-title eyebrow">Featured in</h2>
     <ul class="collection-list">
-      <Card
+      <PunkCollectionCard
         v-for="membership in memberships"
         :key="membership.collection.slug"
         as="li"
-        class="collection-item"
-      >
-        <a
-          :href="membership.sourceUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="collection-link"
-        >
-          <span class="collection-name">
-            <span class="collection-title">{{
-              membership.collection.title
-            }}</span>
-            <span
-              v-if="subtitle(membership)"
-              class="collection-subtitle"
-              >{{ subtitle(membership) }}</span
-            >
-          </span>
-          <span
-            class="collection-arrow"
-            aria-hidden="true"
-            >↗</span
-          >
-        </a>
-      </Card>
+        :title="membership.collection.title"
+        :subtitle="subtitle(membership)"
+        :href="membership.sourceUrl"
+      />
     </ul>
   </section>
 </template>
@@ -79,8 +58,8 @@ function subtitle(membership: CuratedCollectionMembership): string {
   margin: 0;
 }
 
-/* One framed Card per membership, stacked flush so multiple sets read as a
-   single connected list — shared borders, only the outer corners rounded. */
+/* The cards stack flush so multiple sets read as one connected list: collapse
+   the doubled border between adjacent cards. */
 .collection-list {
   display: flex;
   flex-direction: column;
@@ -89,52 +68,7 @@ function subtitle(membership: CuratedCollectionMembership): string {
   list-style: none;
 }
 
-.collection-item {
-  transition: background-color var(--speed);
-}
-
-.collection-item:not(:first-child) {
+.collection-list .collection-card:not(:first-child) {
   border-top: 0;
-}
-
-.collection-item:not(:only-child):not(:last-child) {
-  border-end-start-radius: 0;
-  border-end-end-radius: 0;
-}
-
-.collection-item:not(:only-child):not(:first-child) {
-  border-start-start-radius: 0;
-  border-start-end-radius: 0;
-}
-
-.collection-item:has(.collection-link:hover),
-.collection-item:has(.collection-link:focus-visible) {
-  background-color: var(--card-background-highlight);
-}
-
-.collection-link {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--size-3);
-  width: 100%;
-  border: 0;
-  font-size: var(--font-sm);
-}
-
-.collection-name {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-  min-width: 0;
-}
-
-.collection-subtitle {
-  color: var(--text-dim);
-  font-size: var(--font-xs);
-}
-
-.collection-arrow {
-  color: var(--text-dim);
 }
 </style>
