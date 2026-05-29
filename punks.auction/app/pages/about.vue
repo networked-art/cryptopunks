@@ -4,7 +4,12 @@
       <div class="page-head-text">
         <h1>About</h1>
         <p class="muted">
-          An open-source auction house on the world computer, for CryptoPunks.
+          An open-source auction house on the world computer, for
+          <a
+            href="https://cryptopunks.app"
+            target="_blank"
+            >CryptoPunks</a
+          >.
         </p>
       </div>
     </header>
@@ -212,6 +217,7 @@ useSeoMeta({
   font-size: var(--font-sm);
 }
 
+.page-head-text a,
 .about-section p a,
 .about-section dd a {
   color: var(--accent-strong);
