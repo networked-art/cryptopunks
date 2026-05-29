@@ -135,7 +135,7 @@ Start it with `pnpm postgres:up` and point `DATABASE_URL` at
 
 Run a fully populated indexer against a local mainnet fork — no RPC bills,
 no waiting for backfill. The fork node lives in the `contracts` package
-(`pnpm dev:fork`) at block `25171056`; this Ponder instance restores a
+(`pnpm dev:fork`) at block `25200500`; this Ponder instance restores a
 production snapshot taken at the same block, then live-tails the fork for
 new events.
 
@@ -170,7 +170,7 @@ pnpm restore:fork       # finds the latest dumps/ponder-prod-block-*.zip and res
 ```
 
 The script prints the active schema name (e.g.
-`ponder_c896f90a9aa189f5`). Set `.env.local`:
+`ponder_64dff0d44e3b0262`). Set `.env.local`:
 
 ```
 PONDER_RPC_URLS_1=http://127.0.0.1:8545
@@ -198,7 +198,7 @@ Postgres is running, restores the snapshot if it isn't already loaded,
 probes Ponder's local `buildId`, stamps it into `_ponder_meta`, normalizes
 the sync intervals + checkpoint state to the fork's view of the chain, and
 then `exec`s `ponder start`. Ponder reports `Detected crash recovery`,
-serves cached blocks at 100% hit rate, and live-indexes the 20 seed
+serves cached blocks at 100% hit rate, and live-indexes the 22 seed
 transfers within a second.
 
 ### Why we don't use `pnpm dev`
@@ -256,7 +256,7 @@ snapshot path).
 ### Caveats
 
 - **Schema name pins to the snapshot.** `DATABASE_SCHEMA` in `.env.local`
-  must match the hash from the dump (e.g. `ponder_c896f90a9aa189f5`).
+  must match the hash from the dump (e.g. `ponder_64dff0d44e3b0262`).
   Update it whenever you take a new snapshot.
 - **Fork chainId.** `contracts/hardhat.config.ts` defines a separate
   `hardhatFork` network with `chainId: 1` so the fork matches
