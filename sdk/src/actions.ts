@@ -54,6 +54,7 @@ export type PlanKind =
   | 'withdraw-punk-bid'
   // Auction vault
   | 'deposit-vault'
+  | 'deposit-vault-v1'
   | 'deploy-vault'
   | 'setup-vault'
   | 'reclaim-vault'
@@ -556,9 +557,12 @@ export class PunksAuctionClient {
       this.vaultFor(params.owner),
       this.marketAddressFor(standard),
     ])
+    const isV1 = standard === PunkStandard.CryptoPunksV1
     return {
-      kind: 'deposit-vault',
-      description: `Deposit CryptoPunk ${params.punkId} to auction vault`,
+      kind: isV1 ? 'deposit-vault-v1' : 'deposit-vault',
+      description: `Deposit ${isV1 ? 'V1 Punk' : 'CryptoPunk'} ${
+        params.punkId
+      } to auction vault`,
       request: {
         address: market,
         abi: cryptoPunksMarketAbi,

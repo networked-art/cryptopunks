@@ -13,6 +13,7 @@ const PLAN_TITLES: Record<PlanKind, string> = {
 
   // Punks Vault
   'deposit-vault': 'Vault Punk',
+  'deposit-vault-v1': 'Vault V1 Punk',
   'deploy-vault': 'Deploy Vault',
   'setup-vault': 'Set Up Vault',
   'reclaim-vault': 'Reclaim Punk',

@@ -49,19 +49,16 @@
               <span class="picked-meta muted">{{
                 custodyShort(tile.item.custody)
               }}</span>
-              <label
+              <FormCheckbox
                 v-if="tile.pairable"
                 class="pair-toggle"
                 :class="{ disabled: !tile.paired && atItemLimit }"
+                :model-value="tile.paired"
+                :disabled="!tile.paired && atItemLimit"
+                @update:model-value="togglePair(tile.item.punkId)"
               >
-                <input
-                  type="checkbox"
-                  :checked="tile.paired"
-                  :disabled="!tile.paired && atItemLimit"
-                  @change="togglePair(tile.item.punkId)"
-                />
-                <span>+ V1</span>
-              </label>
+                + V1
+              </FormCheckbox>
             </div>
 
             <div
@@ -85,7 +82,7 @@
                 <Icon name="lucide:x" />
               </button>
               <span class="picked-meta muted"
-                >V1 · {{ custodyShort(tile.item.custody) }}</span
+                >V1 {{ custodyShort(tile.item.custody) }}</span
               >
             </div>
           </template>
@@ -108,8 +105,7 @@
           v-if="showPairTip"
           class="hint muted"
         >
-          You also own the matching V1 for some of these Punks — check “+ V1” to
-          add both the CryptoPunk and its V1 to the lot.
+          {{ pairTip }}
         </p>
       </div>
 
@@ -384,10 +380,21 @@ const v2Budget = computed(() => MAX_LOT_ITEMS - pairedV1Ids.value.length)
 
 const atItemLimit = computed(() => effectiveItems.value.length >= MAX_LOT_ITEMS)
 
+const pairableCount = computed(() =>
+  selectedItems.value.reduce(
+    (count, item) => count + (pairableV1For(item.punkId) ? 1 : 0),
+    0,
+  ),
+)
+
 const showPairTip = computed(
-  () =>
-    pairingEnabled.value &&
-    selectedItems.value.some((item) => !!pairableV1For(item.punkId)),
+  () => pairingEnabled.value && pairableCount.value > 0,
+)
+
+const pairTip = computed(() =>
+  pairableCount.value === 1
+    ? 'You also own the matching V1 for this Punk — check “+ V1” to add both the CryptoPunk and its V1 to the lot.'
+    : 'You also own the matching V1 for some of these Punks — check “+ V1” to add both the CryptoPunk and its V1 to the lot.',
 )
 
 function togglePair(punkId: number) {
@@ -578,11 +585,11 @@ function custodyShort(custody: PunkInventoryCustody): string {
     case 'wallet':
       return 'In wallet'
     case 'stash':
-      return 'In stash'
+      return 'In Stash'
     case 'wrapped-wallet':
       return 'Wrapped'
     case 'wrapped-stash':
-      return 'Wrapped · stash'
+      return 'Wrapped'
     default:
       return ''
   }
@@ -714,31 +721,15 @@ async function resolveOnlySellTo() {
   padding: var(--size-1);
 }
 
-/* The bundled V1 reads as a quieter sibling of the CryptoPunk it pairs with. */
-.picked.paired-v1 {
-  box-shadow: inset 0 0 0 3px var(--border-strong);
-}
-
 .pair-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-1);
   padding-block-end: var(--size-1);
   font-size: var(--font-xs);
   text-transform: uppercase;
-  cursor: pointer;
-  user-select: none;
 }
 
 .pair-toggle.disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.pair-toggle input {
-  width: auto;
-  margin: 0;
-  cursor: inherit;
 }
 
 .remove {
