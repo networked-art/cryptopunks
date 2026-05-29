@@ -17,6 +17,13 @@
         >
           Github
         </a>
+        <a
+          href="https://x.com/punksauctions"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          X
+        </a>
       </div>
       <div class="footer-links footer-links-right">
         <NuxtLink
