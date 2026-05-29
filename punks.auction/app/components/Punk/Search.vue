@@ -29,6 +29,30 @@
       </template>
     </PunkSearchBar>
 
+    <Card
+      v-for="match in collectionMatches"
+      :key="`${match.collection.slug}/${match.institution?.slug ?? ''}`"
+      class="collection-card"
+    >
+      <span
+        class="collection-arrow"
+        aria-hidden="true"
+        >↗</span
+      >
+      <span class="collection-title">{{
+        match.institution?.title ?? match.collection.title
+      }}</span>
+      <span class="collection-subtitle">{{
+        match.collection.description
+      }}</span>
+      <CardLink
+        :to="match.institution?.source ?? match.collection.source"
+        :title="match.institution?.title ?? match.collection.title"
+        target="_blank"
+        rel="noopener noreferrer"
+      />
+    </Card>
+
     <LazyPunkGrid
       :ids="ids"
       :size="size"
@@ -56,6 +80,7 @@ const {
   ownerHandle,
   ids,
   counts,
+  collectionMatches,
   showWrappedStateColors,
   onEnter,
   clearSearch,
@@ -106,5 +131,42 @@ const {
 
 .for-sale-toggle :deep(.form-checkbox-indicator .icon) {
   font-size: 12px;
+}
+
+/* Clickable explainer card, matching the detail-page collection cards:
+   CardLink covers the whole card (and drives the built-in hover); the arrow
+   floats top-right, aligned with the card's --spacer padding. */
+.collection-card {
+  gap: var(--size-1);
+  font-size: var(--font-sm);
+}
+
+.collection-arrow {
+  position: absolute;
+  inline-size: auto;
+  inset-block-start: var(--spacer);
+  inset-inline-end: var(--spacer);
+  color: var(--text-dim);
+  transition: color var(--speed);
+}
+
+.collection-title {
+  /* leave room for the floating arrow */
+  padding-inline-end: var(--size-5);
+}
+
+.collection-subtitle {
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  transition: color var(--speed);
+}
+
+/* On hover the muted arrow and description brighten to full-contrast text
+   (white in dark mode) instead of staying greyed against the highlight. */
+.collection-card:has(> .card-link:hover) .collection-arrow,
+.collection-card:has(> .card-link:focus-visible) .collection-arrow,
+.collection-card:has(> .card-link:hover) .collection-subtitle,
+.collection-card:has(> .card-link:focus-visible) .collection-subtitle {
+  color: var(--text);
 }
 </style>
