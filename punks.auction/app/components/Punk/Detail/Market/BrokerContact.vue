@@ -109,8 +109,10 @@ const submitted = ref(false)
 // Demo affordance: flips the dialog to a co-branded broker preview. Persists
 // across reopen so it can be shown/screen-shared without re-toggling.
 const branded = ref(false)
-// Named broker in the branded preview; generic in the standard version.
-const brokerName = computed(() => (branded.value ? 'Canon' : 'a broker'))
+// Named broker (from runtime config) in the branded preview; generic in the
+// standard version.
+const broker = useRuntimeConfig().public.broker as { name: string; logo: string }
+const brokerName = computed(() => (branded.value ? broker.name : 'a broker'))
 
 // Float the version toggle just below the dialog box: present only while the
 // popover is open and anchored to the live dialog rect, so it reads as a
