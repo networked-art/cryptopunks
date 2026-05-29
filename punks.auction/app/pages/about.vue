@@ -19,8 +19,8 @@
         Auctions solve the fundamental problem of <em>price discovery</em> for
         unique assets. Fixed pricing forces sellers into an impossible dilemma:
         price too high and you get no sale; price too low and you leave money on
-        the table; price "right" and you've somehow guessed what buyers will
-        pay — which you can't know.
+        the table; price "right" and you've somehow guessed what buyers will pay
+        — which you can't know.
       </p>
       <h3 class="subhead eyebrow">True demand</h3>
       <p>Price reflects what buyers will actually pay.</p>
@@ -49,7 +49,8 @@
       <h2 class="section-title eyebrow">Vaults</h2>
       <p>
         A seller never hands custody to the auction house. Each seller keeps
-        their Punks in their own PunksVault.sol, deployed deterministically through the
+        their Punks in their own PunksVault.sol, deployed deterministically
+        through the
         <a
           :href="`https://evm.now/address/${PUNKS_VAULT_FACTORY_ADDRESS}/code`"
           target="_blank"
@@ -78,7 +79,7 @@
         auction.
       </p>
       <p>
-        Each later bid must beat the standing bid by at least 10%. A bid in the
+        Each later bid must beat the standing bid by at least 1%. A bid in the
         final 15 minutes extends the auction so it always ends with 15 minutes
         of quiet. Once the clock runs out, anyone can settle: the Punks go to
         the winner and the proceeds go to the seller.
@@ -207,7 +208,6 @@ useSeoMeta({
   min-width: 0;
 }
 
-
 .credit {
   font-size: var(--font-sm);
 }
@@ -234,5 +234,4 @@ useSeoMeta({
   font-style: italic;
   line-height: var(--line-height-relaxed);
 }
-
 </style>
