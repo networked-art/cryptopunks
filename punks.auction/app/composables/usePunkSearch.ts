@@ -155,6 +155,13 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     }
   })
 
+  // Curated collections the live query mentions (e.g. `burned`, `moma`), for
+  // surfacing an explainer. Scans the trait text after market qualifiers and
+  // colors are stripped, so `burned for sale` and `burned hoodie` still match.
+  const collectionMatches = computed(() =>
+    offline.collections.matches(parsedText.value.text ?? ''),
+  )
+
   const criteriaQuery = computed<PunkQuery>(() => {
     const ownerMode = !!ownerHandle.value
     return {
@@ -275,6 +282,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     offerQuery,
     ids,
     counts,
+    collectionMatches,
     showWrappedStateColors,
     onEnter,
     clearSearch,

@@ -42,6 +42,10 @@
           :standard="standard"
           @changed="onMarketChanged"
         />
+        <PunkDetailCollections
+          :punk-id="punkId"
+          :standard="standard"
+        />
         <LazyPunkDetailHistory
           v-if="!isV1"
           :key="`history-${marketChangeKey}`"
