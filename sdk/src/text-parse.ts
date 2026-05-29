@@ -10,6 +10,7 @@ import { searchCollectionEntries } from './collections'
 import type { SearchCollectionEntry } from './collections'
 import searchSynonymsJson from './search-synonyms.json'
 import {
+  canonicalizeSearchInput,
   normalizePunkStandard,
   normalizeSynonymText,
   PunksDataValidationError,
@@ -164,26 +165,27 @@ export function parseSearchTextWithExactTraitsSync(
 /// quote is added.
 export function tokenizeSearchText(input: string): SearchTextTerm[] {
   const tokens: SearchTextTerm[] = []
+  const source = canonicalizeSearchInput(input)
   let cursor = 0
 
-  while (cursor < input.length) {
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor++
-    if (cursor >= input.length) break
+  while (cursor < source.length) {
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor++
+    if (cursor >= source.length) break
 
-    if (input[cursor] === '"') {
+    if (source[cursor] === '"') {
       cursor++
       const start = cursor
-      while (cursor < input.length && input[cursor] !== '"') cursor++
-      const closed = cursor < input.length && input[cursor] === '"'
-      const text = input.slice(start, cursor).trim()
+      while (cursor < source.length && source[cursor] !== '"') cursor++
+      const closed = cursor < source.length && source[cursor] === '"'
+      const text = source.slice(start, cursor).trim()
       if (closed) cursor++
       if (text) tokens.push({ text, exact: closed })
       continue
     }
 
     const start = cursor
-    while (cursor < input.length && !/\s/.test(input[cursor])) cursor++
-    const text = input.slice(start, cursor).replaceAll('"', '').trim()
+    while (cursor < source.length && !/\s/.test(source[cursor])) cursor++
+    const text = source.slice(start, cursor).replaceAll('"', '').trim()
     if (text) tokens.push({ text, exact: false })
   }
 

@@ -318,6 +318,43 @@ export function normalizeSynonymText(value: string): string {
     .trim()
 }
 
+/// Look-alike Unicode characters that editors, IMEs, and phone keyboards
+/// substitute for the ASCII the search parser expects. {@link canonicalizeSearchInput}
+/// folds each class to its single unambiguous ASCII reading.
+const DASH_CHARACTERS = /[‐-―−⸺⸻﹘﹣－]/g
+const SMART_DOUBLE_QUOTES = /[“”]/g
+const SMART_SINGLE_QUOTES = /[‘’]/g
+const LESS_OR_EQUAL = /[≤≦]/g
+const GREATER_OR_EQUAL = /[≥≧]/g
+const FULLWIDTH_HASH = /＃/g
+const FULLWIDTH_DIGITS = /[０-９]/g
+
+/// Folds look-alike Unicode characters to the ASCII the search parser expects,
+/// so input pasted from rich-text sources or autocorrected by a keyboard
+/// behaves like what was typed. Every class has one unambiguous reading — none
+/// invents a match the literal text could not already mean:
+///   - dash / minus family (en dash, em dash, the minus sign, …) -> `-`
+///     so `2—4 colors` reads as the range `2-4 colors`;
+///   - comparators -> `<=` / `>=` so `≤4 colors` bounds the count;
+///   - smart quotes -> `"` / `'` so a pasted “dark hair” stays an exact phrase;
+///   - fullwidth digits and `＃` -> ASCII so `＃1234` reads as an id.
+/// Distinct from {@link normalizeSearchText}, which lowercases and strips a
+/// string down to a comparison key; this only swaps look-alikes on raw input.
+export function canonicalizeSearchInput(value: string): string {
+  return value
+    .replace(DASH_CHARACTERS, '-')
+    .replace(SMART_DOUBLE_QUOTES, '"')
+    .replace(SMART_SINGLE_QUOTES, "'")
+    .replace(LESS_OR_EQUAL, '<=')
+    .replace(GREATER_OR_EQUAL, '>=')
+    .replace(FULLWIDTH_HASH, '#')
+    .replace(FULLWIDTH_DIGITS, fullwidthDigitToAscii)
+}
+
+function fullwidthDigitToAscii(digit: string): string {
+  return String.fromCharCode(digit.charCodeAt(0) - 0xff10 + 0x30)
+}
+
 export function normalizePunkStandard(
   standard: PunkStandardRef,
 ): PunkStandardValue {
