@@ -129,7 +129,11 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     const direct = detectOwnerHandle(input)
     if (direct) return direct
     const value = input.trim()
-    if (!value || offline.collections.matches(value).length) return null
+    if (!value) return null
+    // Complete unfinished aliases (`bur` → `burned`) so a prefix that the grid
+    // reads as a collection isn't mistaken for an owner label here.
+    const completed = offline.dataset.completeSearchText(value)
+    if (offline.collections.matches(completed).length) return null
     return addressForLabel(value) ?? null
   }
 
@@ -169,9 +173,13 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
 
   // Curated collections the live query mentions (e.g. `burned`, `moma`), for
   // surfacing an explainer. Scans the trait text after market qualifiers and
-  // colors are stripped, so `burned for sale` and `burned hoodie` still match.
+  // colors are stripped, so `burned for sale` and `burned hoodie` still match;
+  // unfinished aliases are completed first (`bur` → `burned`) so the card keeps
+  // step with the grid.
   const collectionMatches = computed(() =>
-    offline.collections.matches(parsedText.value.text ?? ''),
+    offline.collections.matches(
+      offline.dataset.completeSearchText(parsedText.value.text ?? ''),
+    ),
   )
 
   const criteriaQuery = computed<PunkQuery>(() => {
