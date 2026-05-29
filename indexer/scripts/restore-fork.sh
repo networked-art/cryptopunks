@@ -38,6 +38,27 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
+# Drop every pre-existing `ponder_*` schema before restoring. The snapshot
+# schema is hashed from the deploy's build_id, so it changes whenever prod
+# redeploys; `pg_restore --clean` only drops what the new dump recreates, so a
+# previous deploy's `ponder_*` schema lingers. Its `_ponder_checkpoint`
+# live-query trigger depends on the shared views schema, which blocks the
+# dump's own `DROP SCHEMA` for the views and cascades into "already exists"
+# failures. Starting from a clean slate avoids that — the dump recreates the
+# current snapshot schema and `ponder_sync` with their data.
+echo "Dropping any pre-existing ponder_* schemas…"
+docker exec -i "$CONTAINER" psql -U punks -d punks -v ON_ERROR_STOP=1 -q <<'SQL'
+DO $$
+DECLARE schema_name text;
+BEGIN
+  FOR schema_name IN
+    SELECT nspname FROM pg_namespace WHERE nspname LIKE 'ponder\_%' ESCAPE '\'
+  LOOP
+    EXECUTE format('DROP SCHEMA IF EXISTS %I CASCADE', schema_name);
+  END LOOP;
+END $$;
+SQL
+
 echo "Restoring (this takes ~1-2 minutes)…"
 unzip -p "$ZIP" "$DUMP_INSIDE" \
   | docker exec -i "$CONTAINER" pg_restore \
