@@ -8,7 +8,7 @@
       aria-hidden="true"
       >↗</span
     >
-    <span class="collection-title">{{ title }}</span>
+    <span class="collection-title label">{{ title }}</span>
     <span
       v-if="subtitle"
       class="collection-subtitle"
