@@ -28,7 +28,7 @@ primitives.
 - **Writes.** Wallet actions — listing, buying, bidding, transferring,
   unwrapping — go directly to the connected wallet's own RPC via viem and
   never touch the app's proxy.
-- **Activity feed.** `/activity` is served by the shared indexer
+- **Activity feed.** `/activity` is served by the indexer
   (`NUXT_PUBLIC_INDEXER_URL`, a Ponder/Postgres service) — see the
   [Indexer](/indexer) docs.
 - **Rendering.** The grid composites a CDN-hosted sprite sheet with

@@ -36,8 +36,8 @@ auto-registered UI primitives.
   contract write plans and sent through the connected wallet with wagmi
   (`app/composables/useWritePlan.ts`). The SDK owns address/ABI/args/value;
   wagmi owns the wallet transport.
-- **Activity feed** is served by the shared indexer (the same service behind
-  punksmarket.app). `app/composables/useActivityFeed.ts` reads the
+- **Activity feed** is served by the indexer at `indexer.punks.auction` (a
+  Ponder/Postgres service). `app/composables/useActivityFeed.ts` reads the
   `cryptopunks_v2`, `wrapped_punks`, `cryptopunks_721`, and `punks_auction`
   sources.
 - **RPC proxy** at `server/api/rpc.post.ts` keeps the upstream URL (and its API

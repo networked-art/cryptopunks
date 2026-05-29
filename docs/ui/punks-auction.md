@@ -36,8 +36,8 @@ itself.
   built by the SDK as contract write plans and sent through the connected
   wallet with wagmi. The SDK owns the address/ABI/args/value; wagmi owns the
   wallet transport.
-- **Activity feed.** `/activity` is served by the shared indexer (the same
-  one behind [punksmarket.app](/ui/punksmarket-app)), reading the
+- **Activity feed.** `/activity` is served by the indexer at
+  `indexer.punks.auction` (a Ponder/Postgres service), reading the
   `cryptopunks_v2`, `wrapped_punks`, `cryptopunks_721`, and `punks_auction`
   sources.
 - **RPC proxy.** A server route keeps the upstream RPC URL and key
