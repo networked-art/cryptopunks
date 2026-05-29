@@ -4,9 +4,7 @@
       <div class="page-head-text">
         <h1>Activity</h1>
         <p class="muted">
-          Every <code>CryptoPunks</code> and <code>PunksAuction</code> market
-          event — claims, transfers, listings, bids, sales, wraps, lots, and
-          purchase offers — newest first.
+          Every CryptoPunks and PunksAuction market event, newest first.
         </p>
       </div>
     </header>
