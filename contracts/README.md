@@ -115,7 +115,7 @@ npx hardhat ignition verify chain-<chainId>
 
 The Etherscan API key is read from the `ETHERSCAN_API_KEY` config variable.
 
-### 3. Load and seal the dataset
+### 3. Load the dataset
 
 ```sh
 pnpm load:punks-data
@@ -126,9 +126,20 @@ The script:
 - Resolves the contract address from `PUNKS_DATA_ADDRESS`, or falls back to `ignition/deployments/chain-<chainId>/deployed_addresses.json`.
 - Streams the eight blobs through `loadBlobChunk` (24,575 bytes per chunk).
 - Streams the trait mask pairs, color masks, packed scalars, and color supplies through their batched loaders.
-- Calls `seal` with the dataset commitment hashes from the manifest, then verifies the on-chain `datasetHash` matches.
 
 At default settings (`STORAGE_BATCH=200`) the full load runs in ~187 transactions.
+
+Loading does not seal. Sealing is gated behind `PUNKS_DATA_SEAL=1` so you can set the contract's ENS forward and reverse records before committing the dataset.
+
+### 4. Seal the dataset
+
+Once the ENS records are in place:
+
+```sh
+pnpm seal:punks-data
+```
+
+This calls `seal` with the dataset commitment hashes from the manifest, then verifies the on-chain `datasetHash` matches. Both `load:punks-data` and `seal:punks-data` are pinned to `--network mainnet`.
 
 ### Tuning and overrides
 
@@ -140,6 +151,7 @@ Environment variables read by the load script:
 | `PUNKS_DATA_ADDRESS`       | (Ignition lookup)           | Override the resolved contract address.                                                                                                         |
 | `PUNKS_DATA_DEPLOYMENT_ID` | `chain-<chainId>`           | Override the Ignition deployment folder used for address resolution.                                                                            |
 | `PUNKS_DATA_STORAGE_BATCH` | `200`                       | Items per `loadTraitMaskPairs` / `loadColorMasks` / `loadPackedScalars` / `loadColorSupplies` call. Higher cuts tx count; bounded by block gas. |
+| `PUNKS_DATA_SEAL`          | `0`                         | When `1`, seal the dataset after loading (set by `pnpm seal:punks-data`). A plain load never seals.                                             |
 
 ### Resumability
 

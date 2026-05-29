@@ -1,18 +1,20 @@
 # Networked CryptoPunks
 
 Monorepo for the onchain CryptoPunks data, rendering, and market contracts,
-plus the TypeScript SDK, indexer, and front-end that build on them. All
+plus the TypeScript SDK, indexer, and front-ends that build on them. All
 contracts target Ethereum mainnet only.
 
 ## Packages
 
-| Package                                            | Name                             | Purpose                                                                                                                                                                       |
-| -------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`contracts/`](contracts/README.md)                | `@networked-art/punks-contracts` | Hardhat 3 sources for `PunksData`, `PunksRenderer`, `PunksMarket`, the auction/vault system, and the batch unwrap helper for the broken June 9th 2017 `CryptoPunks` contract. |
-| [`sdk/`](sdk/README.md)                            | `@networked-art/punks-sdk`       | Collection-first TypeScript SDK: local search and rendering, `CryptoPunksMarket` and `PunksMarket` reads/writes, Stash, criterion offers, and auctions.                       |
-| [`indexer/`](indexer/README.md)                    | `@networked-art/punks-indexer`   | Ponder indexer that tracks `CryptoPunks` and `CryptoPunksMarket`, their ERC-721 wrappers, and `PunksMarket`, with USD-cent prices stamped per event.                          |
-| [`punksmarket.app/`](punksmarket.app/package.json) | `@networked-art/punksmarket.app` | Nuxt front-end for [punksmarket.app](https://punksmarket.app) and the [unwrap.punksmarket.app](https://unwrap.punksmarket.app) helper.                                        |
-| [`docs/`](docs/index.md)                           | `@networked-art/punks-docs`      | VitePress documentation site for the contracts and SDK.                                                                                                                       |
+| Package                                         | Name                             | Purpose                                                                                                                                                                        |
+| ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`contracts/`](contracts/README.md)             | `@networked-art/punks-contracts` | Hardhat 3 sources for `PunksData`, `PunksRenderer`, `PunksMarket`, the auction/vault system, and the batch unwrap helper for the broken June 9th 2017 `CryptoPunks` contract.  |
+| [`sdk/`](sdk/README.md)                         | `@networked-art/punks-sdk`       | Collection-first TypeScript SDK: local search and rendering, `CryptoPunksMarket` and `PunksMarket` reads/writes, Stash, criterion offers, and auctions.                        |
+| [`indexer/`](indexer/README.md)                 | `@networked-art/punks-indexer`   | Ponder indexer that tracks `CryptoPunks` and `CryptoPunksMarket`, their ERC-721 wrappers, `PunksMarket`, and the `PunksAuction` house, with USD-cent prices stamped per event. |
+| [`punksmarket.app/`](punksmarket.app/README.md) | `@networked-art/punksmarket.app` | Nuxt front-end for [punksmarket.app](https://punksmarket.app) and the [unwrap.punksmarket.app](https://unwrap.punksmarket.app) helper.                                         |
+| [`punks.auction/`](punks.auction/README.md)     | `@networked-art/punks.auction`   | Nuxt front-end for [punks.auction](https://punks.auction), the zero-fee auction house — lots, auctions, criterion offers, and Punks Vault custody.                             |
+| [`docs/`](docs/index.md)                        | `@networked-art/punks-docs`      | VitePress documentation site for the contracts and SDK.                                                                                                                        |
+| [`images/`](images/README.md)                   | `@networked-art/punks-images`    | CryptoPunks sprite sheet and per-token PNG extraction — the rendering assets the front-ends consume.                                                                           |
 
 ## Documentation
 
@@ -25,7 +27,7 @@ Full per-surface docs live in [`docs/`](docs/index.md). Highlights:
 
 ## Development
 
-Requires `pnpm@10`. If not installed:
+Requires Node 24 (see `.node-version`) and `pnpm@10`. If pnpm is not installed:
 
 ```sh
 npm install -g pnpm@10
@@ -51,7 +53,7 @@ cp punksmarket.app/.env.example punksmarket.app/.env
 # Edit .env — set NUXT_RPC_URL to a mainnet JSON-RPC endpoint
 # (e.g. https://eth.llamarpc.com for a free public one, or your Alchemy/Infura URL)
 
-# 3. Start the dev server → http://localhost:3000
+# 3. Start the dev server → http://localhost:3001
 pnpm --filter @networked-art/punksmarket.app dev
 ```
 

@@ -38,7 +38,7 @@ ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
 All user-facing activity flows into a single `events` table with a unified
 shape (one row per indexed log). `source` ∈ `{ cryptopunks_v1,
 cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market,
-punks_auction, stash, vault }`. Per-Punk current state lives in `punks` and
+punks_auction }`. Per-Punk current state lives in `punks` and
 `v1_punks`; native marketplace state lives in `listings` / `punk_bids` for V2
 and `v1_listings` / `v1_punk_bids` for V1. `PunksMarket` criteria bids live in
 `market_bids` with predicate side tables for SQL matching. `PunksAuction`
@@ -283,5 +283,5 @@ the repo-root `Dockerfile.indexer`; deploy config lives in
 Each deploy gets a fresh schema named after the commit hash
 (`DATABASE_SCHEMA=$(git rev-parse HEAD)`); the stable public views are
 projected into the `punks` schema by Ponder once the new schema is caught
-up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5467` on the
+up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5469` on the
 deploy host.
