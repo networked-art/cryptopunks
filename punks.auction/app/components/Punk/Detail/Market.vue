@@ -16,6 +16,35 @@
       >
         <dl class="state-grid">
           <div class="state-cell">
+            <dt class="label">Top bid</dt>
+            <dd v-if="activeBid">
+              <EthAmount :wei="activeBid.valueWei" />
+              <span class="dim"> by </span>
+              <NuxtLink :to="`/profile/${activeBid.bidder}`">
+                <Account :address="activeBid.bidder" />
+              </NuxtLink>
+            </dd>
+            <dd
+              v-else
+              class="muted"
+            >
+              None
+            </dd>
+
+            <div
+              v-if="!isOwner"
+              class="cell-action"
+            >
+              <LazyPunkDetailMarketBidForm
+                :punk-id="punkId"
+                :current-bid="activeBid"
+                :primary="!liveListing"
+                @placed="onChanged"
+              />
+            </div>
+          </div>
+
+          <div class="state-cell">
             <dt class="label">Listing</dt>
             <dd v-if="liveListing">
               <EthAmount :wei="liveListing.priceWei" />
@@ -32,23 +61,17 @@
             >
               Not for sale
             </dd>
-          </div>
 
-          <div class="state-cell">
-            <dt class="label">Top bid</dt>
-            <dd v-if="activeBid">
-              <EthAmount :wei="activeBid.valueWei" />
-              <span class="dim"> by </span>
-              <NuxtLink :to="`/profile/${activeBid.bidder}`">
-                <Account :address="activeBid.bidder" />
-              </NuxtLink>
-            </dd>
-            <dd
-              v-else
-              class="muted"
+            <p
+              v-if="ownerLastActiveAgo"
+              class="last-active"
             >
-              None
-            </dd>
+              Wallet last active {{ ownerLastActiveAgo }}
+            </p>
+
+            <div class="cell-action">
+              <LazyPunkDetailMarketBrokerContact :punk-id="punkId" />
+            </div>
           </div>
         </dl>
 
@@ -123,20 +146,12 @@
               .
             </p>
 
-            <div class="action-group">
-              <LazyPunkDetailMarketBidForm
-                :punk-id="punkId"
-                :current-bid="activeBid"
-                :primary="!liveListing"
-                @placed="onChanged"
-              />
-              <Button
-                v-if="isHighBidder"
-                @click="actWithdrawBid"
-              >
-                Withdraw bid
-              </Button>
-            </div>
+            <Button
+              v-if="isHighBidder"
+              @click="actWithdrawBid"
+            >
+              Withdraw bid
+            </Button>
           </template>
         </div>
       </div>
@@ -227,6 +242,26 @@ const canBuy = computed(() => {
     sameAddress(current.onlySellTo, address.value)
   )
 })
+
+// Owner's wallet last-active, sourced from the indexer's tx-from tracking, so a
+// broker can gauge how reachable the holder is. Custody set covers vault/stash;
+// the EOA drives the last-active lookup.
+const ownerAddresses = computed<Address[]>(() => {
+  const set = new Set<Address>()
+  if (resolvedOwner.value) set.add(resolvedOwner.value)
+  if (nativeOwner.value) set.add(nativeOwner.value)
+  return [...set]
+})
+const { stats: ownerStats } = useAccountStats({
+  addresses: ownerAddresses,
+  eoa: () => resolvedOwner.value ?? undefined,
+})
+const ownerLastActiveIso = computed(() =>
+  ownerStats.value.lastActiveAt
+    ? new Date(ownerStats.value.lastActiveAt * 1000).toISOString()
+    : undefined,
+)
+const ownerLastActiveAgo = useTimeAgo(ownerLastActiveIso)
 
 let refreshToken = 0
 
@@ -386,6 +421,16 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   border: 0;
 }
 
+.last-active {
+  margin: var(--size-1) 0 0;
+  font-size: var(--font-xs);
+  color: var(--text-dim);
+}
+
+.cell-action {
+  margin-top: var(--size-4);
+}
+
 .label {
   margin-bottom: var(--size-1);
   color: var(--text-dim);
@@ -404,8 +449,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   align-items: center;
   gap: var(--size-2);
   flex-wrap: wrap;
-  padding-top: var(--size-3);
-  border-top: var(--border);
 }
 
 .action-group {
