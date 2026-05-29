@@ -6,9 +6,14 @@ import {
   type PunkStandardValue,
   type SkinToneValue,
 } from './constants'
-import { searchCollections } from './collections'
+import { searchCollectionEntries } from './collections'
+import type { SearchCollectionEntry } from './collections'
 import searchSynonymsJson from './search-synonyms.json'
-import { normalizePunkStandard, PunksDataValidationError } from './utils'
+import {
+  normalizePunkStandard,
+  normalizeSynonymText,
+  PunksDataValidationError,
+} from './utils'
 
 /// Single tokenized term from a search text query.
 export type SearchTextTerm = {
@@ -407,89 +412,6 @@ function matchSearchSynonymEntry(
   return undefined
 }
 
-type SearchCollectionEntry = {
-  key: string
-  tokens: string[]
-  ids: readonly number[]
-  standard: PunkStandardValue
-}
-
-const SEARCH_COLLECTION_ENTRIES = buildSearchCollectionEntries()
-
-/// Builds the alias → id-set match table from the bundled collections and any
-/// institutions nested within them (so `museum punks` resolves to the whole
-/// set and `moma` resolves to just MoMA's). The matchable key for each slug and
-/// alias is normalized and stripped of the trailing `punk(s)` filler (so
-/// `burned punks`, `burned`, and the slug all reduce to the same key),
-/// mirroring how `freeTerms` look by the time this runs. Longest keys sort
-/// first so a multi-word alias wins over a shorter one.
-/// A new alias must not collide with what the group loop consumes first (a
-/// bare number, `#id`, `albino`, or an `<n> <axis>` / skin bigram), or it
-/// never reaches this table.
-function buildSearchCollectionEntries(): SearchCollectionEntry[] {
-  const byKey = new Map<
-    string,
-    { owner: string; ids: readonly number[]; standard: PunkStandardValue }
-  >()
-  const register = (
-    owner: string,
-    phrases: readonly string[],
-    ids: readonly number[],
-    standard: PunkStandardValue,
-  ): void => {
-    for (const phrase of phrases) {
-      const key = normalizeCollectionPhrase(phrase)
-      if (!key) continue
-      const existing = byKey.get(key)
-      if (existing !== undefined && existing.owner !== owner) {
-        throw new PunksDataValidationError(
-          `collection alias "${key}" is claimed by both ${existing.owner} and ${owner}`,
-        )
-      }
-      byKey.set(key, { owner, ids, standard })
-    }
-  }
-  for (const collection of searchCollections) {
-    register(
-      collection.slug,
-      [collection.slug, ...collection.aliases],
-      collection.ids,
-      collection.standard,
-    )
-    // Institutions resolve on their own but inherit the parent's standard.
-    for (const institution of collection.institutions ?? []) {
-      register(
-        `${collection.slug}/${institution.slug}`,
-        [institution.slug, ...institution.aliases],
-        institution.ids,
-        collection.standard,
-      )
-    }
-  }
-  return [...byKey.entries()]
-    .map(([key, value]) => ({
-      key,
-      tokens: key.split(/\s+/),
-      ids: value.ids,
-      standard: value.standard,
-    }))
-    .sort((a, b) => {
-      const tokenDelta = b.tokens.length - a.tokens.length
-      if (tokenDelta !== 0) return tokenDelta
-      return b.key.length - a.key.length
-    })
-}
-
-/// Normalizes a collection slug/alias the same way `freeTerms` are normalized
-/// at match time, then drops the `punk(s)` filler the group parser already
-/// removes from user input. Returns `''` when nothing matchable remains.
-function normalizeCollectionPhrase(phrase: string): string {
-  return normalizeSynonymText(phrase)
-    .split(/\s+/)
-    .filter((token) => token && token !== 'punk' && token !== 'punks')
-    .join(' ')
-}
-
 /// Replaces whole-phrase collection aliases in `terms` with their id set,
 /// pushed onto `group.includeIds`, and returns the terms left for downstream
 /// trait/synonym resolution. Only non-exact terms match, so a quoted `"burned"`
@@ -499,7 +421,7 @@ function resolveSearchCollectionTerms(
   terms: readonly SearchTextTerm[],
   standard?: PunkStandardValue,
 ): SearchTextTerm[] {
-  if (terms.length === 0 || SEARCH_COLLECTION_ENTRIES.length === 0) {
+  if (terms.length === 0 || searchCollectionEntries.length === 0) {
     return [...terms]
   }
   const remaining: SearchTextTerm[] = []
@@ -522,7 +444,7 @@ function findSearchCollectionAt(
   start: number,
   standard?: PunkStandardValue,
 ): { entry: SearchCollectionEntry; consumed: number } | undefined {
-  for (const entry of SEARCH_COLLECTION_ENTRIES) {
+  for (const entry of searchCollectionEntries) {
     // A scoped SDK skips collections of other standards; the alias then falls
     // through to literal trait matching instead of resolving as an id set.
     if (standard !== undefined && entry.standard !== standard) continue
@@ -730,14 +652,6 @@ function parseNumberWord(value: string): number | undefined {
 
 function normalizeWord(value: string): string {
   return value.toLowerCase().replaceAll(/[_,]/g, '')
-}
-
-function normalizeSynonymText(value: string): string {
-  return value
-    .toLowerCase()
-    .replaceAll(/[_-]+/g, ' ')
-    .replaceAll(/[^#a-z0-9]+/g, ' ')
-    .trim()
 }
 
 function isSearchFillerTerm(term: SearchTextTerm): boolean {

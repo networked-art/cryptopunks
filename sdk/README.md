@@ -39,6 +39,7 @@ auction reads need a `publicClient`.
 | `punks.stashBids`                             | Node Foundation offchain bids orderbook (prepare, sign, submit, accept)      |
 | `punks.offers`                                | Networked Art criterion offers                                               |
 | `punks.auctions`                              | Vaults, lots, bidding, settlement                                            |
+| `punks.vault`                                 | Punks Vault deposits, withdrawals, and custody status                        |
 
 ## Choosing The Right Surface
 
@@ -138,13 +139,32 @@ and quoting (`"burned"`) opts back out to a literal trait lookup. Look the sets
 up directly for UI — each call returns a fresh, mutable copy:
 
 ```ts
-punks.collections.list() // [{ slug, title, description, aliases, source, standard, ids, institutions? }]
+punks.collections.list() // [{ slug, title, description, aliases, source, sourceTemplate?, standard, ids, institutions? }]
 punks.collections.get('museum') // one collection (with its institutions), or undefined
 punks.collections.has('burned')
 ```
 
 Each collection carries a `standard` (`PunkStandard.CryptoPunks` /
 `CryptoPunksV1`) so burns and holdings stay attributed to the right contract.
+
+A collection (or an institution) may add an optional `sourceTemplate` — a URL
+with an `{id}` placeholder — to deep-link a single Punk on the curating site.
+`forPunk` reports the collections a Punk belongs to and resolves the best link
+(the most specific `sourceTemplate` filled with the id, else the institution or
+collection `source`); `matches` reports which collections a search phrase
+mentions, for surfacing an explainer:
+
+```ts
+punks.collections.forPunk(1286)
+// [{ collection: <museum>, institutions: [<zkm>], sourceUrl: 'https://museumpunks.com/1286' }]
+punks.collections.forPunk(685)
+// [{ collection: <burned>, institutions: [], sourceUrl: 'https://burnedpunks.com' }] — no template
+punks.collections.forPunk(0) // [] — also [] for ids outside 0..9999
+
+punks.collections.matches('burned') // [{ collection: <burned> }]
+punks.collections.matches('moma') // [{ collection: <museum>, institution: <moma> }]
+punks.collections.matches('burned hoodie') // still [{ collection: <burned> }] — any term, anywhere
+```
 
 Pass `standard` to `createPunksSdk` (or the offline client) to scope a client to
 a single standard: only collections of that standard resolve in `text` search
@@ -307,10 +327,10 @@ seeding a 24h auction with the offer as its opening bid.
 The package still exports:
 
 - `createPunksDataClient` and `createPunksRendererClient`
-- clients for `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, the `PunksMarket` indexer, wrappers, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
-- ABIs for `PunksData`, `PunksRenderer`, `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, `UnwrapV1Punks`, wrappers, Stash, auctions, and the auction vault
+- clients for `CryptoPunksMarket`, the V1 market (the criteria-bid `PunksMarket`), `PunksV1Wrapper`, the V1 market indexer, wrappers, the Punks Vault, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
+- ABIs for `PunksData`, `PunksRenderer`, `CryptoPunksMarket`, the V1 market (`punksV1MarketAbi`), `PunksV1Wrapper`, `UnwrapV1Punks`, wrappers, Stash, auctions, and the Punks Vault
 - bitmap utilities and validation helpers
-- `@networked-art/punks-sdk/offline` for direct offline dataset access
+- `@networked-art/punks-sdk/offline` (plus `/offline-data` and `/offline-pixel-data`) for direct offline dataset access
 
 ## Development
 

@@ -255,6 +255,8 @@ export type {
   ColorRef,
   CuratedCollection,
   CuratedCollectionInstitution,
+  CuratedCollectionMatch,
+  CuratedCollectionMembership,
   NumericRange,
   PaletteColor,
   PunkMetadata,

@@ -4,6 +4,7 @@
     "description": "Punks provably sent to a burn address or otherwise removed from circulation.",
     "aliases": ["burned punks", "destroyed punks"],
     "source": "https://burnedpunks.com",
+    "sourceTemplate": "https://burnedpunks.com/{id}",
     "standard": "v2",
     "ids": [
       685, 2317, 2761, 2838, 3493, 3808, 5041, 5237, 5449, 7755, 8611, 9146
@@ -14,6 +15,7 @@
     "description": "Punks held in the permanent collections of art institutions.",
     "aliases": ["museum punks", "institution punks"],
     "source": "https://museumpunks.com",
+    "sourceTemplate": "https://museumpunks.com/{id}",
     "standard": "v2",
     "institutions": {
       "moma": {

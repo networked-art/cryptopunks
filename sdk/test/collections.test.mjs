@@ -263,4 +263,89 @@ describe('curated collections', () => {
     // The standalone lookup stays global regardless of any SDK scoping.
     assert.equal(getSearchCollection('burned').slug, 'burned')
   })
+
+  it('exposes an optional per-Punk source template', () => {
+    // `museum` carries a template; flat collections without per-Punk pages
+    // leave it unset.
+    assert.equal(
+      getSearchCollection('museum').sourceTemplate,
+      'https://museumpunks.com/{id}',
+    )
+    assert.equal(getSearchCollection('burned').sourceTemplate, undefined)
+    assert.equal(
+      getSearchCollection('perfect-and-priceless').sourceTemplate,
+      undefined,
+    )
+  })
+
+  it('resolves a Punk to its collections with the best source link', () => {
+    const punks = createPunksSdk()
+
+    // ZKM holds #1286; the museum template deep-links to the curating site.
+    const museum1286 = punks.collections.forPunk(1286)
+    assert.deepEqual(
+      museum1286.map((m) => m.collection.slug),
+      ['museum'],
+    )
+    assert.deepEqual(
+      museum1286[0].institutions.map((i) => i.slug),
+      ['zkm'],
+    )
+    assert.equal(museum1286[0].sourceUrl, 'https://museumpunks.com/1286')
+
+    // A flat collection with no template falls back to its bare source.
+    const burned685 = punks.collections.forPunk(685)
+    assert.deepEqual(
+      burned685.map((m) => m.collection.slug),
+      ['burned'],
+    )
+    assert.deepEqual(burned685[0].institutions, [])
+    assert.equal(burned685[0].sourceUrl, 'https://burnedpunks.com')
+
+    // #2838 is both burned and a ZKM holding — one membership per collection,
+    // each with its own resolved link.
+    const both = punks.collections.forPunk(2838)
+    assert.deepEqual(
+      both.map((m) => `${m.collection.slug}:${m.sourceUrl}`),
+      ['burned:https://burnedpunks.com', 'museum:https://museumpunks.com/2838'],
+    )
+
+    // A Punk in no collection, and out-of-range ids, return [].
+    assert.deepEqual(punks.collections.forPunk(0), [])
+    assert.deepEqual(punks.collections.forPunk(10000), [])
+    assert.deepEqual(punks.collections.forPunk(-1), [])
+    assert.deepEqual(punks.collections.forPunk(1.5), [])
+
+    // Callers get fresh copies; mutating one does not corrupt the bundle.
+    museum1286[0].collection.ids.push(9999)
+    assert.equal(punks.collections.get('museum').ids.includes(9999), false)
+  })
+
+  it('reports every collection term mentioned in a phrase', () => {
+    const punks = createPunksSdk()
+    const slugs = (text) =>
+      punks.collections
+        .matches(text)
+        .map((m) => (m.institution ? `${m.collection.slug}/${m.institution.slug}` : m.collection.slug))
+
+    assert.deepEqual(slugs('burned'), ['burned'])
+    assert.deepEqual(slugs('burned punks'), ['burned'])
+    assert.deepEqual(slugs('museum punks'), ['museum'])
+    // An institution alias narrows the match.
+    assert.deepEqual(slugs('moma'), ['museum/moma'])
+    // "Any collection term": a refined search still surfaces the collection.
+    assert.deepEqual(slugs('burned hoodie'), ['burned'])
+    // Distinct collections both report; a repeated alias is deduplicated.
+    assert.deepEqual(slugs('burned destroyed'), ['burned'])
+    assert.deepEqual(slugs('burned moma'), ['burned', 'museum/moma'])
+    // No collection term, empty input, and non-strings are all empty.
+    assert.deepEqual(slugs('hoodie'), [])
+    assert.deepEqual(punks.collections.matches(''), [])
+    assert.deepEqual(punks.collections.matches(undefined), [])
+
+    // A v1-scoped client never matches a v2 collection.
+    const v1 = createPunksSdk({ standard: 'v1' }).collections
+    assert.deepEqual(v1.matches('burned'), [])
+    assert.deepEqual(v1.forPunk(685), [])
+  })
 })

@@ -304,6 +304,20 @@ export function normalizeName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
+/// Normalizes free-text for whole-phrase synonym and curated-collection
+/// matching: lowercased, `_`/`-` and any other punctuation collapsed to single
+/// spaces, `#` and alphanumerics preserved, trimmed. Shared by the search
+/// synonym rewriter ({@link ./text-parse}) and the curated-collection match
+/// table ({@link ./collections}); kept here in the leaf module so both can
+/// import it without an import cycle.
+export function normalizeSynonymText(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+}
+
 export function normalizePunkStandard(
   standard: PunkStandardRef,
 ): PunkStandardValue {

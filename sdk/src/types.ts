@@ -223,6 +223,10 @@ export type CuratedCollectionInstitution = {
   aliases: string[]
   /// Where the sub-set is curated, for attribution in a UI.
   source: string
+  /// Optional per-Punk source URL with an `{id}` placeholder, e.g.
+  /// `https://museumpunks.com/{id}`. When set it takes precedence over
+  /// `source` for deep-linking a single Punk; see `PunksCollections.forPunk`.
+  sourceTemplate?: string
   /// This sub-set's member Punk ids, deduplicated and ascending.
   ids: number[]
 }
@@ -243,6 +247,10 @@ export type CuratedCollection = {
   aliases: string[]
   /// Where the set is curated, for attribution in a UI.
   source: string
+  /// Optional per-Punk source URL with an `{id}` placeholder, e.g.
+  /// `https://museumpunks.com/{id}`. When set it takes precedence over
+  /// `source` for deep-linking a single Punk; see `PunksCollections.forPunk`.
+  sourceTemplate?: string
   /// Which contract the set is attributed to, normalized from the bundle's
   /// `standard` field. Burns and institutional holdings must point at the
   /// right contract (`PunkStandard.CryptoPunks` / `CryptoPunksV1`).
@@ -253,6 +261,30 @@ export type CuratedCollection = {
   /// Independently resolvable sub-sets, when present (e.g. the institutions in
   /// `museum`). Omitted for flat collections like `burned`.
   institutions?: CuratedCollectionInstitution[]
+}
+
+/// A Punk's membership in one curated collection, returned by
+/// `PunksCollections.forPunk`. Resolves the best source link for the specific
+/// Punk so a UI can deep-link without re-deriving it.
+export type CuratedCollectionMembership = {
+  /// The collection the Punk belongs to.
+  collection: CuratedCollection
+  /// The collection's sub-sets that contain this Punk (e.g. the institutions
+  /// holding it). Empty for flat collections like `burned`.
+  institutions: CuratedCollectionInstitution[]
+  /// The best per-Punk source link: the most specific `sourceTemplate` filled
+  /// with the Punk id, falling back to the institution or collection `source`.
+  sourceUrl: string
+}
+
+/// A curated collection (optionally narrowed to one institution) whose alias
+/// appears in a search phrase, returned by `PunksCollections.matches`.
+export type CuratedCollectionMatch = {
+  /// The matched collection.
+  collection: CuratedCollection
+  /// Set when the matched alias was an institution's (e.g. `moma`) rather than
+  /// the whole collection's.
+  institution?: CuratedCollectionInstitution
 }
 
 export type PunkMetadata = {
