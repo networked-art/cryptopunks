@@ -1,3 +1,5 @@
+import { getAddress, isAddress } from 'viem'
+import type { Address } from 'viem'
 import searchCollectionsJson from './search-collections.json'
 import { PUNK_COUNT } from './constants'
 import type { PunkStandardRef, PunkStandardValue } from './constants'
@@ -29,6 +31,8 @@ type RawCuratedCollection = {
 
 type RawInstitution = {
   title?: unknown
+  short?: unknown
+  address?: unknown
   aliases?: unknown
   source?: unknown
   sourceTemplate?: unknown
@@ -39,6 +43,21 @@ function asString(value: unknown, slug: string, field: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new PunksDataValidationError(
       `collection ${slug} is missing a non-empty ${field}`,
+    )
+  }
+  return value.trim()
+}
+
+/// An optional string field. When present it must be a non-empty string.
+function asOptionalString(
+  value: unknown,
+  label: string,
+  field: string,
+): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new PunksDataValidationError(
+      `collection ${label} ${field} must be a non-empty string`,
     )
   }
   return value.trim()
@@ -58,6 +77,18 @@ function asSourceTemplate(value: unknown, label: string): string | undefined {
     )
   }
   return value.trim()
+}
+
+/// An optional holding address. When present it must be a valid 0x address,
+/// returned checksummed.
+function asAddress(value: unknown, label: string): Address | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || !isAddress(value)) {
+    throw new PunksDataValidationError(
+      `collection ${label} address must be a valid 0x address`,
+    )
+  }
+  return getAddress(value)
 }
 
 function asAliases(value: unknown, slug: string): string[] {
@@ -101,9 +132,13 @@ function asInstitutions(
     if (instSlug.trim() === '') continue
     const label = `${slug}.${instSlug}`
     const sourceTemplate = asSourceTemplate(raw.sourceTemplate, label)
+    const address = asAddress(raw.address, label)
+    const short = asOptionalString(raw.short, label, 'short')
     institutions.push({
       slug: instSlug,
       title: asString(raw.title, label, 'title'),
+      ...(short === undefined ? {} : { short }),
+      ...(address === undefined ? {} : { address }),
       aliases: asAliases(raw.aliases, label),
       source: asString(raw.source, label, 'source'),
       ...(sourceTemplate === undefined ? {} : { sourceTemplate }),

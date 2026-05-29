@@ -3,16 +3,12 @@
     <header class="profile-head">
       <div class="profile-title-row">
         <h1
-          v-if="ensProfile.data.value?.ens"
           class="profile-name"
+          :class="{
+            muted: !addressLabel(resolvedAddress) && !ensProfile.data.value?.ens,
+          }"
         >
-          {{ ensProfile.data.value.ens }}
-        </h1>
-        <h1
-          v-else
-          class="profile-name muted"
-        >
-          {{ shortAddr }}
+          {{ titleLabel }}
         </h1>
 
         <ClientOnly>
@@ -163,6 +159,7 @@ import { useConnection, useConfig } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
+import { addressLabel } from '@networked-art/punks-sdk'
 
 const route = useRoute()
 const handle = computed(() => String(route.params.handle))
@@ -201,7 +198,12 @@ const shortAddr = computed(() =>
   resolvedAddress.value ? shortAddress(resolvedAddress.value) : handle.value,
 )
 
-const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
+const titleLabel = computed(
+  () =>
+    addressLabel(resolvedAddress.value)?.name ??
+    ensProfile.data.value?.ens ??
+    shortAddr.value,
+)
 useSeoMeta({
   title: () => `${titleLabel.value} · punksmarket.app`,
   ogTitle: () => `${titleLabel.value} · punksmarket.app`,

@@ -1,5 +1,5 @@
 import { refDebounced, useMediaQuery } from '@vueuse/core'
-import type { PunkQuery } from '@networked-art/punks-sdk'
+import { addressForLabel, type PunkQuery } from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
 import {
   computed,
@@ -121,8 +121,20 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       : 'Try hoodie, 2 colors, vault.eth, #1234',
   )
 
+  /// Owner mode also triggers on a curated address label (e.g. `NODE`,
+  /// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
+  /// (e.g. `moma`) are left to the trait/collection path so the grid keeps
+  /// showing the curated set rather than the wallet's current holdings.
+  function resolveOwnerHandle(input: string): string | null {
+    const direct = detectOwnerHandle(input)
+    if (direct) return direct
+    const value = input.trim()
+    if (!value || offline.collections.matches(value).length) return null
+    return addressForLabel(value) ?? null
+  }
+
   const ownerHandle = computed(() =>
-    enableOwnerSearch ? detectOwnerHandle(debouncedText.value) : null,
+    enableOwnerSearch ? resolveOwnerHandle(debouncedText.value) : null,
   )
   const ensIdentifier = computed(() => {
     const handle = ownerHandle.value
@@ -250,7 +262,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
 
   function onEnter() {
     if (!enableEnterNavigation) return
-    const handle = detectOwnerHandle(text.value)
+    const handle = resolveOwnerHandle(text.value)
     if (handle) {
       router.push(`/profile/${handle}`)
       return

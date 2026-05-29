@@ -219,6 +219,14 @@ export type CuratedCollectionInstitution = {
   slug: string
   /// Human-facing label, e.g. `Museum of Modern Art (MoMA)`.
   title: string
+  /// Compact badge label for `addressLabel`, e.g. `MOMA`. Optional; defaults to
+  /// the slug uppercased, which only reads well when the slug is itself an
+  /// acronym — set this for institutions where it isn't (e.g. `Centre Pompidou`).
+  short?: string
+  /// The institution's verified on-chain holding address, when known. Lets
+  /// `addressLabel` surface the institution's name wherever the address renders
+  /// (owner, bidder, activity). Optional; omitted until a verified address.
+  address?: Address
   /// Free-text phrases that resolve to this sub-set in `query.text`.
   aliases: string[]
   /// Where the sub-set is curated, for attribution in a UI.
