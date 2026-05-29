@@ -73,7 +73,14 @@ export function formatLotItemLabel(item: Pick<LotItem, 'standard' | 'punkId'>) {
 export function formatLotItemsLabel(items: readonly LotItem[]) {
   const [item] = items
   if (items.length === 1 && item) return formatLotItemLabel(item)
-  return `${items.length.toLocaleString()} Punks`
+
+  const total = items.length.toLocaleString()
+  const v1Count = items.filter(
+    (entry) => entry.standard === TokenStandard.CryptoPunksV1,
+  ).length
+  if (v1Count === 0) return `${total} Punks`
+  if (v1Count === items.length) return `${total} V1 Punks`
+  return `${total} Punks (${v1Count.toLocaleString()} V1)`
 }
 
 export function lotItemBackground(standard: TokenStandardValue): string {

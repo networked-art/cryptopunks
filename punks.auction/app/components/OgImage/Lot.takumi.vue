@@ -29,9 +29,7 @@
 
       <div :style="titleBlock">
         <div :style="eyebrow">{{ kindLabel }}</div>
-        <div :style="idEl">
-          <span :style="hash">#</span>{{ id }}
-        </div>
+        <div :style="idEl"><span :style="hash">#</span>{{ id }}</div>
         <div :style="itemsLine">{{ itemsLine }}</div>
       </div>
 
@@ -80,9 +78,7 @@ const props = withDefaults(
 
 const VISIBLE_LIMIT = 4
 
-const kindLabel = computed(() =>
-  props.kind === 'auction' ? 'Auction' : 'Lot',
-)
+const kindLabel = computed(() => (props.kind === 'auction' ? 'Auction' : 'Lot'))
 
 const visibleItems = computed(() => {
   if (props.items.length <= VISIBLE_LIMIT) return props.items
@@ -99,7 +95,12 @@ const itemsLine = computed(() => {
       ? `Punk #${first.punkId} (V1)`
       : `Punk #${first.punkId}`
   }
-  return `${n} Punks`
+  const v1Count = props.items.filter(
+    (item) => item.standard === TokenStandard.CryptoPunksV1,
+  ).length
+  if (v1Count === 0) return `${n} Punks`
+  if (v1Count === n) return `${n} V1 Punks`
+  return `${n} Punks (${v1Count} V1)`
 })
 
 const formattedPrice = computed(() => {
@@ -141,13 +142,20 @@ const PUNK_PANEL = 630
 
 const grid = computed(() => {
   const n = visibleItems.value.length
+  // A lone V1 punk doesn't fill the panel, so paint the panel itself V1 gray
+  // (rather than the default) whenever every shown Punk is a V1.
+  const allV1 =
+    n > 0 &&
+    visibleItems.value.every(
+      (item) => item.standard === TokenStandard.CryptoPunksV1,
+    )
   return {
     width: `${PUNK_PANEL}px`,
     height: `${PUNK_PANEL}px`,
     display: 'flex',
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    background: PUNK_BACKGROUNDS.default,
+    background: allV1 ? PUNK_BACKGROUNDS.v1 : PUNK_BACKGROUNDS.default,
     flexShrink: 0,
     alignContent: n === 1 ? ('center' as const) : ('flex-start' as const),
     justifyContent: n === 1 ? ('center' as const) : ('flex-start' as const),
@@ -168,7 +176,7 @@ function cell(item: OgLotItem) {
     flexShrink: 0,
     backgroundColor:
       item.standard === TokenStandard.CryptoPunksV1
-        ? PUNK_BACKGROUNDS.legacyWrapped
+        ? PUNK_BACKGROUNDS.v1
         : PUNK_BACKGROUNDS.default,
     position: 'relative' as const,
   }

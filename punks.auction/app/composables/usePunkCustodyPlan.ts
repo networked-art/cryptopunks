@@ -1,6 +1,5 @@
 import {
   CRYPTOPUNKS_721_ADDRESS,
-  PUNKS_V1_WRAPPER_ADDRESS,
   WRAPPED_PUNKS_ADDRESS,
   punkVaultAbi,
   type ContractWritePlan,
@@ -126,20 +125,9 @@ export function usePunkCustodyPlan() {
     items: readonly CustodyPlanningItem[],
   ) {
     const plans: ContractWritePlan[] = []
-    const nativeStashPunks = items.filter(
-      (item) =>
-        item.custody === 'stash' && item.standard === TokenStandard.CryptoPunks,
-    )
-    const unsupportedNativeStash = items.find(
-      (item) =>
-        item.custody === 'stash' &&
-        item.standard === TokenStandard.CryptoPunksV1,
-    )
-    if (unsupportedNativeStash) {
-      throw new Error(
-        'V1 Punks held in Stash cannot be prepared automatically.',
-      )
-    }
+    // The Stash is a CryptoPunks-only custody surface; V1 Punks never live there
+    // (see `useAccountPunkInventory`), so every stash-held item here is a Punk.
+    const nativeStashPunks = items.filter((item) => item.custody === 'stash')
 
     if (nativeStashPunks.length) {
       if (!stash) throw new Error('Stash address is still loading.')
@@ -231,13 +219,10 @@ function wrappedTokenGroups(items: readonly CustodyPlanningItem[]) {
   return groups.entries()
 }
 
+/// ERC-721 wrapper token an item lives in while held by the Stash. Only the
+/// CryptoPunks wrappers apply — V1 Punks never enter the Stash, so there is no
+/// V1 wrapper case here.
 function wrapperTokenAddress(item: CustodyPlanningItem): Address | null {
-  if (
-    item.standard === TokenStandard.CryptoPunksV1 ||
-    item.wrapper === 'v1_wrapper'
-  ) {
-    return PUNKS_V1_WRAPPER_ADDRESS
-  }
   if (item.wrapper === 'cryptopunks_721') return CRYPTOPUNKS_721_ADDRESS
   if (item.wrapper === 'wrapped_punks') return WRAPPED_PUNKS_ADDRESS
   return null

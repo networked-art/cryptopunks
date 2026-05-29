@@ -99,6 +99,7 @@ type InventoryQueryData = Partial<Record<InventoryQueryKey, PunkConnection>>
 
 export function useAccountPunkInventory(
   account: MaybeRefOrGetter<Address | undefined>,
+  options: { includeV1?: MaybeRefOrGetter<boolean> } = {},
 ) {
   const {
     vault,
@@ -111,6 +112,11 @@ export function useAccountPunkInventory(
     refresh: refreshAddresses,
   } = useAccountAddresses(account)
   const renderV1 = useV1Rendering()
+  // Fetch V1 Punks when the user opted into V1 rendering, or when a caller
+  // explicitly needs them (lot creation offers to pair a Punk with its V1).
+  const fetchV1 = computed(
+    () => renderV1.value || toValue(options.includeV1) === true,
+  )
 
   const items = ref<AccountPunkInventoryItem[]>([])
   const loading = ref(false)
@@ -128,6 +134,10 @@ export function useAccountPunkInventory(
     }
 
     const addrs = compactLowerAddresses([acct, vault.value, stash.value])
+    // V1 Punks live only in the wallet or the Punks Vault — the Stash is a
+    // CryptoPunks-only custody surface — so we never look up V1 ownership under
+    // the Stash address. This keeps a V1-in-Stash state unrepresentable.
+    const v1Addrs = compactLowerAddresses([acct, vault.value])
     loading.value = true
     error.value = null
     try {
@@ -138,11 +148,11 @@ export function useAccountPunkInventory(
           addrs,
           () => t === token,
         ),
-        renderV1.value
+        fetchV1.value
           ? fetchInventoryRows(
               V1_PUNKS_INVENTORY_QUERY,
               'v1Punks',
-              addrs,
+              v1Addrs,
               () => t === token,
             )
           : Promise.resolve([]),
@@ -173,7 +183,7 @@ export function useAccountPunkInventory(
     }
   }
 
-  watch([() => toValue(account), vault, stash, renderV1], () => void load(), {
+  watch([() => toValue(account), vault, stash, fetchV1], () => void load(), {
     immediate: true,
   })
 
