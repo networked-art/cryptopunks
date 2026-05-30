@@ -1,66 +1,129 @@
 <template>
-  <header class="search-bar">
+  <AutocompleteRoot
+    v-model="model"
+    v-model:open="open"
+    as="header"
+    class="search-bar"
+    :ignore-filter="true"
+    :open-on-focus="true"
+    :reset-search-term-on-blur="false"
+  >
     <FormInputGroup class="search-group">
-      <div
-        class="search-field"
-        :class="{ 'with-action': hasAction, 'has-text': model }"
-        :style="fieldStyle"
-      >
-        <input
-          ref="searchInput"
-          v-model="model"
-          type="search"
-          class="search-input"
-          :placeholder="placeholder"
-          @keydown.enter="emit('enter')"
-          @keydown.esc.prevent="searchInput?.blur()"
-        />
-        <span
-          ref="underlineMeasure"
-          class="search-underline-measure"
-          aria-hidden="true"
-          >{{ underlineText }}</span
+      <AutocompleteAnchor as-child>
+        <div
+          class="search-field"
+          :class="{ 'with-action': hasAction, 'has-text': model }"
+          :style="fieldStyle"
         >
-        <kbd
-          class="search-shortcut"
-          aria-hidden="true"
-          title="Press / to focus search"
-          >/</kbd
-        >
-        <span class="search-actions">
-          <slot name="before-count" />
-          <span class="muted result-count">
-            <template v-if="counts.filtered === counts.total">
-              {{ counts.total.toLocaleString() }}
-            </template>
-            <template v-else>
-              {{ counts.filtered.toLocaleString()
-              }}<span class="result-total">
-                / {{ counts.total.toLocaleString() }}</span
-              >
-            </template>
-          </span>
-          <slot name="control" />
-          <button
-            v-if="model"
-            type="button"
-            class="unstyled clear-search"
-            aria-label="Clear search"
-            @click="clearSearch"
+          <AutocompleteInput as-child>
+            <input
+              ref="searchInput"
+              type="search"
+              class="search-input"
+              :placeholder="placeholder"
+              @keydown.enter="onEnterKey"
+              @keydown.esc.prevent="onEscape"
+            />
+          </AutocompleteInput>
+          <span
+            ref="underlineMeasure"
+            class="search-underline-measure"
+            aria-hidden="true"
+            >{{ underlineText }}</span
           >
-            <Icon name="lucide:x" />
-          </button>
-        </span>
-      </div>
+          <kbd
+            class="search-shortcut"
+            aria-hidden="true"
+            title="Press / to focus search"
+            >/</kbd
+          >
+          <span class="search-actions">
+            <slot name="before-count" />
+            <span class="muted result-count">
+              <template v-if="counts.filtered === counts.total">
+                {{ counts.total.toLocaleString() }}
+              </template>
+              <template v-else>
+                {{ counts.filtered.toLocaleString()
+                }}<span class="result-total">
+                  / {{ counts.total.toLocaleString() }}</span
+                >
+              </template>
+            </span>
+            <slot name="control" />
+            <button
+              v-if="model"
+              type="button"
+              class="unstyled clear-search"
+              aria-label="Clear search"
+              @click="clearSearch"
+            >
+              <Icon name="lucide:x" />
+            </button>
+          </span>
+        </div>
+      </AutocompleteAnchor>
       <ClientOnly>
         <slot name="action" />
       </ClientOnly>
     </FormInputGroup>
-  </header>
+
+    <ClientOnly>
+      <AutocompletePortal>
+        <AutocompleteContent
+          class="search-suggestions"
+          position="popper"
+          :side-offset="6"
+          :hide-when-empty="true"
+        >
+          <AutocompleteViewport class="search-suggestions-viewport">
+            <AutocompleteGroup
+              v-for="group in groups"
+              :key="group.key"
+              class="search-suggestions-group"
+            >
+              <AutocompleteLabel class="search-suggestions-label">
+                {{ group.label }}
+              </AutocompleteLabel>
+              <AutocompleteItem
+                v-for="item in group.items"
+                :key="`${item.kind}:${item.query}`"
+                :value="item.query"
+                :text-value="item.label"
+                class="search-suggestion"
+              >
+                <span class="search-suggestion-label">{{ item.label }}</span>
+                <span class="search-suggestion-meta">
+                  <span class="search-suggestion-kind">{{ item.kindLabel }}</span>
+                  <span
+                    v-if="item.count != null"
+                    class="search-suggestion-count"
+                    >{{ item.count.toLocaleString() }}</span
+                  >
+                </span>
+              </AutocompleteItem>
+            </AutocompleteGroup>
+          </AutocompleteViewport>
+        </AutocompleteContent>
+      </AutocompletePortal>
+    </ClientOnly>
+  </AutocompleteRoot>
 </template>
 
 <script setup lang="ts">
 import { onKeyStroke } from '@vueuse/core'
+import {
+  AutocompleteAnchor,
+  AutocompleteContent,
+  AutocompleteGroup,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteLabel,
+  AutocompletePortal,
+  AutocompleteRoot,
+  AutocompleteViewport,
+} from 'reka-ui'
+import type { PunkSuggestion } from '~/composables/usePunkSearch'
 
 type SearchCounts = {
   total: number
@@ -71,9 +134,11 @@ const props = withDefaults(
   defineProps<{
     placeholder: string
     counts: SearchCounts
+    suggestions?: PunkSuggestion[]
     actionsWidth?: string
   }>(),
   {
+    suggestions: () => [],
     actionsWidth: '176px',
   },
 )
@@ -84,6 +149,7 @@ const emit = defineEmits<{
 const model = defineModel<string>({ required: true })
 const slots = useSlots()
 
+const open = ref(false)
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
 const underlineMeasure = useTemplateRef<HTMLElement>('underlineMeasure')
 const underlineText = ref(model.value)
@@ -94,6 +160,37 @@ const fieldStyle = computed(() => ({
   '--search-underline-width': underlineWidth.value,
   '--search-actions-width': props.actionsWidth,
 }))
+
+/// Suggestions are grouped for display. The SDK's grammar qualifiers (skin
+/// tone, count) and the app's market qualifiers all read as "Filters"; traits
+/// and collections get their own groups. Filters surface first — they only
+/// match a deliberate word — with the (always longer) trait list last.
+const KIND_LABELS: Record<PunkSuggestion['kind'], string> = {
+  market: 'Filter',
+  count: 'Filter',
+  'skin-tone': 'Skin tone',
+  collection: 'Collection',
+  trait: 'Trait',
+}
+const GROUPS: { key: string; label: string; kinds: PunkSuggestion['kind'][]; limit: number }[] = [
+  { key: 'filters', label: 'Filters', kinds: ['market', 'count', 'skin-tone'], limit: 4 },
+  { key: 'collections', label: 'Collections', kinds: ['collection'], limit: 4 },
+  { key: 'traits', label: 'Traits', kinds: ['trait'], limit: 6 },
+]
+const groups = computed(() =>
+  GROUPS.map((group) => ({
+    key: group.key,
+    label: group.label,
+    items: props.suggestions
+      .filter((suggestion) => group.kinds.includes(suggestion.kind))
+      .slice(0, group.limit)
+      .map((suggestion) => ({
+        ...suggestion,
+        kindLabel: KIND_LABELS[suggestion.kind],
+      })),
+  })).filter((group) => group.items.length > 0),
+)
+const hasSuggestions = computed(() => groups.value.length > 0)
 
 /// `/` is a global shortcut for "focus the search". Skip when the user is
 /// already typing into an editable element so the slash lands as a character.
@@ -111,6 +208,24 @@ onKeyStroke('/', (e) => {
   searchInput.value?.focus()
   searchInput.value?.select()
 })
+
+/// Enter selects the highlighted suggestion when the dropdown is showing one
+/// (reka handles that, on the same keypress); otherwise it falls through to
+/// the parent's navigate-to-result behaviour.
+function onEnterKey() {
+  if (open.value && hasSuggestions.value) return
+  emit('enter')
+}
+
+/// Escape first dismisses the open dropdown, then (when already closed) blurs
+/// the field — the same two-stage escape a native combobox gives.
+function onEscape() {
+  if (open.value) {
+    open.value = false
+    return
+  }
+  searchInput.value?.blur()
+}
 
 function measureUnderline() {
   underlineWidthPx.value =
@@ -357,5 +472,100 @@ onMounted(() => nextTick(syncUnderline))
   .result-total {
     display: none;
   }
+}
+</style>
+
+<style>
+/* The suggestions panel is teleported to <body>, so it can't be `scoped`. */
+.search-suggestions {
+  z-index: var(--z-index-dropdown, 100);
+  inline-size: var(--reka-popper-anchor-width);
+  max-block-size: min(var(--reka-popper-available-height), 60vh);
+  overflow-y: auto;
+  background: white;
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-3, 0 18px 42px rgb(10 10 18 / 28%));
+  font-family: var(--ui-font-family);
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity var(--speed) ease,
+    scale var(--speed) ease;
+  transform-origin: top center;
+}
+
+.search-suggestions[data-state='closed'] {
+  opacity: 0;
+  scale: 0.97;
+}
+
+@starting-style {
+  .search-suggestions[data-state='open'] {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.search-suggestions-viewport {
+  padding-block: var(--size-1);
+}
+
+.search-suggestions-group + .search-suggestions-group {
+  border-block-start: var(--border-width) solid var(--border);
+}
+
+.search-suggestions-label {
+  display: block;
+  padding: var(--size-1) var(--size-3);
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: var(--ui-letter-spacing);
+  user-select: none;
+}
+
+.search-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
+  padding: var(--size-2) var(--size-3);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.search-suggestion[data-highlighted] {
+  background: var(--accent);
+  color: white;
+}
+
+.search-suggestion-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-suggestion-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--size-2);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.search-suggestion[data-highlighted] .search-suggestion-meta {
+  color: white;
+}
+
+.search-suggestion-kind {
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.search-suggestion-count {
+  font-variant-numeric: tabular-nums;
 }
 </style>

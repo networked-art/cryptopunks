@@ -4,6 +4,7 @@
       v-model="text"
       :placeholder="placeholder"
       :counts="counts"
+      :suggestions="suggestions"
       @enter="onEnter"
       @clear="clearSearch"
     >
@@ -66,6 +67,7 @@ const {
   counts,
   collectionMatches,
   showWrappedStateColors,
+  suggestions,
   onEnter,
   clearSearch,
 } = usePunkSearch({

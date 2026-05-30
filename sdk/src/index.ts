@@ -163,6 +163,13 @@ export type {
 } from './text-parse'
 export { formatSearchText } from './text-format'
 export type { FormatSearchTextInput } from './text-format'
+export { activeSearchToken, suggestSearchText } from './suggest'
+export type {
+  ActiveSearchToken,
+  SearchSuggestion,
+  SearchSuggestionKind,
+  SuggestSearchTextOptions,
+} from './suggest'
 export {
   PunksDataClient,
   createPunksDataClient,

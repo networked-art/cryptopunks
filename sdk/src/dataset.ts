@@ -20,6 +20,11 @@ import type {
 } from './types'
 import { toOfflineSearchQuery } from './query'
 import { indexedPixelsToRgba } from './client'
+import {
+  suggestSearchText,
+  type SearchSuggestion,
+  type SuggestSearchTextOptions,
+} from './suggest'
 import type { PunkStandardRef } from './constants'
 
 export type PunksDatasetConfig = {
@@ -57,6 +62,17 @@ export class PunksDataset {
   /// {@link OfflinePunksDataClient.completeSearchText}.
   completeSearchText(text: string): string {
     return this.source.completeSearchText(text)
+  }
+
+  /// Typeahead suggestions completing the word currently being typed in `text`
+  /// — trait names (with supply), curated collections, skin tones and count
+  /// hints. Returns `[]` when there is nothing to complete. See {@link
+  /// suggestSearchText}.
+  suggest(
+    text: string,
+    options: SuggestSearchTextOptions = {},
+  ): SearchSuggestion[] {
+    return suggestSearchText(this.source, text, options)
   }
 
   facets(query: PunkQuery = {}): OfflinePunksSearchFacets {
