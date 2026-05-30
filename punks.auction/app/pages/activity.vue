@@ -44,7 +44,6 @@
           <PunkSearchBar
             v-if="searchPanelOpen"
             v-model="searchText"
-            class="activity-search-bar"
             :placeholder="searchPlaceholder"
             :counts="searchCounts"
             actions-width="128px"
@@ -190,7 +189,11 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   backdrop-filter: blur(8px);
 }
 
-.activity-search-bar.search-bar {
+/* The search bar's root <header> is rendered by reka's AutocompleteRoot, which
+   drops this page's scoped-style attribute — selectors that target the header
+   directly never match. Anchor on .activity-controls (a real element here that
+   keeps its scope id) and reach in with :deep() instead. */
+.activity-controls :deep(.search-bar) {
   position: absolute;
   inset-inline: 0;
   top: calc(100% + var(--size-1));
@@ -201,17 +204,17 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   padding: 0;
 }
 
-.activity-search-bar :deep(.search-group) {
+.activity-controls :deep(.search-group) {
   --search-control-height: var(--form-item-height);
 
   box-shadow: none;
 }
 
-.activity-search-bar :deep(.search-group:focus-within) {
+.activity-controls :deep(.search-group:focus-within) {
   box-shadow: none;
 }
 
-.activity-search-bar :deep(.search-input) {
+.activity-controls :deep(.search-input) {
   min-height: var(--form-item-height);
   background: var(--input-background);
   box-shadow: var(--border-shadow);
@@ -220,34 +223,34 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
     color var(--speed);
 }
 
-.activity-search-bar :deep(.search-input:is(:hover, :active, :focus, .active)),
-.activity-search-bar :deep(.search-field:focus-within .search-input) {
+.activity-controls :deep(.search-input:is(:hover, :active, :focus, .active)),
+.activity-controls :deep(.search-field:focus-within .search-input) {
   background: var(--input-background);
   box-shadow: var(--border-shadow);
 }
 
-.activity-search-bar :deep(.search-field::after) {
+.activity-controls :deep(.search-field::after) {
   display: none;
 }
 
-.activity-search-bar :deep(.search-group .search-bar-action) {
+.activity-controls :deep(.search-group .search-bar-action) {
   box-shadow: var(--border-shadow);
 }
 
-.activity-search-bar
+.activity-controls
   :deep(.search-group .search-bar-action:is(:hover, :active, :focus, .active)) {
   box-shadow: var(--border-shadow);
 }
 
-.activity-search-enter-active,
-.activity-search-leave-active {
+.activity-controls :deep(.activity-search-enter-active),
+.activity-controls :deep(.activity-search-leave-active) {
   transition:
     opacity var(--speed),
     transform var(--speed);
 }
 
-.activity-search-enter-from,
-.activity-search-leave-to {
+.activity-controls :deep(.activity-search-enter-from),
+.activity-controls :deep(.activity-search-leave-to) {
   opacity: 0;
   transform: translateY(calc(-1 * var(--size-1)));
 }

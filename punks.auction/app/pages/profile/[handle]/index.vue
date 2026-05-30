@@ -87,16 +87,44 @@
 
       <section class="profile-section">
         <h2 class="section-title eyebrow">Recent activity</h2>
-        <ul
-          v-if="activity.length"
-          class="event-list"
+        <div
+          v-if="activityPending && !activity.length"
+          class="activity-loading"
         >
-          <ActivityRow
-            v-for="event in activity"
-            :key="event.id"
-            :event="event"
-          />
-        </ul>
+          <Spinner label="Loading activity" />
+        </div>
+        <template v-else-if="activity.length">
+          <ul class="event-list">
+            <ActivityRow
+              v-for="event in activity"
+              :key="event.id"
+              :event="event"
+            />
+          </ul>
+          <p
+            v-if="activityError"
+            class="error"
+          >
+            Could not load more activity: {{ activityError }}
+          </p>
+          <div
+            v-if="activityHasMore"
+            class="load-more"
+          >
+            <Button
+              :disabled="activityLoadingMore"
+              @click="loadMoreActivity"
+            >
+              {{ activityLoadingMore ? 'Loading…' : 'Load more' }}
+            </Button>
+          </div>
+        </template>
+        <p
+          v-else-if="activityError"
+          class="error"
+        >
+          Could not load activity: {{ activityError }}
+        </p>
         <p
           v-else
           class="muted"
@@ -137,7 +165,14 @@ const ownedTitle = computed(() => {
   return `${count} Owned ${count === 1 ? 'Punk' : 'Punks'}`
 })
 
-const { events: activity } = useActivityFeed({ address: profileAddress })
+const {
+  events: activity,
+  pending: activityPending,
+  loadingMore: activityLoadingMore,
+  error: activityError,
+  hasMore: activityHasMore,
+  loadMore: loadMoreActivity,
+} = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { auctions } = useAuctions()
 const { offers } = useOffers()
@@ -158,9 +193,7 @@ const ownerAddresses = computed(() => {
   return set
 })
 
-const ownerAddressList = computed(
-  () => [...ownerAddresses.value] as Address[],
-)
+const ownerAddressList = computed(() => [...ownerAddresses.value] as Address[])
 
 const { stats } = useAccountStats({
   addresses: ownerAddressList,
@@ -260,6 +293,15 @@ const myOffers = computed(() => {
   border: var(--border);
   border-bottom: 0;
   background: var(--bg-elevated);
+}
+
+.activity-loading {
+  padding: var(--size-4) 0;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
 }
 
 .error {
