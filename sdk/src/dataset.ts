@@ -51,6 +51,14 @@ export class PunksDataset {
     return this.source.countSync(toOfflineSearchQuery(query))
   }
 
+  /// Rewrites unfinished, unambiguous terms in `text` to the alias they complete
+  /// to (`bur` → `burned`), matching how {@link search} resolves them. Lets a UI
+  /// keep a collection explainer in step with the grid. See
+  /// {@link OfflinePunksDataClient.completeSearchText}.
+  completeSearchText(text: string): string {
+    return this.source.completeSearchText(text)
+  }
+
   facets(query: PunkQuery = {}): OfflinePunksSearchFacets {
     return this.source.facetsSync(toOfflineSearchQuery(query))
   }

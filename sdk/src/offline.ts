@@ -79,7 +79,9 @@ import {
 } from './utils'
 import { bundledOfflinePunksData } from './offline-data'
 import {
+  findUniquePrefixCompletion,
   parseSearchTextWithExactTraitsSync,
+  tokenizeSearchText,
   type ParsedNumericConstraint,
   type ParsedSearchTextGroup,
   type SearchTextTerm,
@@ -1038,6 +1040,35 @@ export class OfflinePunksDataClient {
     options: { exact?: boolean } & PunksDataReadOptions = {},
   ): Promise<TraitRecord[]> {
     return this.findTraitsByTextSync(text, options)
+  }
+
+  /// Completes an unfinished search term to the curated-collection alias or
+  /// synonym it unambiguously prefixes (`bur` → `burned`), so a partial word
+  /// resolves when nothing else in the dataset could match it. Returns
+  /// `undefined` when a trait already matches the term — there is another
+  /// possible match, so the fuzzy trait path handles it — or when the prefix is
+  /// ambiguous. Used by the search/filter parser via {@link
+  /// parseSearchTextWithExactTraitsSync}; see {@link findUniquePrefixCompletion}.
+  completeSearchPrefix(term: string): string | undefined {
+    if (typeof term !== 'string') return undefined
+    if (this.findTraitsByTextSync(term).length > 0) return undefined
+    return findUniquePrefixCompletion(term, this.standard)
+  }
+
+  /// Rewrites each unfinished, unambiguous term in `text` to the alias it
+  /// completes to (see {@link completeSearchPrefix}), leaving everything else
+  /// verbatim. Lets a UI resolve `bur` to the same `burned` collection the grid
+  /// resolves — e.g. to surface a collection explainer — without re-implementing
+  /// the rule. Quoted (exact) terms are preserved.
+  completeSearchText(text: string): string {
+    if (typeof text !== 'string') return ''
+    return tokenizeSearchText(text)
+      .map((term) =>
+        term.exact
+          ? `"${term.text}"`
+          : (this.completeSearchPrefix(term.text) ?? term.text),
+      )
+      .join(' ')
   }
 
   resolveTraitCriteriaSync(

@@ -288,6 +288,44 @@ describe('OfflinePunksDataClient', () => {
     )
   })
 
+  it('completes an unambiguous alias prefix in text search', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    const burned = sdk.searchSync({ text: 'burned' })
+    assert.ok(burned.length > 0)
+    // Every prefix of the only alias starting with these letters resolves to
+    // the same collection — no per-length helper synonym needed.
+    for (const prefix of ['bur', 'burn', 'burne']) {
+      assert.deepEqual(sdk.searchSync({ text: prefix }), burned)
+    }
+    // A different alias of the same collection completes the same way.
+    for (const prefix of ['destro', 'destroy', 'destroye']) {
+      assert.deepEqual(sdk.searchSync({ text: prefix }), burned)
+    }
+    // A synonym prefix completes too: `claud` → `claude` → "crazy hair".
+    assert.deepEqual(
+      sdk.searchSync({ text: 'claud' }),
+      sdk.searchSync({ text: '"crazy hair"' }),
+    )
+
+    // A prefix that also names a trait is NOT hijacked: `mus` keeps matching
+    // Mustache rather than completing to the `museum` collection.
+    assert.deepEqual(
+      sdk.searchSync({ text: 'mus' }),
+      sdk.searchSync({ text: 'mustache' }),
+    )
+    assert.notDeepEqual(
+      sdk.searchSync({ text: 'mus' }),
+      sdk.searchSync({ text: 'museum' }),
+    )
+
+    // completeSearchText mirrors the rule for UI use, and leaves guarded /
+    // already-complete terms untouched.
+    assert.equal(sdk.completeSearchText('bur'), 'burned')
+    assert.equal(sdk.completeSearchText('mus'), 'mus')
+    assert.equal(sdk.completeSearchText('burned hoodie'), 'burned hoodie')
+  })
+
   it('hydrates summaries and decodes compressed indexed pixels', () => {
     const sdk = createOfflinePunksDataClient({
       dataset: bundledOfflinePunksDataWithPixels,

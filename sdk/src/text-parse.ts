@@ -65,6 +65,11 @@ type ExactTraitTextResolver = {
   /// by the offline client so both the search and filter-compile paths inherit
   /// the SDK's configured standard without a separate argument.
   readonly standard?: PunkStandardValue
+  /// Optional unambiguous-prefix completer (`bur` → `burned`). When present,
+  /// the parser rewrites an unfinished fuzzy term to the alias it uniquely
+  /// completes before resolving collections, synonyms, and traits, so a partial
+  /// word resolves when nothing else in the dataset could match it.
+  completeSearchPrefix?(text: string): string | undefined
 }
 
 /// Offchain folk-trait aliases. Keys are user-facing search phrases; values
@@ -99,6 +104,10 @@ export type ParseSearchTextOptions = {
   /// set; an alias of any other standard falls through to a literal trait
   /// lookup. Omitted means every collection resolves (the default).
   standard?: PunkStandardRef
+  /// Rewrites an unfinished fuzzy term to the alias it unambiguously completes
+  /// (e.g. `bur` → `burned`) before grouping; return `undefined` to leave a
+  /// term unchanged. Wired from {@link ExactTraitTextResolver.completeSearchPrefix}.
+  completePrefix?: (term: string) => string | undefined
 }
 
 export function parseSearchText(
@@ -112,7 +121,10 @@ export function parseSearchText(
     options.standard === undefined
       ? undefined
       : normalizePunkStandard(options.standard)
-  const tokens = tokenizeSearchText(input)
+  const tokens = completePrefixTokens(
+    tokenizeSearchText(input),
+    options.completePrefix,
+  )
   const orGroups: ParsedSearchTextGroup[] = []
   let current: SearchTextTerm[] = []
   for (const token of tokens) {
@@ -154,7 +166,84 @@ export function parseSearchTextWithExactTraitsSync(
       ],
     }
   }
-  return parseSearchText(input, { standard: data.standard })
+  return parseSearchText(input, {
+    standard: data.standard,
+    completePrefix: data.completeSearchPrefix
+      ? (term) => data.completeSearchPrefix!(term)
+      : undefined,
+  })
+}
+
+/// Rewrites each unfinished fuzzy token to the alias it unambiguously completes
+/// (via `complete`), re-tokenizing the completion so a multi-word expansion
+/// splits correctly. Exact (quoted) terms, the `OR` operator, and tokens with
+/// no letters (numbers, ids, comparators) are passed through untouched.
+function completePrefixTokens(
+  tokens: readonly SearchTextTerm[],
+  complete: ((term: string) => string | undefined) | undefined,
+): SearchTextTerm[] {
+  if (complete === undefined) return [...tokens]
+  const out: SearchTextTerm[] = []
+  for (const token of tokens) {
+    if (
+      token.exact ||
+      /^(or|\|\|)$/i.test(token.text) ||
+      !/[a-z]/i.test(token.text)
+    ) {
+      out.push(token)
+      continue
+    }
+    const completion = complete(token.text)
+    const expanded =
+      completion === undefined ? [] : tokenizeSearchText(completion)
+    if (expanded.length === 0) out.push(token)
+    else out.push(...expanded)
+  }
+  return out
+}
+
+/// Completes an unfinished term to the single curated-collection alias or
+/// synonym key it unambiguously prefixes. Only single-word keys are considered
+/// (so a partial `bur` reaches `burned`, but the partial first word of a
+/// multi-word alias is left alone), and a completion is returned only when every
+/// matching key resolves to the same target — `bur` → `burned`, but a prefix two
+/// different collections share stays unresolved. Returns `undefined` when the
+/// term already equals a key (it matches as-is) or when nothing matches. The
+/// caller owns the "no trait already matches" guard, so a prefix that also names
+/// a trait (`mus` → Mustache) is left for the fuzzy trait path.
+export function findUniquePrefixCompletion(
+  term: string,
+  standard?: PunkStandardValue,
+): string | undefined {
+  const norm = normalizeSynonymText(term)
+  if (!norm || norm.includes(' ')) return undefined
+  const byTarget = new Map<string, string>()
+  const consider = (key: string, target: string): void => {
+    if (key.includes(' ') || !key.startsWith(norm)) return
+    const existing = byTarget.get(target)
+    if (existing === undefined || key.length < existing.length) {
+      byTarget.set(target, key)
+    }
+  }
+  for (const entry of searchCollectionEntries) {
+    if (standard !== undefined && entry.standard !== standard) continue
+    consider(
+      entry.key,
+      `collection:${entry.collectionSlug}/${entry.institutionSlug ?? ''}`,
+    )
+  }
+  for (const entry of SEARCH_SYNONYM_ENTRIES) {
+    consider(entry.key, `synonym:${synonymTargetKey(entry)}`)
+  }
+  if (byTarget.size !== 1) return undefined
+  const [key] = byTarget.values()
+  return key === norm ? undefined : key
+}
+
+/// Identity for a synonym's expansion, so two aliases that rewrite to the same
+/// thing (`girl` / `girls` → `female`) count as one target when completing.
+function synonymTargetKey(entry: SearchSynonymEntry): string {
+  return entry.value.map((t) => (t.exact ? `"${t.text}"` : t.text)).join(' ')
 }
 
 /// Tokenizes a search text string the same way as the offline text-search
