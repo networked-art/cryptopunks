@@ -95,35 +95,48 @@ type RawEvent = {
   timestamp: string
 }
 
+const EVENT_CONNECTION_FIELDS = `
+  items {
+    id
+    type
+    source
+    punk_id
+    actor
+    from
+    to
+    buyer
+    seller
+    bidder
+    wei_amount
+    listing_wei
+    offer_kind
+    offer_id
+    lot_id
+    auction_id
+    tx_hash
+    block_number
+    log_index
+    timestamp
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+  }
+`
+
 const EVENTS_QUERY = `
   query Events($where: eventFilter, $limit: Int!, $after: String) {
     events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit, after: $after) {
-      items {
-        id
-        type
-        source
-        punk_id
-        actor
-        from
-        to
-        buyer
-        seller
-        bidder
-        wei_amount
-        listing_wei
-        offer_kind
-        offer_id
-        lot_id
-        auction_id
-        tx_hash
-        block_number
-        log_index
-        timestamp
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
+      ${EVENT_CONNECTION_FIELDS}
+    }
+  }
+`
+
+const EVENTS_WITH_TOTAL_QUERY = `
+  query Events($where: eventFilter, $limit: Int!, $after: String) {
+    events(where: $where, orderBy: "timestamp", orderDirection: "desc", limit: $limit, after: $after) {
+      totalCount
+      ${EVENT_CONNECTION_FIELDS}
     }
   }
 `
@@ -140,6 +153,7 @@ export function useActivityFeed(
     address?: MaybeRefOrGetter<Address | undefined>
     kindFilters?: MaybeRefOrGetter<KindFilter[] | undefined>
     limit?: number
+    includeTotalCount?: boolean
   } = {},
 ) {
   const pageSize = opts.limit ?? 50
@@ -148,6 +162,7 @@ export function useActivityFeed(
   const loadingMore = ref(false)
   const error = ref<string | null>(null)
   const hasMore = ref(false)
+  const totalCount = ref<number | null>(null)
   let cursor: string | null = null
 
   // Bumped on every `load()`. Each in-flight fetch checks its token before
@@ -176,21 +191,23 @@ export function useActivityFeed(
     }
   }
 
-  async function fetchPage(after: string | null) {
+  async function fetchPage(after: string | null, includeTotalCount = false) {
     const where = buildWhere()
     if (!where) {
       return {
         mapped: [],
         pageInfo: { hasNextPage: false, endCursor: null },
+        totalCount: includeTotalCount ? 0 : undefined,
       }
     }
 
     const data = await queryIndexer<{
       events: {
+        totalCount?: number
         items: RawEvent[]
         pageInfo: { hasNextPage: boolean; endCursor: string | null }
       }
-    }>(EVENTS_QUERY, {
+    }>(includeTotalCount ? EVENTS_WITH_TOTAL_QUERY : EVENTS_QUERY, {
       where,
       limit: pageSize,
       after,
@@ -199,6 +216,7 @@ export function useActivityFeed(
     return {
       mapped: data.events.items.map(mapEvent),
       pageInfo: data.events.pageInfo,
+      totalCount: data.events.totalCount,
     }
   }
 
@@ -206,13 +224,19 @@ export function useActivityFeed(
     const token = ++requestToken
     pending.value = true
     error.value = null
+    totalCount.value = null
     cursor = null
     try {
-      const { mapped, pageInfo } = await fetchPage(null)
+      const {
+        mapped,
+        pageInfo,
+        totalCount: nextTotalCount,
+      } = await fetchPage(null, opts.includeTotalCount === true)
       if (token !== requestToken) return
       events.value = mapped
       cursor = pageInfo.endCursor
       hasMore.value = pageInfo.hasNextPage
+      totalCount.value = nextTotalCount ?? null
     } catch (e) {
       if (token !== requestToken) return
       error.value =
@@ -221,6 +245,7 @@ export function useActivityFeed(
           : (e as Error).message
       events.value = []
       hasMore.value = false
+      totalCount.value = null
     } finally {
       if (token === requestToken) pending.value = false
     }
@@ -262,6 +287,7 @@ export function useActivityFeed(
     loadingMore,
     error,
     hasMore,
+    totalCount,
     refresh: load,
     loadMore,
   }
