@@ -35,14 +35,15 @@ export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
 }
 
 /// Market qualifiers live in the app, not the SDK: they resolve against
-/// on-chain market state, not the dataset. Each entry's `triggers` are the
-/// salient words a partial input can complete; `insert` is the canonical
-/// phrase the parser understands.
-const MARKET_QUALIFIERS: { label: string; insert: string; triggers: string[] }[] =
+/// on-chain market state, not the dataset. `insert` is the canonical phrase
+/// the parser understands; a partial input completes the qualifier when it
+/// prefixes any word of that phrase (so `for` → "For sale") or one of the
+/// extra `synonyms` the phrase itself doesn't spell out (`listed`, `wrapper`).
+const MARKET_QUALIFIERS: { label: string; insert: string; synonyms: string[] }[] =
   [
-    { label: 'For sale', insert: 'for sale', triggers: ['sale', 'listed', 'listing'] },
-    { label: 'Wrapped', insert: 'wrapped', triggers: ['wrapped', 'wrapper'] },
-    { label: 'Has bids', insert: 'has bids', triggers: ['bids', 'bid'] },
+    { label: 'For sale', insert: 'for sale', synonyms: ['listed', 'listing'] },
+    { label: 'Wrapped', insert: 'wrapped', synonyms: ['wrapper'] },
+    { label: 'Has bids', insert: 'has bids', synonyms: [] },
   ]
 
 function marketSuggestions(text: string): PunkSuggestion[] {
@@ -52,7 +53,9 @@ function marketSuggestions(text: string): PunkSuggestion[] {
   if (active.length < 2) return []
   const preceding = tokenizeSearchText(token.preceding)
   return MARKET_QUALIFIERS.filter((q) =>
-    q.triggers.some((trigger) => trigger.startsWith(active)),
+    [...q.insert.split(' '), ...q.synonyms].some((word) =>
+      word.startsWith(active),
+    ),
   ).map((q) => ({
     kind: 'market',
     label: q.label,
