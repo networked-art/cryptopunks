@@ -248,24 +248,6 @@ onMounted(() => nextTick(syncUnderline))
 </script>
 
 <style scoped>
-.search-bar {
-  position: sticky;
-  top: calc(56px + var(--border-width));
-  z-index: var(--z-index-ui);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-2);
-  align-items: center;
-  width: 100%;
-  max-width: 720px;
-  box-sizing: border-box;
-  margin: 0 auto;
-  margin-top: var(--size-2);
-  padding: var(--size-4);
-  font-size: var(--font-sm);
-  text-transform: uppercase;
-}
-
 .search-group {
   --search-control-height: calc(var(--form-item-height) + var(--size-4));
 
@@ -465,10 +447,6 @@ onMounted(() => nextTick(syncUnderline))
 }
 
 @media (max-width: 640px) {
-  .search-bar {
-    padding-inline: var(--size-4);
-  }
-
   .result-total {
     display: none;
   }
@@ -476,6 +454,33 @@ onMounted(() => nextTick(syncUnderline))
 </style>
 
 <style>
+/* `<header class="search-bar">` is rendered by reka's AutocompleteRoot, so it
+   doesn't receive this SFC's scoped-style attribute — these root rules must be
+   global. (Inner elements are authored here directly and stay scoped.) */
+.search-bar {
+  position: sticky;
+  top: calc(56px + var(--border-width));
+  z-index: var(--z-index-ui);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-2);
+  align-items: center;
+  width: 100%;
+  max-width: 720px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  margin-top: var(--size-2);
+  padding: var(--size-4);
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .search-bar {
+    padding-inline: var(--size-4);
+  }
+}
+
 /* The suggestions panel is teleported to <body>, so it can't be `scoped`. */
 .search-suggestions {
   z-index: var(--z-index-dropdown, 100);
