@@ -94,7 +94,9 @@
               >
                 <span class="search-suggestion-label">{{ item.label }}</span>
                 <span class="search-suggestion-meta">
-                  <span class="search-suggestion-kind">{{ item.kindLabel }}</span>
+                  <span class="search-suggestion-kind">{{
+                    item.kindLabel
+                  }}</span>
                   <span
                     v-if="item.count != null"
                     class="search-suggestion-count"
@@ -139,7 +141,7 @@ const props = withDefaults(
   }>(),
   {
     suggestions: () => [],
-    actionsWidth: '176px',
+    actionsWidth: '111px',
   },
 )
 const emit = defineEmits<{
@@ -172,8 +174,18 @@ const KIND_LABELS: Record<PunkSuggestion['kind'], string> = {
   collection: 'Collection',
   trait: 'Trait',
 }
-const GROUPS: { key: string; label: string; kinds: PunkSuggestion['kind'][]; limit: number }[] = [
-  { key: 'filters', label: 'Filters', kinds: ['market', 'count', 'skin-tone'], limit: 4 },
+const GROUPS: {
+  key: string
+  label: string
+  kinds: PunkSuggestion['kind'][]
+  limit: number
+}[] = [
+  {
+    key: 'filters',
+    label: 'Filters',
+    kinds: ['market', 'count', 'skin-tone'],
+    limit: 4,
+  },
   { key: 'collections', label: 'Collections', kinds: ['collection'], limit: 4 },
   { key: 'traits', label: 'Traits', kinds: ['trait'], limit: 6 },
 ]
