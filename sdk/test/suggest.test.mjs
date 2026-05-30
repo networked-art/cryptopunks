@@ -87,6 +87,17 @@ describe('suggestSearchText', () => {
     assert.ok(suggest('a').every((s) => s.kind !== 'skin-tone')) // one letter is too thin
   })
 
+  it('absorbs a leading skin-tone grammar word instead of duplicating it', () => {
+    // `skin da` / `tone da` already say "skin"; completing must not yield
+    // `skin dark skin`.
+    assert.equal(find('skin da', 'Dark skin').query, 'dark skin')
+    assert.equal(find('tone da', 'Dark skin').query, 'dark skin')
+    assert.equal(find('skintone bro', 'Brown skin').query, 'brown skin')
+    assert.equal(find('skin alb', 'Albino').query, 'albino')
+    // An unrelated preceding word is still kept.
+    assert.equal(find('male da', 'Dark skin').query, 'male dark skin')
+  })
+
   it('completes a count axis after a number', () => {
     const colors = find('2 c', '2 colors')
     assert.ok(colors)

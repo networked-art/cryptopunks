@@ -181,18 +181,31 @@ const SKIN_TONES: { tone: SkinToneValue; word: string; phrase: string }[] = [
   { tone: SkinTone.Albino, word: 'albino', phrase: 'albino' },
 ]
 
+/// Grammar words that introduce a skin tone (`skin dark`, `tone dark`,
+/// `skintone dark`) or trail one (`dark skin`). When the user typed one right
+/// before the tone being completed, drop it: the canonical phrase (`dark skin`)
+/// already carries it, so keeping it would duplicate (`skin dark skin`).
+const SKIN_TONE_GRAMMAR_WORDS = new Set(['skin', 'skinned', 'skintone', 'tone'])
+
 function skinToneSuggestions(
   active: string,
   preceding: readonly SearchTextTerm[],
 ): SearchSuggestion[] {
   if (active.length < 2) return []
+  const last = preceding[preceding.length - 1]
+  const kept =
+    last !== undefined &&
+    !last.exact &&
+    SKIN_TONE_GRAMMAR_WORDS.has(normalizeSynonymText(last.text))
+      ? preceding.slice(0, -1)
+      : preceding
   const result: SearchSuggestion[] = []
   for (const { word, phrase } of SKIN_TONES) {
     if (!word.startsWith(active)) continue
     result.push({
       kind: 'skin-tone',
       label: capitalize(phrase),
-      query: withCompletion(preceding, phrase),
+      query: withCompletion(kept, phrase),
     })
   }
   return result

@@ -2,8 +2,10 @@ import { refDebounced, useMediaQuery } from '@vueuse/core'
 import {
   activeSearchToken,
   addressForLabel,
+  tokenizeSearchText,
   type PunkQuery,
   type SearchSuggestion,
+  type SearchTextTerm,
 } from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
 import {
@@ -48,13 +50,49 @@ function marketSuggestions(text: string): PunkSuggestion[] {
   if (token === undefined) return []
   const active = token.active.toLowerCase()
   if (active.length < 2) return []
+  const preceding = tokenizeSearchText(token.preceding)
   return MARKET_QUALIFIERS.filter((q) =>
     q.triggers.some((trigger) => trigger.startsWith(active)),
   ).map((q) => ({
     kind: 'market',
     label: q.label,
-    query: `${token.preceding}${q.insert}`,
+    query: completeMarketQuery(preceding, q.insert),
   }))
+}
+
+/// Builds the completed query for a market qualifier, folding any trailing
+/// preceding words the insert phrase's own leading words already cover — so
+/// `for sa` completes to `for sale`, not `for for sale`, and re-selecting an
+/// already-typed `has bids` stays `has bids`. The active word is always the
+/// final phrase word (or a trigger synonym of it), so we walk left from the
+/// insert's penultimate word, the same absorption the SDK does for traits.
+function completeMarketQuery(
+  preceding: readonly SearchTextTerm[],
+  insert: string,
+): string {
+  const words = insert.split(' ')
+  let absorbed = 0
+  for (
+    let k = preceding.length - 1, w = words.length - 2;
+    k >= 0 && w >= 0;
+    k--, w--
+  ) {
+    const term = preceding[k]
+    const insertWord = words[w]
+    if (term === undefined || insertWord === undefined) break
+    const word = normalizeMarketWord(term.text)
+    if (term.exact || word === '' || !insertWord.startsWith(word)) break
+    absorbed++
+  }
+  const kept = preceding.slice(0, preceding.length - absorbed)
+  const prefix = kept
+    .map((term) => (term.exact ? `"${term.text}"` : term.text))
+    .join(' ')
+  return prefix ? `${prefix} ${insert}` : insert
+}
+
+function normalizeMarketWord(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 const LISTED_QUALIFIER =
