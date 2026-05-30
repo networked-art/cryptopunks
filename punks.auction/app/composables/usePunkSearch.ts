@@ -1,5 +1,10 @@
 import { refDebounced, useMediaQuery } from '@vueuse/core'
-import { addressForLabel, type PunkQuery } from '@networked-art/punks-sdk'
+import {
+  activeSearchToken,
+  addressForLabel,
+  type PunkQuery,
+  type SearchSuggestion,
+} from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
 import {
   computed,
@@ -16,8 +21,40 @@ type PunkSearchOptions = {
   enableMarketQualifiers?: boolean
   enableOwnerSearch?: boolean
   enableEnterNavigation?: boolean
+  enableSuggestions?: boolean
   initialText?: string
   debounceMs?: number
+}
+
+/// A typeahead row. SDK suggestions (trait / collection / skin-tone / count)
+/// plus the app-only `market` kind for on-chain qualifiers (for sale, …).
+export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
+  kind: SearchSuggestion['kind'] | 'market'
+}
+
+/// Market qualifiers live in the app, not the SDK: they resolve against
+/// on-chain market state, not the dataset. Each entry's `triggers` are the
+/// salient words a partial input can complete; `insert` is the canonical
+/// phrase the parser understands.
+const MARKET_QUALIFIERS: { label: string; insert: string; triggers: string[] }[] =
+  [
+    { label: 'For sale', insert: 'for sale', triggers: ['sale', 'listed', 'listing'] },
+    { label: 'Wrapped', insert: 'wrapped', triggers: ['wrapped', 'wrapper'] },
+    { label: 'Has bids', insert: 'has bids', triggers: ['bids', 'bid'] },
+  ]
+
+function marketSuggestions(text: string): PunkSuggestion[] {
+  const token = activeSearchToken(text)
+  if (token === undefined) return []
+  const active = token.active.toLowerCase()
+  if (active.length < 2) return []
+  return MARKET_QUALIFIERS.filter((q) =>
+    q.triggers.some((trigger) => trigger.startsWith(active)),
+  ).map((q) => ({
+    kind: 'market',
+    label: q.label,
+    query: `${token.preceding}${q.insert}`,
+  }))
 }
 
 const LISTED_QUALIFIER =
@@ -50,6 +87,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   const enableMarketQualifiers = options.enableMarketQualifiers ?? true
   const enableOwnerSearch = options.enableOwnerSearch ?? true
   const enableEnterNavigation = options.enableEnterNavigation ?? true
+  const enableSuggestions = options.enableSuggestions ?? true
   const debounceMs = options.debounceMs ?? 80
 
   const baseQuery = computed(() => toValue(options.baseQuery))
@@ -268,6 +306,17 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       qualifiers.value.modernWrapped,
   )
 
+  /// Typeahead completions for the word being typed: app market qualifiers
+  /// first, then the SDK's trait / collection / skin-tone / count vocabulary.
+  /// Empty when there's nothing to complete (see {@link activeSearchToken}).
+  const suggestions = computed<PunkSuggestion[]>(() => {
+    if (!enableSuggestions) return []
+    const market = enableMarketQualifiers
+      ? marketSuggestions(debouncedText.value)
+      : []
+    return [...market, ...offline.dataset.suggest(debouncedText.value)]
+  })
+
   function onEnter() {
     if (!enableEnterNavigation) return
     const handle = resolveOwnerHandle(text.value)
@@ -304,6 +353,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     counts,
     collectionMatches,
     showWrappedStateColors,
+    suggestions,
     onEnter,
     clearSearch,
   }
