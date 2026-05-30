@@ -353,9 +353,9 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   const suggestions = computed<PunkSuggestion[]>(() => {
     if (!enableSuggestions) return []
     const market = enableMarketQualifiers
-      ? marketSuggestions(debouncedText.value)
+      ? marketSuggestions(text.value)
       : []
-    return [...market, ...offline.dataset.suggest(debouncedText.value)]
+    return [...market, ...offline.dataset.suggest(text.value)]
   })
 
   function onEnter() {

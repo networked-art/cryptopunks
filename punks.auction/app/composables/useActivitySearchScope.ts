@@ -9,6 +9,7 @@ export function useActivitySearchScope() {
     ownerAddress: searchOwnerAddress,
     ids: searchIds,
     counts: searchCounts,
+    suggestions: searchSuggestions,
     onEnter: onSearchEnter,
     clearSearch,
   } = usePunkSearch({
@@ -54,6 +55,7 @@ export function useActivitySearchScope() {
     searchAddress,
     searchPunkIds,
     searchCounts,
+    searchSuggestions,
     hasSearchInput,
     hasSearch,
     searchPanelOpen,

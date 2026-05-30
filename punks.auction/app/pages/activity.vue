@@ -40,28 +40,36 @@
           </Button>
         </Tags>
 
-        <Transition name="activity-search">
-          <PunkSearchBar
+        <Transition
+          name="activity-search"
+          appear
+        >
+          <div
             v-if="searchPanelOpen"
-            v-model="searchText"
-            :placeholder="searchPlaceholder"
-            :counts="searchCounts"
-            actions-width="128px"
-            @enter="onSearchEnter"
-            @clear="clearSearch"
+            class="activity-search-panel"
           >
-            <template
-              v-if="searchOwnerHandle"
-              #action
+            <PunkSearchBar
+              v-model="searchText"
+              :placeholder="searchPlaceholder"
+              :counts="searchCounts"
+              :suggestions="searchSuggestions"
+              actions-width="128px"
+              @enter="onSearchEnter"
+              @clear="clearSearch"
             >
-              <Button
-                class="search-bar-action"
-                :to="`/profile/${searchOwnerHandle}`"
+              <template
+                v-if="searchOwnerHandle"
+                #action
               >
-                View profile
-              </Button>
-            </template>
-          </PunkSearchBar>
+                <Button
+                  class="search-bar-action"
+                  :to="`/profile/${searchOwnerHandle}`"
+                >
+                  View profile
+                </Button>
+              </template>
+            </PunkSearchBar>
+          </div>
         </Transition>
       </div>
 
@@ -130,6 +138,7 @@ const {
   searchAddress,
   searchPunkIds,
   searchCounts,
+  searchSuggestions,
   clearSearch,
   hasSearchInput,
   hasSearch,
@@ -189,16 +198,20 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   backdrop-filter: blur(8px);
 }
 
-/* The search bar's root <header> is rendered by reka's AutocompleteRoot, which
-   drops this page's scoped-style attribute — selectors that target the header
-   directly never match. Anchor on .activity-controls (a real element here that
-   keeps its scope id) and reach in with :deep() instead. */
-.activity-controls :deep(.search-bar) {
+.activity-search-panel {
   position: absolute;
   inset-inline: 0;
   top: calc(100% + var(--size-1));
   z-index: 1;
   width: 100%;
+}
+
+/* The search bar's root <header> is rendered by reka's AutocompleteRoot, which
+   drops this page's scoped-style attribute — selectors that target the header
+   directly never match. Anchor on .activity-controls (a real element here that
+   keeps its scope id) and reach in with :deep() instead. */
+.activity-controls :deep(.search-bar) {
+  position: static;
   max-width: none;
   margin: 0;
   padding: 0;
@@ -219,6 +232,8 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   background: var(--input-background);
   box-shadow: var(--border-shadow);
   transition:
+    padding-inline-start var(--speed),
+    background var(--speed),
     box-shadow var(--speed),
     color var(--speed);
 }
@@ -240,19 +255,6 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 .activity-controls
   :deep(.search-group .search-bar-action:is(:hover, :active, :focus, .active)) {
   box-shadow: var(--border-shadow);
-}
-
-.activity-controls :deep(.activity-search-enter-active),
-.activity-controls :deep(.activity-search-leave-active) {
-  transition:
-    opacity var(--speed),
-    transform var(--speed);
-}
-
-.activity-controls :deep(.activity-search-enter-from),
-.activity-controls :deep(.activity-search-leave-to) {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--size-1)));
 }
 
 .event-list {
@@ -282,5 +284,28 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 
 .error {
   color: var(--accent);
+}
+</style>
+
+<style>
+.activity-search-enter-active,
+.activity-search-leave-active {
+  transition:
+    opacity var(--speed-fast) ease,
+    transform var(--speed-fast) ease;
+  transform-origin: top center;
+  will-change: opacity, transform;
+}
+
+.activity-search-enter-from,
+.activity-search-leave-to {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--size-1)));
+}
+
+.activity-search-enter-to,
+.activity-search-leave-from {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>

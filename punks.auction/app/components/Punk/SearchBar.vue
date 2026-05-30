@@ -338,6 +338,11 @@ onMounted(() => nextTick(syncUnderline))
   font-size: var(--font-sm);
   text-transform: uppercase;
   box-shadow: none;
+  transition:
+    padding-inline-start var(--speed),
+    background var(--speed),
+    box-shadow var(--speed),
+    color var(--speed);
 }
 
 .search-field:focus-within .search-input,
@@ -426,12 +431,17 @@ onMounted(() => nextTick(syncUnderline))
   text-transform: none;
   pointer-events: none;
   transform: translateY(-50%);
-  transition: opacity var(--speed);
+  transition:
+    opacity var(--speed),
+    scale var(--speed),
+    visibility 0s linear var(--speed);
 }
 
 .search-field.has-text .search-shortcut,
 .search-field:focus-within .search-shortcut {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  scale: 0.95;
 }
 
 .clear-search {
