@@ -192,18 +192,19 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
 .activity-controls {
   position: sticky;
   top: calc(56px + var(--border-width));
-  z-index: var(--z-index-ui);
-  padding-block: var(--size-2);
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  backdrop-filter: blur(8px);
+  z-index: var(--z-index-overlay);
+  padding-inline: var(--border-width);
+  padding-block: var(--size-4);
+  background: var(--background);
 }
 
 .activity-search-panel {
   position: absolute;
-  inset-inline: 0;
-  top: calc(100% + var(--size-1));
+  /* padding-top: var(--size-2); */
+  background: var(--background);
+  top: 100%;
   z-index: 1;
-  width: 100%;
+  width: calc(100% - 2 * var(--border-width));
 }
 
 /* The search bar's root <header> is rendered by reka's AutocompleteRoot, which
@@ -215,6 +216,7 @@ const { events, pending, loadingMore, error, hasMore, loadMore } =
   max-width: none;
   margin: 0;
   padding: 0;
+  inset-inline: var(--border-width);
 }
 
 .activity-controls :deep(.search-group) {
