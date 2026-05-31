@@ -482,7 +482,9 @@ onMounted(() => nextTick(syncUnderline))
 .search-bar {
   position: sticky;
   top: calc(56px + var(--border-width));
-  z-index: var(--z-index-ui);
+  /* Sticky chrome (below the site header) at the overlay tier: above content,
+     below dialog overlay/dialog and toasts. */
+  z-index: var(--z-index-overlay);
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-2);

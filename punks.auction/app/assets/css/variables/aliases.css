@@ -9,5 +9,4 @@
   --font-mono: var(--font-family);
   --radius: var(--border-radius-lg);
   --radius-sm: var(--border-radius-sm);
-  --z-index-ui: 10;
 }

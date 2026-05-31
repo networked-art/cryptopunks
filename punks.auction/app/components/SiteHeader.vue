@@ -165,7 +165,10 @@ onBeforeUnmount(() => {
   background: var(--bg-elevated);
   position: sticky;
   top: 0;
-  z-index: calc(var(--z-index-ui) + 1);
+  /* Persistent chrome sits at the overlay tier — above page content (which
+     tops out below it), but below the dialog overlay/dialog and toasts so
+     modals cover it. Matches the layers BottomNav convention. */
+  z-index: var(--z-index-overlay);
   backdrop-filter: blur(8px);
 }
 
