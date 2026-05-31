@@ -14,49 +14,89 @@ export type SnapshotOptions = {
   background?: SnapshotBackground
   strength?: number
   fileName?: string
+  /// Selects the frozen pose. Each channel samples one of its keyframe
+  /// frames from this seed, so a fresh seed lands on a different glitch
+  /// position. Defaults to `punkId` (deterministic per punk).
+  seed?: number
 }
 
 const PUNK_UNIT = 24
 const HERO_PX = 320
 const PX_TO_UNIT = PUNK_UNIT / HERO_PX
 
-/// CSS px offsets from PunkImage's @keyframes, picked so each channel sits
-/// on a different visible slice. `axis` mirrors the skewX/skewY split in
-/// the original keyframes.
-const CHANNELS = [
+/// A channel's chromatic fringe (the two colored drop-shadows in
+/// PunkImage.vue) is static; only the layer's translate/skew/clip animate.
+/// `frames` are the @keyframes vertices each channel passes through, so
+/// sampling one per channel lands the still on a real animation pose.
+/// `axis` mirrors the skewX/skewY split in the original keyframes.
+type Frame = {
+  tx: number
+  ty: number
+  skew: number
+  clipTop: number
+  clipBottom: number
+}
+
+type Channel = {
+  color1: string
+  color2: string
+  fringe1: { dx: number; dy: number }
+  fringe2: { dx: number; dy: number }
+  axis: 'x' | 'y'
+  frames: Frame[]
+}
+
+const CHANNELS: Channel[] = [
   {
     color1: '#ff003c',
     color2: '#ff0066',
-    dx1: 5,
-    dx2: -2,
-    dy: -3,
-    skew: 6,
-    axis: 'x' as const,
-    clipTop: 12,
-    clipBottom: 55,
+    fringe1: { dx: 5, dy: 0 },
+    fringe2: { dx: -2, dy: 0 },
+    axis: 'x',
+    frames: [
+      { tx: -3, ty: 1, skew: -4, clipTop: 0, clipBottom: 78 },
+      { tx: 5, ty: -3, skew: 6, clipTop: 12, clipBottom: 55 },
+      { tx: -4, ty: 2, skew: -3, clipTop: 40, clipBottom: 22 },
+      { tx: 6, ty: -1, skew: 5, clipTop: 60, clipBottom: 8 },
+      { tx: -2, ty: 3, skew: -6, clipTop: 82, clipBottom: 0 },
+    ],
   },
   {
     color1: '#00ff8c',
     color2: '#00ffa6',
-    dx1: -5,
-    dx2: 2,
-    dy: 0,
-    skew: 3,
-    axis: 'x' as const,
-    clipTop: 35,
-    clipBottom: 35,
+    fringe1: { dx: -5, dy: 0 },
+    fringe2: { dx: 2, dy: 1 },
+    axis: 'x',
+    frames: [
+      { tx: -5, ty: 0, skew: 3, clipTop: 68, clipBottom: 4 },
+      { tx: 3, ty: 2, skew: -5, clipTop: 2, clipBottom: 70 },
+      { tx: -2, ty: -3, skew: 4, clipTop: 35, clipBottom: 35 },
+      { tx: 4, ty: 3, skew: -2, clipTop: 20, clipBottom: 55 },
+      { tx: -4, ty: -2, skew: 6, clipTop: 55, clipBottom: 20 },
+    ],
   },
   {
     color1: '#00b8ff',
     color2: '#3366ff',
-    dx1: 0,
-    dx2: 3,
-    dy: 4,
-    skew: -2,
-    axis: 'y' as const,
-    clipTop: 58,
-    clipBottom: 5,
+    fringe1: { dx: 0, dy: 4 },
+    fringe2: { dx: 3, dy: -2 },
+    axis: 'y',
+    frames: [
+      { tx: 4, ty: 3, skew: -2, clipTop: 0, clipBottom: 48 },
+      { tx: -3, ty: -4, skew: 3, clipTop: 45, clipBottom: 12 },
+      { tx: -5, ty: -5, skew: -3, clipTop: 25, clipBottom: 60 },
+      { tx: 3, ty: 5, skew: 2, clipTop: 58, clipBottom: 5 },
+      { tx: 6, ty: -1, skew: -4, clipTop: 48, clipBottom: 25 },
+    ],
   },
+]
+
+/// Per-channel seed multipliers, matching the freezeR/G/B seeds in
+/// PunkImage.vue so the channels pick frames independently of one another.
+const FRAME_SEEDS = [
+  { mul: 41, add: 5 },
+  { mul: 53, add: 6 },
+  { mul: 67, add: 7 },
 ]
 
 const SHAKE = { dx: 3, dy: -2 }
@@ -80,7 +120,8 @@ export function buildGlitchedPunkSvg(
   punkId: number,
   options: SnapshotOptions = {},
 ): string {
-  const amp = 0.7 + hash32(punkId * 7 + 1) * 0.7
+  const seed = options.seed ?? punkId
+  const amp = 0.7 + hash32(seed * 7 + 1) * 0.7
   const strength = (options.strength ?? 1) * amp
   const bg = resolveBackground(options.background)
 
@@ -101,23 +142,31 @@ export function buildGlitchedPunkSvg(
   const layers: string[] = []
 
   CHANNELS.forEach((c, i) => {
-    const dx1 = c.dx1 * strength * PX_TO_UNIT
-    const dx2 = c.dx2 * strength * PX_TO_UNIT
-    const dy = c.dy * strength * PX_TO_UNIT
+    const s = FRAME_SEEDS[i]!
+    const frameIndex = Math.min(
+      c.frames.length - 1,
+      Math.floor(hash32(seed * s.mul + s.add) * c.frames.length),
+    )
+    const frame = c.frames[frameIndex]!
+
+    const dx1 = c.fringe1.dx * strength * PX_TO_UNIT
+    const dy1 = c.fringe1.dy * strength * PX_TO_UNIT
+    const dx2 = c.fringe2.dx * strength * PX_TO_UNIT
+    const dy2 = c.fringe2.dy * strength * PX_TO_UNIT
     const filterId = `pnk-f-${i}`
     const clipId = `pnk-c-${i}`
 
-    const y = (c.clipTop / 100) * PUNK_UNIT
-    const h = ((100 - c.clipTop - c.clipBottom) / 100) * PUNK_UNIT
+    const y = (frame.clipTop / 100) * PUNK_UNIT
+    const h = ((100 - frame.clipTop - frame.clipBottom) / 100) * PUNK_UNIT
 
     filters.push(
       `<filter id="${filterId}" x="-20%" y="-20%" width="140%" height="140%">` +
         `<feFlood flood-color="${c.color1}" result="t1"/>` +
         `<feComposite in="t1" in2="SourceGraphic" operator="in" result="m1"/>` +
-        `<feOffset in="m1" dx="${dx1.toFixed(4)}" dy="${dy.toFixed(4)}" result="s1"/>` +
+        `<feOffset in="m1" dx="${dx1.toFixed(4)}" dy="${dy1.toFixed(4)}" result="s1"/>` +
         `<feFlood flood-color="${c.color2}" result="t2"/>` +
         `<feComposite in="t2" in2="SourceGraphic" operator="in" result="m2"/>` +
-        `<feOffset in="m2" dx="${dx2.toFixed(4)}" dy="${dy.toFixed(4)}" result="s2"/>` +
+        `<feOffset in="m2" dx="${dx2.toFixed(4)}" dy="${dy2.toFixed(4)}" result="s2"/>` +
         `<feMerge><feMergeNode in="s1"/><feMergeNode in="s2"/><feMergeNode in="SourceGraphic"/></feMerge>` +
         `</filter>`,
     )
@@ -126,9 +175,9 @@ export function buildGlitchedPunkSvg(
       `<clipPath id="${clipId}"><rect x="0" y="${y.toFixed(4)}" width="${PUNK_UNIT}" height="${h.toFixed(4)}"/></clipPath>`,
     )
 
-    const skewFn = c.axis === 'x' ? `skewX(${c.skew})` : `skewY(${c.skew})`
-    const tx = dx1 * 0.4
-    const ty = dy * 0.4
+    const skewFn = c.axis === 'x' ? `skewX(${frame.skew})` : `skewY(${frame.skew})`
+    const tx = frame.tx * strength * PX_TO_UNIT
+    const ty = frame.ty * strength * PX_TO_UNIT
 
     layers.push(
       `<g clip-path="url(#${clipId})" style="mix-blend-mode:screen;opacity:0.95">` +

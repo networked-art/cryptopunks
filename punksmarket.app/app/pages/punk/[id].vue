@@ -293,6 +293,7 @@ async function downloadImage() {
       size: 2048,
       strength: 0.4,
       background: isWrapped.value ? 'wrapped' : UNWRAPPED_BG,
+      seed: Math.floor(Math.random() * 1_000_000_000),
     })
   } finally {
     downloading.value = false
