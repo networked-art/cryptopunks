@@ -38,7 +38,13 @@
       :href="match.institution?.source ?? match.collection.source"
     />
 
+    <LazyPunkList
+      v-if="listedActive"
+      :ids="ids"
+      :size="size"
+    />
     <LazyPunkGrid
+      v-else
       :ids="ids"
       :size="size"
       :show-wrapped-state-colors="showWrappedStateColors"

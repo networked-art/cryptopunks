@@ -8,13 +8,7 @@ import {
   type SearchTextTerm,
 } from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
-import {
-  computed,
-  ref,
-  toValue,
-  watch,
-  type MaybeRefOrGetter,
-} from 'vue'
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 type PunkSearchOptions = {
   baseQuery?: MaybeRefOrGetter<PunkQuery | undefined>
@@ -39,12 +33,15 @@ export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
 /// the parser understands; a partial input completes the qualifier when it
 /// prefixes any word of that phrase (so `for` → "For sale") or one of the
 /// extra `synonyms` the phrase itself doesn't spell out (`listed`, `wrapper`).
-const MARKET_QUALIFIERS: { label: string; insert: string; synonyms: string[] }[] =
-  [
-    { label: 'For sale', insert: 'for sale', synonyms: ['listed', 'listing'] },
-    { label: 'Wrapped', insert: 'wrapped', synonyms: ['wrapper'] },
-    { label: 'Has bids', insert: 'has bids', synonyms: [] },
-  ]
+const MARKET_QUALIFIERS: {
+  label: string
+  insert: string
+  synonyms: string[]
+}[] = [
+  { label: 'For sale', insert: 'for sale', synonyms: ['listed', 'listing'] },
+  { label: 'Wrapped', insert: 'wrapped', synonyms: ['wrapper'] },
+  { label: 'Has bids', insert: 'has bids', synonyms: [] },
+]
 
 function marketSuggestions(text: string): PunkSuggestion[] {
   const token = activeSearchToken(text)
@@ -145,9 +142,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     }),
   )
   const listedActive = computed(
-    () =>
-      enableListedFilter &&
-      (qualifiers.value.listed || toggleListed.value),
+    () => enableListedFilter && (qualifiers.value.listed || toggleListed.value),
   )
 
   if (route) {
@@ -289,27 +284,32 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       }
     }
 
-    if (enableMarketQualifiers && marketStateLoaded.value) {
-      if (qualifiers.value.listed) {
+    if (marketStateLoaded.value) {
+      // The for-sale toggle (or a `for sale` qualifier) narrows the result to
+      // listed Punks: the list view renders that subset with its asking price,
+      // so the result count must reflect it, not just re-sort the full grid.
+      if (listedActive.value) {
         ids = intersectIds(ids, marketStateSets.value.listed)
       }
-      if (qualifiers.value.activeBids) {
-        ids = intersectIds(ids, marketStateSets.value.active_bids)
-      }
-      if (qualifiers.value.legacyWrapped) {
-        ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
-      }
-      if (qualifiers.value.modernWrapped) {
-        ids = intersectIds(ids, marketStateSets.value.wrapped)
-      }
-      if (qualifiers.value.wrapped) {
-        ids = intersectIds(
-          ids,
-          unionIds(
-            marketStateSets.value.wrapped,
-            marketStateSets.value.legacy_wrapped,
-          ),
-        )
+      if (enableMarketQualifiers) {
+        if (qualifiers.value.activeBids) {
+          ids = intersectIds(ids, marketStateSets.value.active_bids)
+        }
+        if (qualifiers.value.legacyWrapped) {
+          ids = intersectIds(ids, marketStateSets.value.legacy_wrapped)
+        }
+        if (qualifiers.value.modernWrapped) {
+          ids = intersectIds(ids, marketStateSets.value.wrapped)
+        }
+        if (qualifiers.value.wrapped) {
+          ids = intersectIds(
+            ids,
+            unionIds(
+              marketStateSets.value.wrapped,
+              marketStateSets.value.legacy_wrapped,
+            ),
+          )
+        }
       }
     }
 
@@ -352,9 +352,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   /// Empty when there's nothing to complete (see {@link activeSearchToken}).
   const suggestions = computed<PunkSuggestion[]>(() => {
     if (!enableSuggestions) return []
-    const market = enableMarketQualifiers
-      ? marketSuggestions(text.value)
-      : []
+    const market = enableMarketQualifiers ? marketSuggestions(text.value) : []
     return [...market, ...offline.dataset.suggest(text.value)]
   })
 
