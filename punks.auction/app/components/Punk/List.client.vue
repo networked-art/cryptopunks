@@ -28,7 +28,7 @@
           class="row-thumb"
         />
         <div class="row-main">
-          <span class="row-title">Punk #{{ row.id }}</span>
+          <span class="label">Punk #{{ row.id }}</span>
           <span class="row-owner">
             <Account
               v-if="row.info"
@@ -42,7 +42,7 @@
           </span>
         </div>
         <div class="row-price">
-          <span class="row-eth">
+          <span class="label">
             <EthAmount
               v-if="row.info"
               :wei="row.info.priceWei"
@@ -56,8 +56,8 @@
           </span>
           <span
             v-if="row.usd"
-            class="row-usd muted"
-            >${{ row.usd }}</span
+            class="label muted"
+            >{{ row.usd }}</span
           >
         </div>
       </NuxtLink>
@@ -81,7 +81,7 @@ const props = withDefaults(
 )
 
 const { marketStateSets, marketStateLoaded } = usePunkMarketState()
-const { ethUSDRaw, weiToUSD, fetchPrice } = usePriceFeed()
+const { ethUSDRaw, fetchPrice } = usePriceFeed()
 
 /// The listed subset of the search result, kept in the search's price-asc
 /// order. When the query already filters to "for sale" this is a no-op; when
@@ -95,12 +95,16 @@ const rowIds = computed(() => {
 const { listings } = usePunkListings(rowIds)
 
 const thumbSize = computed(() => props.size)
-const ROW_PADDING_Y = 12
+const ROW_PADDING_Y = 8
 const rowHeight = computed(() => props.size + ROW_PADDING_Y * 2)
 
 function usdFor(wei: bigint): string | null {
-  if (!ethUSDRaw.value || wei <= 0n) return null
-  return weiToUSD(wei)
+  const raw = ethUSDRaw.value
+  if (!raw || wei <= 0n) return null
+  // ethUSDRaw carries 8 decimals (USD per ETH); wei carries 18. `formatUSD`
+  // rounds to whole dollars (no cents) and prepends the `$`.
+  const cents = (wei * raw) / 10n ** 18n / 10n ** 6n
+  return formatUSD(Number(cents) / 100)
 }
 
 /// Window-based virtualization: the page (not this element) owns the scrollbar,
@@ -213,10 +217,11 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: var(--size-4);
   box-sizing: border-box;
-  padding-block: 12px;
+  padding: var(--size-2);
   border-block-end: var(--border-width) solid var(--border);
   color: inherit;
   text-decoration: none;
+  margin-inline: calc(-1 * var(--size-2));
 }
 
 .row:first-child {
