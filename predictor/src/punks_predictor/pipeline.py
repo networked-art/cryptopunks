@@ -24,6 +24,7 @@ WEI_PER_ETH = Decimal("1000000000000000000")
 SECONDS_PER_DAY = 86_400
 MODEL_VERSION = f"punks-24h-v{__version__}"
 RANDOM_STATE = 1001
+PUNKS_MARKET_ADDRESS = "0x64e507febf26521b73fbdfa533106b2042533218"
 
 V2_SALE_SOURCES = {"cryptopunks_v2"}
 V1_SALE_SOURCES = {"cryptopunks_v1", "punks_market"}
@@ -231,11 +232,15 @@ def load_dataset(conn: Connection, views_schema: str) -> dict[str, pd.DataFrame]
       FROM {schema}.v1_listings l
       JOIN {schema}.v1_punks p ON p.punk_id = l.punk_id
       WHERE l.active = true
-        AND l.only_sell_to IS NULL
+        AND (
+          l.only_sell_to IS NULL
+          OR lower(l.only_sell_to) = {punks_market_address}
+        )
         AND p.native_owner IS NOT NULL
         AND lower(l.seller) = lower(p.native_owner)
       ORDER BY l.min_value_wei ASC, l.punk_id ASC
       """,
+      punks_market_address=PUNKS_MARKET_ADDRESS,
     ),
     "v2_bids": frame(
       conn,
@@ -282,8 +287,17 @@ def load_dataset(conn: Connection, views_schema: str) -> dict[str, pd.DataFrame]
   }
 
 
-def frame(conn: Connection, views_schema: str, query: str) -> pd.DataFrame:
-  rendered = sql.SQL(query).format(schema=sql.Identifier(views_schema))
+def frame(
+  conn: Connection,
+  views_schema: str,
+  query: str,
+  **literals: str,
+) -> pd.DataFrame:
+  format_args = {"schema": sql.Identifier(views_schema)}
+  format_args.update(
+    {name: sql.Literal(value) for name, value in literals.items()}
+  )
+  rendered = sql.SQL(query).format(**format_args)
   cursor = conn.execute(rendered)
   rows = cursor.fetchall()
   columns = [column.name for column in cursor.description or []]
@@ -397,7 +411,14 @@ def build_market_context(
   v1_sales: pd.DataFrame,
 ) -> MarketContext:
   v2_floor = min_wei(dataset["v2_listings"], "value_wei")
-  v1_floor = min_wei(dataset["v1_listings"], "value_wei")
+  raw_v1_floor = min_wei(dataset["v1_listings"], "value_wei")
+  v1_floor = credible_relative_floor(
+    raw_v1_floor,
+    v2_floor,
+    listed_count=len(dataset["v1_listings"]),
+    min_count=2,
+    max_ratio=2.5,
+  )
   v2_bid_floor = max_wei(dataset["v2_bids"], "value_wei")
   v1_bid_floor_native = max_wei(dataset["v1_bids"], "value_wei")
   market_bid_floor = max_wei(dataset["market_bids"], "bid_wei")
@@ -412,10 +433,14 @@ def build_market_context(
     v1_bid_eth=wei_to_eth(v1_bid_floor),
     recent_v2_eth=recent_v2["eth"].to_numpy(dtype=float),
     recent_v1_eth=recent_v1["eth"].to_numpy(dtype=float),
+    v1_listed_count=len(dataset["v1_listings"]),
   )
   context_json = {
     "v2FloorEth": wei_to_float_or_none(v2_floor),
     "v1FloorEth": wei_to_float_or_none(v1_floor),
+    "rawV1FloorEth": wei_to_float_or_none(raw_v1_floor),
+    "v1FloorIgnored": raw_v1_floor is not None and v1_floor is None,
+    "publicV1NativeListingRecipients": [PUNKS_MARKET_ADDRESS],
     "v2BidFloorEth": wei_to_float_or_none(v2_bid_floor),
     "v1BidFloorEth": wei_to_float_or_none(v1_bid_floor),
     "recentWindowDays": 30,
@@ -452,6 +477,7 @@ def v1_v2_multiplier(
   v1_bid_eth: float | None,
   recent_v2_eth: np.ndarray,
   recent_v1_eth: np.ndarray,
+  v1_listed_count: int = 0,
 ) -> float:
   ratios: list[tuple[float, float]] = []
   if v1_floor_eth and v2_floor_eth:
@@ -466,9 +492,10 @@ def v1_v2_multiplier(
   raw = sum(value * weight for value, weight in ratios) / sum(
     weight for _, weight in ratios
   )
-  liquidity = min(1.0, (len(recent_v1_eth) + len(ratios) * 3) / 20.0)
+  evidence_count = len(recent_v1_eth) + len(ratios) * 3 + min(v1_listed_count, 10)
+  liquidity = min(1.0, evidence_count / 20.0)
   shrunk = 1.0 + liquidity * (raw - 1.0)
-  return float(np.clip(shrunk, 0.2, 2.5))
+  return float(np.clip(shrunk, 0.05, 2.5))
 
 
 def compute_trait_premiums(
@@ -1015,43 +1042,44 @@ def store_prediction_run(conn: Connection, run: PredictionRun) -> None:
         run.trained_at,
       ),
     )
-    conn.executemany(
-      """
-      INSERT INTO offchain.punk_predictions (
-        run_id, standard, punk_id, quick_sale_wei, fair_value_wei,
-        p10_sale_wei, p50_sale_wei, p90_sale_wei, sale_probability_24h,
-        confidence, drivers_json, comps_json, trait_premiums_json,
-        market_context_json
-      )
-      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-      """,
-      [
-        (
-          run.run_id,
-          row["standard"],
-          row["punk_id"],
-          row["quick_sale_wei"],
-          row["fair_value_wei"],
-          row["p10_sale_wei"],
-          row["p50_sale_wei"],
-          row["p90_sale_wei"],
-          row["sale_probability_24h"],
-          row["confidence"],
-          Jsonb(row["drivers_json"]),
-          Jsonb(row["comps_json"]),
-          Jsonb(row["trait_premiums_json"]),
-          Jsonb(row["market_context_json"]),
+    with conn.cursor() as cursor:
+      cursor.executemany(
+        """
+        INSERT INTO offchain.punk_predictions (
+          run_id, standard, punk_id, quick_sale_wei, fair_value_wei,
+          p10_sale_wei, p50_sale_wei, p90_sale_wei, sale_probability_24h,
+          confidence, drivers_json, comps_json, trait_premiums_json,
+          market_context_json
         )
-        for row in run.predictions
-      ],
-    )
-    conn.executemany(
-      """
-      INSERT INTO offchain.prediction_backtests (run_id, name, metrics_json)
-      VALUES (%s, %s, %s)
-      """,
-      [(run.run_id, name, Jsonb(metrics)) for name, metrics in run.backtests.items()],
-    )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        [
+          (
+            run.run_id,
+            row["standard"],
+            row["punk_id"],
+            row["quick_sale_wei"],
+            row["fair_value_wei"],
+            row["p10_sale_wei"],
+            row["p50_sale_wei"],
+            row["p90_sale_wei"],
+            row["sale_probability_24h"],
+            row["confidence"],
+            Jsonb(row["drivers_json"]),
+            Jsonb(row["comps_json"]),
+            Jsonb(row["trait_premiums_json"]),
+            Jsonb(row["market_context_json"]),
+          )
+          for row in run.predictions
+        ],
+      )
+      cursor.executemany(
+        """
+        INSERT INTO offchain.prediction_backtests (run_id, name, metrics_json)
+        VALUES (%s, %s, %s)
+        """,
+        [(run.run_id, name, Jsonb(metrics)) for name, metrics in run.backtests.items()],
+      )
     conn.execute(
       """
       UPDATE offchain.prediction_model_runs
@@ -1132,6 +1160,24 @@ def min_wei(df: pd.DataFrame, column: str) -> str | None:
   values = [parse_wei(value) for value in df[column].tolist()] if not df.empty else []
   values = [value for value in values if value is not None and value > 0]
   return str(min(values)) if values else None
+
+
+def credible_relative_floor(
+  floor_wei: str | None,
+  reference_floor_wei: str | None,
+  *,
+  listed_count: int,
+  min_count: int,
+  max_ratio: float,
+) -> str | None:
+  if floor_wei is None or listed_count < min_count:
+    return None
+  floor_eth = wei_to_eth(floor_wei)
+  reference_eth = wei_to_eth(reference_floor_wei)
+  if floor_eth is not None and reference_eth is not None:
+    if reference_eth <= 0 or floor_eth / reference_eth > max_ratio:
+      return None
+  return floor_wei
 
 
 def max_wei(df: pd.DataFrame, column: str) -> str | None:
