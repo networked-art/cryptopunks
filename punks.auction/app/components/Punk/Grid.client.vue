@@ -7,6 +7,7 @@
       'is-outline-hover': outlineHover,
       'is-static': !interactive,
       'is-no-hover': !canHover,
+      'is-priced': hasPrices,
     }"
     :style="{ '--price-row-height': priceRowHeight + 'px' }"
   >
@@ -369,13 +370,23 @@ button.cell:disabled {
   transform: scale(1.18);
   z-index: 5;
   outline: none;
+  /* The two `0 16px …` layers extend the white card downward to sit behind the
+     price caption, so they belong to priced mode only. `.is-priced` fills these
+     custom properties in; otherwise the empty fallback collapses them to
+     nothing, leaving the bare image card. Splitting them this way keeps the
+     tuned shadow as a single declaration in its original layer order. */
   box-shadow:
     0 0 0 6px #fff,
-    0 16px 0 6px #fff,
+    var(--price-card-fill, )
     0 0 0 7px var(--border-color),
-    0 16px 0 7px var(--border-color),
+    var(--price-card-edge, )
     0 1px 2px rgba(10, 10, 18, 0.05),
     0 24px 48px -28px rgba(10, 10, 18, 0.4);
+}
+
+.punk-grid.is-priced {
+  --price-card-fill: 0 16px 0 6px #fff,;
+  --price-card-edge: 0 16px 0 7px var(--border-color),;
 }
 
 button.cell:disabled:hover,
