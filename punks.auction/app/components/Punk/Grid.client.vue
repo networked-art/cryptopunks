@@ -6,6 +6,7 @@
       'is-scrollable': scrollable,
       'is-outline-hover': outlineHover,
       'is-static': !interactive,
+      'is-no-hover': !canHover,
     }"
     :style="{ '--price-row-height': priceRowHeight + 'px' }"
   >
@@ -118,6 +119,7 @@ const PUNK_PIXEL_SIZE = 24
 const PRICE_ROW_HEIGHT = 22
 
 const containerRef = ref<HTMLElement | null>(null)
+const canHover = useCanHover()
 const { backgroundForPunkState } = usePunkBackgrounds()
 /// Where the visible window starts/ends inside the grid, in content
 /// coordinates. We compute these from the container's bounding rect against
@@ -362,7 +364,7 @@ button.cell:disabled {
   cursor: default;
 }
 
-.punk-grid:not(.is-outline-hover):not(.is-static) .cell:hover,
+.punk-grid:not(.is-outline-hover):not(.is-static):not(.is-no-hover) .cell:hover,
 .punk-grid:not(.is-outline-hover):not(.is-static) .cell:focus-visible {
   transform: scale(1.18);
   z-index: 5;
