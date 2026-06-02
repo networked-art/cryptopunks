@@ -8,6 +8,7 @@ servers:
   worker:
     hosts:
       - <%= ENV["DEPLOY_HOST"] %>
+    proxy: false
     options:
       network: shared
 
