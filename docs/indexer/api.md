@@ -11,11 +11,11 @@ All routes are read-only. The example deployment is at
 
 ## Generic surfaces
 
-| Route          | Returns                                                          |
-| -------------- | --------------------------------------------------------------- |
-| `/` (GraphQL)  | Ponder's generated GraphQL schema over every table              |
-| `/sql/*`       | Read-only SQL over the public schema (Ponder's SQL-over-HTTP client) |
-| `/profiles/*`  | ENS profile resolution (name, avatar) backed by the offchain cache |
+| Route         | Returns                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `/` (GraphQL) | Ponder's generated GraphQL schema over every table                   |
+| `/sql/*`      | Read-only SQL over the public schema (Ponder's SQL-over-HTTP client) |
+| `/profiles/*` | ENS profile resolution (name, avatar) backed by the offchain cache   |
 
 GraphQL and `/sql/*` reach every table in the [schema](/indexer/schema), so
 queries the REST routes below don't cover can be expressed directly.
@@ -93,6 +93,16 @@ A compact snapshot of the canonical CryptoPunks market: the `listed` ids
 `active_bids`, and `wrapped` / `legacy_wrapped` sets. Memoized for ten
 seconds; pass `?fresh=1` to bypass the cache (e.g. right after a
 wrap/unwrap) so the caller sees the new state immediately.
+
+```text
+GET /punks/pairs?owner=&limit=&offset=
+```
+
+V1+V2 Punk pairs whose current public owner matches in both tables. `owner`
+optionally filters to one wallet/custody address; without it, the route
+returns the global pair list. `limit` defaults to `100` and caps at `1000`.
+Returns `{ items, total, limit, offset }`; each item includes `punk_id`,
+the shared `owner`, and compact `v1` / `v2` ownership state.
 
 ## Accounts
 

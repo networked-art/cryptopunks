@@ -106,6 +106,7 @@ API:
 - `GET /stats`, `GET /stats/:window`, `GET /stats/history/:interval` —
   collection volume and activity statistics.
 - `GET /punks/market-state` — compact canonical-market snapshot.
+- `GET /punks/pairs` — V1+V2 Punk pairs with the same current public owner.
 - `GET /accounts/stats` — per-account aggregates for a profile.
 - `GET /profiles/*` — ENS profile resolution.
 
