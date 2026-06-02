@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP, localcontext
@@ -31,6 +32,33 @@ PROMOTION_REGRESSION_TOLERANCE = 0.05
 
 V2_SALE_SOURCES = {"cryptopunks_v2"}
 V1_SALE_SOURCES = {"cryptopunks_v1", "punks_market"}
+
+# Sources that carry per-Punk native bids. PunksMarket (`punks_market`) bids are
+# collection criteria bids without a `punk_id`, so they are not per-Punk seller
+# reservation signals and are deferred from this signal.
+NATIVE_BID_SOURCES = ("cryptopunks_v2", "cryptopunks_v1")
+
+# A rejected bid — a native bid that stood and was later withdrawn without an
+# intervening sale — is read as a seller reservation above that price and as
+# buyer willingness at it. We weight it by recency and how long it stood, then
+# raise valuation bands toward it without letting it dominate the sale comps.
+RESERVATION_RECENCY_DECAY_DAYS = 180.0
+# A bid live for at least this long earns full credit for its duration; one that
+# enters and is withdrawn within minutes earns almost none.
+RESERVATION_FULL_DURATION_DAYS = 0.25
+# Ignore bids old enough that recency alone discounts them to noise (~1.5 years).
+RESERVATION_MIN_RECENCY = 0.05
+RESERVATION_MIN_SCORE = 0.05
+# Dust and sub-floor bids carry no reservation information about value at floor.
+RESERVATION_DUST_ETH = 0.05
+RESERVATION_FLOOR_RATIO = 0.5
+# Fair value is pulled a bounded share of the way toward the rejected bid level.
+RESERVATION_FAIR_TARGET_MULT = 1.0
+RESERVATION_FAIR_WEIGHT = 0.6
+# The low band is lifted to a score-discounted fraction of the rejected bid so a
+# recent high rejected bid cannot leave p10 sitting near the floor.
+RESERVATION_P10_TARGET_MULT = 0.85
+RESERVATION_MAX_LOW_FRACTION_OF_FAIR = 0.95
 
 
 @dataclass(frozen=True)
@@ -110,6 +138,21 @@ def build_prediction_run(
   v1_sales = sales[sales["standard"] == "v1"].copy()
   market = build_market_context(dataset, v2_sales, v1_sales)
 
+  now_ts = int(datetime.now(tz=UTC).timestamp())
+  rejected_bids = pair_rejected_bids(normalize_native_bids(dataset["native_bids"]), sales)
+  v2_reservations = build_reservations(
+    rejected_bids,
+    standard="v2",
+    floor_eth=wei_to_eth(market.v2_floor_wei),
+    now_ts=now_ts,
+  )
+  v1_reservations = build_reservations(
+    rejected_bids,
+    standard="v1",
+    floor_eth=wei_to_eth(market.v1_floor_wei),
+    now_ts=now_ts,
+  )
+
   trait_premiums = compute_trait_premiums(v2_sales, static["trait_matrix"])
   comps_index = build_comps_index(v2_sales, static["traits_by_punk"])
   v2_model = train_price_model(v2_sales, static)
@@ -120,6 +163,7 @@ def build_prediction_run(
     trait_premiums=trait_premiums,
     comps_index=comps_index,
     current_bids=dataset["v2_bids"],
+    reservations=v2_reservations,
   )
   v1_predictions = predict_v1(
     v2_predictions=v2_predictions,
@@ -127,6 +171,7 @@ def build_prediction_run(
     current_bids=dataset["v1_bids"],
     market_bids=dataset["market_bids"],
     static=static,
+    reservations=v1_reservations,
   )
 
   predictions = v2_predictions + v1_predictions
@@ -137,6 +182,9 @@ def build_prediction_run(
     "sale_count_v1": int(len(v1_sales)),
     "model": v2_model["metrics"],
     "market": market.context_json,
+    "reservation": reservation_metrics(
+      rejected_bids, v2_reservations, v1_reservations
+    ),
   }
   backtests = {
     "v2_out_of_time": v2_model["metrics"],
@@ -244,6 +292,28 @@ def load_dataset(conn: Connection, views_schema: str) -> dict[str, pd.DataFrame]
       ORDER BY l.min_value_wei ASC, l.punk_id ASC
       """,
       punks_market_address=PUNKS_MARKET_ADDRESS,
+    ),
+    "native_bids": frame(
+      conn,
+      views_schema,
+      """
+      SELECT
+        source,
+        type,
+        punk_id::int AS punk_id,
+        lower(bidder) AS bidder,
+        wei_amount::text AS wei_amount,
+        tx_hash,
+        timestamp::bigint AS timestamp
+      FROM {schema}.events
+      WHERE punk_id IS NOT NULL
+        AND bidder IS NOT NULL
+        AND wei_amount IS NOT NULL
+        AND wei_amount > 0
+        AND type IN ('bid', 'bid_cancelled')
+        AND source = ANY({native_bid_sources})
+      """,
+      native_bid_sources=list(NATIVE_BID_SOURCES),
     ),
     "v2_bids": frame(
       conn,
@@ -406,6 +476,218 @@ def sale_standard(source: str) -> str | None:
   if source in V1_SALE_SOURCES:
     return "v1"
   return None
+
+
+def normalize_native_bids(events: pd.DataFrame) -> pd.DataFrame:
+  columns = ["standard", "punk_id", "bidder", "wei", "eth", "type", "timestamp", "tx_hash"]
+  if events.empty:
+    return pd.DataFrame(columns=columns)
+  rows: list[dict[str, Any]] = []
+  for row in events.itertuples(index=False):
+    if row.type not in ("bid", "bid_cancelled"):
+      continue
+    standard = sale_standard(str(row.source))
+    if standard is None:
+      continue
+    wei = parse_wei(row.wei_amount)
+    if wei is None or wei <= 0:
+      continue
+    punk_id = int(row.punk_id)
+    if not 0 <= punk_id < PUNK_COUNT:
+      continue
+    rows.append(
+      {
+        "standard": standard,
+        "punk_id": punk_id,
+        "bidder": str(row.bidder),
+        "wei": wei,
+        "eth": float(Decimal(wei) / WEI_PER_ETH),
+        "type": str(row.type),
+        "timestamp": int(row.timestamp),
+        "tx_hash": str(row.tx_hash),
+      }
+    )
+  if not rows:
+    return pd.DataFrame(columns=columns)
+  return pd.DataFrame(rows)
+
+
+def pair_rejected_bids(
+  native_bids: pd.DataFrame,
+  sales: pd.DataFrame,
+) -> pd.DataFrame:
+  """Pair each entered bid with the withdrawal that retired it and keep the
+  pairs that were never cleared by a sale. An accepted bid becomes a sale and
+  emits no withdrawal, so it never pairs here; a bid that stood and was then
+  withdrawn with no intervening sale is read as a seller reservation above it."""
+  columns = [
+    "standard", "punk_id", "bidder", "wei", "eth",
+    "bid_ts", "cancel_ts", "duration_days", "tx_hash",
+  ]
+  if native_bids.empty:
+    return pd.DataFrame(columns=columns)
+  sales_by_punk = sales_timestamps_by_punk(sales)
+  rows: list[dict[str, Any]] = []
+  group_keys = ["standard", "punk_id", "bidder", "wei"]
+  # 'bid' sorts before 'bid_cancelled', so same-timestamp pairs match correctly.
+  ordered = native_bids.sort_values(["timestamp", "type"])
+  for (standard, punk_id, bidder, wei), group in ordered.groupby(group_keys, sort=False):
+    pending: list[dict[str, Any]] = []
+    for row in group.itertuples(index=False):
+      if row.type == "bid":
+        pending.append({"timestamp": int(row.timestamp), "tx_hash": str(row.tx_hash)})
+        continue
+      if not pending:
+        continue
+      entered = pending.pop(0)
+      bid_ts = int(entered["timestamp"])
+      cancel_ts = int(row.timestamp)
+      if sale_cleared_between(sales_by_punk, str(standard), int(punk_id), bid_ts, cancel_ts):
+        continue
+      rows.append(
+        {
+          "standard": str(standard),
+          "punk_id": int(punk_id),
+          "bidder": str(bidder),
+          "wei": int(wei),
+          "eth": float(Decimal(int(wei)) / WEI_PER_ETH),
+          "bid_ts": bid_ts,
+          "cancel_ts": cancel_ts,
+          "duration_days": max(0.0, (cancel_ts - bid_ts) / SECONDS_PER_DAY),
+          "tx_hash": str(entered["tx_hash"]),
+        }
+      )
+  if not rows:
+    return pd.DataFrame(columns=columns)
+  return pd.DataFrame(rows)
+
+
+def sales_timestamps_by_punk(sales: pd.DataFrame) -> dict[tuple[str, int], list[int]]:
+  out: dict[tuple[str, int], list[int]] = {}
+  if sales.empty:
+    return out
+  for row in sales.itertuples(index=False):
+    out.setdefault((str(row.standard), int(row.punk_id)), []).append(int(row.timestamp))
+  for timestamps in out.values():
+    timestamps.sort()
+  return out
+
+
+def sale_cleared_between(
+  sales_by_punk: dict[tuple[str, int], list[int]],
+  standard: str,
+  punk_id: int,
+  start_ts: int,
+  end_ts: int,
+) -> bool:
+  timestamps = sales_by_punk.get((standard, punk_id))
+  if not timestamps:
+    return False
+  index = bisect.bisect_right(timestamps, start_ts)
+  return index < len(timestamps) and timestamps[index] <= end_ts
+
+
+def build_reservations(
+  rejected: pd.DataFrame,
+  *,
+  standard: str,
+  floor_eth: float | None,
+  now_ts: int,
+) -> dict[int, dict[str, Any]]:
+  """Keep, per Punk, the most influential recent rejected bid. Influence is the
+  bid size scaled by a recency-and-duration score, so a fleeting or stale bid
+  cannot outweigh a sustained recent one even if it is nominally larger."""
+  out: dict[int, dict[str, Any]] = {}
+  if rejected.empty:
+    return out
+  subset = rejected[rejected["standard"] == standard]
+  if subset.empty:
+    return out
+  floor_gate = max(RESERVATION_DUST_ETH, (floor_eth or 0.0) * RESERVATION_FLOOR_RATIO)
+  best_influence: dict[int, float] = {}
+  for row in subset.itertuples(index=False):
+    eth = float(row.eth)
+    if eth < floor_gate:
+      continue
+    age_days = max(0.0, (now_ts - int(row.cancel_ts)) / SECONDS_PER_DAY)
+    recency = math.exp(-age_days / RESERVATION_RECENCY_DECAY_DAYS)
+    if recency < RESERVATION_MIN_RECENCY:
+      continue
+    duration_factor = float(
+      np.clip(float(row.duration_days) / RESERVATION_FULL_DURATION_DAYS, 0.0, 1.0)
+    )
+    score = recency * duration_factor
+    if score < RESERVATION_MIN_SCORE:
+      continue
+    punk_id = int(row.punk_id)
+    influence = eth * score
+    if influence <= best_influence.get(punk_id, 0.0):
+      continue
+    best_influence[punk_id] = influence
+    out[punk_id] = {
+      "eth": eth,
+      "wei": str(int(row.wei)),
+      "timestamp": int(row.bid_ts),
+      "txHash": str(row.tx_hash),
+      "durationDays": float(row.duration_days),
+      "score": float(score),
+    }
+  return out
+
+
+def apply_reservation_band(
+  fair_eth: float,
+  low_eth: float,
+  high_eth: float,
+  reservation: dict[str, Any],
+) -> tuple[float, float, float]:
+  """Raise the valuation band toward a rejected bid without letting it dominate
+  the sale comps: fair moves a bounded, score-weighted share toward the bid, the
+  low band is lifted off the floor, and the high band only moves to stay above
+  the others."""
+  bid_eth = float(reservation["eth"])
+  score = float(reservation["score"])
+  fair_target = bid_eth * RESERVATION_FAIR_TARGET_MULT
+  if fair_eth < fair_target:
+    fair_eth = fair_eth + score * RESERVATION_FAIR_WEIGHT * (fair_target - fair_eth)
+  low_target = bid_eth * RESERVATION_P10_TARGET_MULT * score
+  low_cap = fair_eth * RESERVATION_MAX_LOW_FRACTION_OF_FAIR
+  low_eth = max(low_eth, min(low_target, low_cap))
+  high_eth = max(high_eth, fair_eth * 1.05, low_eth * 1.02)
+  return fair_eth, low_eth, high_eth
+
+
+def reservation_driver(reservation: dict[str, Any]) -> dict[str, Any]:
+  return {
+    "kind": "reservation_signal",
+    "label": "Recent rejected high bid",
+    "eth": float(reservation["eth"]),
+    "timestamp": int(reservation["timestamp"]),
+    "txHash": str(reservation["txHash"]),
+    "durationDays": float(reservation["durationDays"]),
+    "score": float(reservation["score"]),
+  }
+
+
+def reservation_metrics(
+  rejected: pd.DataFrame,
+  v2_reservations: dict[int, dict[str, Any]],
+  v1_reservations: dict[int, dict[str, Any]],
+) -> dict[str, Any]:
+  def rejected_count(standard: str) -> int:
+    if rejected.empty:
+      return 0
+    return int((rejected["standard"] == standard).sum())
+
+  return {
+    "rejectedBidsLoaded": int(len(rejected)),
+    "v2RejectedBids": rejected_count("v2"),
+    "v1RejectedBids": rejected_count("v1"),
+    "v2PunksAdjusted": int(len(v2_reservations)),
+    "v1PunksAdjusted": int(len(v1_reservations)),
+    "recencyDecayDays": RESERVATION_RECENCY_DECAY_DAYS,
+    "fullDurationDays": RESERVATION_FULL_DURATION_DAYS,
+  }
 
 
 def build_market_context(
@@ -633,6 +915,7 @@ def predict_v2(
   trait_premiums: dict[int, dict[str, float | int]],
   comps_index: dict[int, list[dict[str, Any]]],
   current_bids: pd.DataFrame,
+  reservations: dict[int, dict[str, Any]],
 ) -> list[dict[str, Any]]:
   p10 = model["p10_model"].astype(float).copy()
   p50 = model["p50_model"].astype(float).copy()
@@ -661,6 +944,9 @@ def predict_v2(
       fair = max(fair, floor_eth * 0.85)
     low = min(float(p10[punk_id]), fair * 0.92)
     high = max(float(p90[punk_id]), fair * 1.12)
+    reservation = reservations.get(punk_id)
+    if reservation:
+      fair, low, high = apply_reservation_band(fair, low, high, reservation)
     best_bid_eth = wei_to_eth(best_bids.get(punk_id))
     quick = min(fair, max(best_bid_eth or 0.0, low * 0.98))
     probability = sale_probability_heuristic(quick, fair, best_bid_eth)
@@ -673,6 +959,7 @@ def predict_v2(
       trait_drivers=trait_drivers,
       comps=comps,
       market_scale=scale,
+      reservation=reservation,
     )
     out.append(
       prediction_row(
@@ -701,6 +988,7 @@ def predict_v1(
   current_bids: pd.DataFrame,
   market_bids: pd.DataFrame,
   static: dict[str, Any],
+  reservations: dict[int, dict[str, Any]],
 ) -> list[dict[str, Any]]:
   best_bids = bids_by_punk(current_bids)
   for punk_id, bid_wei in matching_market_bids_by_punk(market_bids, static).items():
@@ -725,18 +1013,30 @@ def predict_v1(
     high = wei_to_float(base["p90_sale_wei"]) * multiplier
     if floor_eth:
       fair = max(fair, floor_eth * 0.85)
+    reservation = reservations.get(punk_id)
+    if reservation:
+      fair, low, high = apply_reservation_band(fair, low, high, reservation)
     best_bid_eth = wei_to_eth(best_bids.get(punk_id))
     quick = min(fair, max(best_bid_eth or 0.0, low * 0.98))
     probability = sale_probability_heuristic(quick, fair, best_bid_eth)
     confidence = "medium" if market.recent_v1_sales_count >= 5 else "low"
+    # The inherited V2 reservation driver is quoted at V2 scale, so drop it and
+    # surface only this Punk's own V1 native rejected bid (if any).
+    inherited = [
+      driver
+      for driver in base["drivers_json"]
+      if driver.get("kind") != "reservation_signal"
+    ][:4]
     drivers = [
       {
         "kind": "v1_v2_multiplier",
         "label": "V1/V2 market adjustment",
         "value": multiplier,
       },
-      *base["drivers_json"][:4],
     ]
+    if reservation:
+      drivers.append(reservation_driver(reservation))
+    drivers.extend(inherited)
     out.append(
       prediction_row(
         standard="v1",
@@ -871,6 +1171,7 @@ def prediction_drivers(
   trait_drivers: list[dict[str, Any]],
   comps: list[dict[str, Any]],
   market_scale: float,
+  reservation: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
   drivers: list[dict[str, Any]] = [
     {
@@ -879,6 +1180,8 @@ def prediction_drivers(
       "value": market_scale,
     }
   ]
+  if reservation:
+    drivers.append(reservation_driver(reservation))
   if floor_eth:
     drivers.append(
       {
@@ -1017,12 +1320,17 @@ def active_model_ape(conn: Connection) -> tuple[bool, float | None]:
 def decide_promotion(conn: Connection, run: PredictionRun) -> dict[str, Any]:
   model_metrics = run.metrics.get("model", {})
   baseline_metrics = model_metrics.get("baseline", {})
+  reservation = run.metrics.get("reservation", {})
   has_incumbent, incumbent_ape = active_model_ape(conn)
+  punks_adjusted = int(reservation.get("v2PunksAdjusted", 0)) + int(
+    reservation.get("v1PunksAdjusted", 0)
+  )
   return promotion_decision(
     model_ape=model_metrics.get("medianAbsolutePercentError"),
     baseline_ape=baseline_metrics.get("medianAbsolutePercentError"),
     incumbent_ape=incumbent_ape,
     has_incumbent=has_incumbent,
+    has_reservation_signal=punks_adjusted > 0,
   )
 
 
@@ -1032,24 +1340,37 @@ def promotion_decision(
   baseline_ape: float | None,
   incumbent_ape: float | None,
   has_incumbent: bool,
+  has_reservation_signal: bool = False,
 ) -> dict[str, Any]:
   decision: dict[str, Any] = {
     "modelMedianApe": model_ape,
     "baselineMedianApe": baseline_ape,
     "incumbentMedianApe": incumbent_ape,
     "regressionTolerance": PROMOTION_REGRESSION_TOLERANCE,
+    "hasReservationSignal": has_reservation_signal,
   }
   if not has_incumbent:
     return {**decision, "promote": True, "reason": "bootstrap: no active model"}
   if model_ape is None:
     return {**decision, "promote": False, "reason": "no holdout evaluation (testCount=0)"}
-  if baseline_ape is not None and model_ape > baseline_ape:
+  beats_baseline = baseline_ape is None or model_ape <= baseline_ape
+  # The median-sale baseline rewards regressing toward the global median, which
+  # the reservation signal deliberately does not. So a reservation-signal run is
+  # allowed past the baseline gate as long as it still holds versus the active
+  # model; runs without that signal must still beat the baseline.
+  if not beats_baseline and not has_reservation_signal:
     return {**decision, "promote": False, "reason": "does not beat the median baseline"}
   if (
     incumbent_ape is not None
     and model_ape > incumbent_ape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
   ):
     return {**decision, "promote": False, "reason": "regresses versus the active model"}
+  if not beats_baseline:
+    return {
+      **decision,
+      "promote": True,
+      "reason": "reservation-signal run holds versus the active model (baseline gate waived)",
+    }
   return {
     **decision,
     "promote": True,
