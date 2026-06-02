@@ -107,8 +107,42 @@ API:
   collection volume and activity statistics.
 - `GET /punks/market-state` — compact canonical-market snapshot.
 - `GET /punks/pairs` — V1+V2 Punk pairs with the same current public owner.
+- `GET /predictions/v2/:id`, `GET /predictions/v1/:id`,
+  `GET /predictions/batch`, `GET /predictions/market`,
+  `GET /predictions/model` — 24h sale prediction outputs written by the
+  persistent offchain predictor service.
 - `GET /accounts/stats` — per-account aggregates for a profile.
 - `GET /profiles/*` — ENS profile resolution.
+
+## 24h sale predictions
+
+Prediction rows live in the persistent Drizzle-managed `offchain` schema, not
+the Ponder onchain schema that changes per deploy. The Python worker in
+`../predictor` reads the stable Ponder views schema (`PONDER_VIEWS_SCHEMA`,
+default `punks`), trains nightly, writes a complete model run into
+`offchain.prediction_*` tables, then atomically marks that run active.
+
+Generate and apply offchain schema migrations from this package:
+
+```sh
+pnpm drizzle:generate
+pnpm drizzle:migrate
+```
+
+Local one-shot run:
+
+```sh
+cd ../predictor
+DATABASE_URL=postgresql://punks:punks@localhost:5412/punks \
+PONDER_VIEWS_SCHEMA=punks \
+uv run punk-predictor run
+```
+
+Deploy the worker separately with Kamal from `predictor/`:
+
+```sh
+kamal deploy
+```
 
 ## Setup
 
@@ -280,6 +314,12 @@ the repo-root `Dockerfile.indexer`; deploy config lives in
 2. First-time host bootstrap: `pnpm kamal:setup`.
 3. Subsequent releases: `pnpm kamal:deploy`.
 4. Drop into a running container: `pnpm kamal:sh`.
+
+`pnpm kamal:deploy` runs `.kamal/hooks/pre-app-boot`, which executes
+`pnpm drizzle:migrate` once on the primary host before the new indexer app
+container boots. This applies persistent `offchain` schema migrations,
+including the prediction tables. To run the same migration command manually
+against the current app image, use `pnpm kamal:migrate`.
 
 Each deploy gets a fresh schema named after the commit hash
 (`DATABASE_SCHEMA=$(git rev-parse HEAD)`); the stable public views are

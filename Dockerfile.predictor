@@ -1,0 +1,9 @@
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS production
+
+WORKDIR /app
+COPY predictor ./predictor
+
+WORKDIR /app/predictor
+RUN uv sync --frozen --no-dev
+
+CMD ["uv", "run", "punk-predictor", "serve"]

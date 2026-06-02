@@ -21,6 +21,7 @@
     "start:fork:fresh": "bash scripts/start-fork-fresh.sh",
     "kamal:setup": "set -a && . ./.env.production && set +a && kamal setup",
     "kamal:deploy": "set -a && . ./.env.production && set +a && kamal deploy",
+    "kamal:migrate": "set -a && . ./.env.production && set +a && kamal app exec --primary --skip-hooks \"pnpm drizzle:migrate\"",
     "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
   },
   "dependencies": {

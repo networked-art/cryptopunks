@@ -5,6 +5,7 @@ import { db, publicClients } from 'ponder:api'
 import schema from 'ponder:schema'
 import accountStatsRouter from './account-stats'
 import bidsRouter from './bids'
+import predictionsRouter from './predictions'
 import punksRouter from './punks'
 import salesRouter from './sales'
 import statsRouter from './stats'
@@ -24,6 +25,7 @@ app.route(
 
 app.route('/accounts', accountStatsRouter)
 app.route('/bids', bidsRouter)
+app.route('/predictions', predictionsRouter)
 app.route('/punks', punksRouter)
 app.route('/sales', salesRouter)
 app.route('/stats', statsRouter)

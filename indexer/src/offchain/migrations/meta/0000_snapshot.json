@@ -1,0 +1,516 @@
+{
+  "id": "d3d183e5-0c28-4169-89e0-bb28794a0706",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "offchain.ens_profile": {
+      "name": "ens_profile",
+      "schema": "offchain",
+      "columns": {
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ens": {
+          "name": "ens",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data": {
+          "name": "data",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "offchain.prediction_backtests": {
+      "name": "prediction_backtests",
+      "schema": "offchain",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metrics_json": {
+          "name": "metrics_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "prediction_backtests_run_id_prediction_model_runs_run_id_fk": {
+          "name": "prediction_backtests_run_id_prediction_model_runs_run_id_fk",
+          "tableFrom": "prediction_backtests",
+          "tableTo": "prediction_model_runs",
+          "schemaTo": "offchain",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["run_id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "prediction_backtests_run_id_name_pk": {
+          "name": "prediction_backtests_run_id_name_pk",
+          "columns": ["run_id", "name"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "offchain.prediction_market_context": {
+      "name": "prediction_market_context",
+      "schema": "offchain",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "v2_floor_wei": {
+          "name": "v2_floor_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v1_floor_wei": {
+          "name": "v1_floor_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v2_bid_floor_wei": {
+          "name": "v2_bid_floor_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v1_bid_floor_wei": {
+          "name": "v1_bid_floor_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v2_listed_count": {
+          "name": "v2_listed_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "v1_listed_count": {
+          "name": "v1_listed_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "v2_active_bid_count": {
+          "name": "v2_active_bid_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "v1_active_bid_count": {
+          "name": "v1_active_bid_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recent_v2_sales_count": {
+          "name": "recent_v2_sales_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recent_v1_sales_count": {
+          "name": "recent_v1_sales_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "v1_v2_multiplier": {
+          "name": "v1_v2_multiplier",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context_json": {
+          "name": "context_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "prediction_market_context_run_id_prediction_model_runs_run_id_fk": {
+          "name": "prediction_market_context_run_id_prediction_model_runs_run_id_fk",
+          "tableFrom": "prediction_market_context",
+          "tableTo": "prediction_model_runs",
+          "schemaTo": "offchain",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["run_id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "offchain.prediction_model_runs": {
+      "name": "prediction_model_runs",
+      "schema": "offchain",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "model_version": {
+          "name": "model_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "trained_at": {
+          "name": "trained_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_cutoff": {
+          "name": "data_cutoff",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "training_started_at": {
+          "name": "training_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "training_finished_at": {
+          "name": "training_finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metrics_json": {
+          "name": "metrics_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config_json": {
+          "name": "config_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "prediction_model_runs_active_idx": {
+          "name": "prediction_model_runs_active_idx",
+          "columns": [
+            {
+              "expression": "active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prediction_model_runs_trained_at_idx": {
+          "name": "prediction_model_runs_trained_at_idx",
+          "columns": [
+            {
+              "expression": "trained_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prediction_model_runs_active_unique": {
+          "name": "prediction_model_runs_active_unique",
+          "columns": [
+            {
+              "expression": "active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"offchain\".\"prediction_model_runs\".\"active\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "prediction_model_runs_status_check": {
+          "name": "prediction_model_runs_status_check",
+          "value": "\"offchain\".\"prediction_model_runs\".\"status\" in ('active', 'superseded', 'failed')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "offchain.punk_predictions": {
+      "name": "punk_predictions",
+      "schema": "offchain",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "standard": {
+          "name": "standard",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "punk_id": {
+          "name": "punk_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quick_sale_wei": {
+          "name": "quick_sale_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fair_value_wei": {
+          "name": "fair_value_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "p10_sale_wei": {
+          "name": "p10_sale_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "p50_sale_wei": {
+          "name": "p50_sale_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "p90_sale_wei": {
+          "name": "p90_sale_wei",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sale_probability_24h": {
+          "name": "sale_probability_24h",
+          "type": "numeric(8, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "drivers_json": {
+          "name": "drivers_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "comps_json": {
+          "name": "comps_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trait_premiums_json": {
+          "name": "trait_premiums_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market_context_json": {
+          "name": "market_context_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "punk_predictions_standard_punk_idx": {
+          "name": "punk_predictions_standard_punk_idx",
+          "columns": [
+            {
+              "expression": "standard",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "punk_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "punk_predictions_run_id_prediction_model_runs_run_id_fk": {
+          "name": "punk_predictions_run_id_prediction_model_runs_run_id_fk",
+          "tableFrom": "punk_predictions",
+          "tableTo": "prediction_model_runs",
+          "schemaTo": "offchain",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["run_id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "punk_predictions_run_id_standard_punk_id_pk": {
+          "name": "punk_predictions_run_id_standard_punk_id_pk",
+          "columns": ["run_id", "standard", "punk_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "punk_predictions_standard_check": {
+          "name": "punk_predictions_standard_check",
+          "value": "\"offchain\".\"punk_predictions\".\"standard\" in ('v1', 'v2')"
+        },
+        "punk_predictions_punk_id_check": {
+          "name": "punk_predictions_punk_id_check",
+          "value": "\"offchain\".\"punk_predictions\".\"punk_id\" >= 0 and \"offchain\".\"punk_predictions\".\"punk_id\" < 10000"
+        },
+        "punk_predictions_confidence_check": {
+          "name": "punk_predictions_confidence_check",
+          "value": "\"offchain\".\"punk_predictions\".\"confidence\" in ('low', 'medium', 'high')"
+        },
+        "punk_predictions_probability_check": {
+          "name": "punk_predictions_probability_check",
+          "value": "\"offchain\".\"punk_predictions\".\"sale_probability_24h\" >= 0 and \"offchain\".\"punk_predictions\".\"sale_probability_24h\" <= 1"
+        },
+        "punk_predictions_quantile_order_check": {
+          "name": "punk_predictions_quantile_order_check",
+          "value": "\"offchain\".\"punk_predictions\".\"p10_sale_wei\" <= \"offchain\".\"punk_predictions\".\"p50_sale_wei\" and \"offchain\".\"punk_predictions\".\"p50_sale_wei\" <= \"offchain\".\"punk_predictions\".\"p90_sale_wei\""
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "offchain": "offchain"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
