@@ -17,6 +17,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 from . import __version__
 from .db import DatabaseConfig, connect
+from .trait_names import trait_name_for_id
 
 
 PUNK_COUNT = 10_000
@@ -1155,6 +1156,7 @@ def top_trait_premiums(
     rows.append(
       {
         "traitId": trait_id,
+        "traitName": trait_name_for_id(trait_id),
         "saleCount": int(premium["saleCount"]),
         "multiplier": float(premium["multiplier"]),
         "logPremium": float(premium["logPremium"]),
@@ -1209,11 +1211,14 @@ def prediction_drivers(
       }
     )
   for trait in trait_drivers[:3]:
+    trait_name = str(
+      trait.get("traitName", trait_name_for_id(int(trait["traitId"])))
+    )
     drivers.append(
       {
         "kind": "trait",
-        "label": f"Trait {trait['traitId']} premium",
         **trait,
+        "label": f"{trait_name} premium",
       }
     )
   return drivers

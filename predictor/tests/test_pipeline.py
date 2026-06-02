@@ -15,7 +15,9 @@ from punks_predictor.pipeline import (
   ordered_three,
   pair_rejected_bids,
   predict_v2,
+  prediction_drivers,
   promotion_decision,
+  top_trait_premiums,
   v1_v2_multiplier,
 )
 
@@ -393,6 +395,32 @@ def test_predict_v2_active_bid_drives_quick_sale_and_driver():
 
   no_bid_punk = by_id[8]
   assert "bid" not in [driver["kind"] for driver in no_bid_punk["drivers_json"]]
+
+
+def test_trait_premium_driver_uses_resolved_trait_name():
+  trait_drivers = top_trait_premiums(
+    [62],
+    {
+      62: {
+        "saleCount": 512,
+        "logPremium": 0.738725983259774,
+        "multiplier": 2.09326695781635,
+      }
+    },
+  )
+  assert trait_drivers[0]["traitName"] == "Hoodie"
+
+  drivers = prediction_drivers(
+    floor_eth=None,
+    best_bid_eth=None,
+    fair_eth=100.0,
+    trait_drivers=trait_drivers,
+    comps=[],
+    market_scale=1.0,
+  )
+  trait_driver = next(driver for driver in drivers if driver["kind"] == "trait")
+  assert trait_driver["label"] == "Hoodie premium"
+  assert trait_driver["traitName"] == "Hoodie"
 
 
 def test_promotion_allows_reservation_run_past_baseline_within_tolerance():

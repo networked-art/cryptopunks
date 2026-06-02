@@ -1,10 +1,13 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
+import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
 import { sql } from 'ponder'
 import { db } from 'ponder:api'
 
 const PUNK_COUNT = 10000
 const MAX_BATCH_IDS = 200
+const offlinePunks = new OfflinePunksDataClient()
+const TRAIT_COUNT = offlinePunks.getTraitCountSync()
 
 type Standard = 'v1' | 'v2'
 type Row = Record<string, unknown>
@@ -187,9 +190,9 @@ function serializePrediction(row: Row) {
     p90SaleWei: bigStr(row.p90_sale_wei),
     saleProbability24h: toFloat(row.sale_probability_24h),
     confidence: String(row.confidence),
-    drivers: jsonArray(row.drivers_json),
+    drivers: withTraitPremiumLabels(jsonArray(row.drivers_json)),
     comps: jsonArray(row.comps_json),
-    traitPremiums: jsonArray(row.trait_premiums_json),
+    traitPremiums: withTraitPremiumLabels(jsonArray(row.trait_premiums_json)),
     marketContext: jsonObject(row.market_context_json),
     model: {
       runId: String(row.run_id),
@@ -368,6 +371,34 @@ function jsonArray(value: unknown): unknown[] {
     }
   }
   return []
+}
+
+function withTraitPremiumLabels(items: unknown[]): unknown[] {
+  return items.map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item
+
+    const row = item as Record<string, unknown>
+    const traitId = traitIdFrom(row.traitId)
+    if (traitId === null) return item
+
+    const traitName = offlinePunks.getTraitNameSync(traitId)
+    const normalized: Record<string, unknown> = {
+      ...row,
+      traitName,
+    }
+    if (row.kind === 'trait' || typeof row.label === 'string') {
+      normalized.label = `${traitName} premium`
+    }
+    return normalized
+  })
+}
+
+function traitIdFrom(value: unknown): number | null {
+  const traitId =
+    typeof value === 'number' ? value : Number.parseInt(String(value), 10)
+  return Number.isInteger(traitId) && traitId >= 0 && traitId < TRAIT_COUNT
+    ? traitId
+    : null
 }
 
 export default app
