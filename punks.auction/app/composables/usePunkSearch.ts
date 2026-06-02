@@ -336,6 +336,22 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     )
   })
 
+  /// Listed prices for the grid as wei (rendered with EthAmount), only while
+  /// "for sale" is active. Indexer prices are ETH already rounded to ≤2
+  /// decimals; scaling through integer hundredths recovers an exact wei value
+  /// at any magnitude — `parseEther` can't, since its `toFixed` step emits
+  /// exponential notation for the absurd "never sell" listings (e.g. #1477 at
+  /// 1e42 ETH), which EthAmount then compacts to `>999T`.
+  const prices = computed(() => {
+    if (!listedActive.value || !marketStateLoaded.value) return undefined
+    const out = new Map<number, bigint>()
+    for (const [id, eth] of listedPrices.value) {
+      if (!Number.isFinite(eth)) continue
+      out.set(id, BigInt(Math.round(eth * 100)) * 10n ** 16n)
+    }
+    return out
+  })
+
   const counts = computed(() => ({
     total: offline.dataset.count(baseQuery.value),
     filtered: ids.value.length,
@@ -391,6 +407,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     criteriaQuery,
     offerQuery,
     ids,
+    prices,
     counts,
     collectionMatches,
     showWrappedStateColors,

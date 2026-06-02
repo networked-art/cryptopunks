@@ -7,6 +7,7 @@
       'is-outline-hover': outlineHover,
       'is-static': !interactive,
     }"
+    :style="{ '--price-row-height': priceRowHeight + 'px' }"
   >
     <div
       v-if="ids.length === 0"
@@ -49,7 +50,14 @@
           :class="cellClass(cell.id)"
           :style="cellStyle(cell)"
           :title="`Punk #${cell.id}`"
-        />
+        >
+          <span
+            v-if="cell.priceWei != null"
+            class="cell-price"
+          >
+            <EthAmount :wei="cell.priceWei" />
+          </span>
+        </NuxtLink>
         <span
           v-else
           class="cell"
@@ -68,6 +76,10 @@ import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
 const props = withDefaults(
   defineProps<{
     ids: number[]
+    /// Listed price in wei, keyed by punk id. Present only in "for sale" mode;
+    /// reserves a row under each image and renders an `EthAmount` for every cell
+    /// that has a price.
+    prices?: ReadonlyMap<number, bigint>
     size?: number
     gap?: number
     overscan?: number
@@ -100,6 +112,10 @@ const emit = defineEmits<{
 
 const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
+/// Vertical room reserved beneath each image in price mode: the price line plus
+/// enough breathing space that it reads as the image's caption, not the next
+/// row's. Mirrored by the `--price-row-height` CSS var below.
+const PRICE_ROW_HEIGHT = 22
 
 const containerRef = ref<HTMLElement | null>(null)
 const { backgroundForPunkState } = usePunkBackgrounds()
@@ -133,10 +149,18 @@ const resolvedGap = computed(() => {
   )
 })
 const colStep = computed(() => cellSize.value + resolvedGap.value)
-const rowStep = computed(() => cellSize.value + resolvedGap.value)
+/// In price mode each row carries an extra caption strip under the image, so
+/// rows step further apart and the grid breathes vertically.
+const hasPrices = computed(() => !!props.prices)
+const priceRowHeight = computed(() => (hasPrices.value ? PRICE_ROW_HEIGHT : 0))
+const rowStep = computed(
+  () => cellSize.value + resolvedGap.value + priceRowHeight.value,
+)
 const rows = computed(() => Math.ceil(props.ids.length / cols.value))
 const totalHeight = computed(() =>
-  rows.value === 0 ? 0 : (rows.value - 1) * rowStep.value + cellSize.value,
+  rows.value === 0
+    ? 0
+    : (rows.value - 1) * rowStep.value + cellSize.value + priceRowHeight.value,
 )
 
 /// Scroll events are coalesced to one measure() per animation frame, so the
@@ -161,13 +185,14 @@ const end = computed(() =>
 )
 
 const visible = computed(() => {
-  const out: { id: number; row: number; col: number }[] = []
+  const out: { id: number; row: number; col: number; priceWei?: bigint }[] = []
   const colCount = cols.value
   for (let r = start.value; r < end.value; r++) {
     for (let c = 0; c < colCount; c++) {
       const i = r * colCount + c
       if (i >= props.ids.length) break
-      out.push({ id: props.ids[i]!, row: r, col: c })
+      const id = props.ids[i]!
+      out.push({ id, row: r, col: c, priceWei: props.prices?.get(id) })
     }
   }
   return out
@@ -344,7 +369,9 @@ button.cell:disabled {
   outline: none;
   box-shadow:
     0 0 0 6px #fff,
+    0 16px 0 6px #fff,
     0 0 0 7px var(--border-color),
+    0 16px 0 7px var(--border-color),
     0 1px 2px rgba(10, 10, 18, 0.05),
     0 24px 48px -28px rgba(10, 10, 18, 0.4);
 }
@@ -370,6 +397,24 @@ button.cell:disabled:focus-visible {
 .cell.is-dimmed,
 .cell.is-excluded {
   opacity: 0.45;
+}
+
+/* Price caption in the reserved strip under a listed image; centers the
+   EthAmount, which renders the value + Ξ unit (tabular figures keep the price
+   column from jittering as the eye scans the price-sorted grid). */
+.cell-price {
+  position: absolute;
+  top: 100%;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--price-row-height);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .empty {

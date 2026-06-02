@@ -40,6 +40,7 @@
 
     <LazyPunkGrid
       :ids="ids"
+      :prices="prices"
       :size="size"
       :show-wrapped-state-colors="showWrappedStateColors"
     />
@@ -64,6 +65,7 @@ const {
   placeholder,
   ownerHandle,
   ids,
+  prices,
   counts,
   collectionMatches,
   showWrappedStateColors,
