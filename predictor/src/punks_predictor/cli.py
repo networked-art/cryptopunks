@@ -36,7 +36,8 @@ def main(argv: list[str] | None = None) -> int:
   if args.command == "run":
     run = train_and_store(config)
     print(
-      f"stored prediction run {run.run_id} with {len(run.predictions)} rows",
+      f"stored prediction run {run.run_id} with {len(run.predictions)} rows "
+      f"({promotion_summary(run)})",
       flush=True,
     )
     return 0
@@ -79,9 +80,16 @@ def run_once(config: DatabaseConfig) -> None:
   finished = datetime.now(tz=UTC)
   print(
     f"finished prediction run {run.run_id} at {finished.isoformat()} "
-    f"({len(run.predictions)} rows)",
+    f"({len(run.predictions)} rows, {promotion_summary(run)})",
     flush=True,
   )
+
+
+def promotion_summary(run) -> str:
+  promotion = run.metrics.get("promotion", {})
+  state = "active" if promotion.get("promote") else "kept inactive"
+  reason = promotion.get("reason", "no decision recorded")
+  return f"{state}: {reason}"
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from punks_predictor.pipeline import (
   credible_relative_floor,
   matching_market_bids_by_punk,
   ordered_three,
+  promotion_decision,
   v1_v2_multiplier,
 )
 
@@ -70,6 +71,58 @@ def test_credible_relative_floor_rejects_sparse_or_extreme_floors():
     )
     == "25000000000000000000"
   )
+
+
+def test_promotion_bootstraps_when_no_active_model():
+  decision = promotion_decision(
+    model_ape=0.71,
+    baseline_ape=0.45,
+    incumbent_ape=None,
+    has_incumbent=False,
+  )
+  assert decision["promote"] is True
+
+
+def test_promotion_rejects_model_worse_than_baseline():
+  decision = promotion_decision(
+    model_ape=0.71,
+    baseline_ape=0.45,
+    incumbent_ape=0.40,
+    has_incumbent=True,
+  )
+  assert decision["promote"] is False
+  assert "baseline" in decision["reason"]
+
+
+def test_promotion_rejects_unevaluated_run_when_incumbent_exists():
+  decision = promotion_decision(
+    model_ape=None,
+    baseline_ape=None,
+    incumbent_ape=0.40,
+    has_incumbent=True,
+  )
+  assert decision["promote"] is False
+
+
+def test_promotion_rejects_regression_versus_incumbent():
+  decision = promotion_decision(
+    model_ape=0.50,
+    baseline_ape=0.80,
+    incumbent_ape=0.40,
+    has_incumbent=True,
+  )
+  assert decision["promote"] is False
+  assert "active model" in decision["reason"]
+
+
+def test_promotion_allows_refresh_within_tolerance():
+  decision = promotion_decision(
+    model_ape=0.41,
+    baseline_ape=0.80,
+    incumbent_ape=0.40,
+    has_incumbent=True,
+  )
+  assert decision["promote"] is True
 
 
 def test_matching_market_bids_by_punk_respects_trait_masks():

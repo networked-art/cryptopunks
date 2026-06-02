@@ -25,6 +25,9 @@ SECONDS_PER_DAY = 86_400
 MODEL_VERSION = f"punks-24h-v{__version__}"
 RANDOM_STATE = 1001
 PUNKS_MARKET_ADDRESS = "0x64e507febf26521b73fbdfa533106b2042533218"
+# A refreshed run may carry a little more error than the incumbent (different
+# out-of-time test set) and still be worth promoting for the newer market data.
+PROMOTION_REGRESSION_TOLERANCE = 0.05
 
 V2_SALE_SOURCES = {"cryptopunks_v2"}
 V1_SALE_SOURCES = {"cryptopunks_v1", "punks_market"}
@@ -994,15 +997,77 @@ def matching_market_bids_by_punk(
   return out
 
 
-def store_prediction_run(conn: Connection, run: PredictionRun) -> None:
+def active_model_ape(conn: Connection) -> tuple[bool, float | None]:
+  row = conn.execute(
+    """
+    SELECT metrics_json
+    FROM offchain.prediction_model_runs
+    WHERE active = true
+    LIMIT 1
+    """
+  ).fetchone()
+  if row is None:
+    return False, None
+  metrics = row["metrics_json"] if isinstance(row, dict) else row[0]
+  model = metrics.get("model", {}) if isinstance(metrics, dict) else {}
+  ape = model.get("medianAbsolutePercentError")
+  return True, float(ape) if isinstance(ape, (int, float)) else None
+
+
+def decide_promotion(conn: Connection, run: PredictionRun) -> dict[str, Any]:
+  model_metrics = run.metrics.get("model", {})
+  baseline_metrics = model_metrics.get("baseline", {})
+  has_incumbent, incumbent_ape = active_model_ape(conn)
+  return promotion_decision(
+    model_ape=model_metrics.get("medianAbsolutePercentError"),
+    baseline_ape=baseline_metrics.get("medianAbsolutePercentError"),
+    incumbent_ape=incumbent_ape,
+    has_incumbent=has_incumbent,
+  )
+
+
+def promotion_decision(
+  *,
+  model_ape: float | None,
+  baseline_ape: float | None,
+  incumbent_ape: float | None,
+  has_incumbent: bool,
+) -> dict[str, Any]:
+  decision: dict[str, Any] = {
+    "modelMedianApe": model_ape,
+    "baselineMedianApe": baseline_ape,
+    "incumbentMedianApe": incumbent_ape,
+    "regressionTolerance": PROMOTION_REGRESSION_TOLERANCE,
+  }
+  if not has_incumbent:
+    return {**decision, "promote": True, "reason": "bootstrap: no active model"}
+  if model_ape is None:
+    return {**decision, "promote": False, "reason": "no holdout evaluation (testCount=0)"}
+  if baseline_ape is not None and model_ape > baseline_ape:
+    return {**decision, "promote": False, "reason": "does not beat the median baseline"}
+  if (
+    incumbent_ape is not None
+    and model_ape > incumbent_ape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
+  ):
+    return {**decision, "promote": False, "reason": "regresses versus the active model"}
+  return {
+    **decision,
+    "promote": True,
+    "reason": "beats baseline and holds versus the active model",
+  }
+
+
+def store_prediction_run(conn: Connection, run: PredictionRun) -> dict[str, Any]:
   with conn.transaction():
+    decision = decide_promotion(conn, run)
+    run.metrics["promotion"] = decision
     conn.execute(
       """
       INSERT INTO offchain.prediction_model_runs (
         run_id, model_version, status, active, trained_at, data_cutoff,
         training_started_at, training_finished_at, metrics_json, config_json
       )
-      VALUES (%s, %s, 'active', false, %s, %s, %s, %s, %s, %s)
+      VALUES (%s, %s, 'superseded', false, %s, %s, %s, %s, %s, %s)
       """,
       (
         run.run_id,
@@ -1080,21 +1145,23 @@ def store_prediction_run(conn: Connection, run: PredictionRun) -> None:
         """,
         [(run.run_id, name, Jsonb(metrics)) for name, metrics in run.backtests.items()],
       )
-    conn.execute(
-      """
-      UPDATE offchain.prediction_model_runs
-      SET active = false, status = 'superseded'
-      WHERE active = true
-      """
-    )
-    conn.execute(
-      """
-      UPDATE offchain.prediction_model_runs
-      SET active = true, status = 'active'
-      WHERE run_id = %s
-      """,
-      (run.run_id,),
-    )
+    if decision["promote"]:
+      conn.execute(
+        """
+        UPDATE offchain.prediction_model_runs
+        SET active = false, status = 'superseded'
+        WHERE active = true
+        """
+      )
+      conn.execute(
+        """
+        UPDATE offchain.prediction_model_runs
+        SET active = true, status = 'active'
+        WHERE run_id = %s
+        """,
+        (run.run_id,),
+      )
+  return decision
 
 
 def recency_weights(timestamps: np.ndarray) -> np.ndarray:

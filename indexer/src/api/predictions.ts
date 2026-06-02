@@ -311,12 +311,33 @@ function toFloat(value: unknown): number {
 }
 
 function isoString(value: unknown): string {
-  if (value instanceof Date) return value.toISOString()
-  return String(value)
+  const date = toDate(value)
+  return date ? date.toISOString() : String(value)
 }
 
 function nullableIsoString(value: unknown): string | null {
   return value == null ? null : isoString(value)
+}
+
+// Postgres hands timestamptz columns back as text like
+// "2026-06-02 22:20:00.473494+00", which is not ISO 8601. Normalize it so it
+// parses consistently across runtimes (Safari rejects the space/"+00" form),
+// then emit canonical UTC ISO.
+function toDate(value: unknown): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value
+  }
+  if (typeof value === 'number') {
+    const fromNumber = new Date(value)
+    return Number.isNaN(fromNumber.getTime()) ? null : fromNumber
+  }
+  if (typeof value !== 'string') return null
+  const normalized = value
+    .replace(' ', 'T') // date/time separator
+    .replace(/(\.\d{3})\d+/, '$1') // microseconds -> milliseconds
+    .replace(/([+-]\d{2})$/, '$1:00') // "+00" -> "+00:00"
+  const parsed = new Date(normalized)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 function jsonObject(value: unknown): Record<string, unknown> {
