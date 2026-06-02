@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, localcontext
 import hashlib
 import json
 import math
@@ -1190,8 +1190,12 @@ def wei_to_float_or_none(value: str | None) -> float | None:
 
 
 def eth_to_wei_string(value: float) -> str:
-  decimal = Decimal(str(max(value, 0.000001))) * WEI_PER_ETH
-  return str(int(decimal.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
+  if not math.isfinite(value):
+    value = 0.000001
+  with localcontext() as context:
+    context.prec = 80
+    decimal = Decimal(str(max(value, 0.000001))) * WEI_PER_ETH
+    return str(int(decimal.to_integral_value(rounding=ROUND_HALF_UP)))
 
 
 def ratio_or_none(a: float | None, b: float | None) -> float | None:
