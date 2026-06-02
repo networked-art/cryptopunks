@@ -30,6 +30,11 @@
           active-class="nav-active"
           >Activity</NuxtLink
         >
+        <!-- <NuxtLink -->
+        <!--   to="/pairs" -->
+        <!--   active-class="nav-active" -->
+        <!--   >Pairs</NuxtLink -->
+        <!-- > -->
         <NuxtLink
           to="/about"
           active-class="nav-active"
