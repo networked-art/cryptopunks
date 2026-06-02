@@ -74,6 +74,12 @@ const NATIVE_V2 = 'v2'
 const WRAPPER_TRANSFER_TOPIC = toEventSelector(
   getAbiItem({ abi: WrappedPunksAbi, name: 'Transfer' }),
 )
+// topic0 of the canonical CryptoPunks `Transfer(address,address,uint256)` — the
+// log `acceptBidForPunk` emits just before its buyer-zeroing `PunkBought`. Used
+// by `readAcceptBidBuyer` to recover the real recipient.
+const V2_TRANSFER_TOPIC = toEventSelector(
+  getAbiItem({ abi: CryptoPunksV2Abi, name: 'Transfer' }),
+)
 const ZERO_TOPIC = toHex(0n, { size: 32 })
 
 // One-time seed of daily ETH/USD prices for the pre-Chainlink window (V1
@@ -309,10 +315,23 @@ ponder.on('CryptoPunksV2:PunkBidWithdrawn', async ({ event, context }) => {
 })
 
 ponder.on('CryptoPunksV2:PunkBought', async ({ event, context }) => {
-  const to = normalize(event.args.toAddress)
   const from = normalize(event.args.fromAddress)
   const punkId = event.args.punkIndex
   const meta = eventMeta(event)
+
+  // `acceptBidForPunk` zeroes `toAddress`; recover the buyer from the sibling
+  // `Transfer` log so the sale records its real recipient.
+  let to = normalize(event.args.toAddress)
+  if (to === ZERO_ADDRESS) {
+    const recovered = await readAcceptBidBuyer(
+      context,
+      meta.tx_hash,
+      from,
+      meta.log_index,
+    )
+    if (recovered) to = recovered
+  }
+
   await recordSelfInitiatedInteraction(context, event)
   await ensureAccounts(
     context,
@@ -844,6 +863,38 @@ async function isWrapperUnwrapByproduct(
       log.topics[2] === ZERO_TOPIC &&
       log.topics[3] === punkTopic,
   )
+}
+
+// `acceptBidForPunk` clears `punkBids` / `punksOfferedForSale` before emitting
+// `PunkBought`, so the event reports `toAddress = 0x0` (and `value = 0`). The
+// real buyer is the recipient of the `Transfer(seller, buyer, 1)` the same call
+// emits immediately beforehand — recover it from the receipt. With batched
+// settlements each `PunkBought` is preceded by its own `Transfer`, so we take
+// the closest preceding `Transfer` from the same seller.
+async function readAcceptBidBuyer(
+  context: Context,
+  txHash: Address,
+  seller: Address,
+  punkBoughtLogIndex: number,
+): Promise<Address | null> {
+  const receipt = await context.client.getTransactionReceipt({ hash: txHash })
+  let buyer: { logIndex: number; to: Address } | null = null
+  for (const log of receipt.logs) {
+    if (normalize(log.address) !== CRYPTOPUNKS_V2_ADDRESS) continue
+    if (log.topics[0] !== V2_TRANSFER_TOPIC) continue
+    const fromTopic = log.topics[1]
+    const toTopic = log.topics[2]
+    if (!fromTopic || !toTopic) continue
+    if (normalize(`0x${fromTopic.slice(26)}`) !== seller) continue
+    if (log.logIndex >= punkBoughtLogIndex) continue
+    if (!buyer || log.logIndex > buyer.logIndex) {
+      buyer = {
+        logIndex: log.logIndex,
+        to: normalize(`0x${toTopic.slice(26)}`),
+      }
+    }
+  }
+  return buyer?.to ?? null
 }
 
 // PunksMarket / PunksAuction settlements shuffle Punks through their own
