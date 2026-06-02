@@ -141,7 +141,7 @@ uv run punk-predictor run
 Deploy the worker separately with Kamal from `predictor/`:
 
 ```sh
-kamal deploy
+set -a && . ./.env.production && set +a && kamal deploy
 ```
 
 ## Setup

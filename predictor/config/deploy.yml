@@ -2,6 +2,8 @@ service: punk-predictor
 
 image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punk-predictor
 
+primary_role: worker
+
 servers:
   worker:
     hosts:
@@ -23,9 +25,9 @@ builder:
 
 env:
   clear:
-    PONDER_VIEWS_SCHEMA: punks
-    PREDICTOR_RUN_ON_START: 'true'
-    PREDICTOR_SCHEDULE_HOUR_UTC: '3'
+    PONDER_VIEWS_SCHEMA: <%= ENV.fetch("PONDER_VIEWS_SCHEMA", "punks") %>
+    PREDICTOR_RUN_ON_START: <%= ENV.fetch("PREDICTOR_RUN_ON_START", "true") %>
+    PREDICTOR_SCHEDULE_HOUR_UTC: <%= ENV.fetch("PREDICTOR_SCHEDULE_HOUR_UTC", "3") %>
   secret:
     - DATABASE_URL
 
