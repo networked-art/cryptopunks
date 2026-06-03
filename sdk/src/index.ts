@@ -87,8 +87,12 @@ export {
   createPunks,
   createPunksSdk,
 } from './sdk'
-export { addressLabel, addressForLabel } from './address-labels'
-export type { AddressLabel } from './address-labels'
+export {
+  addressLabel,
+  addressForLabel,
+  suggestAddressLabels,
+} from './address-labels'
+export type { AddressLabel, AddressLabelSuggestion } from './address-labels'
 export { PunksDataset, createPunksDataset } from './dataset'
 export {
   PunksCollections,

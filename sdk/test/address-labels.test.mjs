@@ -4,18 +4,25 @@ import {
   addressLabel,
   addressForLabel,
   searchCollections,
+  suggestAddressLabels,
 } from '../dist/index.js'
 
 describe('addressLabel', () => {
   it('labels known addresses with a short and full name', () => {
-    assert.deepEqual(addressLabel('0x0c5Ca6bE6fF0Cd69F4fF9e29df639a0806aea91E'), {
-      short: 'NODE',
-      name: 'NODE FOUNDATION',
-    })
-    assert.deepEqual(addressLabel('0xa858ddc0445d8131dac4d1de01f834ffcba52ef1'), {
-      short: 'YUGA',
-      name: 'YUGALABS',
-    })
+    assert.deepEqual(
+      addressLabel('0x0c5Ca6bE6fF0Cd69F4fF9e29df639a0806aea91E'),
+      {
+        short: 'NODE',
+        name: 'NODE FOUNDATION',
+      },
+    )
+    assert.deepEqual(
+      addressLabel('0xa858ddc0445d8131dac4d1de01f834ffcba52ef1'),
+      {
+        short: 'YUGA',
+        name: 'YUGALABS',
+      },
+    )
   })
 
   it('matches regardless of address checksum casing', () => {
@@ -97,5 +104,24 @@ describe('addressForLabel', () => {
     assert.equal(addressForLabel(''), undefined)
     assert.equal(addressForLabel(undefined), undefined)
     assert.equal(addressForLabel(null), undefined)
+  })
+})
+
+describe('suggestAddressLabels', () => {
+  it('suggests curated address labels by prefix or contained words', () => {
+    const node = suggestAddressLabels('node f')[0]
+    assert.equal(node.label.name, 'NODE FOUNDATION')
+    assert.equal(node.query, 'NODE FOUNDATION')
+
+    const foundation = suggestAddressLabels('found').find(
+      (suggestion) => suggestion.label.short === 'NODE',
+    )
+    assert.ok(foundation)
+    assert.equal(foundation.query, 'NODE FOUNDATION')
+  })
+
+  it('requires at least two meaningful characters', () => {
+    assert.deepEqual(suggestAddressLabels('n'), [])
+    assert.deepEqual(suggestAddressLabels(''), [])
   })
 })

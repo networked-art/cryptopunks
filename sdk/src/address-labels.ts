@@ -15,6 +15,12 @@ interface LabeledAddress {
   label: AddressLabel
 }
 
+export type AddressLabelSuggestion = {
+  address: Address
+  label: AddressLabel
+  query: string
+}
+
 /// Hand-curated labels for notable non-institution addresses. Addresses are
 /// checksummed for verifiability; lookups normalize them. Institutions are not
 /// listed here — they derive their label from the curated collections below.
@@ -87,4 +93,42 @@ export function addressForLabel(
 ): Address | undefined {
   if (!text) return undefined
   return byLabel.get(normalizeSynonymText(text))
+}
+
+/// Fuzzy, read-only suggestions for curated address labels. Unlike
+/// {@link addressForLabel}, this is intentionally permissive for typeahead:
+/// the normalized input can start a label or appear in a later word.
+export function suggestAddressLabels(
+  text: string | null | undefined,
+): AddressLabelSuggestion[] {
+  const active = normalizeSynonymText(text ?? '')
+  if (active.replaceAll(/\s+/g, '').length < 2) return []
+  const seen = new Set<string>()
+  const suggestions: AddressLabelSuggestion[] = []
+  for (const { address, label } of entries) {
+    const key = address.toLowerCase()
+    if (seen.has(key)) continue
+    const query = matchingLabelForm(label, active)
+    if (query === undefined) continue
+    seen.add(key)
+    suggestions.push({ address, label, query })
+  }
+  return suggestions
+}
+
+function matchingLabelForm(
+  label: AddressLabel,
+  active: string,
+): string | undefined {
+  for (const form of [label.short, label.name]) {
+    const normalized = normalizeSynonymText(form)
+    if (
+      normalized.startsWith(active) ||
+      normalized.includes(` ${active}`) ||
+      normalized.includes(active)
+    ) {
+      return form
+    }
+  }
+  return undefined
 }

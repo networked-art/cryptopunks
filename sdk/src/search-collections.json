@@ -20,7 +20,7 @@
     "institutions": {
       "moma": {
         "title": "Museum of Modern Art (MoMA)",
-        "aliases": ["moma", "museum of modern art"],
+        "aliases": ["moma", "museum of modern art", "modern"],
         "source": "https://museumpunks.com/institution/moma/",
         "ids": [74, 2786, 3407, 4018, 5160, 5616, 7178, 7899]
       },

@@ -171,7 +171,9 @@ const KIND_LABELS: Record<PunkSuggestion['kind'], string> = {
   market: 'Filter',
   count: 'Filter',
   'skin-tone': 'Skin tone',
+  owner: 'Owner',
   collection: 'Collection',
+  synonym: 'Alias',
   trait: 'Trait',
 }
 const GROUPS: {
@@ -186,7 +188,9 @@ const GROUPS: {
     kinds: ['market', 'count', 'skin-tone'],
     limit: 4,
   },
+  { key: 'owners', label: 'Owners', kinds: ['owner'], limit: 3 },
   { key: 'collections', label: 'Collections', kinds: ['collection'], limit: 4 },
+  { key: 'aliases', label: 'Aliases', kinds: ['synonym'], limit: 4 },
   { key: 'traits', label: 'Traits', kinds: ['trait'], limit: 6 },
 ]
 const groups = computed(() =>

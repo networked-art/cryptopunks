@@ -8,7 +8,9 @@ import {
   createStashClient,
   createStashFactoryClient,
   searchSynonyms,
+  suggestAddressLabels,
   stashPunkBidTypedData,
+  type AddressLabelSuggestion,
   type ContractWritePlan,
   type PunkMarketBid,
   type PunkSimilarityExplanation,
@@ -34,6 +36,8 @@ const punksAuctionAddress: Address = PUNKS_AUCTION_ADDRESS
 const punksAuctionEscrowAddress: Address = PUNKS_AUCTION_ESCROW_ADDRESS
 const synonymMap: SearchSynonymsMap = searchSynonyms
 const marilynSynonym: string = synonymMap.marilyn
+const addressLabelSuggestions: AddressLabelSuggestion[] =
+  suggestAddressLabels('node')
 
 const bid: StashPunkBid = {
   order: {

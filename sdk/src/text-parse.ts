@@ -370,6 +370,20 @@ function parseSearchTextGroup(
             continue
           }
         }
+        // `skin tone <tone>`, `skin tones <tone>`.
+        if (
+          t2 !== undefined &&
+          !t2.exact &&
+          (word0 === 'skin' || word0 === 'skintone') &&
+          (word1 === 'tone' || word1 === 'tones')
+        ) {
+          const tone = matchSkinToneWord(normalizeWord(t2.text))
+          if (tone !== undefined) {
+            addSkinTone(group, tone)
+            i += 3
+            continue
+          }
+        }
         // `skin <tone>`, `skintone <tone>`, `tone <tone>`.
         if (word0 === 'skin' || word0 === 'skintone' || word0 === 'tone') {
           const tone = matchSkinToneWord(word1)
@@ -379,6 +393,26 @@ function parseSearchTextGroup(
             continue
           }
         }
+      }
+
+      // `skin`, `skinned`, `skin tone`, `skin tones` — all human skin-tone
+      // slots. This is a safe bare alias because no canonical trait uses
+      // "skin" as a name component.
+      if (isSkinToneGrammarWord(word0)) {
+        addAllSkinTones(group)
+        const word1 =
+          t1 !== undefined && !t1.exact ? normalizeWord(t1.text) : ''
+        i += isSkinToneGrammarWord(word1) ? 2 : 1
+        continue
+      }
+
+      // `fair` and `brown` are unambiguous tone words. Keep bare `dark` on the
+      // trait path because it also names Dark Hair / Mohawk Dark / etc.
+      const bareTone = matchBareSkinToneWord(word0)
+      if (bareTone !== undefined) {
+        addSkinTone(group, bareTone)
+        i += 1
+        continue
       }
 
       // `albino` alone is unambiguous — no other trait or color uses the
@@ -690,6 +724,12 @@ function addSkinTone(group: ParsedSearchTextGroup, tone: SkinToneValue): void {
   if (!group.skinTones.includes(tone)) group.skinTones.push(tone)
 }
 
+function addAllSkinTones(group: ParsedSearchTextGroup): void {
+  for (let id = 0; id < skinToneNames.length; id++) {
+    addSkinTone(group, id as SkinToneValue)
+  }
+}
+
 function addIncludeId(group: ParsedSearchTextGroup, id: number): void {
   if (group.includeIds === undefined) group.includeIds = []
   if (!group.includeIds.includes(id)) group.includeIds.push(id)
@@ -715,6 +755,21 @@ function matchSkinToneWord(word: string): SkinToneValue | undefined {
     if (skinToneNames[id].toLowerCase() === word) return id as SkinToneValue
   }
   return undefined
+}
+
+function matchBareSkinToneWord(word: string): SkinToneValue | undefined {
+  const tone = matchSkinToneWord(word)
+  return tone === SkinTone.Brown || tone === SkinTone.Fair ? tone : undefined
+}
+
+function isSkinToneGrammarWord(word: string): boolean {
+  return (
+    word === 'skin' ||
+    word === 'skinned' ||
+    word === 'skintone' ||
+    word === 'tone' ||
+    word === 'tones'
+  )
 }
 
 function parseNonNegativeInt(value: string): number | undefined {

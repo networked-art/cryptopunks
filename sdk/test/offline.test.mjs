@@ -227,6 +227,37 @@ describe('OfflinePunksDataClient', () => {
 
     // Bare `albino` is unambiguous and acts the same.
     assert.equal(sdk.countSync({ text: 'albino' }), albinos.length)
+    assert.equal(
+      sdk.countSync({ text: 'skin' }),
+      sdk.countSync({
+        headVariant: [
+          'Female 1',
+          'Female 2',
+          'Female 3',
+          'Female 4',
+          'Male 1',
+          'Male 2',
+          'Male 3',
+          'Male 4',
+        ],
+      }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'skin tone fair' }),
+      sdk.countSync({ text: 'fair skin' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'brown' }),
+      sdk.countSync({ text: 'brown skin' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'fair' }),
+      sdk.countSync({ text: 'fair skin' }),
+    )
+    assert.notEqual(
+      sdk.countSync({ text: 'dark' }),
+      sdk.countSync({ text: 'dark skin' }),
+    )
 
     // Include / exclude punk ids via `#id` and `-id`.
     assert.deepEqual(sdk.searchSync({ text: '#1234' }), [1234])

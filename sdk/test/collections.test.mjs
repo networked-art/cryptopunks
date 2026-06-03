@@ -159,6 +159,7 @@ describe('curated collections', () => {
     // Institution name and abbreviation, case-insensitively.
     assert.deepEqual(sdk.searchSync({ text: 'MOMA' }), MOMA)
     assert.deepEqual(sdk.searchSync({ text: 'museum of modern art' }), MOMA)
+    assert.deepEqual(sdk.searchSync({ text: 'modern' }), MOMA)
     assert.deepEqual(sdk.searchSync({ text: 'zkm' }), ZKM)
     assert.deepEqual(sdk.searchSync({ text: 'pompidou' }), [110])
     assert.deepEqual(sdk.searchSync({ text: 'toledo museum of art' }), [9833])
@@ -326,7 +327,11 @@ describe('curated collections', () => {
     const slugs = (text) =>
       punks.collections
         .matches(text)
-        .map((m) => (m.institution ? `${m.collection.slug}/${m.institution.slug}` : m.collection.slug))
+        .map((m) =>
+          m.institution
+            ? `${m.collection.slug}/${m.institution.slug}`
+            : m.collection.slug,
+        )
 
     assert.deepEqual(slugs('burned'), ['burned'])
     assert.deepEqual(slugs('burned punks'), ['burned'])

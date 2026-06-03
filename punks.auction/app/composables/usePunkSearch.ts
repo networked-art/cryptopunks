@@ -2,19 +2,14 @@ import { refDebounced, useMediaQuery } from '@vueuse/core'
 import {
   activeSearchToken,
   addressForLabel,
+  suggestAddressLabels,
   tokenizeSearchText,
   type PunkQuery,
   type SearchSuggestion,
   type SearchTextTerm,
 } from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
-import {
-  computed,
-  ref,
-  toValue,
-  watch,
-  type MaybeRefOrGetter,
-} from 'vue'
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 type PunkSearchOptions = {
   baseQuery?: MaybeRefOrGetter<PunkQuery | undefined>
@@ -29,64 +24,90 @@ type PunkSearchOptions = {
 }
 
 /// A typeahead row. SDK suggestions (trait / collection / skin-tone / count)
-/// plus the app-only `market` kind for on-chain qualifiers (for sale, …).
+/// plus app-only rows for on-chain qualifiers and curated owner labels.
 export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
-  kind: SearchSuggestion['kind'] | 'market'
+  kind: SearchSuggestion['kind'] | 'market' | 'owner'
 }
 
 /// Market qualifiers live in the app, not the SDK: they resolve against
 /// on-chain market state, not the dataset. `insert` is the canonical phrase
-/// the parser understands; a partial input completes the qualifier when it
-/// prefixes any word of that phrase (so `for` → "For sale") or one of the
-/// extra `synonyms` the phrase itself doesn't spell out (`listed`, `wrapper`).
-const MARKET_QUALIFIERS: { label: string; insert: string; synonyms: string[] }[] =
-  [
-    { label: 'For sale', insert: 'for sale', synonyms: ['listed', 'listing'] },
-    { label: 'Wrapped', insert: 'wrapped', synonyms: ['wrapper'] },
-    { label: 'Has bids', insert: 'has bids', synonyms: [] },
-  ]
+/// the parser understands; `aliases` mirror the looser phrases accepted by
+/// `extractQualifiers` below.
+const MARKET_QUALIFIERS: {
+  label: string
+  insert: string
+  aliases: string[]
+}[] = [
+  {
+    label: 'For sale',
+    insert: 'for sale',
+    aliases: ['on sale', 'sale', 'listed', 'listing', 'listings'],
+  },
+  { label: 'Wrapped', insert: 'wrapped', aliases: ['wrap', 'wrapper'] },
+  {
+    label: 'Legacy wrapped',
+    insert: 'legacy wrapped',
+    aliases: ['legacy wrapper', 'wrapped legacy', 'wrapped punks'],
+  },
+  {
+    label: 'Modern wrapped',
+    insert: 'modern wrapped',
+    aliases: ['erc721', 'erc 721', 'cryptopunks 721', 'wrapped modern'],
+  },
+  {
+    label: 'Has bids',
+    insert: 'has bids',
+    aliases: ['bid', 'bids', 'with bids', 'active bids'],
+  },
+]
 
 function marketSuggestions(text: string): PunkSuggestion[] {
   const token = activeSearchToken(text)
   if (token === undefined) return []
-  const active = token.active.toLowerCase()
-  if (active.length < 2) return []
+  const activeVariants = suggestionTextVariants(token.active)
+  if (!hasMinimumSignal(activeVariants, 2)) return []
   const preceding = tokenizeSearchText(token.preceding)
-  return MARKET_QUALIFIERS.filter((q) =>
-    [...q.insert.split(' '), ...q.synonyms].some((word) =>
-      word.startsWith(active),
-    ),
-  ).map((q) => ({
-    kind: 'market',
-    label: q.label,
-    query: completeMarketQuery(preceding, q.insert),
-  }))
+  return MARKET_QUALIFIERS.flatMap((q) => {
+    if (isBareWrappedScopeWord(q.insert, token.preceding, activeVariants)) {
+      return []
+    }
+    const match = bestMatchedPhrase(
+      [q.insert, ...q.aliases],
+      activeVariants,
+      preceding,
+    )
+    if (match === undefined) return []
+    return [
+      {
+        kind: 'market',
+        label: q.label,
+        query: completeSuggestionQuery(preceding, q.insert, match.absorbed),
+      },
+    ]
+  })
 }
 
-/// Builds the completed query for a market qualifier, folding any trailing
-/// preceding words the insert phrase's own leading words already cover — so
-/// `for sa` completes to `for sale`, not `for for sale`, and re-selecting an
-/// already-typed `has bids` stays `has bids`. The active word is always the
-/// final phrase word (or a trigger synonym of it), so we walk left from the
-/// insert's penultimate word, the same absorption the SDK does for traits.
-function completeMarketQuery(
+function isBareWrappedScopeWord(
+  insert: string,
+  preceding: string,
+  activeVariants: readonly string[],
+): boolean {
+  if (preceding.trim()) return false
+  const first = normalizedWords(insert)[0]
+  return (
+    (first === 'modern' || first === 'legacy') &&
+    matchesSuggestionWord(first, activeVariants)
+  )
+}
+
+/// Builds a completed query, folding any trailing preceding words that the
+/// matched phrase already covers — so `on sa` completes to `for sale`, not
+/// `on for sale`.
+function completeSuggestionQuery(
   preceding: readonly SearchTextTerm[],
   insert: string,
+  absorbed: number,
 ): string {
-  const words = insert.split(' ')
-  let absorbed = 0
-  for (
-    let k = preceding.length - 1, w = words.length - 2;
-    k >= 0 && w >= 0;
-    k--, w--
-  ) {
-    const term = preceding[k]
-    const insertWord = words[w]
-    if (term === undefined || insertWord === undefined) break
-    const word = normalizeMarketWord(term.text)
-    if (term.exact || word === '' || !insertWord.startsWith(word)) break
-    absorbed++
-  }
   const kept = preceding.slice(0, preceding.length - absorbed)
   const prefix = kept
     .map((term) => (term.exact ? `"${term.text}"` : term.text))
@@ -94,8 +115,101 @@ function completeMarketQuery(
   return prefix ? `${prefix} ${insert}` : insert
 }
 
-function normalizeMarketWord(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+function ownerSuggestions(text: string): PunkSuggestion[] {
+  const token = activeSearchToken(text)
+  if (token === undefined) return []
+  if (tokenizeSearchText(text).some((term) => term.exact)) return []
+  return suggestAddressLabels(text).map((suggestion) => ({
+    kind: 'owner',
+    label: suggestion.label.name,
+    query: suggestion.query,
+  }))
+}
+
+function suggestionTextVariants(value: string): string[] {
+  const spaced = normalizeSuggestionText(value)
+  if (!spaced) return []
+  const joined = value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, '')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+  return joined && joined !== spaced ? [spaced, joined] : [spaced]
+}
+
+function normalizeSuggestionText(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function normalizedWords(value: string): string[] {
+  return normalizeSuggestionText(value).split(/\s+/).filter(Boolean)
+}
+
+function hasMinimumSignal(
+  activeVariants: readonly string[],
+  minLength: number,
+): boolean {
+  return activeVariants.some((variant) => signalLength(variant) >= minLength)
+}
+
+function signalLength(value: string): number {
+  return value.replaceAll(/\s+/g, '').length
+}
+
+function matchesSuggestionWord(
+  word: string,
+  activeVariants: readonly string[],
+): boolean {
+  return activeVariants.some((active) => {
+    if (!active) return false
+    if (word.startsWith(active) || word.includes(` ${active}`)) return true
+    return signalLength(active) >= 2 && word.includes(active)
+  })
+}
+
+function bestMatchedPhrase(
+  phrases: readonly string[],
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): { absorbed: number } | undefined {
+  let best: { absorbed: number } | undefined
+  for (const phrase of phrases) {
+    const words = normalizedWords(phrase)
+    for (let index = 0; index < words.length; index++) {
+      const word = words[index]
+      if (word === undefined) continue
+      if (!matchesSuggestionWord(word, activeVariants)) continue
+      const absorbed = absorbedPrecedingCount(words, index, preceding)
+      if (best === undefined || absorbed > best.absorbed) best = { absorbed }
+    }
+  }
+  return best
+}
+
+function absorbedPrecedingCount(
+  words: readonly string[],
+  matchedIndex: number,
+  preceding: readonly SearchTextTerm[],
+): number {
+  let absorbed = 0
+  let wordIndex = matchedIndex - 1
+  for (
+    let k = preceding.length - 1;
+    k >= 0 && wordIndex >= 0;
+    k--, wordIndex--
+  ) {
+    const term = preceding[k]
+    const targetWord = words[wordIndex]
+    if (term === undefined || targetWord === undefined) break
+    const word = normalizeSuggestionText(term.text)
+    if (term.exact || word === '' || !targetWord.startsWith(word)) break
+    absorbed++
+  }
+  return absorbed
 }
 
 const LISTED_QUALIFIER =
@@ -145,9 +259,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     }),
   )
   const listedActive = computed(
-    () =>
-      enableListedFilter &&
-      (qualifiers.value.listed || toggleListed.value),
+    () => enableListedFilter && (qualifiers.value.listed || toggleListed.value),
   )
 
   if (route) {
@@ -204,6 +316,13 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   /// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
   /// (e.g. `moma`) are left to the trait/collection path so the grid keeps
   /// showing the curated set rather than the wallet's current holdings.
+  function resolvesToCollection(input: string): boolean {
+    const value = input.trim()
+    if (!value) return false
+    const completed = offline.dataset.completeSearchText(value)
+    return offline.collections.matches(completed).length > 0
+  }
+
   function resolveOwnerHandle(input: string): string | null {
     const direct = detectOwnerHandle(input)
     if (direct) return direct
@@ -211,8 +330,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     if (!value) return null
     // Complete unfinished aliases (`bur` → `burned`) so a prefix that the grid
     // reads as a collection isn't mistaken for an owner label here.
-    const completed = offline.dataset.completeSearchText(value)
-    if (offline.collections.matches(completed).length) return null
+    if (resolvesToCollection(value)) return null
     return addressForLabel(value) ?? null
   }
 
@@ -368,10 +486,12 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   /// Empty when there's nothing to complete (see {@link activeSearchToken}).
   const suggestions = computed<PunkSuggestion[]>(() => {
     if (!enableSuggestions) return []
-    const market = enableMarketQualifiers
-      ? marketSuggestions(text.value)
-      : []
-    return [...market, ...offline.dataset.suggest(text.value)]
+    const market = enableMarketQualifiers ? marketSuggestions(text.value) : []
+    const owner =
+      enableOwnerSearch && !resolvesToCollection(text.value)
+        ? ownerSuggestions(text.value)
+        : []
+    return [...market, ...owner, ...offline.dataset.suggest(text.value)]
   })
 
   function onEnter() {

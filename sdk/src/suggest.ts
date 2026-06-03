@@ -6,18 +6,24 @@ import {
 import { getSearchCollection, searchCollectionEntries } from './collections'
 import type { OfflinePunksDataClient } from './offline'
 import type { TraitRecord } from './types'
-import { tokenizeSearchText, type SearchTextTerm } from './text-parse'
+import {
+  searchSynonyms,
+  tokenizeSearchText,
+  type SearchTextTerm,
+} from './text-parse'
 import {
   canonicalizeSearchInput,
   normalizePunkStandard,
   normalizeSynonymText,
 } from './utils'
 
-/// What a suggestion completes the active word into. `trait` and `collection`
-/// carry a `count`; `skin-tone` and `count` are grammar qualifiers with none.
+/// What a suggestion completes the active word into. `trait`, `collection`,
+/// and `synonym` can carry a `count`; `skin-tone` and `count` are grammar
+/// qualifiers with none.
 export type SearchSuggestionKind =
   | 'trait'
   | 'collection'
+  | 'synonym'
   | 'skin-tone'
   | 'count'
 
@@ -86,6 +92,7 @@ export function suggestSearchText(
     ...collectionSuggestions(activeVariants, preceding, standard),
     ...skinToneSuggestions(activeVariants, preceding),
     ...countSuggestions(activeVariants, preceding),
+    ...synonymSuggestions(data, activeVariants, preceding),
     ...traitSuggestions(
       data,
       activeVariants,
@@ -200,6 +207,94 @@ function collectionSuggestions(
   return result.sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
 }
 
+type SearchSynonymSuggestionEntry = {
+  key: string
+  words: string[]
+  target: string
+}
+
+const SEARCH_SYNONYM_SUGGESTION_ENTRIES: readonly SearchSynonymSuggestionEntry[] =
+  Object.freeze(buildSearchSynonymSuggestionEntries())
+
+function buildSearchSynonymSuggestionEntries(): SearchSynonymSuggestionEntry[] {
+  const entries: SearchSynonymSuggestionEntry[] = []
+  for (const [rawKey, rawValue] of Object.entries(searchSynonyms)) {
+    if (typeof rawKey !== 'string' || typeof rawValue !== 'string') continue
+    const key = normalizeSynonymText(rawKey)
+    const words = normalizedWords(key)
+    if (!key || words.length === 0) continue
+    const target = tokenizeSearchText(rawValue)
+      .map((term) => (term.exact ? `"${term.text}"` : term.text))
+      .join(' ')
+    if (!target) continue
+    entries.push({ key, words, target })
+  }
+  return entries.sort((a, b) => {
+    const tokenDelta = b.words.length - a.words.length
+    if (tokenDelta !== 0) return tokenDelta
+    return b.key.length - a.key.length
+  })
+}
+
+function synonymSuggestions(
+  data: OfflinePunksDataClient,
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): SearchSuggestion[] {
+  const activeSignal = maxSignalLength(activeVariants)
+  if (activeSignal === 0) return []
+  const best = new Map<
+    string,
+    { entry: SearchSynonymSuggestionEntry; absorbed: number }
+  >()
+  for (const entry of SEARCH_SYNONYM_SUGGESTION_ENTRIES) {
+    const match = bestMatchedSynonymWord(entry.words, activeVariants, preceding)
+    if (match === undefined) continue
+    if (activeSignal < 2 && match.absorbed === 0) continue
+    const current = best.get(entry.target)
+    const candidate = { entry, absorbed: match.absorbed }
+    if (
+      current === undefined ||
+      candidate.absorbed > current.absorbed ||
+      (candidate.absorbed === current.absorbed &&
+        candidate.entry.key.length < current.entry.key.length)
+    ) {
+      best.set(entry.target, candidate)
+    }
+  }
+  return Array.from(best.values()).map(({ entry, absorbed }) => ({
+    kind: 'synonym',
+    label: titleizeAlias(entry.key),
+    query: withCompletion(
+      preceding.slice(0, preceding.length - absorbed),
+      entry.key,
+    ),
+    count: safeTextCount(data, entry.key),
+  }))
+}
+
+function bestMatchedSynonymWord(
+  words: readonly string[],
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): { index: number; absorbed: number } | undefined {
+  let best: { index: number; absorbed: number } | undefined
+  for (let index = 0; index < words.length; index++) {
+    if (!activeVariants.some((active) => words[index].startsWith(active))) {
+      continue
+    }
+    const absorbed = absorbedPrecedingCount(words, index, preceding)
+    if (
+      best === undefined ||
+      absorbed > best.absorbed ||
+      (absorbed === best.absorbed && index > best.index)
+    ) {
+      best = { index, absorbed }
+    }
+  }
+  return best
+}
+
 const SKIN_TONES: { phrase: string; searchText?: string }[] = [
   { phrase: 'dark skin' },
   { phrase: 'brown skin' },
@@ -237,13 +332,41 @@ function skinToneSuggestions(
   return result
 }
 
-const COUNT_AXES: { words: readonly string[]; canonical: string }[] = [
-  { words: ['colors', 'color'], canonical: 'colors' },
+type CountSuggestionAxis = {
+  words: readonly string[]
+  canonical: string
+  suggestedValues: readonly number[]
+}
+
+const COUNT_AXES: CountSuggestionAxis[] = [
+  {
+    words: ['colors', 'color'],
+    canonical: 'colors',
+    suggestedValues: rangeInclusive(2, 14),
+  },
   {
     words: ['attributes', 'attribute', 'attrs', 'traits', 'trait'],
     canonical: 'attributes',
+    suggestedValues: rangeInclusive(0, 7),
   },
-  { words: ['pixels', 'pixel'], canonical: 'pixels' },
+  {
+    words: ['pixels', 'pixel'],
+    canonical: 'pixels',
+    // Pixel counts span a wide numeric range, so keep them discoverable via
+    // `220 p`-style completions instead of filling the dropdown from `pixels`.
+    suggestedValues: [],
+  },
+]
+
+const COUNT_NUMBER_WORDS: { word: string; value: number }[] = [
+  { word: 'zero', value: 0 },
+  { word: 'one', value: 1 },
+  { word: 'two', value: 2 },
+  { word: 'three', value: 3 },
+  { word: 'four', value: 4 },
+  { word: 'five', value: 5 },
+  { word: 'six', value: 6 },
+  { word: 'seven', value: 7 },
 ]
 
 function countSuggestions(
@@ -251,19 +374,71 @@ function countSuggestions(
   preceding: readonly SearchTextTerm[],
 ): SearchSuggestion[] {
   const last = preceding[preceding.length - 1]
-  if (last === undefined || last.exact || !/^\d+$/.test(last.text)) return []
   const axis = COUNT_AXES.find(({ words }) =>
     words.some((word) => matchesWord(word, activeVariants)),
   )
-  if (axis === undefined) return []
-  const phrase = `${Number.parseInt(last.text, 10)} ${axis.canonical}`
-  return [
-    {
-      kind: 'count',
-      label: phrase,
-      query: withCompletion(preceding.slice(0, -1), phrase),
-    },
-  ]
+  const precedingNumber =
+    last === undefined || last.exact
+      ? undefined
+      : parseCountSuggestionNumber(last.text)
+
+  if (axis !== undefined && precedingNumber !== undefined) {
+    return [countSuggestion(preceding.slice(0, -1), precedingNumber, axis)]
+  }
+
+  const activeNumber = parseActiveNumberWord(activeVariants)
+  if (activeNumber !== undefined) {
+    return countValueSuggestions(preceding, activeNumber)
+  }
+
+  if (!hasMinimumSignal(activeVariants, 2) || axis === undefined) return []
+  return axis.suggestedValues.map((value) =>
+    countSuggestion(preceding, value, axis),
+  )
+}
+
+function countValueSuggestions(
+  preceding: readonly SearchTextTerm[],
+  value: number,
+): SearchSuggestion[] {
+  return COUNT_AXES.filter((axis) => axis.suggestedValues.includes(value)).map(
+    (axis) => countSuggestion(preceding, value, axis),
+  )
+}
+
+function countSuggestion(
+  preceding: readonly SearchTextTerm[],
+  value: number,
+  axis: CountSuggestionAxis,
+): SearchSuggestion {
+  const phrase = `${value} ${axis.canonical}`
+  return {
+    kind: 'count',
+    label: phrase,
+    query: withCompletion(preceding, phrase),
+  }
+}
+
+function parseCountSuggestionNumber(value: string): number | undefined {
+  if (/^\d+$/.test(value)) {
+    const n = Number.parseInt(value, 10)
+    return Number.isInteger(n) && n >= 0 ? n : undefined
+  }
+  const normalized = normalizeSynonymText(value)
+  return COUNT_NUMBER_WORDS.find((entry) => entry.word === normalized)?.value
+}
+
+function parseActiveNumberWord(
+  activeVariants: readonly string[],
+): number | undefined {
+  if (!hasMinimumSignal(activeVariants, 2)) return undefined
+  return COUNT_NUMBER_WORDS.find(({ word }) =>
+    activeVariants.some((active) => word.startsWith(active)),
+  )?.value
+}
+
+function rangeInclusive(min: number, max: number): number[] {
+  return Array.from({ length: max - min + 1 }, (_value, index) => min + index)
 }
 
 /// Comparison keys for an active search token. The first is the standard
@@ -288,7 +463,14 @@ function hasMinimumSignal(
   activeVariants: readonly string[],
   minLength: number,
 ): boolean {
-  return activeVariants.some((variant) => signalLength(variant) >= minLength)
+  return maxSignalLength(activeVariants) >= minLength
+}
+
+function maxSignalLength(activeVariants: readonly string[]): number {
+  return activeVariants.reduce(
+    (max, variant) => Math.max(max, signalLength(variant)),
+    0,
+  )
 }
 
 function signalLength(value: string): number {
@@ -393,4 +575,22 @@ function withCompletion(
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function titleizeAlias(value: string): string {
+  return value
+    .split(' ')
+    .map((word) => (word.length === 1 ? word.toUpperCase() : capitalize(word)))
+    .join(' ')
+}
+
+function safeTextCount(
+  data: OfflinePunksDataClient,
+  text: string,
+): number | undefined {
+  try {
+    return data.countSync({ text })
+  } catch {
+    return undefined
+  }
 }

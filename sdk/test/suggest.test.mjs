@@ -96,11 +96,18 @@ describe('suggestSearchText', () => {
     assert.ok(skinLabels.includes('Brown skin'))
     assert.ok(skinLabels.includes('Fair skin'))
     assert.equal(find('air', 'Wild Hair').query, '"Wild Hair"')
-    assert.equal(
-      find('modern', 'Museum of Modern Art (MoMA)').query,
-      'museum of modern art',
-    )
+    assert.equal(find('modern', 'Museum of Modern Art (MoMA)').query, 'modern')
     assert.equal(find('2 lors', '2 colors').query, '2 colors')
+  })
+
+  it('suggests known search synonyms', () => {
+    const covid = find('cov', 'Covid')
+    assert.ok(covid)
+    assert.equal(covid.kind, 'synonym')
+    assert.equal(covid.query, 'covid')
+    assert.equal(covid.count, client.countSync({ text: 'covid' }))
+    assert.equal(find('mar', 'Marla').query, 'marla')
+    assert.equal(find('mr t', 'Mr T').query, 'mr t')
   })
 
   it('absorbs a leading skin-tone grammar word instead of duplicating it', () => {
@@ -120,6 +127,24 @@ describe('suggestSearchText', () => {
     assert.equal(colors.kind, 'count')
     assert.equal(colors.query, '2 colors')
     assert.equal(find('male 3 attr', '3 attributes').query, 'male 3 attributes')
+    assert.equal(find('two c', '2 colors').query, '2 colors')
+    assert.equal(
+      find('male three attr', '3 attributes').query,
+      'male 3 attributes',
+    )
+  })
+
+  it('suggests count filters from count axes and number words', () => {
+    const colorLabels = labels('colors')
+    assert.ok(colorLabels.includes('2 colors'))
+    assert.ok(colorLabels.includes('14 colors'))
+    assert.equal(find('two', '2 colors').query, '2 colors')
+    assert.equal(find('two', '2 attributes').query, '2 attributes')
+    assert.equal(find('three', '3 colors').query, '3 colors')
+    assert.equal(find('three', '3 attributes').query, '3 attributes')
+    assert.equal(find('zero', '0 attributes').query, '0 attributes')
+    assert.equal(find('zero', '0 colors'), undefined)
+    assert.equal(find('pixels', '148 pixels'), undefined)
   })
 
   it('surfaces a collection ahead of trait matches', () => {
@@ -139,6 +164,14 @@ describe('suggestSearchText', () => {
       'air',
       'modern',
       '2 lors',
+      'colors',
+      'two',
+      'three',
+      'zero',
+      'two c',
+      'cov',
+      'mar',
+      'mr t',
     ]) {
       for (const suggestion of suggest(text)) {
         assert.doesNotThrow(() => client.searchSync({ text: suggestion.query }))
