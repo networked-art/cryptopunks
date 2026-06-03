@@ -33,9 +33,48 @@
             </ClientOnly>
           </div>
 
-          <p class="profile-address muted">
-            {{ resolvedAddress }}
-          </p>
+          <CopyText
+            :value="resolvedAddress"
+            class="profile-address muted"
+          >
+            <template #default="{ copied }">
+              <span class="profile-address-value">{{ resolvedAddress }}</span>
+              <Icon
+                :name="copied ? 'lucide:check' : 'lucide:copy'"
+                class="profile-address-copy"
+                aria-hidden="true"
+              />
+            </template>
+          </CopyText>
+
+          <nav class="external-links">
+            <a
+              :href="`https://evm.now/address/${resolvedAddress}`"
+              target="_blank"
+              rel="noopener"
+              class="external-link"
+            >
+              evm.now
+              <Icon
+                name="lucide:external-link"
+                class="external-link-icon"
+                aria-hidden="true"
+              />
+            </a>
+            <a
+              :href="`https://www.cryptopunks.app/cryptopunks/accountinfo?account=${resolvedAddress}`"
+              target="_blank"
+              rel="noopener"
+              class="external-link"
+            >
+              cryptopunks.app
+              <Icon
+                name="lucide:external-link"
+                class="external-link-icon"
+                aria-hidden="true"
+              />
+            </a>
+          </nav>
 
           <LazyProfileStatusPills
             :vault="vault"
@@ -282,7 +321,48 @@ provide(ProfileContextKey, {
 .profile-address {
   margin: 0;
   font-size: var(--font-sm);
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+}
+
+.profile-address-value {
   overflow-wrap: anywhere;
+}
+
+.profile-address-copy {
+  flex: 0 0 auto;
+  width: 0.9em;
+  height: 0.9em;
+  opacity: 0.6;
+}
+
+.external-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-3);
+}
+
+.external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.external-link:hover {
+  color: var(--text);
+}
+
+.external-link-icon {
+  flex: 0 0 auto;
+  width: 0.85em;
+  height: 0.85em;
 }
 
 .profile-loading {
