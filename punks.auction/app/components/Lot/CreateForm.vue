@@ -243,7 +243,6 @@ import {
   MAX_LOT_ITEMS,
   TokenStandard,
   ZERO_ADDRESS,
-  equalLotWeights,
   lotItemBackground,
 } from '~/utils/auction'
 
@@ -259,6 +258,7 @@ const inventory = useAccountPunkInventory(() => address.value, {
   includeV1: true,
 })
 const custodyPlan = usePunkCustodyPlan()
+const { resolveLotWeights } = useLotWeights()
 const { lots, refresh: refreshLots } = useLots()
 
 const standard = ref<StandardDraft>('cryptopunks')
@@ -613,12 +613,12 @@ async function actCreate() {
       stash: inventory.stash.value,
       items,
     })
-    const weights = equalLotWeights(items.length)
+    const weights = await resolveLotWeights(items)
     const lotItems = custodyPlan.lotItemsFor(
       items.map((item, index) => ({
         standard: item.standard,
         punkId: item.punkId,
-        weightBps: weights[index] ?? 0,
+        weightBps: weights[index]!,
       })),
     )
     const lotPlan = sdk.value.auctions.prepareCreateLot({

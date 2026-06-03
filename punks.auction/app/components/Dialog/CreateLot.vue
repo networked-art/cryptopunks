@@ -98,7 +98,6 @@ import { resolveAddressInput } from '~/utils/addressInput'
 import {
   TokenStandard,
   ZERO_ADDRESS,
-  equalLotWeights,
   type TokenStandardValue,
 } from '~/utils/auction'
 
@@ -117,6 +116,7 @@ const inventory = useAccountPunkInventory(() => address.value, {
   includeV1: () => props.standard === TokenStandard.CryptoPunks,
 })
 const custodyPlan = usePunkCustodyPlan()
+const { resolveLotWeights } = useLotWeights()
 
 const reserveEth = ref('')
 const reserveWei = ref<bigint | null>(null)
@@ -242,12 +242,12 @@ async function actCreate() {
       stash: inventory.stash.value,
       items,
     })
-    const weights = equalLotWeights(items.length)
+    const weights = await resolveLotWeights(items)
     const planItems = custodyPlan.lotItemsFor(
       items.map((item, index) => ({
         standard: item.standard,
         punkId: item.punkId,
-        weightBps: weights[index] ?? 0,
+        weightBps: weights[index]!,
       })),
     )
     const lotPlan = sdk.value.auctions.prepareCreateLot({

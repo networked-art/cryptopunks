@@ -114,6 +114,7 @@ export {
   punksAuctionLotMatchesOffer,
   punksAuctionOfferSlotMatchesPunk,
   splitPunksAuctionLotWeights,
+  splitPunksAuctionLotWeightsByValue,
 } from './auction'
 export { PunksV1MarketClient } from './v1-market'
 export type {
