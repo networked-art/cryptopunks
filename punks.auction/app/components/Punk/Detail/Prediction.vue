@@ -308,7 +308,7 @@ function formatAgo(timestamp: number): string {
   grid-template-columns: minmax(0, 1fr) max-content max-content;
   align-items: center;
   gap: var(--size-3);
-  padding: var(--size-2) var(--size-3);
+  padding: var(--size-2);
   border-bottom: var(--border);
   font-size: var(--font-sm);
 }
