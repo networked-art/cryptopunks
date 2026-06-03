@@ -1,9 +1,7 @@
 import {
-  SkinTone,
   TraitKind,
   type PunkStandardRef,
   type PunkStandardValue,
-  type SkinToneValue,
 } from './constants'
 import { getSearchCollection, searchCollectionEntries } from './collections'
 import type { OfflinePunksDataClient } from './offline'
@@ -17,7 +15,11 @@ import {
 
 /// What a suggestion completes the active word into. `trait` and `collection`
 /// carry a `count`; `skin-tone` and `count` are grammar qualifiers with none.
-export type SearchSuggestionKind = 'trait' | 'collection' | 'skin-tone' | 'count'
+export type SearchSuggestionKind =
+  | 'trait'
+  | 'collection'
+  | 'skin-tone'
+  | 'count'
 
 /// One typeahead row. `query` is the whole search text with the active word
 /// completed — set it as the input value to apply the suggestion. `count` is
@@ -60,7 +62,8 @@ export function activeSearchToken(text: string): ActiveSearchToken | undefined {
 
 /// Ranked typeahead suggestions for the active word in `text`, completing it
 /// into the search vocabulary: curated collections and grammar qualifiers
-/// first (they only match a deliberate prefix), then trait names by supply.
+/// first (they need at least two meaningful characters), then trait names by
+/// supply.
 /// Returns `[]` when there is nothing to complete (see {@link
 /// activeSearchToken}). Pure and synchronous — the caller owns presentation
 /// and any app-specific qualifiers (e.g. market state) layered on top.
@@ -71,8 +74,8 @@ export function suggestSearchText(
 ): SearchSuggestion[] {
   const token = activeSearchToken(text)
   if (token === undefined) return []
-  const active = normalizeSynonymText(token.active)
-  if (active === '') return []
+  const activeVariants = suggestionTextVariants(token.active)
+  if (activeVariants.length === 0) return []
   const standard =
     options.standard !== undefined
       ? normalizePunkStandard(options.standard)
@@ -80,17 +83,21 @@ export function suggestSearchText(
   const preceding = tokenizeSearchText(token.preceding)
 
   return [
-    ...collectionSuggestions(active, preceding, standard),
-    ...skinToneSuggestions(active, preceding),
-    ...countSuggestions(active, preceding),
-    ...traitSuggestions(data, token.active, active, preceding, options.traitLimit ?? 7),
+    ...collectionSuggestions(activeVariants, preceding, standard),
+    ...skinToneSuggestions(activeVariants, preceding),
+    ...countSuggestions(activeVariants, preceding),
+    ...traitSuggestions(
+      data,
+      activeVariants,
+      preceding,
+      options.traitLimit ?? 7,
+    ),
   ]
 }
 
 function traitSuggestions(
   data: OfflinePunksDataClient,
-  activeRaw: string,
-  active: string,
+  activeVariants: readonly string[],
   preceding: readonly SearchTextTerm[],
   limit: number,
 ): SearchSuggestion[] {
@@ -100,7 +107,7 @@ function traitSuggestions(
   // count grammar, so they are dropped here.
   const seen = new Set<string>()
   const matches: { trait: TraitRecord; absorbed: number }[] = []
-  for (const trait of data.findTraitsByTextSync(activeRaw)) {
+  for (const trait of data.getTraitCatalogSync()) {
     if (
       trait.kindId !== TraitKind.Accessory &&
       trait.kindId !== TraitKind.NormalizedType
@@ -109,9 +116,10 @@ function traitSuggestions(
     }
     if (seen.has(trait.name)) continue
     seen.add(trait.name)
-    const words = normalizeSynonymText(trait.name).split(' ')
-    const index = Math.max(0, matchedWordIndex(words, active))
-    matches.push({ trait, absorbed: absorbedPrecedingCount(words, index, preceding) })
+    const words = normalizedWords(trait.name)
+    const match = bestMatchedWord(words, activeVariants, preceding)
+    if (match === undefined) continue
+    matches.push({ trait, absorbed: match.absorbed })
   }
   // When a preceding word also belongs to a trait name (`big sh` → Big Shades),
   // keep only the candidates that fold in the most of it — so partial matches
@@ -125,34 +133,52 @@ function traitSuggestions(
       kind: 'trait',
       label: trait.name,
       count: trait.supply,
-      query: withCompletion(preceding.slice(0, preceding.length - absorbed), `"${trait.name}"`),
+      query: withCompletion(
+        preceding.slice(0, preceding.length - absorbed),
+        `"${trait.name}"`,
+      ),
     }))
 }
 
 function collectionSuggestions(
-  active: string,
+  activeVariants: readonly string[],
   preceding: readonly SearchTextTerm[],
   standard: PunkStandardValue | undefined,
 ): SearchSuggestion[] {
   // One row per target (collection / institution), keyed by its slugs, taking
-  // the shortest alias that the active word completes in full.
+  // a key that matches the active word when possible, then the shortest alias.
   // A single letter is too thin to mean a curated set; wait for two.
-  if (active.length < 2) return []
-  type Candidate = { entry: (typeof searchCollectionEntries)[number]; absorbed: number }
+  if (!hasMinimumSignal(activeVariants, 2)) return []
+  type Candidate = {
+    entry: (typeof searchCollectionEntries)[number]
+    absorbed: number
+    keyMatches: boolean
+  }
   const best = new Map<string, Candidate>()
   for (const entry of searchCollectionEntries) {
     if (standard !== undefined && entry.standard !== standard) continue
-    const index = matchedWordIndex(entry.tokens, active)
-    // The active word must complete the alias's last word, with every earlier
-    // word covered by a preceding token — so a partial multi-word alias never
-    // half-matches.
-    if (index !== entry.tokens.length - 1) continue
-    const absorbed = absorbedPrecedingCount(entry.tokens, index, preceding)
-    if (absorbed !== index) continue
+    const collection = getSearchCollection(entry.collectionSlug)
+    if (collection === undefined) continue
+    const institution =
+      entry.institutionSlug === undefined
+        ? undefined
+        : collection.institutions?.find((i) => i.slug === entry.institutionSlug)
+    const label = institution?.title ?? collection.title
+    const keyMatch = bestMatchedWord(entry.tokens, activeVariants, preceding)
+    const labelMatches = matchesSuggestionText(label, activeVariants)
+    if (keyMatch === undefined && !labelMatches) continue
     const key = `${entry.collectionSlug}/${entry.institutionSlug ?? ''}`
     const current = best.get(key)
-    if (current === undefined || entry.key.length < current.entry.key.length) {
-      best.set(key, { entry, absorbed })
+    const candidate = {
+      entry,
+      absorbed: keyMatch?.absorbed ?? 0,
+      keyMatches: keyMatch !== undefined,
+    }
+    if (
+      current === undefined ||
+      isBetterCollectionCandidate(candidate, current)
+    ) {
+      best.set(key, candidate)
     }
   }
   const result: SearchSuggestion[] = []
@@ -174,11 +200,11 @@ function collectionSuggestions(
   return result.sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
 }
 
-const SKIN_TONES: { tone: SkinToneValue; word: string; phrase: string }[] = [
-  { tone: SkinTone.Dark, word: 'dark', phrase: 'dark skin' },
-  { tone: SkinTone.Brown, word: 'brown', phrase: 'brown skin' },
-  { tone: SkinTone.Fair, word: 'fair', phrase: 'fair skin' },
-  { tone: SkinTone.Albino, word: 'albino', phrase: 'albino' },
+const SKIN_TONES: { phrase: string; searchText?: string }[] = [
+  { phrase: 'dark skin' },
+  { phrase: 'brown skin' },
+  { phrase: 'fair skin' },
+  { phrase: 'albino', searchText: 'albino skin' },
 ]
 
 /// Grammar words that introduce a skin tone (`skin dark`, `tone dark`,
@@ -188,10 +214,10 @@ const SKIN_TONES: { tone: SkinToneValue; word: string; phrase: string }[] = [
 const SKIN_TONE_GRAMMAR_WORDS = new Set(['skin', 'skinned', 'skintone', 'tone'])
 
 function skinToneSuggestions(
-  active: string,
+  activeVariants: readonly string[],
   preceding: readonly SearchTextTerm[],
 ): SearchSuggestion[] {
-  if (active.length < 2) return []
+  if (!hasMinimumSignal(activeVariants, 2)) return []
   const last = preceding[preceding.length - 1]
   const kept =
     last !== undefined &&
@@ -200,8 +226,8 @@ function skinToneSuggestions(
       ? preceding.slice(0, -1)
       : preceding
   const result: SearchSuggestion[] = []
-  for (const { word, phrase } of SKIN_TONES) {
-    if (!word.startsWith(active)) continue
+  for (const { phrase, searchText = phrase } of SKIN_TONES) {
+    if (!matchesSuggestionText(searchText, activeVariants)) continue
     result.push({
       kind: 'skin-tone',
       label: capitalize(phrase),
@@ -213,17 +239,22 @@ function skinToneSuggestions(
 
 const COUNT_AXES: { words: readonly string[]; canonical: string }[] = [
   { words: ['colors', 'color'], canonical: 'colors' },
-  { words: ['attributes', 'attribute', 'attrs', 'traits', 'trait'], canonical: 'attributes' },
+  {
+    words: ['attributes', 'attribute', 'attrs', 'traits', 'trait'],
+    canonical: 'attributes',
+  },
   { words: ['pixels', 'pixel'], canonical: 'pixels' },
 ]
 
 function countSuggestions(
-  active: string,
+  activeVariants: readonly string[],
   preceding: readonly SearchTextTerm[],
 ): SearchSuggestion[] {
   const last = preceding[preceding.length - 1]
   if (last === undefined || last.exact || !/^\d+$/.test(last.text)) return []
-  const axis = COUNT_AXES.find(({ words }) => words.some((w) => w.startsWith(active)))
+  const axis = COUNT_AXES.find(({ words }) =>
+    words.some((word) => matchesWord(word, activeVariants)),
+  )
   if (axis === undefined) return []
   const phrase = `${Number.parseInt(last.text, 10)} ${axis.canonical}`
   return [
@@ -235,13 +266,95 @@ function countSuggestions(
   ]
 }
 
-/// The first word of `words` that the active term prefixes, or `-1`. The active
-/// term has already been normalized the same way as the words.
-function matchedWordIndex(words: readonly string[], active: string): number {
-  for (let i = 0; i < words.length; i++) {
-    if (words[i].startsWith(active)) return i
+/// Comparison keys for an active search token. The first is the standard
+/// `normalizeSynonymText` form; when the token joins word characters with
+/// `-`/`_`, a second joined form lets `3-d` match `3D Glasses`.
+function suggestionTextVariants(value: string): string[] {
+  const spaced = normalizeSynonymText(value)
+  if (!spaced) return []
+  const joined = value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, '')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+  return joined && joined !== spaced ? [spaced, joined] : [spaced]
+}
+
+function normalizedWords(value: string): string[] {
+  return normalizeSynonymText(value).split(/\s+/).filter(Boolean)
+}
+
+function hasMinimumSignal(
+  activeVariants: readonly string[],
+  minLength: number,
+): boolean {
+  return activeVariants.some((variant) => signalLength(variant) >= minLength)
+}
+
+function signalLength(value: string): number {
+  return value.replaceAll(/\s+/g, '').length
+}
+
+/// A normalized string matches when the active token starts a word, or when a
+/// two-plus-character token appears anywhere in the result text.
+function matchesNormalizedText(value: string, active: string): boolean {
+  if (!active) return false
+  if (value.startsWith(active) || value.includes(` ${active}`)) return true
+  return signalLength(active) >= 2 && value.includes(active)
+}
+
+function matchesSuggestionText(
+  value: string,
+  activeVariants: readonly string[],
+): boolean {
+  const normalized = normalizeSynonymText(value)
+  if (!normalized) return false
+  return activeVariants.some((active) =>
+    matchesNormalizedText(normalized, active),
+  )
+}
+
+function matchesWord(word: string, activeVariants: readonly string[]): boolean {
+  return activeVariants.some((active) => matchesNormalizedText(word, active))
+}
+
+function bestMatchedWord(
+  words: readonly string[],
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): { index: number; absorbed: number } | undefined {
+  let best: { index: number; absorbed: number } | undefined
+  for (let index = 0; index < words.length; index++) {
+    if (!matchesWord(words[index], activeVariants)) continue
+    const absorbed = absorbedPrecedingCount(words, index, preceding)
+    if (
+      best === undefined ||
+      absorbed > best.absorbed ||
+      (absorbed === best.absorbed && index > best.index)
+    ) {
+      best = { index, absorbed }
+    }
   }
-  return -1
+  return best
+}
+
+function isBetterCollectionCandidate(
+  candidate: {
+    entry: (typeof searchCollectionEntries)[number]
+    absorbed: number
+    keyMatches: boolean
+  },
+  current: {
+    entry: (typeof searchCollectionEntries)[number]
+    absorbed: number
+    keyMatches: boolean
+  },
+): boolean {
+  if (candidate.keyMatches !== current.keyMatches) return candidate.keyMatches
+  if (candidate.absorbed !== current.absorbed) {
+    return candidate.absorbed > current.absorbed
+  }
+  return candidate.entry.key.length < current.entry.key.length
 }
 
 /// How many trailing `preceding` tokens fold into a multi-word target. Walking
@@ -255,7 +368,11 @@ function absorbedPrecedingCount(
 ): number {
   let absorbed = 0
   let wordIndex = matchedIndex - 1
-  for (let k = preceding.length - 1; k >= 0 && wordIndex >= 0; k--, wordIndex--) {
+  for (
+    let k = preceding.length - 1;
+    k >= 0 && wordIndex >= 0;
+    k--, wordIndex--
+  ) {
     const term = preceding[k]
     const word = normalizeSynonymText(term.text)
     if (term.exact || word === '' || !words[wordIndex].startsWith(word)) break

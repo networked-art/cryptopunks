@@ -61,7 +61,10 @@ describe('suggestSearchText', () => {
     const capped = suggest('a', { traitLimit: 3 })
     assert.ok(capped.length <= 3)
     const supplies = suggest('sha').map((s) => s.count)
-    assert.deepEqual(supplies, [...supplies].sort((a, b) => b - a))
+    assert.deepEqual(
+      supplies,
+      [...supplies].sort((a, b) => b - a),
+    )
   })
 
   it('drops HeadVariant / AttributeCount names (no duplicate Zombie)', () => {
@@ -85,6 +88,19 @@ describe('suggestSearchText', () => {
     assert.equal(find('alb', 'Albino').query, 'albino')
     assert.equal(find('dar', 'Dark skin').query, 'dark skin')
     assert.ok(suggest('a').every((s) => s.kind !== 'skin-tone')) // one letter is too thin
+  })
+
+  it('matches suggestions anywhere in the result text', () => {
+    const skinLabels = labels('skin')
+    assert.ok(skinLabels.includes('Dark skin'))
+    assert.ok(skinLabels.includes('Brown skin'))
+    assert.ok(skinLabels.includes('Fair skin'))
+    assert.equal(find('air', 'Wild Hair').query, '"Wild Hair"')
+    assert.equal(
+      find('modern', 'Museum of Modern Art (MoMA)').query,
+      'museum of modern art',
+    )
+    assert.equal(find('2 lors', '2 colors').query, '2 colors')
   })
 
   it('absorbs a leading skin-tone grammar word instead of duplicating it', () => {
@@ -113,7 +129,17 @@ describe('suggestSearchText', () => {
   })
 
   it('round-trips: applying a suggestion yields a working query', () => {
-    for (const text of ['sha', 'big sh', 'bur', 'male hoo', '2 c']) {
+    for (const text of [
+      'sha',
+      'big sh',
+      'bur',
+      'male hoo',
+      '2 c',
+      'skin',
+      'air',
+      'modern',
+      '2 lors',
+    ]) {
       for (const suggestion of suggest(text)) {
         assert.doesNotThrow(() => client.searchSync({ text: suggestion.query }))
       }
