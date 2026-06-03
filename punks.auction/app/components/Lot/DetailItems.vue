@@ -21,13 +21,22 @@
               :size="48"
               :link="false"
             />
-            <span class="item-label label">
-              Punk #{{ item.punkId }}
+            <span class="item-text">
+              <span class="item-label label">
+                Punk #{{ item.punkId }}
+                <span
+                  v-if="item.standard === TokenStandard.CryptoPunksV1"
+                  class="item-standard"
+                  >(V1)</span
+                >
+              </span>
               <span
-                v-if="item.standard === TokenStandard.CryptoPunksV1"
-                class="item-standard"
-                >(V1)</span
+                v-if="estimateFor(item.standard, item.punkId)"
+                class="item-estimate"
               >
+                value estimate
+                <EthAmount :wei="estimateFor(item.standard, item.punkId)!" />
+              </span>
             </span>
           </NuxtLink>
         </template>
@@ -47,6 +56,16 @@ import {
 const props = defineProps<{
   items: LotItem[]
 }>()
+
+const { estimateFor, request } = usePunkValueEstimates()
+watch(
+  () => props.items,
+  (items) =>
+    request(
+      items.map((item) => ({ standard: item.standard, punkId: item.punkId })),
+    ),
+  { immediate: true },
+)
 
 // Ordered most-valuable-first by the settlement weight; the weight itself is an
 // internal hammer-price split and is not surfaced.
@@ -91,6 +110,13 @@ function itemBackground(item: LotItem) {
   border-radius: 0;
 }
 
+.item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .item-label {
   min-width: 0;
   overflow: hidden;
@@ -100,5 +126,10 @@ function itemBackground(item: LotItem) {
 
 .item-standard {
   color: var(--text-muted);
+}
+
+.item-estimate {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
 }
 </style>
