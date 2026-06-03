@@ -52,6 +52,7 @@
           :key="`history-${marketChangeKey}`"
           :punk-id="punkId"
         />
+        <LazyPunkDetailSimilar :punk-id="punkId" />
       </div>
     </section>
   </article>
