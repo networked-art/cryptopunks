@@ -3,9 +3,12 @@ import type { Context } from 'hono'
 import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
 import { sql } from 'ponder'
 import { db } from 'ponder:api'
+import { listing, punk, punkTrait } from 'ponder:schema'
 
 const PUNK_COUNT = 10000
 const MAX_BATCH_IDS = 200
+const MAX_OPPORTUNITIES = 200
+const DEFAULT_OPPORTUNITIES = 50
 const offlinePunks = new OfflinePunksDataClient()
 const TRAIT_COUNT = offlinePunks.getTraitCountSync()
 
@@ -112,6 +115,107 @@ app.get('/batch', async (c) => {
   return c.json({ items: rows.map(serializePrediction) })
 })
 
+// Underpriced public V2 listings: active asks below the model's fair value,
+// i.e. model-flagged "deals". Surfaces the gap between live ask and the
+// predicted fair value. `?sort=discount` (default) ranks by largest absolute
+// ETH discount; `?sort=liquidity` weights it by sale probability.
+app.get('/opportunities', async (c) => {
+  const limit = clampInt(
+    c.req.query('limit'),
+    DEFAULT_OPPORTUNITIES,
+    1,
+    MAX_OPPORTUNITIES,
+  )
+  const minDiscount = clampFloat(c.req.query('minDiscountPct'), 0, 0, 0.99)
+  // `discount` (default) ranks by raw ETH below fair; `liquidity` weights that
+  // edge by the Punk's sale probability, so the top-N reflects deals you can
+  // actually flip instead of paper discounts on Punks that rarely trade.
+  const sort = c.req.query('sort') === 'liquidity' ? 'liquidity' : 'discount'
+  const edge = sql`(p.fair_value_wei::numeric - l.min_value_wei::numeric)`
+  const orderBy =
+    sort === 'liquidity'
+      ? sql`${edge} * COALESCE(p.sale_probability_24h::numeric, 0) DESC`
+      : sql`${edge} DESC`
+  const rows = normalizeRows(
+    await db.execute(sql`
+      WITH active_run AS (
+        SELECT run_id, trained_at
+        FROM offchain.prediction_model_runs
+        WHERE active = true
+        ORDER BY trained_at DESC
+        LIMIT 1
+      )
+      SELECT
+        l.punk_id,
+        l.min_value_wei::text AS ask_wei,
+        p.fair_value_wei::text AS fair_value_wei,
+        p.p10_sale_wei::text AS p10_sale_wei,
+        p.p90_sale_wei::text AS p90_sale_wei,
+        p.sale_probability_24h::text AS sale_probability_24h,
+        p.drivers_json,
+        p.confidence,
+        (1 - (l.min_value_wei::numeric / p.fair_value_wei::numeric)) AS discount,
+        r.trained_at
+      FROM ${listing} l
+      JOIN ${punk} pk ON pk.punk_id = l.punk_id
+      JOIN active_run r ON true
+      JOIN offchain.punk_predictions p
+        ON p.run_id = r.run_id AND p.standard = 'v2' AND p.punk_id = l.punk_id
+      WHERE l.active = true
+        AND l.only_sell_to IS NULL
+        AND pk.native_owner IS NOT NULL
+        AND l.seller = pk.native_owner
+        AND p.fair_value_wei > 0
+        AND l.min_value_wei::numeric < p.fair_value_wei::numeric * (1 - ${minDiscount}::float8)
+      ORDER BY ${orderBy}
+      LIMIT ${limit}
+    `),
+  )
+  return c.json({ items: rows.map(serializeOpportunity) })
+})
+
+// Per-trait predicted value: the model's predicted floor (min fair value) and
+// median across Punks bearing each trait, plus the current public listed floor
+// for that trait. Lets consumers show "Alien floor", "Ape floor", etc.
+app.get('/trait-floors', async (c) => {
+  const rows = normalizeRows(
+    await db.execute(sql`
+      WITH active_run AS (
+        SELECT run_id
+        FROM offchain.prediction_model_runs
+        WHERE active = true
+        ORDER BY trained_at DESC
+        LIMIT 1
+      ),
+      listed AS (
+        SELECT pt.trait_id, MIN(l.min_value_wei) AS listed_floor_wei
+        FROM ${listing} l
+        JOIN ${punk} pk ON pk.punk_id = l.punk_id
+        JOIN ${punkTrait} pt ON pt.punk_id = l.punk_id
+        WHERE l.active = true
+          AND l.only_sell_to IS NULL
+          AND pk.native_owner IS NOT NULL
+          AND l.seller = pk.native_owner
+        GROUP BY pt.trait_id
+      )
+      SELECT
+        pt.trait_id,
+        COUNT(*)::int AS supply,
+        MIN(p.fair_value_wei::numeric)::text AS predicted_floor_wei,
+        (percentile_cont(0.5) WITHIN GROUP (ORDER BY p.fair_value_wei::numeric))::numeric(78,0)::text AS predicted_median_wei,
+        lf.listed_floor_wei::text AS listed_floor_wei
+      FROM ${punkTrait} pt
+      JOIN active_run r ON true
+      JOIN offchain.punk_predictions p
+        ON p.run_id = r.run_id AND p.standard = 'v2' AND p.punk_id = pt.punk_id
+      LEFT JOIN listed lf ON lf.trait_id = pt.trait_id
+      GROUP BY pt.trait_id, lf.listed_floor_wei
+      ORDER BY MIN(p.fair_value_wei::numeric) DESC
+    `),
+  )
+  return c.json({ items: rows.map(serializeTraitFloor) })
+})
+
 app.get('/v1/:punkId{[0-9]+}', async (c) =>
   predictionResponse(c, 'v1', c.req.param('punkId')),
 )
@@ -189,6 +293,8 @@ function serializePrediction(row: Row) {
     p50SaleWei: bigStr(row.p50_sale_wei),
     p90SaleWei: bigStr(row.p90_sale_wei),
     saleProbability24h: toFloat(row.sale_probability_24h),
+    saleProbability7d: horizonProbability(row.drivers_json, 'day7'),
+    saleProbability30d: horizonProbability(row.drivers_json, 'day30'),
     confidence: String(row.confidence),
     drivers: withTraitPremiumLabels(jsonArray(row.drivers_json)),
     comps: jsonArray(row.comps_json),
@@ -206,6 +312,49 @@ function serializePrediction(row: Row) {
       row.market_context_generated_at,
     ),
   }
+}
+
+function serializeOpportunity(row: Row) {
+  return {
+    punkId: toInt(row.punk_id),
+    standard: 'v2' as Standard,
+    askWei: bigStr(row.ask_wei),
+    fairValueWei: bigStr(row.fair_value_wei),
+    p10SaleWei: bigStr(row.p10_sale_wei),
+    p90SaleWei: bigStr(row.p90_sale_wei),
+    discount: toFloat(row.discount),
+    saleProbability24h: toFloat(row.sale_probability_24h),
+    saleProbability7d: horizonProbability(row.drivers_json, 'day7'),
+    saleProbability30d: horizonProbability(row.drivers_json, 'day30'),
+    confidence: String(row.confidence),
+    modelTrainedAt: isoString(row.trained_at),
+  }
+}
+
+function serializeTraitFloor(row: Row) {
+  const traitId = toInt(row.trait_id)
+  return {
+    traitId,
+    traitName: offlinePunks.getTraitNameSync(traitId),
+    supply: toInt(row.supply),
+    predictedFloorWei: bigStr(row.predicted_floor_wei),
+    predictedMedianWei: bigStr(row.predicted_median_wei),
+    listedFloorWei: nullableBigStr(row.listed_floor_wei),
+  }
+}
+
+function horizonProbability(driversJson: unknown, key: string): number | null {
+  for (const d of jsonArray(driversJson)) {
+    if (
+      d &&
+      typeof d === 'object' &&
+      (d as Record<string, unknown>).kind === 'sale_probability'
+    ) {
+      const v = (d as Record<string, unknown>)[key]
+      if (typeof v === 'number' && Number.isFinite(v)) return v
+    }
+  }
+  return null
 }
 
 function serializeModel(row: Row) {
@@ -289,6 +438,30 @@ function parseIds(value: string | undefined): number[] | null {
     }
   }
   return ids
+}
+
+function clampInt(
+  value: string | undefined,
+  fallback: number,
+  lo: number,
+  hi: number,
+): number {
+  if (value === undefined) return fallback
+  const n = Number.parseInt(value, 10)
+  if (!Number.isFinite(n)) return fallback
+  return Math.max(lo, Math.min(hi, n))
+}
+
+function clampFloat(
+  value: string | undefined,
+  fallback: number,
+  lo: number,
+  hi: number,
+): number {
+  if (value === undefined) return fallback
+  const n = Number.parseFloat(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.max(lo, Math.min(hi, n))
 }
 
 function bigStr(value: unknown): string {
