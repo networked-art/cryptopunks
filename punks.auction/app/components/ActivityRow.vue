@@ -52,7 +52,7 @@
           v-if="event.punkId !== undefined"
           :to="`/punks/${event.punkId}`"
           class="punk-id"
-          >Punk #{{ event.punkId
+          >#{{ event.punkId
           }}<span v-if="event.wrapped"> (Wrapped)</span></NuxtLink
         >
       </div>
@@ -111,9 +111,7 @@ const props = defineProps<{
 }>()
 
 const { backgroundForActivityEvent } = usePunkBackgrounds()
-const eventBackground = computed(() =>
-  backgroundForActivityEvent(props.event),
-)
+const eventBackground = computed(() => backgroundForActivityEvent(props.event))
 
 /// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
 /// them so the row shows a single party.
@@ -161,11 +159,13 @@ const detailHref = computed(() => {
   const e = props.event
   if (OFFER_KINDS.has(e.kind) && e.offerId !== undefined)
     return `/purchase-offers/${e.offerId}`
-  if (LOT_KINDS.has(e.kind) && e.lotId !== undefined)
-    return `/lots/${e.lotId}`
+  if (LOT_KINDS.has(e.kind) && e.lotId !== undefined) return `/lots/${e.lotId}`
   if (AUCTION_KINDS.has(e.kind) && e.auctionId !== undefined)
     return `/auctions/${e.auctionId}`
-  if ((e.kind === 'bid' || e.kind === 'bid_cancelled') && e.auctionId !== undefined)
+  if (
+    (e.kind === 'bid' || e.kind === 'bid_cancelled') &&
+    e.auctionId !== undefined
+  )
     return `/auctions/${e.auctionId}`
   return undefined
 })
@@ -192,6 +192,10 @@ const absoluteTime = computed(() =>
   padding: var(--size-3);
   border-bottom: var(--border);
   list-style: none;
+
+  &:hover {
+    background: var(--gray-z-1);
+  }
 }
 
 .activity-row.no-thumb {
@@ -270,7 +274,7 @@ a.thumb-icon.symbol-tile:focus-visible {
 .punk-id {
   border: 0;
   color: var(--text-muted);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
 }
 
 .kind-link {
@@ -287,13 +291,18 @@ a.thumb-icon.symbol-tile:focus-visible {
 
 .row-meta {
   display: flex;
-  align-items: center;
-  gap: var(--size-3);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--size-2);
+
+  .eth-amount {
+    font-size: var(--font-sm);
+  }
 }
 
 .tx {
   border: 0;
-  color: var(--text-dim);
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: var(--size-2);
@@ -306,13 +315,5 @@ a.thumb-icon.symbol-tile:focus-visible {
 .time-ago {
   font-size: var(--font-xs);
   white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .row-meta {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--size-1);
-  }
 }
 </style>

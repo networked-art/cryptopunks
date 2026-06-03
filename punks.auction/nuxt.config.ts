@@ -66,6 +66,11 @@ export default defineNuxtConfig({
       // Public indexer base URL (Ponder/Postgres GraphQL endpoint) for this
       // app. Override with NUXT_PUBLIC_INDEXER_URL.
       indexerUrl: 'https://indexer.punks.auction',
+      // Optional networked.art API base URL. When set, it enables the
+      // off-chain features that depend on it (brokerage requests, and later
+      // notifications); left empty, those features stay hidden. Override with
+      // NUXT_PUBLIC_NETWORKED_API_URL.
+      networkedApiUrl: '',
       evm: {
         walletConnectProjectId: '',
         chains: {

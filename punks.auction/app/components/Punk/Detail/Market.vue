@@ -103,38 +103,45 @@
           </template>
 
           <template v-else>
-            <Button
-              v-if="canBuy"
-              class="primary"
-              @click="actBuy"
-            >
-              Buy <EthAmount :wei="liveListing!.priceWei" />
-            </Button>
-            <p
-              v-else-if="liveListing && isPrivateListing"
-              class="warn"
-            >
-              This listing is reserved for
-              <NuxtLink :to="`/profile/${liveListing.onlySellTo}`">
-                <Account :address="liveListing.onlySellTo" />
-              </NuxtLink>
-              .
-            </p>
-
-            <div class="action-group">
-              <LazyPunkDetailMarketBidForm
-                :punk-id="punkId"
-                :current-bid="activeBid"
-                :primary="!liveListing"
-                @placed="onChanged"
-              />
+            <div class="action-group min-50">
               <Button
-                v-if="isHighBidder"
-                @click="actWithdrawBid"
+                v-if="canBuy"
+                class="primary"
+                @click="actBuy"
               >
-                Withdraw bid
+                Buy <EthAmount :wei="liveListing!.priceWei" />
               </Button>
+              <p
+                v-else-if="liveListing && isPrivateListing"
+                class="warn"
+              >
+                This listing is reserved for
+                <NuxtLink :to="`/profile/${liveListing.onlySellTo}`">
+                  <Account :address="liveListing.onlySellTo" />
+                </NuxtLink>
+                .
+              </p>
+
+              <div class="action-group">
+                <LazyPunkDetailMarketBidForm
+                  :punk-id="punkId"
+                  :current-bid="activeBid"
+                  :primary="!liveListing"
+                  @placed="onChanged"
+                />
+                <Button
+                  v-if="isHighBidder"
+                  @click="actWithdrawBid"
+                >
+                  Withdraw bid
+                </Button>
+              </div>
             </div>
+
+            <LazyPunkDetailMarketBrokerContact
+              v-if="brokerEnabled"
+              :punk-id="punkId"
+            />
           </template>
         </div>
       </div>
@@ -154,6 +161,7 @@
 import { ZERO_ADDRESS, type ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import type { Address, Hash, TransactionReceipt } from 'viem'
+import { isApiConfigured } from '~/utils/api'
 import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
@@ -164,6 +172,8 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
+// Broker contact rides on the networked.art API; hide it unless that's wired up.
+const brokerEnabled = isApiConfigured()
 const detail = usePunkDetailDataContext()
 const {
   owner: resolvedOwner,
@@ -382,6 +392,13 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
   display: flex;
   gap: var(--size-2);
   flex-wrap: wrap;
+
+  &.min-50 {
+    min-width: 50%;
+    @media (max-width: 540px) {
+      min-width: auto;
+    }
+  }
 }
 
 .warn,
