@@ -30,8 +30,8 @@
       <template v-if="!submitted">
         <p class="form-note muted">
           Leave your email and a broker may reach out to discuss placing a bid
-          or arranging a private sale. Submitting this doesn’t guarantee a
-          response or a placement.
+          or arranging a private sale. We'll email a link to confirm it first —
+          submitting doesn't guarantee a response or a placement.
         </p>
 
         <form
@@ -49,6 +49,16 @@
               required
             />
           </label>
+          <label class="field">
+            <span class="label">Note (optional)</span>
+            <textarea
+              v-model.trim="note"
+              name="note"
+              rows="3"
+              maxlength="1000"
+              placeholder="What are you looking to do — place a bid, arrange a private sale?"
+            />
+          </label>
           <p
             v-if="error"
             class="error"
@@ -62,8 +72,9 @@
         v-else
         class="form-note"
       >
-        Thanks — we’ve got your email. A broker may reach out if there’s a
-        match, but a response isn’t guaranteed.
+        Check your inbox — we sent a confirmation link to
+        <strong>{{ email }}</strong>. Confirm it and a broker may reach out if
+        there's a match. A response isn't guaranteed.
       </p>
 
       <template #footer>
@@ -76,9 +87,10 @@
           </Button>
           <Button
             class="primary"
+            :disabled="pending"
             @click="submit"
           >
-            Request contact
+            {{ pending ? 'Sending…' : 'Request contact' }}
           </Button>
         </template>
         <Button
@@ -94,14 +106,19 @@
 </template>
 
 <script setup lang="ts">
+import { useConnection } from '@wagmi/vue'
 import type { Address } from 'viem'
+import { CRYPTOPUNKS_ADDRESS } from '~/utils/addresses'
+import { postApi } from '~/utils/api'
 
-defineProps<{
+const props = defineProps<{
   punkId: number
 }>()
 
 const route = useRoute()
 const router = useRouter()
+const config = useRuntimeConfig()
+const { address } = useConnection()
 
 // Mirror the contact modal in the URL so an open dialog is linkable. The query
 // is the source of truth on load; opening or closing writes it back.
@@ -121,10 +138,13 @@ watch(
 )
 
 // Owner's wallet last-active, sourced from the indexer's tx-from tracking, so a
-// broker can gauge how reachable the holder is. Custody set covers vault/stash;
-// the EOA drives the last-active lookup.
+// broker can gauge how reachable the holder is. Held back until the dialog is
+// open so merely viewing a Punk detail page doesn't trigger the lookup — the
+// stats only surface inside the dialog. Custody set covers vault/stash; the EOA
+// drives the last-active lookup.
 const { owner: resolvedOwner, nativeOwner } = usePunkDetailDataContext()
 const ownerAddresses = computed<Address[]>(() => {
+  if (!open.value) return []
   const set = new Set<Address>()
   if (resolvedOwner.value) set.add(resolvedOwner.value)
   if (nativeOwner.value) set.add(nativeOwner.value)
@@ -142,26 +162,56 @@ const ownerLastActiveIso = computed(() =>
 const ownerLastActiveAgo = useTimeAgo(ownerLastActiveIso)
 
 const email = ref('')
+const note = ref('')
 const error = ref<string | null>(null)
+const pending = ref(false)
 const submitted = ref(false)
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function submit() {
+async function submit() {
+  if (pending.value) return
   if (!EMAIL_RE.test(email.value)) {
     error.value = 'Enter a valid email address.'
     return
   }
   error.value = null
-  // No collection endpoint is wired yet; capture intent client-side and a
-  // broker follows up out of band. Swap this for a POST when the backend lands.
-  submitted.value = true
+  pending.value = true
+  try {
+    // The email's confirmation link lands the buyer back on this app once
+    // confirmed. The API only allows redirects to this app's own origin, so
+    // build it from `publicUrl`; `?punk` lets the landing page show context.
+    const redirectUrl = new URL(
+      `/brokerage/confirmed?punk=${props.punkId}`,
+      config.public.publicUrl as string,
+    ).toString()
+    await postApi('/brokerage/requests', {
+      email: email.value,
+      source: 'punks_auctions',
+      user_address: address.value ?? null,
+      redirect_url: redirectUrl,
+      user_note: note.value || null,
+      scope: {
+        // Market (and so this form) only renders for canonical CryptoPunks.
+        contract_address: CRYPTOPUNKS_ADDRESS,
+        token_id: String(props.punkId),
+        search: null,
+      },
+    })
+    submitted.value = true
+  } catch {
+    error.value = 'Something went wrong. Please try again.'
+  } finally {
+    pending.value = false
+  }
 }
 
 function reset() {
   email.value = ''
+  note.value = ''
   error.value = null
+  pending.value = false
   submitted.value = false
 }
 </script>
@@ -208,7 +258,7 @@ function reset() {
 .broker-form {
   display: flex;
   flex-direction: column;
-  gap: var(--size-1);
+  gap: var(--size-3);
 }
 
 .field {
@@ -221,8 +271,15 @@ function reset() {
   color: var(--text-dim);
 }
 
-.field input {
+.field input,
+.field textarea {
   width: 100%;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: var(--size-8);
+  font: inherit;
 }
 
 .error {
