@@ -208,11 +208,7 @@ function reset() {
 }
 
 .field input {
-  padding: var(--size-2);
-  border: var(--border);
-  background: var(--bg-elevated, white);
-  color: inherit;
-  font: inherit;
+  width: 100%;
 }
 
 .error {
