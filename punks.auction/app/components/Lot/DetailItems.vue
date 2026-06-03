@@ -34,8 +34,9 @@
                 v-if="estimateFor(item.standard, item.punkId)"
                 class="item-estimate"
               >
-                value estimate
-                <EthAmount :wei="estimateFor(item.standard, item.punkId)!" />
+                Estimated value ~<EthAmount
+                  :wei="estimateFor(item.standard, item.punkId)!"
+                />
               </span>
             </span>
           </NuxtLink>
