@@ -72,9 +72,9 @@
         v-else
         class="form-note"
       >
-        Check your inbox — we sent a confirmation link to
-        <strong>{{ email }}</strong>. Confirm it and a broker may reach out if
-        there's a match. A response isn't guaranteed.
+        Check your inbox! We sent a confirmation link to
+        <strong>{{ email }}</strong
+        >. Confirm it and a broker may reach out if there's a match.
       </p>
 
       <template #footer>
@@ -184,7 +184,8 @@ async function submit() {
     // build it from `publicUrl`; `?punk` lets the landing page show context.
     const redirectUrl = new URL(
       `/brokerage/confirmed?punk=${props.punkId}`,
-      config.public.publicUrl as string,
+      'https://punks.auction',
+      // config.public.publicUrl as string,
     ).toString()
     await postApi('/brokerage/requests', {
       email: email.value,

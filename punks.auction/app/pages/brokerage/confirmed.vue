@@ -15,7 +15,7 @@
           Thanks for confirming your email. A broker may reach out about
           <template v-if="punkId !== null">Punk #{{ punkId }}</template>
           <template v-else>your request</template>
-          if there's a match — a response isn't guaranteed.
+          if there's a match. A response isn't guaranteed.
         </p>
       </div>
 
