@@ -290,7 +290,7 @@ provide(ProfileContextKey, {
 }
 
 .profile-avvatar {
-  width: clamp(56px, 12vw, 90px);
+  width: clamp(64px, 16vw, 109px);
   aspect-ratio: 1;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;
