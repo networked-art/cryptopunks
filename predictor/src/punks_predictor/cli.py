@@ -83,6 +83,25 @@ def run_once(config: DatabaseConfig) -> None:
     f"({len(run.predictions)} rows, {promotion_summary(run)})",
     flush=True,
   )
+  print(realized_summary(run), flush=True)
+
+
+def realized_summary(run) -> str:
+  bt = run.backtests.get("live_realized", {}) if hasattr(run, "backtests") else {}
+  window = bt.get("windowDays", "?")
+  n = bt.get("n", 0)
+  if not n:
+    return f"realized backtest: no public V2 sales in the last {window}d to score yet"
+  parts = [f"realized backtest: {n} sales over {window}d ({bt.get('runsScored', '?')} runs)"]
+  for label, key, fmt in (
+    ("medAPE", "medianAbsolutePercentError", "{:.1%}"),
+    ("WAPE", "valueWeightedError", "{:.1%}"),
+    ("coverage", "intervalCoverage", "{:.0%}"),
+  ):
+    value = bt.get(key)
+    if value is not None:
+      parts.append(f"{label}={fmt.format(value)}")
+  return " — ".join([parts[0], " ".join(parts[1:])]) if len(parts) > 1 else parts[0]
 
 
 def promotion_summary(run) -> str:

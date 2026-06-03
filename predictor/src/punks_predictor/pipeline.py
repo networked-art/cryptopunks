@@ -13,9 +13,9 @@ import numpy as np
 import pandas as pd
 from psycopg import Connection, sql
 from psycopg.types.json import Jsonb
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 
-from . import __version__
+from . import __version__, features
 from .db import DatabaseConfig, connect
 from .trait_names import trait_name_for_id
 
@@ -27,6 +27,29 @@ SECONDS_PER_DAY = 86_400
 MODEL_VERSION = f"punks-24h-v{__version__}"
 RANDOM_STATE = 1001
 PUNKS_MARKET_ADDRESS = "0x64e507febf26521b73fbdfa533106b2042533218"
+# Floor-relative model: predict log(price / point-in-time floor), weight training
+# by price^VALUE_WEIGHT so the expensive sales that dominate value-weighted error
+# are fit accurately, then snap a small predicted premium back to the floor so
+# common near-floor Punks keep the tight floor median. Validated out-of-time in
+# research/harness.py (tail error cut ~3x vs floor-only).
+VALUE_WEIGHT = 0.6
+PREMIUM_SNAP = 0.10
+INTERVAL_COVERAGE = 0.80
+# Calibrate interval bands on a recent out-of-sample window so the calibration
+# model is close to the served full-data model. A stale 85/15 split over-covers
+# (~87%) with wide bands; this lands near 80% with ~40% tighter bands.
+INTERVAL_CALIBRATION_DAYS = 60
+# Residual spread grows with predicted premium: a 5x-floor Punk is far less
+# certain than a near-floor one. Scale the band by 1 + K*max(0, log(premium)) so
+# coverage holds across the premium range. A flat band leaves the premium third
+# of ETH volume badly under-covered (1.5-8x floor ~40-50% vs the 80% target); at
+# K=1.4 those segments reach ~60-79% while the near-floor bulk stays tight.
+INTERVAL_PREMIUM_SCALE = 1.4
+# Trailing window for the live realized backtest: score every public V2 sale in
+# this window against the prediction that was actually live when it sold. A
+# window (not just the outgoing run's brief life) gives a stable sample now that
+# runs promote frequently.
+REALIZED_WINDOW_DAYS = 14
 # A refreshed run may carry a little more error than the incumbent (different
 # out-of-time test set) and still be worth promoting for the newer market data.
 PROMOTION_REGRESSION_TOLERANCE = 0.05
@@ -110,6 +133,12 @@ def train_and_store(config: DatabaseConfig) -> PredictionRun:
       views_schema=config.views_schema,
       training_started_at=training_started_at,
     )
+    # Score the outgoing live model against sales since it was promoted before we
+    # supersede it; accumulates a true in-production accuracy record. Mirror it
+    # into metrics so it surfaces on the `/predictions/model` endpoint.
+    realized = realized_backtest(conn, dataset)
+    run.backtests["live_realized"] = realized
+    run.metrics["liveRealized"] = realized
     store_prediction_run(conn, run)
     return run
 
@@ -156,7 +185,8 @@ def build_prediction_run(
 
   trait_premiums = compute_trait_premiums(v2_sales, static["trait_matrix"])
   comps_index = build_comps_index(v2_sales, static["traits_by_punk"])
-  v2_model = train_price_model(v2_sales, static)
+  v2_model = train_price_model(dataset, v2_sales, static, now_ts)
+  sale_prob_model = train_sale_probability(dataset, v2_sales, static, now_ts)
   v2_predictions = predict_v2(
     model=v2_model,
     static=static,
@@ -165,6 +195,7 @@ def build_prediction_run(
     comps_index=comps_index,
     current_bids=dataset["v2_bids"],
     reservations=v2_reservations,
+    sale_prob_model=sale_prob_model,
   )
   v1_predictions = predict_v1(
     v2_predictions=v2_predictions,
@@ -185,6 +216,9 @@ def build_prediction_run(
     "market": market.context_json,
     "reservation": reservation_metrics(
       rejected_bids, v2_reservations, v1_reservations
+    ),
+    "saleProbability": (
+      sale_prob_model["metrics"] if sale_prob_model else {"kind": "heuristic"}
     ),
   }
   backtests = {
@@ -225,6 +259,7 @@ def load_dataset(conn: Connection, views_schema: str) -> dict[str, pd.DataFrame]
         wei_amount::text AS wei_amount,
         listing_wei::text AS listing_wei,
         bid_wei::text AS bid_wei,
+        only_sell_to,
         tx_hash,
         timestamp::bigint AS timestamp
       FROM {schema}.events
@@ -233,6 +268,16 @@ def load_dataset(conn: Connection, views_schema: str) -> dict[str, pd.DataFrame]
           (type = 'sale' AND wei_amount IS NOT NULL AND wei_amount > 0)
           OR type IN ('listing', 'listing_cancelled')
         )
+      """,
+    ),
+    "moves": frame(
+      conn,
+      views_schema,
+      """
+      SELECT punk_id::int AS punk_id, timestamp::bigint AS ts
+      FROM {schema}.events
+      WHERE source = 'cryptopunks_v2' AND punk_id IS NOT NULL
+        AND type IN ('transfer', 'stashed', 'unstashed')
       """,
     ),
     "traits": frame(
@@ -810,16 +855,64 @@ def compute_trait_premiums(
   return premiums
 
 
+def _floor_model() -> HistGradientBoostingRegressor:
+  return HistGradientBoostingRegressor(
+    max_iter=400,
+    learning_rate=0.05,
+    max_leaf_nodes=31,
+    min_samples_leaf=40,
+    l2_regularization=1.0,
+    early_stopping=False,
+    random_state=RANDOM_STATE,
+  )
+
+
+def _snap(resid: np.ndarray) -> np.ndarray:
+  return np.where(np.abs(resid) < PREMIUM_SNAP, 0.0, resid)
+
+
 def train_price_model(
+  dataset: dict[str, pd.DataFrame],
   v2_sales: pd.DataFrame,
   static: dict[str, Any],
+  now_ts: int,
 ) -> dict[str, Any]:
+  """Train the floor-relative premium model on point-in-time features of every
+  historical V2 sale, then score all 10k Punks against the current market. The
+  model predicts log(price/floor); we reattach the live floor, snap small
+  premia, and attach split-conformal interval bands."""
   fallback_eth = (
     float(np.median(v2_sales["eth"].to_numpy(dtype=float)))
     if not v2_sales.empty
     else 1.0
   )
-  if len(v2_sales) < 30:
+  supply = features.trait_supply(static["traits_by_punk"])
+  built = features.build_training_frame(
+    sales=v2_sales[["punk_id", "timestamp", "eth"]],
+    listings=v2_listing_events(dataset["events"]),
+    moves=dataset["moves"],
+    bid_events=v2_bid_events(dataset["native_bids"]),
+    traits_by_punk=static["traits_by_punk"],
+    supply=supply,
+    pixel_count=static["pixel_count"],
+    color_count=static["color_count"],
+  )
+  frame = built["frame"]
+  frame = frame[(frame["target_eth"] > 0.05) & (frame["target_eth"] < 100_000)]
+
+  serving = features.build_serving_frame(
+    now_ts=now_ts,
+    current_floor=current_floor_map(dataset["v2_listings"]),
+    current_bid=current_bid_map(dataset["v2_bids"]),
+    index=built["index"],
+    last_sale=built["last_sale"],
+    traits_by_punk=static["traits_by_punk"],
+    supply=supply,
+    pixel_count=static["pixel_count"],
+    color_count=static["color_count"],
+  )
+
+  if len(frame) < 200:
     predictions = np.full(PUNK_COUNT, fallback_eth, dtype=float)
     return {
       "kind": "baseline",
@@ -828,84 +921,238 @@ def train_price_model(
       "p90_model": predictions * 1.25,
       "metrics": {"kind": "baseline", "testCount": 0},
       "baseline_metrics": {"medianEth": fallback_eth},
+      "serving": serving,
     }
 
-  sales = v2_sales.sort_values("timestamp").reset_index(drop=True)
-  split = max(1, int(len(sales) * 0.8))
-  train = sales.iloc[:split]
-  test = sales.iloc[split:]
-  x_train = static["features"][train["punk_id"].to_numpy(dtype=int)]
-  y_train = np.log(train["eth"].to_numpy(dtype=float))
-  weights = recency_weights(train["timestamp"].to_numpy(dtype=int))
+  trait_matrix = static["trait_matrix"]
+  frame = frame.sort_values("ts").reset_index(drop=True)
+  # Calibrate bands (and report metrics) on a recent out-of-sample window so the
+  # calibration model nearly matches the served full-data model; fall back to an
+  # 85/15 split if there is too little recent data.
+  recent_mask = frame["ts"].to_numpy(dtype=np.int64) >= now_ts - INTERVAL_CALIBRATION_DAYS * SECONDS_PER_DAY
+  if int(recent_mask.sum()) >= 50 and int((~recent_mask).sum()) >= 1000:
+    fit, hold = frame[~recent_mask], frame[recent_mask]
+  else:
+    cut = int(len(frame) * 0.85)
+    fit, hold = frame.iloc[:cut], frame.iloc[cut:]
 
-  model = GradientBoostingRegressor(
-    n_estimators=240,
-    max_depth=3,
-    learning_rate=0.045,
-    subsample=0.85,
-    random_state=RANDOM_STATE,
-  )
-  q10 = GradientBoostingRegressor(
-    loss="quantile",
-    alpha=0.10,
-    n_estimators=220,
-    max_depth=3,
-    learning_rate=0.045,
-    subsample=0.85,
-    random_state=RANDOM_STATE,
-  )
-  q90 = GradientBoostingRegressor(
-    loss="quantile",
-    alpha=0.90,
-    n_estimators=220,
-    max_depth=3,
-    learning_rate=0.045,
-    subsample=0.85,
-    random_state=RANDOM_STATE,
-  )
-  model.fit(x_train, y_train, sample_weight=weights)
-  q10.fit(x_train, y_train, sample_weight=weights)
-  q90.fit(x_train, y_train, sample_weight=weights)
+  metrics = {"kind": "floor_relative_gbm", "testCount": 0}
+  lo_q, hi_q = math.log(0.45), math.log(1.6)  # fallback band if no holdout
+  if len(hold) >= 20:
+    fitted = _fit_floor_model(fit, trait_matrix)
+    x_hold, anchor_hold = features.design_matrix(hold, trait_matrix)
+    resid_hold = fitted.predict(x_hold)
+    pred_hold = np.exp(anchor_hold + _snap(resid_hold))
+    actual_hold = hold["target_eth"].to_numpy(dtype=float)
+    raw_err = np.log(actual_hold) - (anchor_hold + resid_hold)
+    # Normalize the residual by the predicted-premium scale before taking the
+    # global quantile, then re-apply the scale per Punk at serve. This widens the
+    # band with premium (heteroscedastic) while borrowing the quantile from the
+    # well-populated near-floor bulk rather than the thin premium tail. Centered
+    # on the holdout median so bands sit symmetrically around the served p50.
+    scale_hold = 1.0 + INTERVAL_PREMIUM_SCALE * np.maximum(0.0, _snap(resid_hold))
+    ok_hold = np.isfinite(raw_err) & np.isfinite(scale_hold) & (scale_hold > 0)
+    center = float(np.median(raw_err[ok_hold]))
+    centered = (raw_err[ok_hold] - center) / scale_hold[ok_hold]
+    lo_q = float(np.quantile(centered, (1 - INTERVAL_COVERAGE) / 2))
+    hi_q = float(np.quantile(centered, 1 - (1 - INTERVAL_COVERAGE) / 2))
+    metrics = floor_model_metrics(actual_hold, pred_hold, fit, hold)
 
-  metrics = evaluate_price_model(model, train, test, static, fallback_eth)
-  x_all = static["features"]
-  p50 = np.exp(model.predict(x_all))
-  p10 = np.exp(q10.predict(x_all))
-  p90 = np.exp(q90.predict(x_all))
-  p10, p50, p90 = ordered_quantiles(p10, p50, p90)
+  # Retrain on the full history for the served point estimate.
+  model = _fit_floor_model(frame, trait_matrix)
+  x_serve, anchor_serve = features.design_matrix(serving, trait_matrix)
+  resid_serve = _snap(model.predict(x_serve))
+  p50 = np.exp(anchor_serve + resid_serve)
+  scale_serve = 1.0 + INTERVAL_PREMIUM_SCALE * np.maximum(0.0, resid_serve)
+  p10 = p50 * np.exp(scale_serve * lo_q)
+  p90 = p50 * np.exp(scale_serve * hi_q)
+  # serving frame rows are punk_id 0..PUNK_COUNT-1 in order
   return {
-    "kind": "gradient_boosting",
+    "kind": "floor_relative_gbm",
     "p10_model": p10,
     "p50_model": p50,
     "p90_model": p90,
     "metrics": metrics,
     "baseline_metrics": metrics.get("baseline", {}),
+    "serving": serving,
   }
 
 
-def evaluate_price_model(
-  model: GradientBoostingRegressor,
-  train: pd.DataFrame,
-  test: pd.DataFrame,
+def _prob_model() -> HistGradientBoostingRegressor:
+  # Squared-error regression on the 0/1 label yields well-calibrated P(sale).
+  return HistGradientBoostingRegressor(
+    max_iter=300, learning_rate=0.05, max_leaf_nodes=15,
+    min_samples_leaf=80, l2_regularization=1.0,
+    early_stopping=False, random_state=RANDOM_STATE,
+  )
+
+
+def _roc_auc(y: np.ndarray, p: np.ndarray) -> float | None:
+  order = np.argsort(p, kind="mergesort")
+  ranks = np.empty(len(p), dtype=float)
+  ranks[order] = np.arange(1, len(p) + 1)
+  n1 = float(y.sum())
+  n0 = float(len(y) - n1)
+  if n0 == 0 or n1 == 0:
+    return None
+  return float((ranks[y == 1].sum() - n1 * (n1 + 1) / 2) / (n0 * n1))
+
+
+def train_sale_probability(
+  dataset: dict[str, pd.DataFrame],
+  v2_sales: pd.DataFrame,
   static: dict[str, Any],
-  fallback_eth: float,
-) -> dict[str, Any]:
-  if test.empty:
-    return {"kind": "gradient_boosting", "testCount": 0}
-  x_test = static["features"][test["punk_id"].to_numpy(dtype=int)]
-  actual = test["eth"].to_numpy(dtype=float)
-  predicted = np.exp(model.predict(x_test))
-  baseline = np.full_like(actual, float(np.median(train["eth"])))
+  now_ts: int,
+) -> dict[str, Any] | None:
+  """Train a calibrated P(sale within 24h | listed) classifier on every
+  historical public listing snapshot, plus the current liquidity needed to score
+  all Punks at serve time. Returns None when there is too little data."""
+  supply = features.trait_supply(static["traits_by_punk"])
+  frame = features.build_listing_training_frame(
+    sales=v2_sales[["punk_id", "timestamp", "eth"]],
+    listings=v2_listing_events(dataset["events"]),
+    moves=dataset["moves"],
+    bid_events=v2_bid_events(dataset["native_bids"]),
+    traits_by_punk=static["traits_by_punk"],
+    supply=supply,
+  )
+  frame = frame[np.isfinite(frame["ask_ratio"].to_numpy(dtype=float))]
+  if len(frame) < 2000:
+    return None
+  frame = frame.sort_values("ts").reset_index(drop=True)
+  cut = int(len(frame) * 0.85)
+  fit, hold = frame.iloc[:cut], frame.iloc[cut:]
+  x_fit, x_hold, x_all = (
+    features.prob_design(fit), features.prob_design(hold), features.prob_design(frame)
+  )
+
+  # One calibrated classifier per horizon (24h / 7d / 30d).
+  classifiers: dict[str, Any] = {}
+  horizons: dict[str, Any] = {}
+  for label in features.PROB_HORIZONS:
+    y_all = frame[label].to_numpy(dtype=float)
+    stats: dict[str, Any] = {"baseRate": float(y_all.mean())}
+    if len(hold) >= 200:
+      holdout = _prob_model().fit(x_fit, fit[label].to_numpy(dtype=float))
+      p = np.clip(holdout.predict(x_hold), 0.0, 1.0)
+      y = hold[label].to_numpy(dtype=float)
+      stats.update({"auc": _roc_auc(y, p), "brier": float(np.mean((p - y) ** 2))})
+    classifiers[label] = _prob_model().fit(x_all, y_all)
+    horizons[label] = stats
+
+  ts = v2_sales["timestamp"].to_numpy(dtype=np.int64)
+  eth = v2_sales["eth"].to_numpy(dtype=float)
+  m30 = np.median(eth[(ts >= now_ts - 30 * SECONDS_PER_DAY) & (ts < now_ts)]) if (ts >= now_ts - 30 * SECONDS_PER_DAY).any() else np.nan
+  m90 = np.median(eth[(ts >= now_ts - 90 * SECONDS_PER_DAY) & (ts < now_ts)]) if (ts >= now_ts - 90 * SECONDS_PER_DAY).any() else np.nan
+  listing_prices = np.sort(np.array(list(current_floor_map(dataset["v2_listings"]).values()), dtype=float))
   return {
-    "kind": "gradient_boosting",
-    "testCount": int(len(test)),
-    "medianAbsolutePercentError": median_ape(actual, predicted),
-    "medianAbsoluteLogError": float(np.median(np.abs(np.log(predicted / actual)))),
+    "classifiers": classifiers,
+    "supply": supply,
+    "sales_7d": int(((ts >= now_ts - 7 * SECONDS_PER_DAY) & (ts < now_ts)).sum()),
+    "sales_30d": int(((ts >= now_ts - 30 * SECONDS_PER_DAY) & (ts < now_ts)).sum()),
+    "active_listings": int(len(listing_prices)),
+    "listing_prices": listing_prices,
+    "floor_mom": float(m30 / m90) if (m30 == m30 and m90 == m90 and m90 > 0) else 1.0,
+    "metrics": {"kind": "sale_prob_gbm", "trainRows": int(len(fit)), "horizons": horizons},
+  }
+
+
+def _fit_floor_model(
+  frame: pd.DataFrame, trait_matrix: np.ndarray
+) -> HistGradientBoostingRegressor:
+  x, anchor = features.design_matrix(frame, trait_matrix)
+  target = frame["target_eth"].to_numpy(dtype=float)
+  y = np.log(target) - anchor
+  ok = np.isfinite(y) & np.isfinite(x).all(axis=1)
+  weights = np.power(np.maximum(target, 1e-6), VALUE_WEIGHT)[ok]
+  return _floor_model().fit(x[ok], y[ok], sample_weight=weights)
+
+
+def floor_model_metrics(
+  actual: np.ndarray,
+  predicted: np.ndarray,
+  fit: pd.DataFrame,
+  hold: pd.DataFrame,
+) -> dict[str, Any]:
+  mask = (actual > 0) & np.isfinite(predicted) & (predicted > 0)
+  a, p = actual[mask], predicted[mask]
+  baseline_eth = float(np.median(fit["target_eth"].to_numpy(dtype=float)))
+  baseline = np.full_like(a, baseline_eth)
+  order = np.argsort(a)
+  tail = order[int(0.9 * len(a)):]
+  return {
+    "kind": "floor_relative_gbm",
+    "testCount": int(len(a)),
+    "medianAbsolutePercentError": median_ape(a, p),
+    "medianAbsoluteLogError": float(np.median(np.abs(np.log(p / a)))),
+    "valueWeightedError": float(np.sum(np.abs(p - a)) / np.sum(a)),
+    "tailMedianAbsolutePercentError": float(np.median(np.abs(p[tail] - a[tail]) / a[tail])),
+    "valueWeight": VALUE_WEIGHT,
     "baseline": {
-      "medianEth": fallback_eth,
-      "medianAbsolutePercentError": median_ape(actual, baseline),
+      "medianEth": baseline_eth,
+      "medianAbsolutePercentError": median_ape(a, baseline),
     },
   }
+
+
+def v2_listing_events(events: pd.DataFrame) -> pd.DataFrame:
+  """Listing/cancel events for the V2 marketplace, shaped for the floor sweep."""
+  cols = ["punk_id", "type", "ts", "price", "only_sell_to"]
+  if events.empty:
+    return pd.DataFrame(columns=cols)
+  rows = events[
+    (events["source"] == "cryptopunks_v2")
+    & (events["type"].isin(["listing", "listing_cancelled"]))
+  ]
+  out = pd.DataFrame(
+    {
+      "punk_id": rows["punk_id"].to_numpy(dtype=int),
+      "type": rows["type"].to_numpy(),
+      "ts": rows["timestamp"].to_numpy(dtype=np.int64),
+      "price": [
+        (float(Decimal(w) / WEI_PER_ETH) if w not in (None, "") and not pd.isna(w) else float("nan"))
+        for w in rows["listing_wei"].tolist()
+      ],
+      "only_sell_to": rows["only_sell_to"].tolist(),
+    }
+  )
+  return out
+
+
+def v2_bid_events(native_bids: pd.DataFrame) -> pd.DataFrame:
+  cols = ["punk_id", "type", "ts", "eth"]
+  if native_bids.empty:
+    return pd.DataFrame(columns=cols)
+  rows = native_bids[native_bids["source"] == "cryptopunks_v2"]
+  return pd.DataFrame(
+    {
+      "punk_id": rows["punk_id"].to_numpy(dtype=int),
+      "type": rows["type"].to_numpy(),
+      "ts": rows["timestamp"].to_numpy(dtype=np.int64),
+      "eth": [
+        (float(Decimal(w) / WEI_PER_ETH) if w not in (None, "") and not pd.isna(w) else 0.0)
+        for w in rows["wei_amount"].tolist()
+      ],
+    }
+  )
+
+
+def current_floor_map(v2_listings: pd.DataFrame) -> dict[int, float]:
+  out: dict[int, float] = {}
+  for r in v2_listings.itertuples(index=False):
+    eth = wei_to_eth(r.value_wei)
+    if eth and eth > 0:
+      out[int(r.punk_id)] = eth
+  return out
+
+
+def current_bid_map(v2_bids: pd.DataFrame) -> dict[int, float]:
+  out: dict[int, float] = {}
+  for r in v2_bids.itertuples(index=False):
+    eth = wei_to_eth(r.value_wei)
+    if eth and eth > 0:
+      out[int(r.punk_id)] = eth
+  return out
 
 
 def predict_v2(
@@ -917,60 +1164,84 @@ def predict_v2(
   comps_index: dict[int, list[dict[str, Any]]],
   current_bids: pd.DataFrame,
   reservations: dict[int, dict[str, Any]],
+  sale_prob_model: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-  p10 = model["p10_model"].astype(float).copy()
-  p50 = model["p50_model"].astype(float).copy()
-  p90 = model["p90_model"].astype(float).copy()
-  scale = market_scale(p50, market)
-  p10 *= scale
-  p50 *= scale
-  p90 *= scale
+  # The floor-relative model already produces floor-aware, conformal-calibrated
+  # bands per Punk; use them directly (no serve-time market rescale or comp
+  # blend — the model consumes the live floor and trait comps as features).
+  p10 = model["p10_model"].astype(float)
+  p50 = model["p50_model"].astype(float)
+  p90 = model["p90_model"].astype(float)
   best_bids = bids_by_punk(current_bids)
   floor_eth = wei_to_eth(market.v2_floor_wei)
   market_context = {
     "standard": "v2",
-    "marketScale": scale,
+    "model": model.get("kind", "floor_relative_gbm"),
     "floorWei": market.v2_floor_wei,
     "bidFloorWei": market.v2_bid_floor_wei,
   }
 
-  out: list[dict[str, Any]] = []
+  # Pass 1: per-Punk valuation band, quick-sale price, and active bid.
+  records: list[dict[str, Any]] = []
   for punk_id in range(PUNK_COUNT):
-    comps = comps_index.get(punk_id, [])
-    comp_eth = median_or_none([comp["eth"] for comp in comps])
     fair = float(p50[punk_id])
-    if comp_eth:
-      fair = 0.72 * fair + 0.28 * comp_eth
-    if floor_eth:
-      fair = max(fair, floor_eth * 0.85)
-    low = min(float(p10[punk_id]), fair * 0.92)
-    high = max(float(p90[punk_id]), fair * 1.12)
+    low = float(p10[punk_id])
+    high = float(p90[punk_id])
     reservation = reservations.get(punk_id)
     if reservation:
       fair, low, high = apply_reservation_band(fair, low, high, reservation)
     best_bid_eth = wei_to_eth(best_bids.get(punk_id))
     quick = min(fair, max(best_bid_eth or 0.0, low * 0.98))
-    probability = sale_probability_heuristic(quick, fair, best_bid_eth)
+    records.append(
+      {"punk_id": punk_id, "fair": fair, "low": low, "high": high,
+       "quick": quick, "best_bid_eth": best_bid_eth, "reservation": reservation}
+    )
+
+  # Sale probability: calibrated classifiers (24h / 7d / 30d) on the quick-sale
+  # ask vs floor / cohort / own-last, the standing bid, and current liquidity;
+  # the 24h horizon falls back to the heuristic when there is no model.
+  serving = model.get("serving")
+  cohort_meds = serving["cohort_med"].to_numpy(dtype=float) if serving is not None else None
+  own_lasts = serving["own_last"].to_numpy(dtype=float) if serving is not None else None
+  horizon_probs = sale_probabilities(
+    records, floor_eth, static, sale_prob_model, cohort_meds, own_lasts
+  )
+  prob_24h = horizon_probs["sold24h"]
+
+  out: list[dict[str, Any]] = []
+  for idx, rec in enumerate(records):
+    punk_id = rec["punk_id"]
+    probability = float(prob_24h[idx])
+    comps = comps_index.get(punk_id, [])
     confidence = confidence_for(comps, market.recent_v2_sales_count)
     trait_drivers = top_trait_premiums(static["traits_by_punk"][punk_id], trait_premiums)
     drivers = prediction_drivers(
       floor_eth=floor_eth,
-      best_bid_eth=best_bid_eth,
-      fair_eth=fair,
+      best_bid_eth=rec["best_bid_eth"],
+      fair_eth=rec["fair"],
       trait_drivers=trait_drivers,
       comps=comps,
-      market_scale=scale,
-      reservation=reservation,
+      reservation=rec["reservation"],
     )
+    if len(horizon_probs) > 1:
+      drivers.append(
+        {
+          "kind": "sale_probability",
+          "label": "Sale probability by horizon",
+          "day1": probability,
+          "day7": float(horizon_probs["sold_7d"][idx]),
+          "day30": float(horizon_probs["sold_30d"][idx]),
+        }
+      )
     out.append(
       prediction_row(
         standard="v2",
         punk_id=punk_id,
-        quick_eth=quick,
-        fair_eth=fair,
-        p10_eth=low,
-        p50_eth=fair,
-        p90_eth=high,
+        quick_eth=rec["quick"],
+        fair_eth=rec["fair"],
+        p10_eth=rec["low"],
+        p50_eth=rec["fair"],
+        p90_eth=rec["high"],
         probability=probability,
         confidence=confidence,
         drivers=drivers,
@@ -980,6 +1251,49 @@ def predict_v2(
       )
     )
   return out
+
+
+def sale_probabilities(
+  records: list[dict[str, Any]],
+  floor_eth: float | None,
+  static: dict[str, Any],
+  sale_prob_model: dict[str, Any] | None,
+  cohort_meds: np.ndarray | None = None,
+  own_lasts: np.ndarray | None = None,
+) -> dict[str, np.ndarray]:
+  """Per-horizon P(sale) arrays keyed by the label (sold24h/sold_7d/sold_30d).
+  Without a model only the 24h horizon is returned, via the heuristic."""
+  if sale_prob_model is None or not floor_eth or floor_eth <= 0:
+    return {
+      "sold24h": np.array([
+        sale_probability_heuristic(r["quick"], r["fair"], r["best_bid_eth"])
+        for r in records
+      ])
+    }
+  supply = sale_prob_model["supply"]
+  traits_by_punk = static["traits_by_punk"]
+  listing_prices = sale_prob_model.get("listing_prices")
+  n_listings = len(listing_prices) if listing_prices is not None else 0
+  floor_mom = sale_prob_model.get("floor_mom", 1.0)
+  rows = []
+  for r in records:
+    quick = r["quick"]
+    ask_pct = float(np.searchsorted(listing_prices, quick) / n_listings) if n_listings else 0.5
+    rows.append(
+      features.prob_row(
+        r["punk_id"], quick, floor_eth, r["best_bid_eth"] or float("nan"),
+        sale_prob_model["active_listings"], sale_prob_model["sales_7d"],
+        sale_prob_model["sales_30d"], supply, traits_by_punk,
+        cohort_med=float(cohort_meds[r["punk_id"]]) if cohort_meds is not None else float("nan"),
+        own_last=float(own_lasts[r["punk_id"]]) if own_lasts is not None else float("nan"),
+        ask_percentile=ask_pct, floor_mom=floor_mom,
+      )
+    )
+  design = features.prob_design(pd.DataFrame(rows, columns=features.PROB_FEATURES))
+  return {
+    label: np.clip(clf.predict(design), 0.02, 0.98)
+    for label, clf in sale_prob_model["classifiers"].items()
+  }
 
 
 def predict_v1(
@@ -1099,10 +1413,29 @@ def build_comps_index(
 ) -> dict[int, list[dict[str, Any]]]:
   if v2_sales.empty:
     return {}
-  recent_cutoff = int(datetime.now(tz=UTC).timestamp()) - 365 * SECONDS_PER_DAY
+  now_ts = int(datetime.now(tz=UTC).timestamp())
+  recent_cutoff = now_ts - 365 * SECONDS_PER_DAY
   recent = v2_sales[v2_sales["timestamp"] >= recent_cutoff].copy()
   if recent.empty:
     recent = v2_sales.sort_values("timestamp").tail(500).copy()
+
+  # Market level at any time = trailing-90d sale median. Used to restate each
+  # comp's old nominal price into today's market so it is comparable to the
+  # current fair value (an 11-month-old sale at a different floor misleads).
+  history = v2_sales.sort_values("timestamp")
+  level_ts = history["timestamp"].to_numpy(dtype=np.int64)
+  level_eth = history["eth"].to_numpy(dtype=float)
+
+  def market_level(at_ts: int) -> float | None:
+    lo = np.searchsorted(level_ts, at_ts - 90 * SECONDS_PER_DAY, side="left")
+    hi = np.searchsorted(level_ts, at_ts, side="right")
+    if hi <= lo:
+      return None
+    return float(np.median(level_eth[lo:hi]))
+
+  current_level = market_level(now_ts) or (
+    float(np.median(level_eth)) if len(level_eth) else None
+  )
 
   trait_supply: dict[int, int] = {}
   for traits in traits_by_punk:
@@ -1112,9 +1445,17 @@ def build_comps_index(
   sales_by_trait: dict[int, list[dict[str, Any]]] = {}
   for row in recent.sort_values("timestamp", ascending=False).itertuples(index=False):
     sale_traits = traits_by_punk[int(row.punk_id)]
+    sale_eth = float(row.eth)
+    then_level = market_level(int(row.timestamp))
+    adjusted_eth = sale_eth
+    if current_level and then_level and then_level > 0:
+      # restate to today's market, clamped so a thin-data ratio can't run wild
+      ratio = min(5.0, max(0.2, current_level / then_level))
+      adjusted_eth = sale_eth * ratio
     sale = {
       "punkId": int(row.punk_id),
-      "eth": float(row.eth),
+      "eth": sale_eth,
+      "marketAdjustedEth": adjusted_eth,
       "wei": str(row.wei),
       "timestamp": int(row.timestamp),
       "source": str(row.source),
@@ -1172,16 +1513,9 @@ def prediction_drivers(
   fair_eth: float,
   trait_drivers: list[dict[str, Any]],
   comps: list[dict[str, Any]],
-  market_scale: float,
   reservation: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-  drivers: list[dict[str, Any]] = [
-    {
-      "kind": "market_scale",
-      "label": "Current market scale",
-      "value": market_scale,
-    }
-  ]
+  drivers: list[dict[str, Any]] = []
   if reservation:
     drivers.append(reservation_driver(reservation))
   if floor_eth:
@@ -1208,6 +1542,9 @@ def prediction_drivers(
         "label": "Recent similar sales",
         "count": len(comps),
         "medianEth": median_or_none([comp["eth"] for comp in comps]),
+        "marketAdjustedMedianEth": median_or_none(
+          [comp.get("marketAdjustedEth", comp["eth"]) for comp in comps]
+        ),
       }
     )
   for trait in trait_drivers[:3]:
@@ -1222,16 +1559,6 @@ def prediction_drivers(
       }
     )
   return drivers
-
-
-def market_scale(p50_model: np.ndarray, market: MarketContext) -> float:
-  floor_eth = wei_to_eth(market.v2_floor_wei)
-  if not floor_eth:
-    return 1.0
-  model_floor = float(np.percentile(p50_model, 5))
-  if model_floor <= 0:
-    return 1.0
-  return float(np.clip(floor_eth / model_floor, 0.25, 4.0))
 
 
 def bids_by_punk(bids: pd.DataFrame) -> dict[int, str]:
@@ -1305,7 +1632,8 @@ def matching_market_bids_by_punk(
   return out
 
 
-def active_model_ape(conn: Connection) -> tuple[bool, float | None]:
+def active_model_errors(conn: Connection) -> tuple[bool, float | None, float | None]:
+  """(has_incumbent, incumbent medAPE, incumbent WAPE) from the active run."""
   row = conn.execute(
     """
     SELECT metrics_json
@@ -1315,18 +1643,22 @@ def active_model_ape(conn: Connection) -> tuple[bool, float | None]:
     """
   ).fetchone()
   if row is None:
-    return False, None
+    return False, None, None
   metrics = row["metrics_json"] if isinstance(row, dict) else row[0]
   model = metrics.get("model", {}) if isinstance(metrics, dict) else {}
-  ape = model.get("medianAbsolutePercentError")
-  return True, float(ape) if isinstance(ape, (int, float)) else None
+
+  def num(key: str) -> float | None:
+    value = model.get(key)
+    return float(value) if isinstance(value, (int, float)) else None
+
+  return True, num("medianAbsolutePercentError"), num("valueWeightedError")
 
 
 def decide_promotion(conn: Connection, run: PredictionRun) -> dict[str, Any]:
   model_metrics = run.metrics.get("model", {})
   baseline_metrics = model_metrics.get("baseline", {})
   reservation = run.metrics.get("reservation", {})
-  has_incumbent, incumbent_ape = active_model_ape(conn)
+  has_incumbent, incumbent_ape, incumbent_wape = active_model_errors(conn)
   punks_adjusted = int(reservation.get("v2PunksAdjusted", 0)) + int(
     reservation.get("v1PunksAdjusted", 0)
   )
@@ -1336,6 +1668,8 @@ def decide_promotion(conn: Connection, run: PredictionRun) -> dict[str, Any]:
     incumbent_ape=incumbent_ape,
     has_incumbent=has_incumbent,
     has_reservation_signal=punks_adjusted > 0,
+    model_wape=model_metrics.get("valueWeightedError"),
+    incumbent_wape=incumbent_wape,
   )
 
 
@@ -1346,11 +1680,15 @@ def promotion_decision(
   incumbent_ape: float | None,
   has_incumbent: bool,
   has_reservation_signal: bool = False,
+  model_wape: float | None = None,
+  incumbent_wape: float | None = None,
 ) -> dict[str, Any]:
   decision: dict[str, Any] = {
     "modelMedianApe": model_ape,
     "baselineMedianApe": baseline_ape,
     "incumbentMedianApe": incumbent_ape,
+    "modelWape": model_wape,
+    "incumbentWape": incumbent_wape,
     "regressionTolerance": PROMOTION_REGRESSION_TOLERANCE,
     "hasReservationSignal": has_reservation_signal,
   }
@@ -1365,11 +1703,26 @@ def promotion_decision(
   # model; runs without that signal must still beat the baseline.
   if not beats_baseline and not has_reservation_signal:
     return {**decision, "promote": False, "reason": "does not beat the median baseline"}
-  if (
-    incumbent_ape is not None
-    and model_ape > incumbent_ape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
-  ):
-    return {**decision, "promote": False, "reason": "regresses versus the active model"}
+  # Judge regression versus the incumbent on WAPE (value-weighted error) — the
+  # metric the model optimizes and the one that reflects expensive-Punk accuracy.
+  # medAPE is floor-dominated and swings ~13% run-to-run on noise (WAPE ~2%), so
+  # gating on it lets a lucky-low-medAPE incumbent lock out equal-or-better runs
+  # and go stale. Fall back to medAPE only when WAPE is unavailable (older runs).
+  if model_wape is not None and incumbent_wape is not None:
+    regresses = model_wape > incumbent_wape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
+    metric = "WAPE"
+  else:
+    regresses = (
+      incumbent_ape is not None
+      and model_ape > incumbent_ape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
+    )
+    metric = "medAPE"
+  if regresses:
+    return {
+      **decision,
+      "promote": False,
+      "reason": f"regresses versus the active model ({metric})",
+    }
   if not beats_baseline:
     return {
       **decision,
@@ -1381,6 +1734,98 @@ def promotion_decision(
     "promote": True,
     "reason": "beats baseline and holds versus the active model",
   }
+
+
+def realized_backtest(conn: Connection, dataset: dict[str, pd.DataFrame]) -> dict[str, Any]:
+  """Score every public V2 sale in the trailing REALIZED_WINDOW_DAYS against the
+  prediction that was actually live when it sold — the promoted run with the
+  greatest trained_at <= the sale time. Leakage-free by construction (predictions
+  predate the sales) and aggregated across the frequent promotions into one
+  stable in-production accuracy number. Best effort: any failure yields an empty
+  result rather than blocking the training run."""
+  empty = {"kind": "live_realized", "n": 0, "windowDays": REALIZED_WINDOW_DAYS}
+  try:
+    now_ts = int(utc_now().timestamp())
+    since = now_ts - REALIZED_WINDOW_DAYS * SECONDS_PER_DAY
+    # Runs that were ever live, oldest -> newest (a rejected run never served).
+    promoted = conn.execute(
+      "SELECT run_id, trained_at FROM offchain.prediction_model_runs "
+      "WHERE (metrics_json->'promotion'->>'promote')::boolean = true "
+      "ORDER BY trained_at"
+    ).fetchall()
+    if not promoted:
+      return empty
+    run_ids = [str(r["run_id"]) for r in promoted]
+    run_ts = np.array([int(r["trained_at"].timestamp()) for r in promoted], dtype=np.int64)
+    sales = normalize_sales(dataset["events"])
+    sales = sales[
+      (sales["standard"] == "v2")
+      & (sales["timestamp"] >= since)
+      & (sales["timestamp"] <= now_ts)
+    ]
+    if sales.empty:
+      return empty
+    # Map each sale to the run live at its time, and collect the (run, punk) pairs.
+    needed: dict[str, set[int]] = {}
+    sale_run: list[str | None] = []
+    for sale in sales.itertuples(index=False):
+      idx = int(np.searchsorted(run_ts, int(sale.timestamp), side="right")) - 1
+      if idx < 0:
+        sale_run.append(None)
+        continue
+      run_id = run_ids[idx]
+      sale_run.append(run_id)
+      needed.setdefault(run_id, set()).add(int(sale.punk_id))
+    preds: dict[tuple[str, int], dict[str, Any]] = {}
+    for run_id, punk_ids in needed.items():
+      rows = conn.execute(
+        "SELECT punk_id, fair_value_wei, p10_sale_wei, p90_sale_wei, sale_probability_24h "
+        "FROM offchain.punk_predictions WHERE run_id = %s AND standard = 'v2' "
+        "AND punk_id = ANY(%s)",
+        (run_id, list(punk_ids)),
+      ).fetchall()
+      for row in rows:
+        preds[(run_id, int(row["punk_id"]))] = row
+    apes: list[float] = []
+    in_band: list[float] = []
+    probs: list[float] = []
+    abs_err_sum = 0.0
+    abs_act_sum = 0.0
+    for sale, run_id in zip(sales.itertuples(index=False), sale_run):
+      if run_id is None:
+        continue
+      pred = preds.get((run_id, int(sale.punk_id)))
+      if pred is None:
+        continue
+      fair_wei = parse_wei(pred["fair_value_wei"])
+      if fair_wei is None or fair_wei <= 0:
+        continue
+      fair_eth = fair_wei / 1e18
+      actual_eth = float(sale.eth)
+      actual_wei = int(sale.wei)
+      apes.append(abs(fair_eth - actual_eth) / actual_eth)
+      abs_err_sum += abs(fair_eth - actual_eth)
+      abs_act_sum += actual_eth
+      low_wei = parse_wei(pred["p10_sale_wei"])
+      high_wei = parse_wei(pred["p90_sale_wei"])
+      if low_wei is not None and high_wei is not None:
+        in_band.append(1.0 if low_wei <= actual_wei <= high_wei else 0.0)
+      if pred["sale_probability_24h"] is not None:
+        probs.append(float(pred["sale_probability_24h"]))
+    if not apes:
+      return empty
+    return {
+      "kind": "live_realized",
+      "windowDays": REALIZED_WINDOW_DAYS,
+      "runsScored": len(needed),
+      "n": len(apes),
+      "medianAbsolutePercentError": float(np.median(apes)),
+      "valueWeightedError": float(abs_err_sum / abs_act_sum) if abs_act_sum > 0 else None,
+      "intervalCoverage": float(np.mean(in_band)) if in_band else None,
+      "medianSaleProbability24hOfSold": float(np.median(probs)) if probs else None,
+    }
+  except Exception as exc:  # never block a training run on the backtest
+    return {**empty, "error": str(exc)}
 
 
 def store_prediction_run(conn: Connection, run: PredictionRun) -> dict[str, Any]:
@@ -1488,23 +1933,6 @@ def store_prediction_run(conn: Connection, run: PredictionRun) -> dict[str, Any]
         (run.run_id,),
       )
   return decision
-
-
-def recency_weights(timestamps: np.ndarray) -> np.ndarray:
-  now = max(int(timestamps.max()), int(datetime.now(tz=UTC).timestamp()))
-  age_days = np.maximum(0.0, (now - timestamps.astype(float)) / SECONDS_PER_DAY)
-  return np.exp(-age_days / 180.0) + 0.05
-
-
-def ordered_quantiles(
-  p10: np.ndarray,
-  p50: np.ndarray,
-  p90: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-  low = np.minimum.reduce([p10, p50, p90])
-  high = np.maximum.reduce([p10, p50, p90])
-  mid = p10 + p50 + p90 - low - high
-  return low, mid, high
 
 
 def ordered_three(a: float, b: float, c: float) -> tuple[float, float, float]:

@@ -1,6 +1,7 @@
 .git
 **/node_modules
 **/.ponder
+**/research
 **/.venv
 **/.pytest_cache
 **/__pycache__
