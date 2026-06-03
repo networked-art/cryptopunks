@@ -38,10 +38,19 @@
         class="prediction-dialog"
         compat
       >
-        <p class="block-note muted">
-          How the model values Punk #{{ prediction.punkId }}, the signals behind
-          the estimate and the recent sales it compares against.
-        </p>
+        <div class="dialog-intro">
+          <PunkThumb
+            class="intro-thumb"
+            :punk-id="prediction.punkId"
+            :standard="introStandard"
+            :size="56"
+            :link="false"
+          />
+          <p class="block-note muted">
+            How the model values Punk #{{ prediction.punkId }}, the signals
+            behind the estimate and the recent sales it compares against.
+          </p>
+        </div>
 
         <dl class="state-grid">
           <div class="state-cell">
@@ -129,9 +138,16 @@
 </template>
 
 <script setup lang="ts">
+import { TokenStandard } from '~/utils/auction'
 import { ethFloatToWei } from '~/utils/predictions'
 
 const { prediction } = usePunkPredictionContext()
+
+const introStandard = computed(() =>
+  prediction.value?.standard === 'v1'
+    ? TokenStandard.CryptoPunksV1
+    : TokenStandard.CryptoPunks,
+)
 
 const route = useRoute()
 const router = useRouter()
@@ -223,6 +239,16 @@ function formatAgo(timestamp: number): string {
 .block-note {
   margin: 0;
   font-size: var(--font-sm);
+}
+
+.dialog-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3);
+}
+
+.intro-thumb {
+  flex-shrink: 0;
 }
 
 /* Stat grid — shared by the card (Fair value + range) and the modal. */
