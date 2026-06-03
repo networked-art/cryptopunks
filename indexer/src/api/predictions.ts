@@ -115,6 +115,50 @@ app.get('/batch', async (c) => {
   return c.json({ items: rows.map(serializePrediction) })
 })
 
+// Minimal companion to /batch: just the fair value (wei) per requested id, as a
+// compact `{ values: { "<id>": "<wei>" } }` map. Built for viewport-driven grid
+// estimates where the full prediction payload (drivers/comps/bands) would be
+// wasteful. Omits ids with no prediction or a non-positive fair value.
+app.get('/values', async (c) => {
+  const standard = parseStandard(c.req.query('standard') ?? 'v2')
+  if (!standard) return c.json({ error: 'invalid_standard' }, 400)
+
+  const ids = parseIds(c.req.query('ids'))
+  if (!ids) {
+    return c.json(
+      { error: 'invalid_ids', max: MAX_BATCH_IDS, punkCount: PUNK_COUNT },
+      400,
+    )
+  }
+  if (ids.length === 0) return c.json({ values: {} })
+
+  // ids are validated integers in [0, 9999], so the raw list is safe.
+  const idsSql = sql.raw(ids.join(', '))
+  const rows = normalizeRows(
+    await db.execute(sql`
+      WITH active_run AS (
+        SELECT run_id
+        FROM offchain.prediction_model_runs
+        WHERE active = true
+        ORDER BY trained_at DESC
+        LIMIT 1
+      )
+      SELECT p.punk_id, p.fair_value_wei::text AS fair_value_wei
+      FROM offchain.punk_predictions p
+      JOIN active_run r ON r.run_id = p.run_id
+      WHERE p.standard = ${standard}
+        AND p.punk_id IN (${idsSql})
+        AND p.fair_value_wei > 0
+    `),
+  )
+
+  const values: Record<string, string> = {}
+  for (const row of rows) {
+    values[String(toInt(row.punk_id))] = bigStr(row.fair_value_wei)
+  }
+  return c.json({ values })
+})
+
 // Underpriced public V2 listings: active asks below the model's fair value,
 // i.e. model-flagged "deals". Surfaces the gap between live ask and the
 // predicted fair value. `?sort=discount` (default) ranks by largest absolute
