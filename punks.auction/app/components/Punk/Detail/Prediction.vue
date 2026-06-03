@@ -133,7 +133,25 @@ import { ethFloatToWei } from '~/utils/predictions'
 
 const { prediction } = usePunkPredictionContext()
 
-const open = ref(false)
+const route = useRoute()
+const router = useRouter()
+
+// Mirror the details modal in the URL so an open estimate is linkable. The
+// query is the source of truth on load; opening or closing writes it back.
+const open = ref(route.query.estimate === 'open')
+
+watch(open, (isOpen) => {
+  if ((route.query.estimate === 'open') === isOpen) return
+  const { estimate: _omit, ...rest } = route.query
+  router.replace({ query: isOpen ? { ...rest, estimate: 'open' } : rest })
+})
+
+watch(
+  () => route.query.estimate,
+  (value) => {
+    open.value = value === 'open'
+  },
+)
 
 function formatPct(probability: number): string {
   return `${Math.round(probability * 100)}%`
