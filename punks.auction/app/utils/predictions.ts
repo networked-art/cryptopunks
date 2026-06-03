@@ -67,6 +67,7 @@ export type PredictionDriver = {
   ratioToFair?: number | null
   count?: number
   medianEth?: number
+  rawMedianEth?: number
   marketAdjustedMedianEth?: number
   traitId?: number
   traitName?: string

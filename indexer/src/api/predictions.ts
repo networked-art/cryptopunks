@@ -348,7 +348,7 @@ function serializePrediction(row: Row) {
     saleProbability7d: horizonProbability(row.drivers_json, 'day7'),
     saleProbability30d: horizonProbability(row.drivers_json, 'day30'),
     confidence: String(row.confidence),
-    drivers: withTraitPremiumLabels(jsonArray(row.drivers_json)),
+    drivers: normalizePredictionDrivers(jsonArray(row.drivers_json)),
     comps: jsonArray(row.comps_json),
     traitPremiums: withTraitPremiumLabels(jsonArray(row.trait_premiums_json)),
     marketContext: jsonObject(row.market_context_json),
@@ -671,6 +671,25 @@ function withTraitPremiumLabels(items: unknown[]): unknown[] {
     out.push(normalized)
   }
   return out
+}
+
+function normalizePredictionDrivers(items: unknown[]): unknown[] {
+  return withTraitPremiumLabels(items).map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item
+
+    const row = item as Record<string, unknown>
+    if (row.kind !== 'comps') return item
+
+    const adjustedMedian = finiteNumber(row.marketAdjustedMedianEth)
+    if (adjustedMedian === null) return item
+
+    const rawMedian = finiteNumber(row.medianEth)
+    return {
+      ...row,
+      ...(rawMedian === null ? {} : { rawMedianEth: rawMedian }),
+      medianEth: adjustedMedian,
+    }
+  })
 }
 
 function isPositiveTraitPremium(row: Record<string, unknown>): boolean {

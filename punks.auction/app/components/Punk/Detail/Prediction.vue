@@ -183,10 +183,14 @@ const driverRows = computed(() =>
       if (typeof driver.eth === 'number') {
         return { label: driver.label!, valueWei: ethFloatToWei(driver.eth) }
       }
-      if (typeof driver.medianEth === 'number') {
+      const medianEth =
+        typeof driver.marketAdjustedMedianEth === 'number'
+          ? driver.marketAdjustedMedianEth
+          : driver.medianEth
+      if (typeof medianEth === 'number') {
         return {
           label: driver.label!,
-          valueWei: ethFloatToWei(driver.medianEth),
+          valueWei: ethFloatToWei(medianEth),
         }
       }
       if (typeof driver.multiplier === 'number') {

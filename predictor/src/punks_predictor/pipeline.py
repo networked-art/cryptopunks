@@ -1255,7 +1255,13 @@ def predict_v2(
   # the 24h horizon falls back to the heuristic when there is no model.
   serving = model.get("serving")
   cohort_meds = serving["cohort_med"].to_numpy(dtype=float) if serving is not None else None
-  own_lasts = serving["own_last"].to_numpy(dtype=float) if serving is not None else None
+  own_lasts = None
+  if serving is not None:
+    own_lasts = market_adjusted_own_lasts(
+      serving["own_last"].to_numpy(dtype=float),
+      serving["own_last_floor"].to_numpy(dtype=float),
+      floor_eth,
+    )
   horizon_probs = sale_probabilities(
     records, floor_eth, static, sale_prob_model, cohort_meds, own_lasts
   )
@@ -1347,6 +1353,24 @@ def sale_probabilities(
     label: np.clip(clf.predict(design), 0.02, 0.98)
     for label, clf in sale_prob_model["classifiers"].items()
   }
+
+
+def market_adjusted_own_lasts(
+  own_lasts: np.ndarray,
+  own_last_floors: np.ndarray,
+  current_floor_eth: float | None,
+) -> np.ndarray:
+  out = own_lasts.astype(float).copy()
+  if current_floor_eth is None or current_floor_eth <= 0:
+    return out
+  ok = (
+    np.isfinite(out)
+    & (out > 0)
+    & np.isfinite(own_last_floors)
+    & (own_last_floors > 0)
+  )
+  out[ok] = out[ok] * current_floor_eth / own_last_floors[ok]
+  return out
 
 
 def predict_v1(
@@ -1599,15 +1623,18 @@ def prediction_drivers(
       }
     )
   if comps:
+    raw_median = median_or_none([comp["eth"] for comp in comps])
+    adjusted_median = median_or_none(
+      [comp.get("marketAdjustedEth", comp["eth"]) for comp in comps]
+    )
     drivers.append(
       {
         "kind": "comps",
         "label": "Recent similar sales",
         "count": len(comps),
-        "medianEth": median_or_none([comp["eth"] for comp in comps]),
-        "marketAdjustedMedianEth": median_or_none(
-          [comp.get("marketAdjustedEth", comp["eth"]) for comp in comps]
-        ),
+        "medianEth": adjusted_median,
+        "rawMedianEth": raw_median,
+        "marketAdjustedMedianEth": adjusted_median,
       }
     )
   for trait in trait_drivers[:3]:

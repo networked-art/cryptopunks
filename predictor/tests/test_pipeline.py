@@ -12,6 +12,7 @@ from punks_predictor.pipeline import (
   build_reservations,
   compute_trait_premiums,
   credible_relative_floor,
+  market_adjusted_own_lasts,
   matching_market_bids_by_punk,
   normalize_native_bids,
   ordered_three,
@@ -451,6 +452,25 @@ def test_trait_premium_driver_uses_resolved_trait_name():
   assert trait_driver["traitName"] == "Hoodie"
 
 
+def test_comparable_sales_driver_uses_market_adjusted_median():
+  drivers = prediction_drivers(
+    floor_eth=None,
+    best_bid_eth=None,
+    fair_eth=100.0,
+    trait_drivers=[],
+    comps=[
+      {"eth": 10.0, "marketAdjustedEth": 100.0},
+      {"eth": 20.0, "marketAdjustedEth": 200.0},
+      {"eth": 30.0, "marketAdjustedEth": 300.0},
+    ],
+  )
+
+  comps_driver = next(driver for driver in drivers if driver["kind"] == "comps")
+  assert comps_driver["medianEth"] == 200.0
+  assert comps_driver["rawMedianEth"] == 20.0
+  assert comps_driver["marketAdjustedMedianEth"] == 200.0
+
+
 def test_head_variant_premium_reads_as_skin_tone():
   # Male 1 (id 11) and Female 3 (id 9) carry skin tones Dark and Fair.
   premium = {"saleCount": 100, "logPremium": 0.5, "multiplier": 1.65}
@@ -511,6 +531,18 @@ def test_trait_premiums_use_market_relative_logs_when_provided():
 
   assert premiums[1]["multiplier"] > 1
   assert premiums[1]["logPremium"] > 0
+
+
+def test_market_adjusted_own_lasts_scales_prior_sales_to_current_floor():
+  adjusted = market_adjusted_own_lasts(
+    np.array([100.0, 200.0, float("nan")]),
+    np.array([50.0, float("nan"), 10.0]),
+    25.0,
+  )
+
+  assert adjusted[0] == 50.0
+  assert adjusted[1] == 200.0
+  assert math.isnan(adjusted[2])
 
 
 def test_attribute_count_premium_is_singularized():
@@ -626,6 +658,7 @@ def test_design_matrix_shape_and_anchor():
   X, anchor = F.design_matrix(df, trait_matrix)
   assert X.shape == (1, 24 + F.TRAIT_COUNT)
   assert abs(float(anchor[0]) - math.log(30.0)) < 1e-6  # anchor = log(floor)
+  assert abs(float(X[0, 4]) - math.log(90.0)) < 1e-6  # own_last restated via floor
 
 
 def test_listing_snapshot_labels_24h_sale():

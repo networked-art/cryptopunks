@@ -165,7 +165,16 @@ def numeric_block(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
   lmed30 = _logfill(df["med30"], med90)
   lmed90 = _logfill(med90, df["med365"])
   lmed365 = _logfill(df["med365"], med90)
-  lown = _logfill(df["own_last"], floor.where(floor.notna(), med90))
+  # Restate prior own sales through the current anchor; a 2017 nominal price is
+  # only useful as a current signal through its sale-time floor multiple.
+  own = df["own_last"].to_numpy(dtype=float)
+  ofl = df["own_last_floor"].to_numpy(dtype=float)
+  has_prem = (np.isfinite(own) & np.isfinite(ofl) & (own > 0) & (ofl > 0)).astype(float)
+  with np.errstate(divide="ignore", invalid="ignore"):
+    own_premium = np.where(has_prem > 0, np.log(own) - np.log(ofl), 0.0)
+    adjusted_lown = anchor + own_premium
+  raw_lown = _logfill(df["own_last"], floor.where(floor.notna(), med90))
+  lown = np.where((has_prem > 0) & np.isfinite(adjusted_lown), adjusted_lown, raw_lown)
   own_age = df["own_age_days"].to_numpy(dtype=float)
   has_own = np.isfinite(own_age).astype(float)
   own_age = np.where(np.isfinite(own_age), np.minimum(own_age, 3650.0), 3650.0)
@@ -180,11 +189,6 @@ def numeric_block(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
   color = df["color_count"].to_numpy(dtype=float) / 20.0
   active = np.log1p(df["active_listings"].to_numpy(dtype=float))
   cohort_cnt = np.log1p(df["cohort_cnt"].to_numpy(dtype=float))
-  own = df["own_last"].to_numpy(dtype=float)
-  ofl = df["own_last_floor"].to_numpy(dtype=float)
-  has_prem = (np.isfinite(own) & np.isfinite(ofl) & (own > 0) & (ofl > 0)).astype(float)
-  own_premium = np.where(has_prem > 0, np.log(np.where(own > 0, own, 1.0))
-                         - np.log(np.where(ofl > 0, ofl, 1.0)), 0.0)
   own_sales = np.log1p(df["own_sale_count"].to_numpy(dtype=float))
   # Regime/momentum: recent vs medium-term market direction, and within-cohort
   # drift (90d cohort vs 365d cohort). Sharpens the recent-regime fit.
@@ -395,6 +399,10 @@ def build_listing_training_frame(
   for r in sales.itertuples(index=False):
     sale_ts_by_punk.setdefault(int(r.punk_id), []).append(int(r.timestamp))
     sale_eth_by_punk.setdefault(int(r.punk_id), []).append(float(r.eth))
+  sale_floors, _ = floor_and_bid_snapshots(sales, listings, moves, bid_events)
+  sale_floor_by_punk: dict[int, list[float]] = {}
+  for r, sale_floor in zip(sales.itertuples(index=False), sale_floors):
+    sale_floor_by_punk.setdefault(int(r.punk_id), []).append(float(sale_floor))
   global_sale_ts = sales["timestamp"].to_numpy(dtype=np.int64)
   cohort_index = SalesIndex(sales, traits_by_punk)  # PIT trait-cohort medians
 
@@ -450,6 +458,16 @@ def build_listing_training_frame(
     cohort_med, _ = cohort_index.cohort_median(rare, T, 365)
     k = bisect.bisect_left(sts, T)
     own_last = sale_eth_by_punk[punk][k - 1] if k > 0 else float("nan")
+    own_last_floor = sale_floor_by_punk[punk][k - 1] if k > 0 else float("nan")
+    # Sale-probability asks compare against the prior own sale restated to the
+    # listing-time floor, not against raw historical ETH.
+    if (
+      own_last == own_last
+      and own_last > 0
+      and own_last_floor == own_last_floor
+      and own_last_floor > 0
+    ):
+      own_last = own_last * floor / own_last_floor
     others = [pr for q, pr in active.items() if q != punk]
     ask_pct = (sum(1 for pr in others if pr < price) / len(others)) if others else 0.5
     m30, _ = cohort_index.trailing_median(T, 30)
