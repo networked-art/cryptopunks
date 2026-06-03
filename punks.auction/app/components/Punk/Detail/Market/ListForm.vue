@@ -40,19 +40,19 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, type Address, type Hash } from 'viem'
+import { formatEther, type Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 
 const props = defineProps<{
   punkId: number
   currentPriceWei?: bigint | null
-  viaVault?: Address | null
 }>()
 const emit = defineEmits<{ listed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
+const detail = usePunkDetailDataContext()
 
 const priceEth = ref('')
 const priceWei = ref<bigint | null>(null)
@@ -74,8 +74,16 @@ async function list(): Promise<Hash> {
   if (!priceWei.value) {
     throw new Error('Enter a price greater than zero.')
   }
-  const plan = props.viaVault
-    ? sdk.value.vault.at(props.viaVault).prepareList({
+  const [ownerOk, marketOk] = await Promise.all([
+    detail.reconcileOwner(),
+    detail.reconcileMarket(),
+  ])
+  if (!ownerOk || !marketOk) {
+    throw new Error('Current owner and market state could not be verified.')
+  }
+  const viaVault = detail.isVaulted.value ? detail.nativeOwner.value : null
+  const plan = viaVault
+    ? sdk.value.vault.at(viaVault).prepareList({
         punkId: props.punkId,
         priceWei: priceWei.value,
       })

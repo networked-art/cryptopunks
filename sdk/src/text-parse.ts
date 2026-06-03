@@ -2,10 +2,19 @@ import {
   PUNK_COUNT,
   SkinTone,
   skinToneNames,
+  type PunkStandardRef,
+  type PunkStandardValue,
   type SkinToneValue,
 } from './constants'
+import { searchCollectionEntries } from './collections'
+import type { SearchCollectionEntry } from './collections'
 import searchSynonymsJson from './search-synonyms.json'
-import { PunksDataValidationError } from './utils'
+import {
+  canonicalizeSearchInput,
+  normalizePunkStandard,
+  normalizeSynonymText,
+  PunksDataValidationError,
+} from './utils'
 
 /// Single tokenized term from a search text query.
 export type SearchTextTerm = {
@@ -52,6 +61,15 @@ type ExactTraitTextResolver = {
     text: string,
     options?: { exact?: boolean },
   ): readonly { name: string }[]
+  /// When set, scopes curated-collection resolution to this standard. Carried
+  /// by the offline client so both the search and filter-compile paths inherit
+  /// the SDK's configured standard without a separate argument.
+  readonly standard?: PunkStandardValue
+  /// Optional unambiguous-prefix completer (`bur` → `burned`). When present,
+  /// the parser rewrites an unfinished fuzzy term to the alias it uniquely
+  /// completes before resolving collections, synonyms, and traits, so a partial
+  /// word resolves when nothing else in the dataset could match it.
+  completeSearchPrefix?(text: string): string | undefined
 }
 
 /// Offchain folk-trait aliases. Keys are user-facing search phrases; values
@@ -70,7 +88,7 @@ const SEARCH_SYNONYM_ENTRIES = buildSearchSynonymEntries(searchSynonyms)
 /// Parses a search text string into structured constraints + free-term
 /// fallback. Recognizes:
 ///   - `<n> color(s)`, `<n> attribute(s)`, `<n> attr(s)`, `<n> trait(s)`,
-///     `<n> pixel(s)` →
+///     `<n> pixel(s)` (`<n>` may be digits or a zero-through-seven word) →
 ///     numeric eq constraint on the matching axis;
 ///   - `<n>-<m> color(s)` etc. → numeric range;
 ///   - `<= <n> color(s)`, `>= <n> color(s)`, `< <n>`, `> <n>` → numeric
@@ -80,17 +98,39 @@ const SEARCH_SYNONYM_ENTRIES = buildSearchSynonymEntries(searchSynonyms)
 ///     `dark`, `brown`, `fair`, `albino` and resolve to the four human
 ///     head-variant slots (Female 1..4 / Male 1..4).
 /// Anything else is left in `freeTerms` for downstream interpretation.
-export function parseSearchText(input: string): ParsedSearchText {
+/// Options for {@link parseSearchText}.
+export type ParseSearchTextOptions = {
+  /// When set, only curated collections of this standard resolve to their id
+  /// set; an alias of any other standard falls through to a literal trait
+  /// lookup. Omitted means every collection resolves (the default).
+  standard?: PunkStandardRef
+  /// Rewrites an unfinished fuzzy term to the alias it unambiguously completes
+  /// (e.g. `bur` → `burned`) before grouping; return `undefined` to leave a
+  /// term unchanged. Wired from {@link ExactTraitTextResolver.completeSearchPrefix}.
+  completePrefix?: (term: string) => string | undefined
+}
+
+export function parseSearchText(
+  input: string,
+  options: ParseSearchTextOptions = {},
+): ParsedSearchText {
   if (typeof input !== 'string') {
     throw new PunksDataValidationError('text search must be a string')
   }
-  const tokens = tokenizeSearchText(input)
+  const standard =
+    options.standard === undefined
+      ? undefined
+      : normalizePunkStandard(options.standard)
+  const tokens = completePrefixTokens(
+    tokenizeSearchText(input),
+    options.completePrefix,
+  )
   const orGroups: ParsedSearchTextGroup[] = []
   let current: SearchTextTerm[] = []
   for (const token of tokens) {
     if (!token.exact && /^(or|\|\|)$/i.test(token.text)) {
       if (current.length > 0) {
-        orGroups.push(parseSearchTextGroup(current))
+        orGroups.push(parseSearchTextGroup(current, standard))
         current = []
       }
       continue
@@ -98,7 +138,7 @@ export function parseSearchText(input: string): ParsedSearchText {
     current.push(token)
   }
   if (current.length > 0 || orGroups.length === 0) {
-    orGroups.push(parseSearchTextGroup(current))
+    orGroups.push(parseSearchTextGroup(current, standard))
   }
   return { orGroups }
 }
@@ -126,7 +166,84 @@ export function parseSearchTextWithExactTraitsSync(
       ],
     }
   }
-  return parseSearchText(input)
+  return parseSearchText(input, {
+    standard: data.standard,
+    completePrefix: data.completeSearchPrefix
+      ? (term) => data.completeSearchPrefix!(term)
+      : undefined,
+  })
+}
+
+/// Rewrites each unfinished fuzzy token to the alias it unambiguously completes
+/// (via `complete`), re-tokenizing the completion so a multi-word expansion
+/// splits correctly. Exact (quoted) terms, the `OR` operator, and tokens with
+/// no letters (numbers, ids, comparators) are passed through untouched.
+function completePrefixTokens(
+  tokens: readonly SearchTextTerm[],
+  complete: ((term: string) => string | undefined) | undefined,
+): SearchTextTerm[] {
+  if (complete === undefined) return [...tokens]
+  const out: SearchTextTerm[] = []
+  for (const token of tokens) {
+    if (
+      token.exact ||
+      /^(or|\|\|)$/i.test(token.text) ||
+      !/[a-z]/i.test(token.text)
+    ) {
+      out.push(token)
+      continue
+    }
+    const completion = complete(token.text)
+    const expanded =
+      completion === undefined ? [] : tokenizeSearchText(completion)
+    if (expanded.length === 0) out.push(token)
+    else out.push(...expanded)
+  }
+  return out
+}
+
+/// Completes an unfinished term to the single curated-collection alias or
+/// synonym key it unambiguously prefixes. Only single-word keys are considered
+/// (so a partial `bur` reaches `burned`, but the partial first word of a
+/// multi-word alias is left alone), and a completion is returned only when every
+/// matching key resolves to the same target — `bur` → `burned`, but a prefix two
+/// different collections share stays unresolved. Returns `undefined` when the
+/// term already equals a key (it matches as-is) or when nothing matches. The
+/// caller owns the "no trait already matches" guard, so a prefix that also names
+/// a trait (`mus` → Mustache) is left for the fuzzy trait path.
+export function findUniquePrefixCompletion(
+  term: string,
+  standard?: PunkStandardValue,
+): string | undefined {
+  const norm = normalizeSynonymText(term)
+  if (!norm || norm.includes(' ')) return undefined
+  const byTarget = new Map<string, string>()
+  const consider = (key: string, target: string): void => {
+    if (key.includes(' ') || !key.startsWith(norm)) return
+    const existing = byTarget.get(target)
+    if (existing === undefined || key.length < existing.length) {
+      byTarget.set(target, key)
+    }
+  }
+  for (const entry of searchCollectionEntries) {
+    if (standard !== undefined && entry.standard !== standard) continue
+    consider(
+      entry.key,
+      `collection:${entry.collectionSlug}/${entry.institutionSlug ?? ''}`,
+    )
+  }
+  for (const entry of SEARCH_SYNONYM_ENTRIES) {
+    consider(entry.key, `synonym:${synonymTargetKey(entry)}`)
+  }
+  if (byTarget.size !== 1) return undefined
+  const [key] = byTarget.values()
+  return key === norm ? undefined : key
+}
+
+/// Identity for a synonym's expansion, so two aliases that rewrite to the same
+/// thing (`girl` / `girls` → `female`) count as one target when completing.
+function synonymTargetKey(entry: SearchSynonymEntry): string {
+  return entry.value.map((t) => (t.exact ? `"${t.text}"` : t.text)).join(' ')
 }
 
 /// Tokenizes a search text string the same way as the offline text-search
@@ -137,26 +254,27 @@ export function parseSearchTextWithExactTraitsSync(
 /// quote is added.
 export function tokenizeSearchText(input: string): SearchTextTerm[] {
   const tokens: SearchTextTerm[] = []
+  const source = canonicalizeSearchInput(input)
   let cursor = 0
 
-  while (cursor < input.length) {
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor++
-    if (cursor >= input.length) break
+  while (cursor < source.length) {
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor++
+    if (cursor >= source.length) break
 
-    if (input[cursor] === '"') {
+    if (source[cursor] === '"') {
       cursor++
       const start = cursor
-      while (cursor < input.length && input[cursor] !== '"') cursor++
-      const closed = cursor < input.length && input[cursor] === '"'
-      const text = input.slice(start, cursor).trim()
+      while (cursor < source.length && source[cursor] !== '"') cursor++
+      const closed = cursor < source.length && source[cursor] === '"'
+      const text = source.slice(start, cursor).trim()
       if (closed) cursor++
       if (text) tokens.push({ text, exact: closed })
       continue
     }
 
     const start = cursor
-    while (cursor < input.length && !/\s/.test(input[cursor])) cursor++
-    const text = input.slice(start, cursor).replaceAll('"', '').trim()
+    while (cursor < source.length && !/\s/.test(source[cursor])) cursor++
+    const text = source.slice(start, cursor).replaceAll('"', '').trim()
     if (text) tokens.push({ text, exact: false })
   }
 
@@ -165,6 +283,7 @@ export function tokenizeSearchText(input: string): SearchTextTerm[] {
 
 function parseSearchTextGroup(
   tokens: readonly SearchTextTerm[],
+  standard?: PunkStandardValue,
 ): ParsedSearchTextGroup {
   const group: ParsedSearchTextGroup = { freeTerms: [] }
   let i = 0
@@ -251,6 +370,20 @@ function parseSearchTextGroup(
             continue
           }
         }
+        // `skin tone <tone>`, `skin tones <tone>`.
+        if (
+          t2 !== undefined &&
+          !t2.exact &&
+          (word0 === 'skin' || word0 === 'skintone') &&
+          (word1 === 'tone' || word1 === 'tones')
+        ) {
+          const tone = matchSkinToneWord(normalizeWord(t2.text))
+          if (tone !== undefined) {
+            addSkinTone(group, tone)
+            i += 3
+            continue
+          }
+        }
         // `skin <tone>`, `skintone <tone>`, `tone <tone>`.
         if (word0 === 'skin' || word0 === 'skintone' || word0 === 'tone') {
           const tone = matchSkinToneWord(word1)
@@ -260,6 +393,26 @@ function parseSearchTextGroup(
             continue
           }
         }
+      }
+
+      // `skin`, `skinned`, `skin tone`, `skin tones` — all human skin-tone
+      // slots. This is a safe bare alias because no canonical trait uses
+      // "skin" as a name component.
+      if (isSkinToneGrammarWord(word0)) {
+        addAllSkinTones(group)
+        const word1 =
+          t1 !== undefined && !t1.exact ? normalizeWord(t1.text) : ''
+        i += isSkinToneGrammarWord(word1) ? 2 : 1
+        continue
+      }
+
+      // `fair` and `brown` are unambiguous tone words. Keep bare `dark` on the
+      // trait path because it also names Dark Hair / Mohawk Dark / etc.
+      const bareTone = matchBareSkinToneWord(word0)
+      if (bareTone !== undefined) {
+        addSkinTone(group, bareTone)
+        i += 1
+        continue
       }
 
       // `albino` alone is unambiguous — no other trait or color uses the
@@ -298,6 +451,15 @@ function parseSearchTextGroup(
     i += 1
   }
 
+  // Curated collections resolve first, pulling whole-phrase aliases
+  // (`burned punks`) out as `includeIds` before the remaining terms reach the
+  // trait-phrase synonym rewriter. The two never collide: collections own id
+  // sets, synonyms own trait phrases.
+  group.freeTerms = resolveSearchCollectionTerms(
+    group,
+    group.freeTerms,
+    standard,
+  )
   group.freeTerms = expandSearchSynonymTerms(group.freeTerms)
   return group
 }
@@ -368,6 +530,71 @@ function matchSearchSynonymEntry(
   for (let consumed = 1; consumed <= maxTerms; consumed++) {
     const normalized = normalizeSynonymText(terms[start + consumed - 1].text)
     if (!normalized) return undefined
+    phrase = phrase ? `${phrase} ${normalized}` : normalized
+    if (phrase === entry.key) return consumed
+    if (!entry.key.startsWith(`${phrase} `)) return undefined
+  }
+  return undefined
+}
+
+/// Replaces whole-phrase collection aliases in `terms` with their id set,
+/// pushed onto `group.includeIds`, and returns the terms left for downstream
+/// trait/synonym resolution. Only non-exact terms match, so a quoted `"burned"`
+/// stays a literal trait lookup.
+function resolveSearchCollectionTerms(
+  group: ParsedSearchTextGroup,
+  terms: readonly SearchTextTerm[],
+  standard?: PunkStandardValue,
+): SearchTextTerm[] {
+  if (terms.length === 0 || searchCollectionEntries.length === 0) {
+    return [...terms]
+  }
+  const remaining: SearchTextTerm[] = []
+  let i = 0
+  while (i < terms.length) {
+    const match = findSearchCollectionAt(terms, i, standard)
+    if (match === undefined) {
+      remaining.push(terms[i])
+      i += 1
+      continue
+    }
+    for (const id of match.entry.ids) addIncludeId(group, id)
+    i += match.consumed
+  }
+  return remaining
+}
+
+function findSearchCollectionAt(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  standard?: PunkStandardValue,
+): { entry: SearchCollectionEntry; consumed: number } | undefined {
+  for (const entry of searchCollectionEntries) {
+    // A scoped SDK skips collections of other standards; the alias then falls
+    // through to literal trait matching instead of resolving as an id set.
+    if (standard !== undefined && entry.standard !== standard) continue
+    const consumed = matchSearchCollectionEntry(terms, start, entry)
+    if (consumed !== undefined) return { entry, consumed }
+  }
+  return undefined
+}
+
+function matchSearchCollectionEntry(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  entry: SearchCollectionEntry,
+): number | undefined {
+  let phrase = ''
+  let consumed = 0
+  while (start + consumed < terms.length) {
+    const term = terms[start + consumed]
+    if (term.exact) return undefined
+    consumed++
+    // Punctuation-only tokens (e.g. the `&` in `perfect & priceless`) normalize
+    // to nothing; consume them but skip them in the phrase so the surrounding
+    // words still match the `&`-free alias key.
+    const normalized = normalizeSynonymText(term.text)
+    if (!normalized) continue
     phrase = phrase ? `${phrase} ${normalized}` : normalized
     if (phrase === entry.key) return consumed
     if (!entry.key.startsWith(`${phrase} `)) return undefined
@@ -497,6 +724,12 @@ function addSkinTone(group: ParsedSearchTextGroup, tone: SkinToneValue): void {
   if (!group.skinTones.includes(tone)) group.skinTones.push(tone)
 }
 
+function addAllSkinTones(group: ParsedSearchTextGroup): void {
+  for (let id = 0; id < skinToneNames.length; id++) {
+    addSkinTone(group, id as SkinToneValue)
+  }
+}
+
 function addIncludeId(group: ParsedSearchTextGroup, id: number): void {
   if (group.includeIds === undefined) group.includeIds = []
   if (!group.includeIds.includes(id)) group.includeIds.push(id)
@@ -524,22 +757,47 @@ function matchSkinToneWord(word: string): SkinToneValue | undefined {
   return undefined
 }
 
+function matchBareSkinToneWord(word: string): SkinToneValue | undefined {
+  const tone = matchSkinToneWord(word)
+  return tone === SkinTone.Brown || tone === SkinTone.Fair ? tone : undefined
+}
+
+function isSkinToneGrammarWord(word: string): boolean {
+  return (
+    word === 'skin' ||
+    word === 'skinned' ||
+    word === 'skintone' ||
+    word === 'tone' ||
+    word === 'tones'
+  )
+}
+
 function parseNonNegativeInt(value: string): number | undefined {
-  if (!/^\d+$/.test(value)) return undefined
-  const n = Number.parseInt(value, 10)
-  return Number.isInteger(n) && n >= 0 ? n : undefined
+  if (/^\d+$/.test(value)) {
+    const n = Number.parseInt(value, 10)
+    return Number.isInteger(n) && n >= 0 ? n : undefined
+  }
+  return parseNumberWord(value)
+}
+
+const NUMBER_WORDS: Partial<Record<string, number>> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+}
+
+function parseNumberWord(value: string): number | undefined {
+  const normalized = normalizeWord(value)
+  return NUMBER_WORDS[normalized]
 }
 
 function normalizeWord(value: string): string {
   return value.toLowerCase().replaceAll(/[_,]/g, '')
-}
-
-function normalizeSynonymText(value: string): string {
-  return value
-    .toLowerCase()
-    .replaceAll(/[_-]+/g, ' ')
-    .replaceAll(/[^#a-z0-9]+/g, ' ')
-    .trim()
 }
 
 function isSearchFillerTerm(term: SearchTextTerm): boolean {

@@ -41,8 +41,10 @@ import {
 } from '@networked-art/punks-sdk'
 import {
   PLACE_OFFER_MAX_SLOT_IDS,
+  type PlaceOfferCriteriaKind,
   uniqueSortedIds,
 } from '~/composables/usePlaceOfferDraft'
+import { offerSlotCriteriaDisplay } from '~/utils/offerCriteriaText'
 
 withDefaults(
   defineProps<{
@@ -53,6 +55,9 @@ withDefaults(
 
 const text = defineModel<string>('text', { required: true })
 const selectedText = defineModel<string>('selectedText', { required: true })
+const selectedKind = defineModel<PlaceOfferCriteriaKind>('selectedKind', {
+  required: true,
+})
 const selectedQuery = defineModel<PunkQuery | null>('selectedQuery', {
   required: true,
 })
@@ -81,9 +86,6 @@ const canSelectSearch = computed(
     ids.value.length > 0,
 )
 const compiledSearchSlot = computed(() => compileSearchSlot())
-const canUseCompiledSearchSlot = computed(() =>
-  isOfferableCompiledSearchSlot(compiledSearchSlot.value),
-)
 
 function toggleGridId(id: number) {
   if (selectedQuery.value && selectedMatchSet.value.has(id)) {
@@ -115,18 +117,19 @@ function toggleExcluded(id: number) {
 function selectCurrentSearch() {
   if (!canSelectSearch.value) return
 
-  const label = settledCriteriaText.value
-
-  if (canUseCompiledSearchSlot.value) {
-    selectCompiledSearch(label)
+  const slot = compiledSearchSlot.value
+  if (slot && isOfferableCompiledSearchSlot(slot)) {
+    selectCompiledSearch(slot)
     return
   }
 
   selectIdSelection(ids.value)
 }
 
-function selectCompiledSearch(label: string) {
-  selectedText.value = label
+function selectCompiledSearch(slot: CompiledOfferSlot) {
+  const display = offerSlotCriteriaDisplay(sdk.value, slot)
+  selectedText.value = display.label
+  selectedKind.value = display.kind
   selectedQuery.value = offerQuery.value
   selectedMatchIds.value = ids.value
   includeIds.value = []
@@ -135,6 +138,7 @@ function selectCompiledSearch(label: string) {
 
 function selectIdSelection(nextIds: number[]) {
   selectedText.value = ''
+  selectedKind.value = 'single'
   selectedQuery.value = null
   selectedMatchIds.value = []
   includeIds.value = nextIds

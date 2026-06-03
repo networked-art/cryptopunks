@@ -10,6 +10,8 @@ auto-registered UI primitives.
 
 - `/` — search and grid (`PunkGrid`, `PunkSearch`).
 - `/punk/[id]` — single Punk: listing, bids, transfer, ownership.
+- `/listings` — active asks on the June 9th 2017 contract, routed through
+  `PunksMarket`, sorted by price.
 - `/bids` — collection and criterion bids.
 - `/activity` — recent sales / listings / wraps from the indexer.
 - `/profile/[handle]` — owned Punks and bids for an address or ENS name.
@@ -54,7 +56,7 @@ Mainnet-only — the wagmi config does not declare any other chain.
 
 | Script                | Purpose                                                                                                                                                                                        |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`            | Nuxt dev server on `:3000`.                                                                                                                                                                    |
+| `pnpm dev`            | Nuxt dev server on `:3001`.                                                                                                                                                                    |
 | `pnpm build`          | Production Nitro build (node-cluster preset).                                                                                                                                                  |
 | `pnpm generate`       | Static prerender (where applicable).                                                                                                                                                           |
 | `pnpm preview`        | Preview the built app.                                                                                                                                                                         |

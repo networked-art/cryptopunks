@@ -1,13 +1,15 @@
 import { refDebounced, useMediaQuery } from '@vueuse/core'
-import type { PunkQuery } from '@networked-art/punks-sdk'
-import { isAddress, type Address } from 'viem'
 import {
-  computed,
-  ref,
-  toValue,
-  watch,
-  type MaybeRefOrGetter,
-} from 'vue'
+  activeSearchToken,
+  addressForLabel,
+  suggestAddressLabels,
+  tokenizeSearchText,
+  type PunkQuery,
+  type SearchSuggestion,
+  type SearchTextTerm,
+} from '@networked-art/punks-sdk'
+import { isAddress, type Address } from 'viem'
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 type PunkSearchOptions = {
   baseQuery?: MaybeRefOrGetter<PunkQuery | undefined>
@@ -16,18 +18,216 @@ type PunkSearchOptions = {
   enableMarketQualifiers?: boolean
   enableOwnerSearch?: boolean
   enableEnterNavigation?: boolean
+  enableSuggestions?: boolean
   initialText?: string
+  debounceMs?: number
+}
+
+/// A typeahead row. SDK suggestions (trait / collection / skin-tone / count)
+/// plus app-only rows for on-chain qualifiers and curated owner labels.
+export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
+  kind: SearchSuggestion['kind'] | 'market' | 'owner'
+}
+
+/// Market qualifiers live in the app, not the SDK: they resolve against
+/// on-chain market state, not the dataset. `insert` is the canonical phrase
+/// the parser understands; `aliases` mirror the looser phrases accepted by
+/// `extractQualifiers` below.
+const MARKET_QUALIFIERS: {
+  label: string
+  insert: string
+  aliases: string[]
+}[] = [
+  {
+    label: 'For sale',
+    insert: 'for sale',
+    aliases: ['on sale', 'sale', 'listed', 'listing', 'listings'],
+  },
+  { label: 'Wrapped', insert: 'wrapped', aliases: ['wrap', 'wrapper'] },
+  {
+    label: 'Legacy wrapped',
+    insert: 'legacy wrapped',
+    aliases: ['legacy wrapper', 'wrapped legacy', 'wrapped punks'],
+  },
+  {
+    label: 'Modern wrapped',
+    insert: 'modern wrapped',
+    aliases: ['erc721', 'erc 721', 'cryptopunks 721', 'wrapped modern'],
+  },
+  {
+    label: 'Has bids',
+    insert: 'has bids',
+    aliases: ['bid', 'bids', 'with bids', 'active bids'],
+  },
+]
+
+function marketSuggestions(text: string): PunkSuggestion[] {
+  const token = activeSearchToken(text)
+  if (token === undefined) return []
+  const activeVariants = suggestionTextVariants(token.active)
+  if (!hasMinimumSignal(activeVariants, 2)) return []
+  const preceding = tokenizeSearchText(token.preceding)
+  return MARKET_QUALIFIERS.flatMap((q) => {
+    if (isBareWrappedScopeWord(q.insert, token.preceding, activeVariants)) {
+      return []
+    }
+    const match = bestMatchedPhrase(
+      [q.insert, ...q.aliases],
+      activeVariants,
+      preceding,
+    )
+    if (match === undefined) return []
+    return [
+      {
+        kind: 'market',
+        label: q.label,
+        query: completeSuggestionQuery(preceding, q.insert, match.absorbed),
+      },
+    ]
+  })
+}
+
+function isBareWrappedScopeWord(
+  insert: string,
+  preceding: string,
+  activeVariants: readonly string[],
+): boolean {
+  if (preceding.trim()) return false
+  const first = normalizedWords(insert)[0]
+  return (
+    (first === 'modern' || first === 'legacy') &&
+    matchesSuggestionWord(first, activeVariants)
+  )
+}
+
+/// Builds a completed query, folding any trailing preceding words that the
+/// matched phrase already covers — so `on sa` completes to `for sale`, not
+/// `on for sale`.
+function completeSuggestionQuery(
+  preceding: readonly SearchTextTerm[],
+  insert: string,
+  absorbed: number,
+): string {
+  const kept = preceding.slice(0, preceding.length - absorbed)
+  const prefix = kept
+    .map((term) => (term.exact ? `"${term.text}"` : term.text))
+    .join(' ')
+  return prefix ? `${prefix} ${insert}` : insert
+}
+
+function ownerSuggestions(text: string): PunkSuggestion[] {
+  const token = activeSearchToken(text)
+  if (token === undefined) return []
+  if (tokenizeSearchText(text).some((term) => term.exact)) return []
+  return suggestAddressLabels(text).map((suggestion) => ({
+    kind: 'owner',
+    label: suggestion.label.name,
+    query: suggestion.query,
+  }))
+}
+
+function suggestionTextVariants(value: string): string[] {
+  const spaced = normalizeSuggestionText(value)
+  if (!spaced) return []
+  const joined = value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, '')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+  return joined && joined !== spaced ? [spaced, joined] : [spaced]
+}
+
+function normalizeSuggestionText(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function normalizedWords(value: string): string[] {
+  return normalizeSuggestionText(value).split(/\s+/).filter(Boolean)
+}
+
+function hasMinimumSignal(
+  activeVariants: readonly string[],
+  minLength: number,
+): boolean {
+  return activeVariants.some((variant) => signalLength(variant) >= minLength)
+}
+
+function signalLength(value: string): number {
+  return value.replaceAll(/\s+/g, '').length
+}
+
+function matchesSuggestionWord(
+  word: string,
+  activeVariants: readonly string[],
+): boolean {
+  return activeVariants.some((active) => {
+    if (!active) return false
+    if (word.startsWith(active) || word.includes(` ${active}`)) return true
+    return signalLength(active) >= 2 && word.includes(active)
+  })
+}
+
+function bestMatchedPhrase(
+  phrases: readonly string[],
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): { absorbed: number } | undefined {
+  let best: { absorbed: number } | undefined
+  for (const phrase of phrases) {
+    const words = normalizedWords(phrase)
+    for (let index = 0; index < words.length; index++) {
+      const word = words[index]
+      if (word === undefined) continue
+      if (!matchesSuggestionWord(word, activeVariants)) continue
+      const absorbed = absorbedPrecedingCount(words, index, preceding)
+      if (best === undefined || absorbed > best.absorbed) best = { absorbed }
+    }
+  }
+  return best
+}
+
+function absorbedPrecedingCount(
+  words: readonly string[],
+  matchedIndex: number,
+  preceding: readonly SearchTextTerm[],
+): number {
+  let absorbed = 0
+  let wordIndex = matchedIndex - 1
+  for (
+    let k = preceding.length - 1;
+    k >= 0 && wordIndex >= 0;
+    k--, wordIndex--
+  ) {
+    const term = preceding[k]
+    const targetWord = words[wordIndex]
+    if (term === undefined || targetWord === undefined) break
+    const word = normalizeSuggestionText(term.text)
+    if (term.exact || word === '' || !targetWord.startsWith(word)) break
+    absorbed++
+  }
+  return absorbed
 }
 
 const LISTED_QUALIFIER =
   /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
 const BID_QUALIFIER =
   /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
-const LEGACY_WRAPPED_QUALIFIER =
-  /(^|[\s,])(?:legacy\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+legacy)(?=$|[\s,])/gi
-const MODERN_WRAPPED_QUALIFIER =
-  /(^|[\s,])(?:modern\s+wrap(?:ped|per)?|wrap(?:ped|per)?\s+modern)(?=$|[\s,])/gi
-const WRAPPED_QUALIFIER = /(^|[\s,])(?:wrap(?:ped|per)?)(?=$|[\s,])/gi
+const WRAPPED_WORD = 'wrap(?:ped|per)?'
+const LEGACY_WRAPPER_SYNONYM = 'wrapped[_\\s-]*punks'
+const MODERN_WRAPPER_SYNONYM = '(?:erc[-\\s]?721|cryptopunks\\s*721)'
+const LEGACY_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${LEGACY_WRAPPER_SYNONYM})`
+const MODERN_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${MODERN_WRAPPER_SYNONYM})`
+const LEGACY_WRAPPED_QUALIFIER = qualifierPattern(
+  `(?:legacy\\s+${LEGACY_WRAPPED_WORD}|${LEGACY_WRAPPED_WORD}\\s+legacy|${LEGACY_WRAPPER_SYNONYM})`,
+)
+const MODERN_WRAPPED_QUALIFIER = qualifierPattern(
+  `(?:modern\\s+${MODERN_WRAPPED_WORD}|${MODERN_WRAPPED_WORD}\\s+modern|${MODERN_WRAPPER_SYNONYM})`,
+)
+const WRAPPED_QUALIFIER = qualifierPattern(WRAPPED_WORD)
 const ENS_HANDLE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i
 const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
 
@@ -42,6 +242,8 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   const enableMarketQualifiers = options.enableMarketQualifiers ?? true
   const enableOwnerSearch = options.enableOwnerSearch ?? true
   const enableEnterNavigation = options.enableEnterNavigation ?? true
+  const enableSuggestions = options.enableSuggestions ?? true
+  const debounceMs = options.debounceMs ?? 80
 
   const baseQuery = computed(() => toValue(options.baseQuery))
   const text = ref(
@@ -50,16 +252,14 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
   )
   const toggleListed = ref(enableListedFilter && route?.query.sale === '1')
 
-  const debouncedText = refDebounced(text, 80)
+  const debouncedText = refDebounced(text, debounceMs)
   const qualifiers = computed(() =>
     extractQualifiers(debouncedText.value, {
       enableMarketQualifiers,
     }),
   )
   const listedActive = computed(
-    () =>
-      enableListedFilter &&
-      (qualifiers.value.listed || toggleListed.value),
+    () => enableListedFilter && (qualifiers.value.listed || toggleListed.value),
   )
 
   if (route) {
@@ -112,8 +312,30 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       : 'Try hoodie, 2 colors, vault.eth, #1234',
   )
 
+  /// Owner mode also triggers on a curated address label (e.g. `NODE`,
+  /// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
+  /// (e.g. `moma`) are left to the trait/collection path so the grid keeps
+  /// showing the curated set rather than the wallet's current holdings.
+  function resolvesToCollection(input: string): boolean {
+    const value = input.trim()
+    if (!value) return false
+    const completed = offline.dataset.completeSearchText(value)
+    return offline.collections.matches(completed).length > 0
+  }
+
+  function resolveOwnerHandle(input: string): string | null {
+    const direct = detectOwnerHandle(input)
+    if (direct) return direct
+    const value = input.trim()
+    if (!value) return null
+    // Complete unfinished aliases (`bur` → `burned`) so a prefix that the grid
+    // reads as a collection isn't mistaken for an owner label here.
+    if (resolvesToCollection(value)) return null
+    return addressForLabel(value) ?? null
+  }
+
   const ownerHandle = computed(() =>
-    enableOwnerSearch ? detectOwnerHandle(debouncedText.value) : null,
+    enableOwnerSearch ? resolveOwnerHandle(debouncedText.value) : null,
   )
   const ensIdentifier = computed(() => {
     const handle = ownerHandle.value
@@ -145,6 +367,17 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       colors: colors?.length ? colors : undefined,
     }
   })
+
+  // Curated collections the live query mentions (e.g. `burned`, `moma`), for
+  // surfacing an explainer. Scans the trait text after market qualifiers and
+  // colors are stripped, so `burned for sale` and `burned hoodie` still match;
+  // unfinished aliases are completed first (`bur` → `burned`) so the card keeps
+  // step with the grid.
+  const collectionMatches = computed(() =>
+    offline.collections.matches(
+      offline.dataset.completeSearchText(parsedText.value.text ?? ''),
+    ),
+  )
 
   const criteriaQuery = computed<PunkQuery>(() => {
     const ownerMode = !!ownerHandle.value
@@ -221,14 +454,49 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     )
   })
 
+  /// Listed prices for the grid as wei (rendered with EthAmount), only while
+  /// "for sale" is active. Indexer prices are ETH already rounded to ≤2
+  /// decimals; scaling through integer hundredths recovers an exact wei value
+  /// at any magnitude — `parseEther` can't, since its `toFixed` step emits
+  /// exponential notation for the absurd "never sell" listings (e.g. #1477 at
+  /// 1e42 ETH), which EthAmount then compacts to `>999T`.
+  const prices = computed(() => {
+    if (!listedActive.value || !marketStateLoaded.value) return undefined
+    const out = new Map<number, bigint>()
+    for (const [id, eth] of listedPrices.value) {
+      if (!Number.isFinite(eth)) continue
+      out.set(id, BigInt(Math.round(eth * 100)) * 10n ** 16n)
+    }
+    return out
+  })
+
   const counts = computed(() => ({
     total: offline.dataset.count(baseQuery.value),
     filtered: ids.value.length,
   }))
+  const showWrappedStateColors = computed(
+    () =>
+      qualifiers.value.wrapped ||
+      qualifiers.value.legacyWrapped ||
+      qualifiers.value.modernWrapped,
+  )
+
+  /// Typeahead completions for the word being typed: app market qualifiers
+  /// first, then the SDK's trait / collection / skin-tone / count vocabulary.
+  /// Empty when there's nothing to complete (see {@link activeSearchToken}).
+  const suggestions = computed<PunkSuggestion[]>(() => {
+    if (!enableSuggestions) return []
+    const market = enableMarketQualifiers ? marketSuggestions(text.value) : []
+    const owner =
+      enableOwnerSearch && !resolvesToCollection(text.value)
+        ? ownerSuggestions(text.value)
+        : []
+    return [...market, ...owner, ...offline.dataset.suggest(text.value)]
+  })
 
   function onEnter() {
     if (!enableEnterNavigation) return
-    const handle = detectOwnerHandle(text.value)
+    const handle = resolveOwnerHandle(text.value)
     if (handle) {
       router.push(`/profile/${handle}`)
       return
@@ -259,10 +527,18 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     criteriaQuery,
     offerQuery,
     ids,
+    prices,
     counts,
+    collectionMatches,
+    showWrappedStateColors,
+    suggestions,
     onEnter,
     clearSearch,
   }
+}
+
+function qualifierPattern(source: string): RegExp {
+  return new RegExp(`(^|[\\s,])${source}(?=$|[\\s,])`, 'gi')
 }
 
 function detectOwnerHandle(input: string): string | null {

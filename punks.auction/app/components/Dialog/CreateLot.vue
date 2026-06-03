@@ -1,16 +1,5 @@
 <template>
-  <div
-    v-if="showSection"
-    class="create-lot"
-  >
-    <Button
-      class="primary"
-      :disabled="pending"
-      @click="openCreateDialog"
-    >
-      Create lot
-    </Button>
-
+  <ClientOnly>
     <Dialog
       v-model:open="createDialogOpen"
       title="Create lot"
@@ -31,6 +20,14 @@
       >
         Set the reserve and optional initial buyer for this Punk lot.
       </p>
+
+      <FormCheckbox
+        v-if="pairV1"
+        v-model="includeV1Pair"
+        class="pair-toggle"
+      >
+        Add the matching V1 Punk to this lot
+      </FormCheckbox>
 
       <div class="form-grid">
         <label class="field">
@@ -89,16 +86,17 @@
       @complete="onMultiTransactionComplete"
       @error="onFlowError"
     />
-  </div>
+  </ClientOnly>
 </template>
 
 <script setup lang="ts">
 import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConfig, useConnection } from '@wagmi/vue'
 import { isAddress, type Hash } from 'viem'
+import type { AccountPunkInventoryItem } from '~/composables/useAccountPunkInventory'
 import { resolveAddressInput } from '~/utils/addressInput'
 import {
-  TOTAL_WEIGHT_BPS,
+  TokenStandard,
   ZERO_ADDRESS,
   type TokenStandardValue,
 } from '~/utils/auction'
@@ -113,8 +111,12 @@ const emit = defineEmits<{ created: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const config = useConfig()
 const { address } = useConnection()
-const inventory = useAccountPunkInventory(() => address.value)
+// Pull V1 Punks on a CryptoPunk page so we can offer to bundle the matching V1.
+const inventory = useAccountPunkInventory(() => address.value, {
+  includeV1: () => props.standard === TokenStandard.CryptoPunks,
+})
 const custodyPlan = usePunkCustodyPlan()
+const { resolveLotWeights } = useLotWeights()
 
 const reserveEth = ref('')
 const reserveWei = ref<bigint | null>(null)
@@ -122,6 +124,7 @@ const onlySellTo = ref('')
 const showAdvanced = ref(false)
 const createDialogOpen = ref(false)
 const buildError = ref<string | null>(null)
+const includeV1Pair = ref(false)
 
 const ownerItem = computed(() =>
   inventory.items.value.find(
@@ -129,7 +132,36 @@ const ownerItem = computed(() =>
   ),
 )
 
-const showSection = computed(() => !!ownerItem.value)
+/// The matching V1 Punk for this CryptoPunk, when the seller owns one and it can
+/// be bundled into the lot. V1 Punks live only in the wallet or the Punks Vault;
+/// adding one unwraps it if needed, then deposits the native V1 into the vault.
+const pairV1 = computed<AccountPunkInventoryItem | null>(() => {
+  if (props.standard !== TokenStandard.CryptoPunks) return null
+  return (
+    inventory.items.value.find(
+      (item) =>
+        item.standard === TokenStandard.CryptoPunksV1 &&
+        item.punkId === props.punkId &&
+        item.custody !== 'unsupported',
+    ) ?? null
+  )
+})
+
+/// Every Punk that will end up in the lot — the page's CryptoPunk plus its V1
+/// when the seller opts in.
+const lotItems = computed<AccountPunkInventoryItem[]>(() => {
+  const primary = ownerItem.value
+  if (!primary) return []
+  return includeV1Pair.value && pairV1.value
+    ? [primary, pairV1.value]
+    : [primary]
+})
+
+// Drop the pairing if the V1 stops being available (custody changed, account
+// changed) so we never try to bundle a Punk we can no longer move.
+watch(pairV1, (pair) => {
+  if (!pair) includeV1Pair.value = false
+})
 
 const buyerInputSubmittable = computed(() => {
   const trimmed = onlySellTo.value.trim()
@@ -154,6 +186,7 @@ const {
   onComplete: (tx) => {
     reserveEth.value = ''
     onlySellTo.value = ''
+    includeV1Pair.value = false
     void inventory.refresh()
     emit('created', tx)
   },
@@ -161,7 +194,7 @@ const {
 
 const canCreate = computed(
   () =>
-    !!ownerItem.value &&
+    lotItems.value.length > 0 &&
     !!reserveWei.value &&
     buyerInputSubmittable.value &&
     !pending.value,
@@ -170,15 +203,21 @@ const canCreate = computed(
 const errorMessage = computed(() => buildError.value ?? txError.value)
 
 const custodySummary = computed(() => {
-  const item = ownerItem.value
-  if (!item || item.custody === 'vault') return null
-  return inventory.vaultDeployed.value
-    ? 'The Punk will be moved into your auction vault before the lot is created.'
-    : 'Your auction vault will be deployed and the Punk moved into it before the lot is created.'
+  const needsMove = lotItems.value.filter(
+    (item) => item.custody !== 'vault',
+  ).length
+  if (needsMove === 0) return null
+  const noun = needsMove === 1 ? 'Punk' : 'Punks'
+  const vaultPart = inventory.vaultDeployed.value
+    ? 'your Punks Vault'
+    : 'a freshly deployed Punks Vault'
+  return `${needsMove} ${noun} will be moved into ${vaultPart} before the lot is created.`
 })
 
-function openCreateDialog() {
+async function start() {
+  await inventory.refresh()
   buildError.value = null
+  includeV1Pair.value = false
   createDialogOpen.value = true
 }
 
@@ -188,10 +227,10 @@ function onDialogClosed() {
 
 async function actCreate() {
   buildError.value = null
-  const item = ownerItem.value
+  const items = lotItems.value
   const owner = address.value
   const reserve = reserveWei.value
-  if (!item || !owner || !reserve || !buyerInputSubmittable.value) return
+  if (!items.length || !owner || !reserve || !buyerInputSubmittable.value) return
 
   let plans: ContractWritePlan[]
   try {
@@ -201,17 +240,18 @@ async function actCreate() {
       vault: inventory.vault.value,
       vaultDeployed: inventory.vaultDeployed.value,
       stash: inventory.stash.value,
-      items: [item],
+      items,
     })
-    const lotItems = custodyPlan.lotItemsFor([
-      {
+    const weights = await resolveLotWeights(items)
+    const planItems = custodyPlan.lotItemsFor(
+      items.map((item, index) => ({
         standard: item.standard,
         punkId: item.punkId,
-        weightBps: TOTAL_WEIGHT_BPS,
-      },
-    ])
+        weightBps: weights[index]!,
+      })),
+    )
     const lotPlan = sdk.value.auctions.prepareCreateLot({
-      items: lotItems,
+      items: planItems,
       reserveWei: reserve,
       onlySellTo: onlyBuyer,
     })
@@ -243,15 +283,10 @@ async function resolveOnlySellTo() {
   })
 }
 
+defineExpose({ start })
 </script>
 
 <style scoped>
-.create-lot {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--size-2);
-}
-
 .create-lot-dialog :deep(section) {
   display: flex;
   flex-direction: column;
@@ -285,6 +320,10 @@ async function resolveOnlySellTo() {
 
 .form-note {
   margin: 0;
+  font-size: var(--font-sm);
+}
+
+.pair-toggle {
   font-size: var(--font-sm);
 }
 

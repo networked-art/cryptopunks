@@ -1,0 +1,36 @@
+service: punk-predictor
+
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punk-predictor
+
+primary_role: worker
+
+servers:
+  worker:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+    proxy: false
+    options:
+      network: shared
+
+deploy_timeout: 3600
+
+registry:
+  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: ../Dockerfile.predictor
+
+env:
+  clear:
+    PONDER_VIEWS_SCHEMA: <%= ENV.fetch("PONDER_VIEWS_SCHEMA", "punks") %>
+    PREDICTOR_RUN_ON_START: <%= ENV.fetch("PREDICTOR_RUN_ON_START", "true") %>
+    PREDICTOR_SCHEDULE_HOUR_UTC: <%= ENV.fetch("PREDICTOR_SCHEDULE_HOUR_UTC", "3") %>
+  secret:
+    - DATABASE_URL
+
+ssh:
+  user: root

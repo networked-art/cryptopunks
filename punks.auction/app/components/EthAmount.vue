@@ -99,9 +99,4 @@ function smallestDisplayValue(precision: number) {
   gap: var(--size-1);
   font-variant-numeric: tabular-nums;
 }
-
-.unit {
-  color: var(--text-dim);
-  font-size: 0.85em;
-}
 </style>

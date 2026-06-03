@@ -19,7 +19,7 @@
   /* App-specific tokens used directly throughout punks.auction. */
   --accent: var(--primary);
   --accent-strong: #ea34b0;
-  --accent-soft: #f14eba;
+  --accent-soft: #f14eba69;
 
   /* CryptoPunks marketplace backgrounds. */
   --punk-bg: #6a8494;

@@ -14,6 +14,7 @@ export type PlaceOfferSlotDisplayKind =
   | 'selection'
   | 'criteria'
   | 'collection'
+export type PlaceOfferCriteriaKind = 'single' | 'group' | 'custom'
 
 export type PlaceOfferSlotDraft = {
   standard: TokenStandardValue
@@ -22,6 +23,7 @@ export type PlaceOfferSlotDraft = {
   exactPunkId: number | null
   traitSearchText: string
   traitText: string
+  traitCriteriaKind: PlaceOfferCriteriaKind
   traitQuery: PunkQuery | null
   traitMatchIds: number[]
   traitIncludeIds: number[]
@@ -38,9 +40,12 @@ export type PlaceOfferSlotSummary = {
   title: string
   detail: string
   displayKind: PlaceOfferSlotDisplayKind
+  criteriaKind?: PlaceOfferCriteriaKind
   targetMode: PlaceOfferTargetMode
   standard: TokenStandardValue
   previewIds: number[]
+  includeIds: number[]
+  excludeIds: number[]
 }
 
 export type PlaceOfferDraft = {
@@ -79,6 +84,7 @@ export function createPlaceOfferSlotDraft(
     exactPunkId: null,
     traitSearchText: '',
     traitText: '',
+    traitCriteriaKind: 'single',
     traitQuery: null,
     traitMatchIds: [],
     traitIncludeIds: [],
@@ -175,6 +181,8 @@ function exactSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       targetMode: 'exact',
       standard: slot.standard,
       previewIds: [punkId],
+      includeIds: [punkId],
+      excludeIds: [],
     },
   }
 }
@@ -227,6 +235,8 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
         targetMode: 'traits',
         standard: slot.standard,
         previewIds: includeIds,
+        includeIds,
+        excludeIds: [],
       },
     }
   }
@@ -245,9 +255,12 @@ function traitSlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       title: text,
       detail: traitDetail(activeCount, includeIds.length, excludeIds.length),
       displayKind: 'criteria',
+      criteriaKind: slot.traitCriteriaKind,
       targetMode: 'traits',
       standard: slot.standard,
       previewIds,
+      includeIds,
+      excludeIds,
     },
   }
 }
@@ -263,6 +276,8 @@ function anySlot(slot: PlaceOfferSlotDraft, label: string): BuiltSlot {
       targetMode: 'any',
       standard: slot.standard,
       previewIds: [],
+      includeIds: [],
+      excludeIds: [],
     },
   }
 }
@@ -278,6 +293,8 @@ function invalidSlot(label: string, error: string): BuiltSlot {
       targetMode: 'any',
       standard: DEFAULT_PLACE_OFFER_STANDARD,
       previewIds: [],
+      includeIds: [],
+      excludeIds: [],
     },
     error,
   }

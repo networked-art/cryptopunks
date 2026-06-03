@@ -43,7 +43,7 @@
 import { useConnection } from '@wagmi/vue'
 import { onKeyStroke, refDebounced } from '@vueuse/core'
 import { isAddress, type Address } from 'viem'
-import type { PunkQuery } from '@networked-art/punks-sdk'
+import { addressForLabel, type PunkQuery } from '@networked-art/punks-sdk'
 
 const props = withDefaults(
   defineProps<{
@@ -146,10 +146,22 @@ function detectOwnerHandle(input: string): string | null {
   return null
 }
 
+/// Owner mode also triggers on a curated address label (e.g. `NODE`,
+/// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
+/// (e.g. `moma`) stay on the trait/collection path so the grid shows the
+/// curated set rather than the wallet's current holdings.
+function resolveOwnerHandle(input: string): string | null {
+  const direct = detectOwnerHandle(input)
+  if (direct) return direct
+  const v = input.trim()
+  if (!v || offline.collections.matches(v).length) return null
+  return addressForLabel(v) ?? null
+}
+
 /// `ownerHandle` drives the *view* (debounced) — `onEnter` reads `text`
 /// directly so a fast typer who hits Enter before the debounce fires still
 /// gets navigated to the profile.
-const ownerHandle = computed(() => detectOwnerHandle(debouncedText.value))
+const ownerHandle = computed(() => resolveOwnerHandle(debouncedText.value))
 
 const ensIdentifier = computed(() => {
   const h = ownerHandle.value
@@ -255,7 +267,7 @@ const counts = computed(() => ({
 }))
 
 function onEnter() {
-  const handle = detectOwnerHandle(text.value)
+  const handle = resolveOwnerHandle(text.value)
   if (handle) {
     router.push(`/profile/${handle}`)
     return

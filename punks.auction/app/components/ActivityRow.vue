@@ -8,7 +8,21 @@
         v-if="event.punkId !== undefined"
         :punk-id="event.punkId"
         :size="44"
+        :background="eventBackground"
       />
+      <NuxtLink
+        v-else-if="iconKind !== 'default' && detailHref"
+        :to="detailHref"
+        class="thumb-icon symbol-tile"
+      >
+        <ActivityRowMark :icon-kind="iconKind" />
+      </NuxtLink>
+      <span
+        v-else-if="iconKind !== 'default'"
+        class="thumb-icon symbol-tile"
+      >
+        <ActivityRowMark :icon-kind="iconKind" />
+      </span>
       <span
         v-else
         class="thumb-icon"
@@ -19,7 +33,21 @@
 
     <div class="row-body">
       <div class="row-line">
-        <ActivityKindLabel :kind="event.kind" />
+        <NuxtLink
+          v-if="detailHref"
+          :to="detailHref"
+          class="kind-link"
+        >
+          <ActivityKindLabel
+            :kind="event.kind"
+            :offer-kind="event.offerKind"
+          />
+        </NuxtLink>
+        <ActivityKindLabel
+          v-else
+          :kind="event.kind"
+          :offer-kind="event.offerKind"
+        />
         <NuxtLink
           v-if="event.punkId !== undefined"
           :to="`/punks/${event.punkId}`"
@@ -75,11 +103,17 @@
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
 import { txUrl } from '~/utils/explorer'
+import type { ActivityRowMarkKind } from './ActivityRowMark.vue'
 
 const props = defineProps<{
   event: ActivityEvent
   hideThumb?: boolean
 }>()
+
+const { backgroundForActivityEvent } = usePunkBackgrounds()
+const eventBackground = computed(() =>
+  backgroundForActivityEvent(props.event),
+)
 
 /// `assign` and `wrap` rows carry the same address as `from` and `to`; collapse
 /// them so the row shows a single party.
@@ -89,6 +123,52 @@ const sameParties = computed(
     !!props.event.to &&
     props.event.from.toLowerCase() === props.event.to.toLowerCase(),
 )
+
+type ThumbIconKind = ActivityRowMarkKind | 'default'
+
+const OFFER_KINDS = new Set<ActivityEvent['kind']>([
+  'offer_placed',
+  'offer_cancelled',
+  'offer_adjusted',
+])
+
+const LOT_KINDS = new Set<ActivityEvent['kind']>([
+  'lot_created',
+  'lot_cancelled',
+  'lot_cleared',
+  'lot_updated',
+])
+
+const AUCTION_KINDS = new Set<ActivityEvent['kind']>([
+  'auction_started',
+  'auction_settled',
+])
+
+const iconKind = computed<ThumbIconKind>(() => {
+  const kind = props.event.kind
+  if (kind === 'bid' || kind === 'bid_cancelled') return 'bid'
+  if (OFFER_KINDS.has(kind)) {
+    const offerKind = props.event.offerKind
+    if (offerKind === 'collection') return 'collection-offer'
+    if (offerKind === 'trait' || offerKind === 'selection') return 'trait-offer'
+  }
+  if (LOT_KINDS.has(kind)) return 'lot'
+  if (AUCTION_KINDS.has(kind)) return 'auction'
+  return 'default'
+})
+
+const detailHref = computed(() => {
+  const e = props.event
+  if (OFFER_KINDS.has(e.kind) && e.offerId !== undefined)
+    return `/purchase-offers/${e.offerId}`
+  if (LOT_KINDS.has(e.kind) && e.lotId !== undefined)
+    return `/lots/${e.lotId}`
+  if (AUCTION_KINDS.has(e.kind) && e.auctionId !== undefined)
+    return `/auctions/${e.auctionId}`
+  if ((e.kind === 'bid' || e.kind === 'bid_cancelled') && e.auctionId !== undefined)
+    return `/auctions/${e.auctionId}`
+  return undefined
+})
 
 const isoTime = computed(() =>
   props.event.timestamp
@@ -144,6 +224,26 @@ const absoluteTime = computed(() =>
   color: var(--text-dim);
 }
 
+/* Sibling tile for the bid/collection/trait icons — same footprint as the
+ * fallback gavel tile, but a flat fill so the pixel/badge marks read like
+ * the ones in Offer/Target.vue rather than a "missing thumb" placeholder. */
+.thumb-icon.symbol-tile {
+  background: var(--gray-z-1);
+  border: 0;
+  color: var(--text-muted);
+}
+
+a.thumb-icon.symbol-tile {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.thumb-icon.symbol-tile:hover,
+a.thumb-icon.symbol-tile:focus-visible {
+  background: var(--gray-z-2);
+  outline: none;
+}
+
 .row-body {
   display: flex;
   flex-direction: column;
@@ -171,6 +271,18 @@ const absoluteTime = computed(() =>
   border: 0;
   color: var(--text-muted);
   font-size: var(--font-sm);
+}
+
+.kind-link {
+  border: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.kind-link:hover,
+.kind-link:focus-visible {
+  color: var(--accent);
+  outline: none;
 }
 
 .row-meta {

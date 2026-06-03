@@ -2,8 +2,9 @@
 
 Developer documentation for the CryptoPunks contracts and the TypeScript SDK
 that wraps them. The contracts cover onchain trait and pixel data, the
-renderer, and a criteria-bid market that fixes the broken June 9th 2017
-`CryptoPunks` contract. The SDK is the matching client surface: local search
+renderer, a criteria-bid market that fixes the broken June 9th 2017
+`CryptoPunks` contract, and a zero-fee auction house. The SDK is the
+matching client surface: local search
 and rendering, original-market reads and writes, Stash custody, criterion
 offers, and auctions.
 
@@ -23,6 +24,9 @@ All contracts target Ethereum mainnet only.
 - [`UnwrapV1Punks`](/contracts/punks-market/unwrap-v1-punks) covers the batch
   helper that unwraps `PunksV1Wrapper` ERC-721 tokens back into their
   underlying Punks.
+- [`PunksAuction`](/contracts/punks-auction) covers the zero-fee auction
+  house with multi-item lots, criterion offers, and escrow-routed
+  settlement across both Punk markets.
 
 ## SDK
 
@@ -30,12 +34,16 @@ All contracts target Ethereum mainnet only.
   rendering, original-market actions, and auction/offer flows.
 - [Data And Search](/sdk/data-search) covers local query filtering, facets,
   dataset reads, and offer-slot compilation.
+- [Similarity](/sdk/similarity) covers nearest-Punk scoring, recommendations,
+  and human-readable score explanations.
 - [Rendering And Metadata](/sdk/rendering) covers local SVG, PNG, RGBA,
   metadata, token URI generation, and exact onchain renderer reads.
 - [Original Marketplace](/sdk/original-marketplace) covers original-market
   reads and writes.
 - [V1 Market](/sdk/v1-market) covers the criteria-bid market that enables trading through the
   broken June 9th 2017 `CryptoPunks` contract.
+- [V1 Wrapper](/sdk/v1-wrapper) covers wrapping and unwrapping June 9th 2017
+  Punks via `PunksV1Wrapper`, including batch unwrap flows.
 - [Punk Data Contracts](/sdk/punk-data-contracts) explains local dataset
   usage, `PunksData`, and legacy `CryptopunksData`.
 - [Wrappers](/sdk/wrappers) covers modern Stash wrapping, legacy proxy
@@ -48,3 +56,20 @@ All contracts target Ethereum mainnet only.
   vault custody, lots, bids, and settlement.
 - [Utilities And Caching](/sdk/utilities) covers constants, ABIs, bitmap
   helpers, block options, validation, and cache behavior.
+
+## UI
+
+- [punks.auction](/ui/punks-auction) covers the web interface for the
+  `PunksAuction` house — lots, auctions, offers, and vault custody.
+- [punksmarket.app](/ui/punksmarket-app) covers the web interface for
+  trading Punks on the broken June 9th 2017 `CryptoPunks` contract through
+  `PunksMarket`.
+
+## Indexer
+
+- [Indexer](/indexer) covers the Ponder service that tracks both markets,
+  the wrappers, `PunksMarket`, and `PunksAuction` in one process.
+- [Schema](/indexer/schema) covers the unified event log, current-state
+  tables, the `PunksMarket` and auction tables, and denormalized USD pricing.
+- [API](/indexer/api) covers the GraphQL, raw-SQL, and purpose-built REST
+  routes the service exposes.

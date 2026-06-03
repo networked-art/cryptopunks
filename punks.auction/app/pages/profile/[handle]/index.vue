@@ -23,18 +23,11 @@
         >
           Could not load owned Punks: {{ ownedError }}
         </p>
-        <template v-else-if="owned.length">
-          <LazyPunkGrid
-            :ids="owned"
-            :size="48"
-          />
-          <p
-            v-if="breakdownLabel"
-            class="muted breakdown"
-          >
-            {{ breakdownLabel }}
-          </p>
-        </template>
+        <LazyPunkGrid
+          v-else-if="owned.length"
+          :ids="owned"
+          :size="48"
+        />
         <p
           v-else
           class="muted"
@@ -94,16 +87,44 @@
 
       <section class="profile-section">
         <h2 class="section-title eyebrow">Recent activity</h2>
-        <ul
-          v-if="activity.length"
-          class="event-list"
+        <div
+          v-if="activityPending && !activity.length"
+          class="activity-loading"
         >
-          <ActivityRow
-            v-for="event in activity"
-            :key="event.id"
-            :event="event"
-          />
-        </ul>
+          <Spinner label="Loading activity" />
+        </div>
+        <template v-else-if="activity.length">
+          <ul class="event-list">
+            <ActivityRow
+              v-for="event in activity"
+              :key="event.id"
+              :event="event"
+            />
+          </ul>
+          <p
+            v-if="activityError"
+            class="error"
+          >
+            Could not load more activity: {{ activityError }}
+          </p>
+          <div
+            v-if="activityHasMore"
+            class="load-more"
+          >
+            <Button
+              :disabled="activityLoadingMore"
+              @click="loadMoreActivity"
+            >
+              {{ activityLoadingMore ? 'Loading…' : 'Load more' }}
+            </Button>
+          </div>
+        </template>
+        <p
+          v-else-if="activityError"
+          class="error"
+        >
+          Could not load activity: {{ activityError }}
+        </p>
         <p
           v-else
           class="muted"
@@ -135,26 +156,23 @@ const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
 const {
   ids: owned,
-  breakdown,
   loading: ownedLoading,
   error: ownedError,
 } = useAccountPunks({ account: profileAddress, vault, stash })
-
-const breakdownLabel = computed(() => {
-  const parts: string[] = []
-  if (breakdown.value.wallet) parts.push(`${breakdown.value.wallet} in wallet`)
-  if (breakdown.value.vault) parts.push(`${breakdown.value.vault} in vault`)
-  if (breakdown.value.wrapped) parts.push(`${breakdown.value.wrapped} wrapped`)
-  if (breakdown.value.stash) parts.push(`${breakdown.value.stash} in stash`)
-  return parts.join(' · ')
-})
 
 const ownedTitle = computed(() => {
   const count = owned.value.length
   return `${count} Owned ${count === 1 ? 'Punk' : 'Punks'}`
 })
 
-const { events: activity } = useActivityFeed({ address: profileAddress })
+const {
+  events: activity,
+  pending: activityPending,
+  loadingMore: activityLoadingMore,
+  error: activityError,
+  hasMore: activityHasMore,
+  loadMore: loadMoreActivity,
+} = useActivityFeed({ address: profileAddress })
 const { lots } = useLots()
 const { auctions } = useAuctions()
 const { offers } = useOffers()
@@ -175,9 +193,7 @@ const ownerAddresses = computed(() => {
   return set
 })
 
-const ownerAddressList = computed(
-  () => [...ownerAddresses.value] as Address[],
-)
+const ownerAddressList = computed(() => [...ownerAddresses.value] as Address[])
 
 const { stats } = useAccountStats({
   addresses: ownerAddressList,
@@ -279,14 +295,17 @@ const myOffers = computed(() => {
   background: var(--bg-elevated);
 }
 
+.activity-loading {
+  padding: var(--size-4) 0;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+}
+
 .error {
   color: var(--accent);
   font-size: var(--font-sm);
-}
-
-.breakdown {
-  margin: 0;
-  margin-top: var(--size-2);
-  font-size: var(--font-xs);
 }
 </style>

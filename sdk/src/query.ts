@@ -4,7 +4,6 @@ import {
   HeadVariant,
   PIXEL_COUNT_MAX,
   PIXEL_COUNT_MIN,
-  PunkStandard,
   PunkType,
   SkinTone,
   headVariantNames,
@@ -12,6 +11,7 @@ import {
   skinToneHeadVariants,
   skinToneNames,
   type HeadVariantValue,
+  type PunkStandardRef,
   type PunkStandardValue,
   type PunkTypeValue,
   type SkinToneValue,
@@ -24,6 +24,7 @@ import {
 import {
   parseSearchTextWithExactTraitsSync,
   type ParsedNumericConstraint,
+  type ParsedSearchTextGroup,
   type SearchTextTerm,
 } from './text-parse'
 import type {
@@ -35,7 +36,9 @@ import type {
 import {
   PunksDataValidationError,
   maskFromIds,
+  normalizeName,
   normalizeNumericRange,
+  normalizePunkStandard,
   validateColorCount,
   validateColorCriteriaMasks,
   validatePixelCount,
@@ -44,19 +47,17 @@ import {
   validateTraitId,
 } from './utils'
 
+/// Re-exported from {@link ./utils} for back-compat: the normalizer moved to
+/// the leaf utils module so {@link ./collections} can reuse it without an
+/// import cycle through this module.
+export { normalizePunkStandard } from './utils'
+export type { PunkStandardRef } from './constants'
+
 const HEAD_VARIANT_TRAIT_OFFSET = 5
 const ATTRIBUTE_COUNT_TRAIT_OFFSET = 16
 const ATTRIBUTE_COUNT_MIN = 0
 const ATTRIBUTE_COUNT_MAX = 7
-
-export type PunkStandardRef =
-  | PunkStandardValue
-  | 'cryptopunks'
-  | 'punks'
-  | 'v2'
-  | 'cryptopunks-v2'
-  | 'cryptopunks-v1'
-  | 'v1'
+const OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX = 64
 
 export type PunksFilter = {
   requiredTraitMask: bigint
@@ -157,6 +158,19 @@ export function emptyPunksFilter(): PunksFilter {
     minColorCount: 0,
     maxColorCount: 0,
   }
+}
+
+export function isPunksFilterEmpty(filter: PunksFilter): boolean {
+  return (
+    filter.requiredTraitMask === 0n &&
+    filter.forbiddenTraitMask === 0n &&
+    filter.anyOfTraitMask === 0n &&
+    filter.requiredColorMask === 0n &&
+    filter.forbiddenColorMask === 0n &&
+    filter.anyOfColorMask === 0n &&
+    filter.maxPixelCount === 0 &&
+    filter.maxColorCount === 0
+  )
 }
 
 export function compilePunksFilter(
@@ -314,7 +328,8 @@ function buildFilter(
 /// numeric, skin-tone, and id constraints with the existing structured query
 /// and returning the trait ids the free terms resolve to (using the same
 /// substring rules as offline search). Throws when:
-///   - the text contains OR groups (onchain filter cannot express that);
+///   - the text contains OR groups that cannot collapse into one trait any-of
+///     group;
 ///   - a free term doesn't match any trait name;
 ///   - a numeric / skin-tone constraint conflicts with the existing query.
 ///
@@ -363,9 +378,9 @@ function foldTextIntoQuery(
     return { query: rest, ...empty }
   }
   if (nonEmpty.length > 1) {
-    throw new PunksDataValidationError(
-      'OR groups in text cannot be represented as a single onchain filter; place them in separate offer slots',
-    )
+    const folded = foldTraitOrGroups(data, query, nonEmpty)
+    if (folded !== null) return folded
+    throwUnsupportedOrGroups()
   }
   const group = nonEmpty[0]
   const { freeTermRequired, freeTermAnyOfGroups } = resolveFreeTerms(
@@ -406,6 +421,70 @@ function foldTextIntoQuery(
     includeIds: group.includeIds ?? [],
     excludeIds: group.excludeIds ?? [],
   }
+}
+
+function foldTraitOrGroups(
+  data: OfflinePunksDataClient,
+  query: PunkQuery,
+  groups: readonly ParsedSearchTextGroup[],
+): FoldedText | null {
+  const anyOfTraitIds: number[] = []
+
+  for (const group of groups) {
+    const traitIds = traitAlternativesForOrGroup(data, group)
+    if (traitIds === null) return null
+    anyOfTraitIds.push(...traitIds)
+  }
+
+  const { text: _omitted, ...rest } = query
+  return {
+    query: rest,
+    freeTermRequired: [],
+    freeTermAnyOfGroups: [uniqueNumbers(anyOfTraitIds)],
+    includeIds: [],
+    excludeIds: [],
+  }
+}
+
+function traitAlternativesForOrGroup(
+  data: OfflinePunksDataClient,
+  group: ParsedSearchTextGroup,
+): number[] | null {
+  if (
+    group.attributeCount !== undefined ||
+    group.colorCount !== undefined ||
+    group.pixelCount !== undefined ||
+    group.skinTones !== undefined ||
+    group.includeIds !== undefined ||
+    group.excludeIds !== undefined ||
+    group.freeTerms.length === 0
+  ) {
+    return null
+  }
+
+  const exactPhrase = group.freeTerms.map((term) => term.text).join(' ')
+  const exactMatch = data.findTraitsByTextSync(exactPhrase, { exact: true })[0]
+  if (exactMatch !== undefined) return [exactMatch.id]
+
+  if (group.freeTerms.length !== 1) return null
+
+  const { freeTermRequired, freeTermAnyOfGroups } = resolveFreeTerms(
+    data,
+    group.freeTerms,
+  )
+  if (freeTermRequired.length === 1 && freeTermAnyOfGroups.length === 0) {
+    return freeTermRequired
+  }
+  if (freeTermRequired.length === 0 && freeTermAnyOfGroups.length === 1) {
+    return freeTermAnyOfGroups[0]
+  }
+  return null
+}
+
+function throwUnsupportedOrGroups(): never {
+  throw new PunksDataValidationError(
+    'OR groups in text cannot be represented as a single onchain filter; place them in separate offer slots',
+  )
 }
 
 function resolveFreeTerms(
@@ -528,8 +607,13 @@ export function compileOfferSlot(
   rejectUnchainableQueryFields(query, { allowIds: true })
   const folded = foldTextIntoQuery(data, query)
 
+  const explicitIncludeIds = uniqueIds(
+    [...(query.ids ?? []), ...(input.includeIds ?? [])],
+    'includeIds',
+  )
+  const textIncludeIds = uniqueIds(folded.includeIds, 'includeIds')
   const includeIds = uniqueIds(
-    [...(query.ids ?? []), ...(input.includeIds ?? []), ...folded.includeIds],
+    [...explicitIncludeIds, ...textIncludeIds],
     'includeIds',
   )
   const excludeIds = uniqueIds(
@@ -541,18 +625,14 @@ export function compileOfferSlot(
     'excludeIds',
   )
   const standard = normalizePunkStandard(input.standard ?? 'cryptopunks')
+  let criteria: PunksFilter
   try {
-    return {
-      criteria: buildFilter(
-        data,
-        folded.query,
-        folded.freeTermRequired,
-        folded.freeTermAnyOfGroups,
-      ),
-      standard,
-      includeIds,
-      excludeIds,
-    }
+    criteria = buildFilter(
+      data,
+      folded.query,
+      folded.freeTermRequired,
+      folded.freeTermAnyOfGroups,
+    )
   } catch (filterError) {
     /// Last-resort fallback for queries that can't compress into one onchain
     /// filter (e.g. multiple non-redundant any-of groups). Run the same
@@ -565,8 +645,13 @@ export function compileOfferSlot(
     /// (`hair`, `earring`, …) still contribute — `folded.query` already had
     /// its text stripped into structured fields for the filter compile path.
     const matched = data.searchSync(toOfflineSearchQuery(query))
-    const merged = uniqueIds([...includeIds, ...matched], 'includeIds')
-    if (merged.length === 0 || merged.length > 64) throw filterError
+    const merged = uniqueIds([...explicitIncludeIds, ...matched], 'includeIds')
+    if (
+      merged.length === 0 ||
+      merged.length > OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX
+    ) {
+      throw filterError
+    }
     return {
       criteria: emptyPunksFilter(),
       standard,
@@ -574,33 +659,48 @@ export function compileOfferSlot(
       excludeIds,
     }
   }
-}
-
-export function normalizePunkStandard(
-  standard: PunkStandardRef,
-): PunkStandardValue {
-  if (
-    standard === PunkStandard.CryptoPunks ||
-    standard === PunkStandard.CryptoPunksV1
-  ) {
-    return standard
-  }
-  if (typeof standard !== 'string') {
-    throw new PunksDataValidationError(
-      'standard must be cryptopunks or cryptopunks-v1',
+  if (textIncludeIds.length > 0 && !isPunksFilterEmpty(criteria)) {
+    return materializeOfferSlot(
+      data,
+      query,
+      standard,
+      explicitIncludeIds,
+      excludeIds,
     )
   }
-  const key = normalizeName(standard)
-  if (
-    key === 'cryptopunks' ||
-    key === 'punks' ||
-    key === 'v2' ||
-    key === 'cryptopunksv2'
-  ) {
-    return PunkStandard.CryptoPunks
+  return {
+    criteria,
+    standard,
+    includeIds,
+    excludeIds,
   }
-  if (key === 'cryptopunksv1' || key === 'v1') return PunkStandard.CryptoPunksV1
-  throw new PunksDataValidationError(`unknown Punk standard ${standard}`)
+}
+
+function materializeOfferSlot(
+  data: OfflinePunksDataClient,
+  query: PunkQuery,
+  standard: PunkStandardValue,
+  explicitIncludeIds: readonly number[],
+  excludeIds: readonly number[],
+): CompiledOfferSlot {
+  const matched = data.searchSync(toOfflineSearchQuery(query))
+  const includeIds = uniqueIds([...explicitIncludeIds, ...matched], 'includeIds')
+  if (includeIds.length === 0) {
+    throw new PunksDataValidationError(
+      'query matches no punks; cannot compile an empty offer slot',
+    )
+  }
+  if (includeIds.length > OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX) {
+    throw new PunksDataValidationError(
+      `query matches ${includeIds.length} punks; refine it to ${OFFER_SLOT_INCLUDE_ID_FALLBACK_MAX} or fewer ids`,
+    )
+  }
+  return {
+    criteria: emptyPunksFilter(),
+    standard,
+    includeIds,
+    excludeIds: [...excludeIds],
+  }
 }
 
 export function normalizePunkTypeRefs(
@@ -763,10 +863,6 @@ function uniqueIds(values: Iterable<number>, label: string): number[] {
 
 function uniqueNumbers(values: readonly number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b)
-}
-
-function normalizeName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 function assertQueryObject(query: PunkQuery): void {

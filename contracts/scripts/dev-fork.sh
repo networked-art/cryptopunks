@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Boots a long-running `hardhat node` using the `hardhatMainnet` fork config
-# from `hardhat.config.ts`, waits for JSON-RPC, then runs `seed-fork.ts` to
+# from `hardhat.config.ts`, waits for JSON-RPC, syncs the local chain timestamp
+# to the current wall clock with automine enabled, then runs `seed-fork.ts` to
 # transfer Punks from the test seller wallets to the recipient. The node keeps
 # running until Ctrl-C; re-run `pnpm seed:fork` against the live node to
 # re-seed (idempotent — Punks already owned by the recipient are skipped).
@@ -29,7 +30,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "Starting hardhat node — fork of mainnet @ block 25171056"
+echo "Starting hardhat node — fork of mainnet @ configured block"
 echo "  log: $NODE_LOG"
 # Serves the fork on the default Hardhat chainId (31337) so RainbowKit and
 # other browser wallets will add it without rejecting it as a malicious
@@ -57,6 +58,10 @@ for _ in $(seq 1 120); do
   echo -n "."
   sleep 1
 done
+
+echo
+echo "Syncing fork time to the current wall clock and enabling automine…"
+node scripts/sync-fork-time.mjs
 
 echo
 echo "Seeding fork — transferring Punks to jalil.eth…"

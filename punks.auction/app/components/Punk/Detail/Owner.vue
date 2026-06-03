@@ -36,21 +36,13 @@
 <script setup lang="ts">
 import type { TokenStandardValue } from '~/utils/auction'
 
-const props = defineProps<{
+defineProps<{
   punkId: number
   standard: TokenStandardValue
 }>()
 
-const {
-  owner,
-  isWrapped,
-  isVaulted,
-  isStashed,
-  pending: ownerPending,
-} = usePunkOwner(
-  () => props.punkId,
-  () => props.standard,
-)
+const detail = usePunkDetailDataContext()
+const { owner, isWrapped, isVaulted, isStashed, ownerPending } = detail
 const ownerKnown = computed(
   () =>
     !!owner.value &&

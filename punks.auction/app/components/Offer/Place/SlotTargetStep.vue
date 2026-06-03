@@ -24,6 +24,7 @@
       v-else-if="targetMode === 'traits'"
       v-model:text="traitSearchText"
       v-model:selected-text="traitText"
+      v-model:selected-kind="traitCriteriaKind"
       v-model:selected-query="traitQuery"
       v-model:selected-match-ids="traitMatchIds"
       v-model:include-ids="traitIncludeIds"
@@ -42,6 +43,7 @@
 import type { PunkQuery } from '@networked-art/punks-sdk'
 import {
   createPlaceOfferSlotDraft,
+  type PlaceOfferCriteriaKind,
   type PlaceOfferSlotDraft,
   type PlaceOfferTargetMode,
 } from '~/composables/usePlaceOfferDraft'
@@ -85,6 +87,11 @@ const traitSearchText = computed({
 const traitText = computed({
   get: () => current.value.traitText,
   set: (value: string) => updateCurrent({ traitText: value }),
+})
+const traitCriteriaKind = computed({
+  get: () => current.value.traitCriteriaKind,
+  set: (value: PlaceOfferCriteriaKind) =>
+    updateCurrent({ traitCriteriaKind: value }),
 })
 const traitQuery = computed({
   get: () => current.value.traitQuery,

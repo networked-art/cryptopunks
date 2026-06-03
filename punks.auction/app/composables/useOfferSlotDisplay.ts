@@ -9,6 +9,10 @@ import {
   type OfferSlot,
   type TokenStandardValue,
 } from '~/utils/auction'
+import {
+  offerCriteriaDisplay,
+  type OfferCriteriaDisplayKind,
+} from '~/utils/offerCriteriaText'
 import { OFFER_SLOT_TEXT } from '~/utils/offerSlotText'
 import { punkSearchHref } from '~/utils/punkSearch'
 
@@ -141,12 +145,13 @@ export function offerSlotHeading(
   const hasCriteria = !filterIsEmpty(slot.criteria)
 
   if (hasCriteria) {
-    const description = criteriaDescription(slot, offline)
+    const criteria = criteriaDisplay(slot, offline)
+    const description = criteriaLabel(criteria)
     const parts: OfferSlotDetailPart[] = []
     if (description) parts.push({ text: description })
     for (const text of slotIdListTitleParts(slot)) parts.push({ text })
     if (matchingPart) parts.push(matchingPart)
-    return { title: OFFER_SLOT_TEXT.traitOffer, subtitleParts: parts }
+    return { title: criteriaOfferTitle(criteria.kind), subtitleParts: parts }
   }
 
   if (isOfferSlotSet(slot)) {
@@ -248,9 +253,10 @@ function offerSlotSearchText(slot: OfferSlot, offline: PunksSdk) {
   const criteriaText = formatSearchText(offline.dataset.source, {
     criteria: slot.criteria,
   })
-  const criteriaGroup = [criteriaText, ...excludeTokens]
-    .filter(Boolean)
-    .join(' ')
+  const criteriaGroup = criteriaText
+    .split(/\s+OR\s+/)
+    .map((group) => [group, ...excludeTokens].filter(Boolean).join(' '))
+    .join(' OR ')
   if (!includeTokens.length) return criteriaGroup
 
   const includeGroup = [...includeTokens, ...excludeTokens].join(' ')
@@ -285,21 +291,24 @@ function searchOfferSlot(
 }
 
 function criteriaTitle(slot: OfferSlot, offline: PunksSdk) {
-  const description = criteriaDescription(slot, offline)
+  const criteria = criteriaDisplay(slot, offline)
+  const description = criteriaLabel(criteria)
+  const title = criteriaOfferTitle(criteria.kind)
   return description
-    ? `${OFFER_SLOT_TEXT.traitOffer}: ${description}`
-    : OFFER_SLOT_TEXT.traitOffer
+    ? `${title}: ${description}`
+    : title
 }
 
-function criteriaDescription(slot: OfferSlot, offline: PunksSdk) {
-  try {
-    const label = formatSearchText(offline.dataset.source, {
-      criteria: slot.criteria,
-    })
-    return humanizeCriteriaLabel(label)
-  } catch {
-    return ''
-  }
+function criteriaDisplay(slot: OfferSlot, offline: PunksSdk) {
+  return offerCriteriaDisplay(offline, slot.criteria)
+}
+
+function criteriaLabel(criteria: ReturnType<typeof criteriaDisplay>) {
+  return criteria.label === 'Custom criteria' ? '' : criteria.label
+}
+
+function criteriaOfferTitle(kind: OfferCriteriaDisplayKind) {
+  return kind === 'group' ? OFFER_SLOT_TEXT.traitGroup : OFFER_SLOT_TEXT.traitOffer
 }
 
 function slotIdListTitleParts(slot: OfferSlot) {
@@ -311,19 +320,6 @@ function slotIdListTitleParts(slot: OfferSlot) {
 
 function countLabel(count: number, label: string) {
   return count > 0 ? `${count.toLocaleString()} ${label}` : ''
-}
-
-function humanizeCriteriaLabel(label: string) {
-  const parts: string[] = []
-  const rest = label
-    .replace(/"([^"]+)"/g, (_match, term: string) => {
-      parts.push(term)
-      return ' '
-    })
-    .trim()
-
-  if (rest) parts.push(rest)
-  return parts.join(' · ')
 }
 
 function matchCountLabel(slot: OfferSlot, count: number | undefined) {

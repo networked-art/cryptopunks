@@ -7,21 +7,27 @@
       @click="open = !open"
     >
       <Icon :name="open ? 'lucide:chevron-down' : 'lucide:chevron-right'" />
-      <span>Private lot offer</span>
+      <span>Restrict to a single buyer</span>
     </button>
 
-    <label
+    <div
       v-if="open"
-      class="private-buyer-field"
+      class="private-buyer-body"
     >
-      <span class="private-buyer-label muted">Initial Bidder</span>
-      <EvmAddressInput
-        v-model="buyer"
-        :placeholder="placeholder"
-        autocomplete="off"
-        spellcheck="false"
-      />
-    </label>
+      <label class="private-buyer-field">
+        <span class="private-buyer-label muted">Buyer address</span>
+        <EvmAddressInput
+          v-model="buyer"
+          :placeholder="placeholder"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </label>
+      <p class="private-buyer-help muted">
+        They alone can open the auction or have their offer accepted. Once the
+        auction is open, anyone can outbid them.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -67,6 +73,14 @@ watch(open, (isOpen) => {
   outline: none;
 }
 
+.private-buyer-body {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--size-1);
+}
+
 .private-buyer-field {
   display: flex;
   width: 100%;
@@ -77,6 +91,12 @@ watch(open, (isOpen) => {
 
 .private-buyer-label {
   font-size: var(--font-xs);
+}
+
+.private-buyer-help {
+  margin: 0;
+  font-size: var(--font-xs);
+  line-height: var(--line-height-md, 1.4);
 }
 
 .private-buyer-field :deep(.evm-address-input) {

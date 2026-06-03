@@ -13,7 +13,7 @@ import "./PunksAuctionEscrow.sol";
 
 /// @title  PunksAuction
 ///
-/// @notice Zero-fee auction house for CryptoPunks with multi-item lots and offers.
+/// @notice Auction House for CryptoPunks with multi-item lots and offers.
 ///
 /// @dev    Sellers custody Punks in their own `PunksVault` (deployed via the
 ///         `PunksVaultFactory`) and approve this contract as an operator. The
@@ -30,7 +30,7 @@ contract PunksAuction is PunkLots, PunkPurchaseOffers {
     /// @notice Basis point denominator used for bid increments.
     uint256 internal constant BPS = 10_000;
     /// @notice Minimum increase over the previous bid.
-    uint256 internal constant BID_INCREASE_BPS = 1_000;
+    uint256 internal constant BID_INCREASE_BPS = 100;
     /// @notice Duration of every auction from initialization.
     uint40 internal constant AUCTION_DURATION = 24 hours;
     /// @notice Minimum time remaining after a late bid.

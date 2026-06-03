@@ -39,6 +39,7 @@ auction reads need a `publicClient`.
 | `punks.stashBids`                             | Node Foundation offchain bids orderbook (prepare, sign, submit, accept)      |
 | `punks.offers`                                | Networked Art criterion offers                                               |
 | `punks.auctions`                              | Vaults, lots, bidding, settlement                                            |
+| `punks.vault`                                 | Punks Vault deposits, withdrawals, and custody status                        |
 
 ## Choosing The Right Surface
 
@@ -94,18 +95,92 @@ punks.facets({ text: 'mohawk' })
 `query.text` is parsed into the same shape as the structured fields above and
 compiles 1:1 to an onchain `Punks.Filter`. Recognized phrases:
 
-| Phrase                                            | Maps to                                               |
-| ------------------------------------------------- | ----------------------------------------------------- |
-| `2 colors`, `3 attributes`, `220 pixels`          | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
-| `<=4 colors`, `>= 3 attributes`, `2-4 colors`     | numeric range on the same axis                        |
-| `dark skin`, `albino skin`, `skin fair`, `albino` | `skinTone` (expands to Female + Male slot)            |
-| `#1234`, bare `1234`                              | offer-slot `includeIds[]`                             |
-| `-1234`, `-#1234`                                 | offer-slot `excludeIds[]`                             |
-| Anything else                                     | case-insensitive trait name match                     |
+| Phrase                                                   | Maps to                                               |
+| -------------------------------------------------------- | ----------------------------------------------------- |
+| `2 colors`, `two colors`, `zero attributes`, `220 pixels` | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
+| `<=4 colors`, `>= 3 attributes`, `2-4 colors`            | numeric range on the same axis                        |
+| `dark skin`, `albino skin`, `skin fair`, `albino`        | `skinTone` (expands to Female + Male slot)            |
+| `#1234`, bare `1234`                                     | offer-slot `includeIds[]`                             |
+| `-1234`, `-#1234`                                        | offer-slot `excludeIds[]`                             |
+| `burned`, `burned punks`                                 | curated-collection id set (see below)                 |
+| Anything else                                            | case-insensitive trait name match                     |
 
 Skin tones map to the four human head-variant slots: `Dark → 1`, `Brown → 2`,
 `Fair → 3`, `Albino → 4`. Aliens, Apes, and Zombies are never selected by a
 skin tone.
+
+### Curated collections
+
+Curated collections are named, sourced sets of Punk ids — `burned`, `museum`,
+and `perfect-and-priceless` today, more to come. A collection alias resolves to
+its id set through the existing `includeIds` path, so it composes with the rest
+of a query, and a set can carry several aliases:
+
+```ts
+punks.search({ text: 'burned punks' }) // the burned set
+punks.search({ text: 'burned alien' }) // burned ∩ alien
+punks.count({ text: 'burned OR alien' })
+
+punks.search({ text: 'paper' }) // the Perfect & Priceless set
+punks.search({ text: 'kate vass' }) // same set, by its gallery
+```
+
+Collections can nest independently resolvable institutions, so `museum` matches
+the whole set while each institution matches its own holdings:
+
+```ts
+punks.search({ text: 'museum punks' }) // every institution-held Punk
+punks.search({ text: 'MOMA' }) // just MoMA's
+punks.search({ text: 'zkm' }) // just ZKM's
+```
+
+Matching is whole-phrase and on by default; the trailing `punk(s)` is optional
+and quoting (`"burned"`) opts back out to a literal trait lookup. Look the sets
+up directly for UI — each call returns a fresh, mutable copy:
+
+```ts
+punks.collections.list() // [{ slug, title, description, aliases, source, sourceTemplate?, standard, ids, institutions? }]
+punks.collections.get('museum') // one collection (with its institutions), or undefined
+punks.collections.has('burned')
+```
+
+Each collection carries a `standard` (`PunkStandard.CryptoPunks` /
+`CryptoPunksV1`) so burns and holdings stay attributed to the right contract.
+
+A collection (or an institution) may add an optional `sourceTemplate` — a URL
+with an `{id}` placeholder — to deep-link a single Punk on the curating site.
+`forPunk` reports the collections a Punk belongs to and resolves the best link
+(the most specific `sourceTemplate` filled with the id, else the institution or
+collection `source`); `matches` reports which collections a search phrase
+mentions, for surfacing an explainer:
+
+```ts
+punks.collections.forPunk(1286)
+// [{ collection: <museum>, institutions: [<zkm>], sourceUrl: 'https://museumpunks.com/1286' }]
+punks.collections.forPunk(685)
+// [{ collection: <burned>, institutions: [], sourceUrl: 'https://burnedpunks.com' }] — no template
+punks.collections.forPunk(0) // [] — also [] for ids outside 0..9999
+
+punks.collections.matches('burned') // [{ collection: <burned> }]
+punks.collections.matches('moma') // [{ collection: <museum>, institution: <moma> }]
+punks.collections.matches('burned hoodie') // still [{ collection: <burned> }] — any term, anywhere
+```
+
+Pass `standard` to `createPunksSdk` (or the offline client) to scope a client to
+a single standard: only collections of that standard resolve in `text` search
+and appear in the lookup facade. Left unset, every collection resolves — the
+default. The standalone `searchCollections` / `getSearchCollection` exports stay
+global regardless.
+
+```ts
+const v2 = createPunksSdk({ standard: 'v2' }) // PunkStandard.CryptoPunks
+v2.search({ text: 'burned' }) // resolves — `burned` is of this standard
+v2.collections.list() // only collections of this standard
+
+const scoped = createPunksSdk({ standard: 'v1' }) // PunkStandard.CryptoPunksV1
+scoped.search({ text: 'burned' }) // [] — no collection of this standard matches
+scoped.collections.has('burned') // false
+```
 
 Use `dataset` directly when you want catalogs, palette data, or bitmaps:
 
@@ -252,10 +327,10 @@ seeding a 24h auction with the offer as its opening bid.
 The package still exports:
 
 - `createPunksDataClient` and `createPunksRendererClient`
-- clients for `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, the `PunksMarket` indexer, wrappers, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
-- ABIs for `PunksData`, `PunksRenderer`, `CryptoPunksMarket`, `PunksMarket`, `PunksV1Wrapper`, `UnwrapV1Punks`, wrappers, Stash, auctions, and the auction vault
+- clients for `CryptoPunksMarket`, the V1 market (the criteria-bid `PunksMarket`), `PunksV1Wrapper`, the V1 market indexer, wrappers, the Punks Vault, StashFactory, Stash, the Stash bids orderbook, auctions, and offers
+- ABIs for `PunksData`, `PunksRenderer`, `CryptoPunksMarket`, the V1 market (`punksV1MarketAbi`), `PunksV1Wrapper`, `UnwrapV1Punks`, wrappers, Stash, auctions, and the Punks Vault
 - bitmap utilities and validation helpers
-- `@networked-art/punks-sdk/offline` for direct offline dataset access
+- `@networked-art/punks-sdk/offline` (plus `/offline-data` and `/offline-pixel-data`) for direct offline dataset access
 
 ## Development
 

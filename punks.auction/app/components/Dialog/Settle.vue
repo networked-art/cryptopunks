@@ -3,7 +3,7 @@
     <Dialog
       v-model:open="decisionOpen"
       :title="decisionTitle"
-      class="offer-fulfillment-dialog"
+      class="settle-dialog"
       compat
       @closed="resetDecision"
     >
@@ -114,14 +114,15 @@ import {
   lotMatchesOffer,
   type LotRecord,
   type OfferRecord,
+  type TokenStandardValue,
 } from '~/utils/auction'
 import { offerSlotDisplay } from '~/composables/useOfferSlotDisplay'
 import type {
   OfferFulfillmentCandidate,
-  OfferFulfillmentMode,
   OfferFulfillmentSlot,
   SelectedFulfillmentItem,
-} from '~/utils/offerFulfillment'
+  SettleRequest,
+} from '~/utils/settle'
 
 type DecisionStep =
   | 'idle'
@@ -130,11 +131,18 @@ type DecisionStep =
   | 'hammer'
   | 'empty'
 
-const props = defineProps<{
-  offer: OfferRecord
-  lots: LotRecord[]
-  matchingLots: LotRecord[]
-}>()
+type DiscoverRequest = Extract<SettleRequest, { mode: 'start' | 'accept' }>
+
+type ItemRef = { standard: TokenStandardValue; punkId: number }
+
+const props = withDefaults(
+  defineProps<{
+    lots?: LotRecord[]
+  }>(),
+  {
+    lots: () => [],
+  },
+)
 
 const emit = defineEmits<{ changed: [tx: Hash] }>()
 
@@ -177,7 +185,7 @@ const {
   onFlowError,
 } = transactionFlow
 
-const mode = ref<OfferFulfillmentMode>('accept')
+const activeRequest = ref<SettleRequest | null>(null)
 const decisionStep = ref<DecisionStep>('idle')
 const resolving = ref(false)
 const error = ref<string | null>(null)
@@ -187,6 +195,13 @@ const selectedLotId = ref<bigint | null>(null)
 const selectionSlots = ref<OfferFulfillmentSlot[]>([])
 const selectedKeys = ref<string[]>([])
 const weightBps = ref<number[]>([])
+
+const mode = computed(() => activeRequest.value?.mode ?? 'accept')
+const offer = computed(() =>
+  activeRequest.value && 'offer' in activeRequest.value
+    ? activeRequest.value.offer
+    : null,
+)
 
 const decisionOpen = computed({
   get: () => decisionStep.value !== 'idle',
@@ -199,7 +214,7 @@ const decisionTitle = computed(() => {
   if (decisionStep.value === 'lot-picker') return 'Choose lot'
   if (decisionStep.value === 'punk-selection') return 'Choose Punks'
   if (decisionStep.value === 'hammer') return 'Hammer allocation'
-  return 'Offer fulfillment'
+  return mode.value === 'accept' ? 'Sell now' : 'Start auction'
 })
 
 const selectedLot = computed(
@@ -222,90 +237,79 @@ const selectedItems = computed<SelectedFulfillmentItem[]>(() => {
     .filter((item): item is SelectedFulfillmentItem => !!item)
 })
 
-const canContinueSelection = computed(
-  () =>
-    selectedItems.value.length === props.offer.slots.length &&
-    uniqueKeys(selectedKeys.value).length === props.offer.slots.length,
-)
+const canContinueSelection = computed(() => {
+  const slotCount = offer.value?.slots.length ?? 0
+  return (
+    selectedItems.value.length === slotCount &&
+    uniqueKeys(selectedKeys.value).length === slotCount
+  )
+})
 
-const hammerValid = computed(
-  () =>
-    selectedItems.value.length === props.offer.slots.length &&
+const hammerValid = computed(() => {
+  const slotCount = offer.value?.slots.length ?? 0
+  return (
+    selectedItems.value.length === slotCount &&
     weightBps.value.length === selectedItems.value.length &&
     weightBps.value.every((weight) => weight > 0) &&
     weightBps.value.reduce((sum, weight) => sum + weight, 0) ===
-      TOTAL_WEIGHT_BPS,
-)
+      TOTAL_WEIGHT_BPS
+  )
+})
 
-const sellerMatchingLots = computed(() =>
-  props.matchingLots
-    .filter((lot) => sameAddress(lot.seller, address.value))
-    .filter((lot) => lotCanUseOffer(lot))
-    .filter((lot) => lotV1Allowed(lot))
-    .filter((lot) =>
-      mode.value === 'accept' ? lot.items.length <= MAX_INSTANT_ITEMS : true,
-    ),
-)
-
-async function start(nextMode: OfferFulfillmentMode) {
+async function start(request: SettleRequest) {
   if (resolving.value) return
-  mode.value = nextMode
+  activeRequest.value = request
   error.value = null
   emptyMessage.value = ''
-
-  if (!address.value) {
-    showEmpty('Connect the seller wallet to use this offer.')
-    return
-  }
-  if (!v1ActionsAllowed()) {
-    showEmpty('Enable V1 rendering in settings to use V1 offers.')
-    return
-  }
+  closeDecision()
 
   resolving.value = true
   try {
+    if (!address.value) {
+      showEmpty('Connect a wallet to continue.')
+      return
+    }
+
+    if (request.mode === 'open') {
+      if (!v1AllowedForLot(request.lot)) {
+        showEmpty('Enable V1 rendering in settings to open this auction.')
+        return
+      }
+      await runOpenAuction(request.lot)
+      return
+    }
+
+    if (!v1AllowedForOffer(request.offer)) {
+      showEmpty('Enable V1 rendering in settings to use V1 offers.')
+      return
+    }
+
+    if ('lot' in request) {
+      if (!v1AllowedForLot(request.lot)) {
+        showEmpty('Enable V1 rendering in settings to use this lot.')
+        return
+      }
+      if (
+        request.mode === 'accept' &&
+        request.lot.items.length > MAX_INSTANT_ITEMS
+      ) {
+        showEmpty(
+          `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Start an auction from this offer instead.`,
+        )
+        return
+      }
+      await runExistingLot(request.lot, request.offer, request.mode)
+      return
+    }
+
     await inventory.refresh()
 
-    const lots = sellerMatchingLots.value
-    if (lots.length === 1) {
-      await runExistingLot(lots[0]!)
-      return
-    }
-    if (lots.length > 1) {
-      lotOptions.value = lots
-      selectedLotId.value = lots[0]?.id ?? null
-      decisionStep.value = 'lot-picker'
+    if ('items' in request) {
+      await runFromPreselectedItems(request)
       return
     }
 
-    if (
-      mode.value === 'accept' &&
-      props.offer.slots.length > MAX_INSTANT_ITEMS
-    ) {
-      showEmpty(
-        `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Use Start auction for this offer.`,
-      )
-      return
-    }
-
-    const slots = buildSelectionSlots()
-    selectionSlots.value = slots
-
-    if (
-      !slots.every((slot) =>
-        slot.candidates.some((candidate) => !candidate.unavailableReason),
-      )
-    ) {
-      showEmpty(emptyCandidateMessage(slots))
-      return
-    }
-
-    selectedKeys.value = slots.map(
-      (slot) =>
-        slot.candidates.find((candidate) => !candidate.unavailableReason)
-          ?.key ?? '',
-    )
-    decisionStep.value = 'punk-selection'
+    await runDiscover(request)
   } catch (e) {
     showEmpty((e as Error).message)
   } finally {
@@ -313,15 +317,120 @@ async function start(nextMode: OfferFulfillmentMode) {
   }
 }
 
+async function runDiscover(request: DiscoverRequest) {
+  const lots = sellerMatchingLots(request.offer, request.mode)
+  if (lots.length === 1) {
+    await runExistingLot(lots[0]!, request.offer, request.mode)
+    return
+  }
+  if (lots.length > 1) {
+    lotOptions.value = lots
+    selectedLotId.value = lots[0]?.id ?? null
+    decisionStep.value = 'lot-picker'
+    return
+  }
+
+  if (
+    request.mode === 'accept' &&
+    request.offer.slots.length > MAX_INSTANT_ITEMS
+  ) {
+    showEmpty(
+      `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Start an auction from this offer instead.`,
+    )
+    return
+  }
+
+  const slots = buildSelectionSlots(request.offer)
+  selectionSlots.value = slots
+
+  if (
+    !slots.every((slot) =>
+      slot.candidates.some((candidate) => !candidate.unavailableReason),
+    )
+  ) {
+    showEmpty(emptyCandidateMessage(slots))
+    return
+  }
+
+  selectedKeys.value = slots.map(
+    (slot) =>
+      slot.candidates.find((candidate) => !candidate.unavailableReason)
+        ?.key ?? '',
+  )
+  decisionStep.value = 'punk-selection'
+}
+
+async function runFromPreselectedItems(
+  request: DiscoverRequest & { items: readonly ItemRef[] },
+) {
+  const offerRecord = request.offer
+  if (request.items.length !== offerRecord.slots.length) {
+    showEmpty(
+      'The selected Punks do not match the offer slots — refresh and try again.',
+    )
+    return
+  }
+  if (
+    request.mode === 'accept' &&
+    request.items.length > MAX_INSTANT_ITEMS
+  ) {
+    showEmpty(
+      `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Start an auction from this offer instead.`,
+    )
+    return
+  }
+
+  const reservedKeys = activeLotItemKeys()
+  const items: SelectedFulfillmentItem[] = []
+  for (const [index, ref_] of request.items.entries()) {
+    const key = `${ref_.standard}-${ref_.punkId}`
+    const inventoryItem = inventory.items.value.find(
+      (item) => item.key === key,
+    )
+    if (!inventoryItem) {
+      showEmpty(`You do not own Punk #${ref_.punkId}.`)
+      return
+    }
+    if (inventoryItem.custody === 'unsupported') {
+      showEmpty(`Punk #${ref_.punkId} is in unsupported custody.`)
+      return
+    }
+    if (reservedKeys.has(key)) {
+      showEmpty(`Punk #${ref_.punkId} is already in one of your lots.`)
+      return
+    }
+    const slot = offerRecord.slots[index]!
+    if (!slotMatchesItem(slot, ref_)) {
+      showEmpty(`Punk #${ref_.punkId} does not match offer slot ${index + 1}.`)
+      return
+    }
+    items.push({
+      ...inventoryItem,
+      slotIndex: index,
+      weightBps: 0,
+    })
+  }
+
+  const weights =
+    items.length === 1 ? [TOTAL_WEIGHT_BPS] : equalLotWeights(items.length)
+  const weighted = items.map((item, index) => ({
+    ...item,
+    weightBps: weights[index] ?? 0,
+  }))
+  await executeNewLotPlans(weighted)
+}
+
 function actUseSelectedLot() {
+  if (!activeRequest.value || activeRequest.value.mode === 'open') return
+  if (!offer.value) return
   if (!selectedLot.value) return
-  void runExistingLot(selectedLot.value)
+  void runExistingLot(selectedLot.value, offer.value, activeRequest.value.mode)
 }
 
 function actContinueSelection() {
   if (!canContinueSelection.value) return
   prepareWeights()
-  if (props.offer.slots.length > 1) {
+  if ((offer.value?.slots.length ?? 0) > 1) {
     decisionStep.value = 'hammer'
   } else {
     void actCreateFromSelection()
@@ -330,15 +439,19 @@ function actContinueSelection() {
 
 async function actCreateFromSelection() {
   if (!canContinueSelection.value) return
-  if (props.offer.slots.length > 1 && !hammerValid.value) return
+  if ((offer.value?.slots.length ?? 0) > 1 && !hammerValid.value) return
+  await executeNewLotPlans(selectedItems.value)
+}
 
+async function executeNewLotPlans(items: readonly SelectedFulfillmentItem[]) {
   const owner = address.value
-  if (!owner) return
+  const offerRecord = offer.value
+  const request = activeRequest.value
+  if (!owner || !offerRecord || !request || request.mode === 'open') return
 
-  const items = selectedItems.value
-  if (mode.value === 'accept' && items.length > MAX_INSTANT_ITEMS) {
+  if (request.mode === 'accept' && items.length > MAX_INSTANT_ITEMS) {
     showEmpty(
-      `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Use Start auction for this offer.`,
+      `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Start an auction from this offer instead.`,
     )
     return
   }
@@ -352,29 +465,47 @@ async function actCreateFromSelection() {
       stash: inventory.stash.value,
       items,
     })
-    const finalPlan = finalNewLotPlan(items)
-    await runPlans([...prepPlans, finalPlan], transactionTextForNewLot())
+    const finalPlan = finalNewLotPlan(items, request.mode, offerRecord)
+    await runPlans([...prepPlans, finalPlan], transactionTextForNewLot(request.mode))
   } catch (e) {
     showEmpty((e as Error).message)
   }
 }
 
-async function runExistingLot(lot: LotRecord) {
+async function runExistingLot(
+  lot: LotRecord,
+  offerRecord: OfferRecord,
+  nextMode: 'start' | 'accept',
+) {
   closeDecision()
   try {
     const plan =
-      mode.value === 'accept'
+      nextMode === 'accept'
         ? sdk.value.offers.prepareAcceptFromLot({
-            offerId: props.offer.id,
+            offerId: offerRecord.id,
             lotId: lot.id,
             minAmountWei: lot.reserveWei,
           })
         : sdk.value.auctions.prepareStartAuctionFromOffer({
-            offerId: props.offer.id,
+            offerId: offerRecord.id,
             lotId: lot.id,
             minAmountWei: lot.reserveWei,
           })
-    await runPlans([plan], transactionTextForLot(lot))
+    await runPlans([plan], transactionTextForLot(lot, nextMode, offerRecord))
+  } catch (e) {
+    showEmpty((e as Error).message)
+  }
+}
+
+async function runOpenAuction(lot: LotRecord) {
+  closeDecision()
+  try {
+    const plan = sdk.value.auctions.prepareOpenAuction({
+      lotId: lot.id,
+      reserveWei: lot.reserveWei,
+      bidWei: lot.reserveWei,
+    })
+    await runPlans([plan], transactionTextForOpenAuction(lot))
   } catch (e) {
     showEmpty((e as Error).message)
   }
@@ -382,24 +513,26 @@ async function runExistingLot(lot: LotRecord) {
 
 function finalNewLotPlan(
   items: readonly SelectedFulfillmentItem[],
+  nextMode: 'start' | 'accept',
+  offerRecord: OfferRecord,
 ): ContractWritePlan {
   const lotItems = custodyPlan.lotItemsFor(items)
-  return mode.value === 'accept'
+  return nextMode === 'accept'
     ? sdk.value.offers.prepareCreateLotAndAccept({
-        offerId: props.offer.id,
+        offerId: offerRecord.id,
         items: lotItems,
-        minAmountWei: props.offer.amountWei,
+        minAmountWei: offerRecord.amountWei,
       })
     : sdk.value.offers.prepareCreateLotAndStartAuction({
-        offerId: props.offer.id,
+        offerId: offerRecord.id,
         items: lotItems,
-        minAmountWei: props.offer.amountWei,
+        minAmountWei: offerRecord.amountWei,
       })
 }
 
-function buildSelectionSlots(): OfferFulfillmentSlot[] {
+function buildSelectionSlots(offerRecord: OfferRecord): OfferFulfillmentSlot[] {
   const activeLotByItem = activeLotMap()
-  return props.offer.slots.map((slot, index) => {
+  return offerRecord.slots.map((slot, index) => {
     const display = offerSlotDisplay(slot, offline, index)
     const candidates = inventory.items.value
       .filter((item) =>
@@ -439,6 +572,30 @@ function activeLotMap() {
   return map
 }
 
+function activeLotItemKeys() {
+  const keys = new Set<string>()
+  for (const lot of props.lots) {
+    if (!sameAddress(lot.seller, address.value)) continue
+    for (const item of lot.items) {
+      keys.add(`${item.standard}-${item.punkId}`)
+    }
+  }
+  return keys
+}
+
+function sellerMatchingLots(
+  offerRecord: OfferRecord,
+  nextMode: 'start' | 'accept',
+) {
+  return props.lots
+    .filter((lot) => sameAddress(lot.seller, address.value))
+    .filter((lot) => lotCanUseOffer(lot, offerRecord))
+    .filter((lot) => v1AllowedForLot(lot))
+    .filter((lot) =>
+      nextMode === 'accept' ? lot.items.length <= MAX_INSTANT_ITEMS : true,
+    )
+}
+
 function unavailableReason(
   item: OfferFulfillmentCandidate,
   activeLotId?: bigint,
@@ -451,92 +608,108 @@ function unavailableReason(
 }
 
 function prepareWeights() {
+  const slotCount = offer.value?.slots.length ?? 0
   weightBps.value =
-    props.offer.slots.length === 1
-      ? [TOTAL_WEIGHT_BPS]
-      : equalLotWeights(props.offer.slots.length)
+    slotCount <= 1 ? [TOTAL_WEIGHT_BPS] : equalLotWeights(slotCount)
 }
 
 function resolvedWeight(index: number) {
-  if (props.offer.slots.length === 1) return TOTAL_WEIGHT_BPS
+  const slotCount = offer.value?.slots.length ?? 0
+  if (slotCount <= 1) return TOTAL_WEIGHT_BPS
   return weightBps.value[index] ?? 0
 }
 
-function transactionTextForLot(lot: LotRecord) {
-  const dialogTitle = mode.value === 'accept' ? 'Accept Offer' : 'Start Auction'
-  const action = mode.value === 'accept' ? 'Accept' : 'Start auction'
+function transactionTextForLot(
+  lot: LotRecord,
+  nextMode: 'start' | 'accept',
+  offerRecord: OfferRecord,
+) {
+  const dialogTitle = nextMode === 'accept' ? 'Sell now' : 'Start auction'
+  const action = nextMode === 'accept' ? 'Sell now' : 'Start auction'
   return {
     dialogTitle,
     single: {
       title: { confirm: dialogTitle, waiting: dialogTitle },
       lead: {
         confirm:
-          mode.value === 'accept'
-            ? `Settle lot #${lot.id} instantly at ${formatEther(
-                props.offer.amountWei,
+          nextMode === 'accept'
+            ? `Settle lot #${lot.id} immediately to the offerer for ${formatEther(
+                offerRecord.amountWei,
               )} ETH.`
-            : `Open lot #${lot.id} as a 24-hour auction with this offer as the opening bid.`,
+            : `Open lot #${lot.id} as a 24-hour auction seeded with this ${formatEther(
+                offerRecord.amountWei,
+              )} ETH offer as the opening bid.`,
       },
       action: { confirm: action },
     },
   }
 }
 
-function transactionTextForNewLot() {
-  const dialogTitle = mode.value === 'accept' ? 'Accept Offer' : 'Start Auction'
-  const complete =
-    mode.value === 'accept' ? 'Offer accepted' : 'Auction started'
+function transactionTextForNewLot(nextMode: 'start' | 'accept') {
+  const dialogTitle = nextMode === 'accept' ? 'Sell now' : 'Start auction'
+  const complete = nextMode === 'accept' ? 'Offer accepted' : 'Auction started'
+  const offerRecord = offer.value
+  const amount = offerRecord ? formatEther(offerRecord.amountWei) : ''
   return {
     dialogTitle,
     single: {
       title: { confirm: dialogTitle, waiting: dialogTitle, complete },
       lead: {
         confirm:
-          mode.value === 'accept'
-            ? `Create a matching lot and settle it instantly at ${formatEther(
-                props.offer.amountWei,
-              )} ETH.`
-            : 'Create a matching lot and start a 24-hour auction with this offer as the opening bid.',
+          nextMode === 'accept'
+            ? `Create a matching lot and settle it instantly to the offerer for ${amount} ETH.`
+            : `Create a matching lot and start a 24-hour auction with this ${amount} ETH offer as the opening bid.`,
       },
-      action: {
-        confirm: mode.value === 'accept' ? 'Accept' : 'Start auction',
-      },
+      action: { confirm: nextMode === 'accept' ? 'Sell now' : 'Start auction' },
     },
     multi: {
       title: { confirm: dialogTitle, complete },
       lead: {
         confirm: 'Review and execute the required setup transactions.',
         complete:
-          mode.value === 'accept'
+          nextMode === 'accept'
             ? 'The offer was accepted.'
             : 'The auction was started.',
       },
-      action: {
-        confirm: mode.value === 'accept' ? 'Accept' : 'Start auction',
-      },
+      action: { confirm: nextMode === 'accept' ? 'Sell now' : 'Start auction' },
     },
   }
 }
 
-function lotCanUseOffer(lot: LotRecord) {
+function transactionTextForOpenAuction(lot: LotRecord) {
+  const dialogTitle = 'Start auction'
+  const reserve = formatEther(lot.reserveWei)
+  return {
+    dialogTitle,
+    single: {
+      title: { confirm: dialogTitle, waiting: dialogTitle, complete: 'Auction started' },
+      lead: {
+        confirm: `Open lot #${lot.id} as a 24-hour auction and place your own opening bid of ${reserve} ETH. The bid is refunded if you are outbid; the auction settles to the highest bidder when the timer ends.`,
+      },
+      action: { confirm: `Start auction` },
+    },
+  }
+}
+
+function lotCanUseOffer(lot: LotRecord, offerRecord: OfferRecord) {
   return (
-    lotMatchesOffer(props.offer, lot, criteriaMatchesPunk) &&
+    lotMatchesOffer(offerRecord, lot, criteriaMatchesPunk) &&
     (sameAddress(lot.onlySellTo, ZERO_ADDRESS) ||
-      sameAddress(lot.onlySellTo, props.offer.offerer))
+      sameAddress(lot.onlySellTo, offerRecord.offerer))
   )
 }
 
-function lotV1Allowed(lot: LotRecord) {
+function v1AllowedForLot(lot: LotRecord) {
   return (
     renderV1.value ||
     !lot.items.some((item) => item.standard === TokenStandard.CryptoPunksV1)
   )
 }
 
-function v1ActionsAllowed() {
+function v1AllowedForOffer(offerRecord: OfferRecord) {
   return (
     renderV1.value ||
-    !props.offer.slots.some(
+    !offerRecord.slots.some(
       (slot) => slot.standard === TokenStandard.CryptoPunksV1,
     )
   )
@@ -609,10 +782,17 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 async function redirectAfterSettlement(
   receipts: readonly TransactionReceipt[],
 ) {
-  if (mode.value === 'accept') {
-    await router.replace(`/profile/${props.offer.offerer}`)
+  const request = activeRequest.value
+  if (!request) return
+
+  if (request.mode === 'accept') {
+    const recipient =
+      'offer' in request ? request.offer.offerer : address.value
+    if (recipient) await router.replace(`/profile/${recipient}`)
     return
   }
+
+  // 'start' or 'open' — both initialise an auction; jump to it.
   const auctionId = auctionIdFromReceipts(receipts)
   if (auctionId !== null) {
     await router.replace(`/auctions/${auctionId}`)
@@ -643,7 +823,7 @@ defineExpose({ start })
 </script>
 
 <style scoped>
-.offer-fulfillment-dialog :deep(section) {
+.settle-dialog :deep(section) {
   gap: var(--size-3);
 }
 

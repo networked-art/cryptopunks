@@ -24,7 +24,6 @@ export default defineConfig({
     aside: false,
     nav: [
       { text: 'github', link: 'https://github.com/networked-art/cryptopunks' },
-      { text: 'punksmarket.app (v1)', link: 'https://punksmarket.app' },
     ],
     outline: false,
     sidebar: [
@@ -73,6 +72,14 @@ export default defineConfig({
               },
             ],
           },
+          {
+            text: 'PunksAuction',
+            link: '/contracts/punks-auction',
+            collapsed: false,
+            items: [
+              { text: 'Reference', link: '/contracts/punks-auction/reference' },
+            ],
+          },
         ],
       },
       {
@@ -98,6 +105,27 @@ export default defineConfig({
               { text: 'Stash Bids', link: '/sdk/stash-bids' },
               { text: 'Offers And Auctions', link: '/sdk/offers-and-auctions' },
               { text: 'Utilities And Caching', link: '/sdk/utilities' },
+            ],
+          },
+        ],
+      },
+      {
+        text: 'UI',
+        items: [
+          { text: 'punks.auction', link: '/ui/punks-auction' },
+          { text: 'punksmarket.app', link: '/ui/punksmarket-app' },
+        ],
+      },
+      {
+        text: 'Indexer',
+        items: [
+          {
+            text: 'Overview',
+            link: '/indexer',
+            collapsed: false,
+            items: [
+              { text: 'Schema', link: '/indexer/schema' },
+              { text: 'API', link: '/indexer/api' },
             ],
           },
         ],

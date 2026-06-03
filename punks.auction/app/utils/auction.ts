@@ -70,10 +70,33 @@ export function formatLotItemLabel(item: Pick<LotItem, 'standard' | 'punkId'>) {
   }`
 }
 
+/// A CryptoPunk and its V1 twin (same id) read as a single "Punk Pair".
+export function isPunkPair(
+  items: readonly LotItem[],
+): items is readonly [LotItem, LotItem] {
+  const [a, b] = items
+  return (
+    items.length === 2 &&
+    !!a &&
+    !!b &&
+    a.punkId === b.punkId &&
+    a.standard !== b.standard
+  )
+}
+
 export function formatLotItemsLabel(items: readonly LotItem[]) {
   const [item] = items
   if (items.length === 1 && item) return formatLotItemLabel(item)
-  return `${items.length.toLocaleString()} Punks`
+
+  if (isPunkPair(items)) return `Punk Pair #${items[0].punkId}`
+
+  const total = items.length.toLocaleString()
+  const v1Count = items.filter(
+    (entry) => entry.standard === TokenStandard.CryptoPunksV1,
+  ).length
+  if (v1Count === 0) return `${total} Punks`
+  if (v1Count === items.length) return `${total} V1 Punks`
+  return `${total} Punks (${v1Count.toLocaleString()} V1)`
 }
 
 export function lotItemBackground(standard: TokenStandardValue): string {

@@ -4,6 +4,7 @@
       v-model="text"
       :placeholder="placeholder"
       :counts="counts"
+      :suggestions="suggestions"
       @enter="onEnter"
       @clear="clearSearch"
     >
@@ -29,15 +30,28 @@
       </template>
     </PunkSearchBar>
 
+    <PunkCollectionCard
+      v-for="match in collectionMatches"
+      :key="`${match.collection.slug}/${match.institution?.slug ?? ''}`"
+      :title="match.institution?.title ?? match.collection.title"
+      :subtitle="match.collection.description"
+      :href="match.institution?.source ?? match.collection.source"
+    />
+
     <LazyPunkGrid
       :ids="ids"
+      :prices="prices"
+      :estimates="listedActive ? estimates : undefined"
       :size="size"
+      :show-wrapped-state-colors="showWrappedStateColors"
+      @visible="onVisible"
     />
   </section>
 </template>
 
 <script setup lang="ts">
 import type { PunkQuery } from '@networked-art/punks-sdk'
+import { TokenStandard } from '~/utils/auction'
 
 const props = withDefaults(
   defineProps<{
@@ -54,13 +68,40 @@ const {
   placeholder,
   ownerHandle,
   ids,
+  prices,
   counts,
+  collectionMatches,
+  showWrappedStateColors,
+  suggestions,
   onEnter,
   clearSearch,
 } = usePunkSearch({
   baseQuery: () => props.baseQuery,
   syncRoute: true,
 })
+
+// "For sale" mode shows real listings as prices; the rest get a model value
+// estimate. The grid reports its visible window, we fetch estimates for the
+// unlisted ids in it, and feed the (v2) cache back as a plain id→wei map.
+const { estimates: estimateCache, request: requestEstimates } =
+  usePunkValueEstimates()
+
+const estimates = computed(() => {
+  const map = new Map<number, bigint>()
+  for (const [key, wei] of estimateCache.value) {
+    if (key.startsWith('v2-')) map.set(Number(key.slice(3)), wei)
+  }
+  return map
+})
+
+function onVisible(visibleIds: number[]) {
+  if (!listedActive.value) return
+  requestEstimates(
+    visibleIds
+      .filter((id) => !prices.value?.has(id))
+      .map((id) => ({ standard: TokenStandard.CryptoPunks, punkId: id })),
+  )
+}
 </script>
 
 <style scoped>

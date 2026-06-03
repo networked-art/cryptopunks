@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { TOTAL_WEIGHT_BPS, TokenStandard } from '~/utils/auction'
-import type { SelectedFulfillmentItem } from '~/utils/offerFulfillment'
+import type { SelectedFulfillmentItem } from '~/utils/settle'
 
 const props = defineProps<{
   items: SelectedFulfillmentItem[]

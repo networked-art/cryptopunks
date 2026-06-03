@@ -43,6 +43,15 @@ const A_V1_WRAPPED: readonly bigint[] = [
 const SOURCE_B = getAddress('0xc6400A5584db71e41B0E5dFbdC769b54B91256CD')
 const B_V2_NATIVE: readonly bigint[] = [1325n, 4093n, 4372n, 5177n, 6529n, 9082n]
 
+// CryptoPunk #6980 as a matched V1/V2 pair — seed both halves so the test
+// account owns the pair. The V1 is wrapped (held as an ERC-721 on
+// `PunksV1Wrapper`); the normal V2 is held natively.
+const SOURCE_C = getAddress('0x479150abece65b0444d6ede5dca9c30d68e0e122')
+const C_V1_WRAPPED: readonly bigint[] = [6980n]
+
+const SOURCE_D = getAddress('0x721fE9dE376bD927BB15Fd25DE41Bf3d420b8c07')
+const D_V2_NATIVE: readonly bigint[] = [6980n]
+
 const PUNK_NATIVE_ABI = parseAbi([
   'function transferPunk(address to, uint256 punkIndex)',
   'function punkIndexToAddress(uint256) view returns (address)',
@@ -223,6 +232,54 @@ async function main() {
     )
   }
   await stop(SOURCE_B)
+
+  console.log(`\n${SOURCE_C} → ${recipient}`)
+  await impersonate(SOURCE_C)
+  const walletC = await viem.getWalletClient(SOURCE_C)
+  for (const id of C_V1_WRAPPED) {
+    const status = await checkOwner(
+      'V1 wrapped',
+      PUNKS_V1_WRAPPER,
+      ERC721_ABI,
+      'ownerOf',
+      id,
+      SOURCE_C,
+    )
+    if (status !== 'expected') continue
+    await sendAndLog('V1 wrapped', SOURCE_C, id, () =>
+      walletC.writeContract({
+        address: PUNKS_V1_WRAPPER,
+        abi: ERC721_ABI,
+        functionName: 'transferFrom',
+        args: [SOURCE_C, recipient, id],
+      }) as Promise<Hex>,
+    )
+  }
+  await stop(SOURCE_C)
+
+  console.log(`\n${SOURCE_D} → ${recipient}`)
+  await impersonate(SOURCE_D)
+  const walletD = await viem.getWalletClient(SOURCE_D)
+  for (const id of D_V2_NATIVE) {
+    const status = await checkOwner(
+      'V2 native',
+      CRYPTOPUNKS_V2,
+      PUNK_NATIVE_ABI,
+      'punkIndexToAddress',
+      id,
+      SOURCE_D,
+    )
+    if (status !== 'expected') continue
+    await sendAndLog('V2 native', SOURCE_D, id, () =>
+      walletD.writeContract({
+        address: CRYPTOPUNKS_V2,
+        abi: PUNK_NATIVE_ABI,
+        functionName: 'transferPunk',
+        args: [recipient, id],
+      }) as Promise<Hex>,
+    )
+  }
+  await stop(SOURCE_D)
 
   console.log('\nDone.')
 }

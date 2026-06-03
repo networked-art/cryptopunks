@@ -1,7 +1,8 @@
 # @networked-art/punks-indexer
 
-Ponder indexer that tracks `CryptoPunks`, `CryptoPunksMarket`, wrappers, and
-the repo's `PunksMarket` in one process.
+Ponder indexer that tracks `CryptoPunks`, `CryptoPunksMarket`, the wrappers,
+and the repo's `PunksMarket` and `PunksAuction` — plus the vault and stash
+custody factories — in one process.
 
 An example deployment runs at <https://indexer.punksmarket.app>.
 
@@ -22,6 +23,9 @@ The combined indexer watches:
 - [CryptoPunks721.sol](https://evm.now/address/0x000000000000003607fce1aC9E043a86675C5C2F) (`0x000000000000003607fce1aC9E043a86675C5C2F`)
 - [PunksV1Wrapper.sol](https://evm.now/address/0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D) (`0x282BDD42f4eb70e7A9D9F40c8fEA0825B7f68C5D`)
 - [PunksMarket.sol](https://evm.now/address/0x64e507FEBF26521b73FbdfA533106B2042533218) (`0x64e507FEBF26521b73FbdfA533106B2042533218`)
+- [PunksAuction.sol](https://evm.now/address/0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873) (`0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873`)
+- [PunksVaultFactory.sol](https://evm.now/address/0xf3381B259B2FE142c0A87bffF463695d935D6F66) (`0xf3381B259B2FE142c0A87bffF463695d935D6F66`)
+- [StashFactory.sol](https://evm.now/address/0x000000000000A6fA31F5fC51c1640aAc76866750) (`0x000000000000A6fA31F5fC51c1640aAc76866750`)
 
 While a Punk is wrapped, the user-facing `punks.owner` column reflects the
 ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
@@ -33,11 +37,14 @@ ERC-721 owner; the underlying V2 owner (the wrapper itself) is preserved in
 
 All user-facing activity flows into a single `events` table with a unified
 shape (one row per indexed log). `source` ∈ `{ cryptopunks_v1,
-cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }`.
-Per-Punk current state lives in `punks` and `v1_punks`; native marketplace
-state lives in `listings` / `punk_bids` for V2 and `v1_listings` /
-`v1_punk_bids` for V1. `PunksMarket` criteria bids live in `market_bids` with
-predicate side tables for SQL matching.
+cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market,
+punks_auction }`. Per-Punk current state lives in `punks` and
+`v1_punks`; native marketplace state lives in `listings` / `punk_bids` for V2
+and `v1_listings` / `v1_punk_bids` for V1. `PunksMarket` criteria bids live in
+`market_bids` with predicate side tables for SQL matching. `PunksAuction`
+state lives in `auction_lots` / `auction_lot_items` / `auction_auctions` /
+`auction_offers`, and per-EOA custody (vault / stash / proxy) is tracked in
+`accounts`.
 
 ## USD pricing
 
@@ -89,11 +96,53 @@ event.usd_value_cents =
 
 API:
 
-- `GET /bids` and `GET /bids/matching/*` — `PunksMarket` criteria-bid routes.
+- `GET /` — the generated GraphQL endpoint over every table.
+- `GET /sql/*` — read-only SQL over the public schema (`eth_usd_prices` and
+  every other table are reachable here — no custom route needed).
+- `GET /bids`, `GET /bids/matching/{punk,trait,color}/:id`, `GET /bids/:id` —
+  `PunksMarket` criteria-bid routes.
 - `GET /sales` — recent sale events with `usd_value_cents` already on the
   row (no JOIN). Pagination via `?limit=`, `?offset=`.
-- The `eth_usd_prices` table is exposed via the standard GraphQL endpoint
-  and `/sql/*` for raw SQL — no custom route needed.
+- `GET /stats`, `GET /stats/:window`, `GET /stats/history/:interval` —
+  collection volume and activity statistics.
+- `GET /punks/market-state` — compact canonical-market snapshot.
+- `GET /punks/pairs` — V1+V2 Punk pairs with the same current public owner.
+- `GET /predictions/v2/:id`, `GET /predictions/v1/:id`,
+  `GET /predictions/batch`, `GET /predictions/market`,
+  `GET /predictions/model` — 24h sale prediction outputs written by the
+  persistent offchain predictor service.
+- `GET /accounts/stats` — per-account aggregates for a profile.
+- `GET /profiles/*` — ENS profile resolution.
+
+## 24h sale predictions
+
+Prediction rows live in the persistent Drizzle-managed `offchain` schema, not
+the Ponder onchain schema that changes per deploy. The Python worker in
+`../predictor` reads the stable Ponder views schema (`PONDER_VIEWS_SCHEMA`,
+default `punks`), trains nightly, writes a complete model run into
+`offchain.prediction_*` tables, then atomically marks that run active.
+
+Generate and apply offchain schema migrations from this package:
+
+```sh
+pnpm drizzle:generate
+pnpm drizzle:migrate
+```
+
+Local one-shot run:
+
+```sh
+cd ../predictor
+DATABASE_URL=postgresql://punks:punks@localhost:5412/punks \
+PONDER_VIEWS_SCHEMA=punks \
+uv run punk-predictor run
+```
+
+Deploy the worker separately with Kamal from `predictor/`:
+
+```sh
+set -a && . ./.env.production && set +a && kamal deploy
+```
 
 ## Setup
 
@@ -121,7 +170,7 @@ Start it with `pnpm postgres:up` and point `DATABASE_URL` at
 
 Run a fully populated indexer against a local mainnet fork — no RPC bills,
 no waiting for backfill. The fork node lives in the `contracts` package
-(`pnpm dev:fork`) at block `25171056`; this Ponder instance restores a
+(`pnpm dev:fork`) at block `25200500`; this Ponder instance restores a
 production snapshot taken at the same block, then live-tails the fork for
 new events.
 
@@ -156,7 +205,7 @@ pnpm restore:fork       # finds the latest dumps/ponder-prod-block-*.zip and res
 ```
 
 The script prints the active schema name (e.g.
-`ponder_c896f90a9aa189f5`). Set `.env.local`:
+`ponder_64dff0d44e3b0262`). Set `.env.local`:
 
 ```
 PONDER_RPC_URLS_1=http://127.0.0.1:8545
@@ -184,7 +233,7 @@ Postgres is running, restores the snapshot if it isn't already loaded,
 probes Ponder's local `buildId`, stamps it into `_ponder_meta`, normalizes
 the sync intervals + checkpoint state to the fork's view of the chain, and
 then `exec`s `ponder start`. Ponder reports `Detected crash recovery`,
-serves cached blocks at 100% hit rate, and live-indexes the 20 seed
+serves cached blocks at 100% hit rate, and live-indexes the 22 seed
 transfers within a second.
 
 ### Why we don't use `pnpm dev`
@@ -220,10 +269,29 @@ These are all in-place SQL mutations against the local DB. The original
 snapshot zip is untouched, so you can always `pnpm restore:fork` to start
 over.
 
+### Fresh re-index mode (`start:fork:fresh`)
+
+When local schema or handlers have drifted from the snapshot — new tables,
+new columns, new sources — `start:fork`'s crash recovery against the
+snapshot schema breaks (Ponder's recovery SQL references columns from the
+current schema against the snapshot's older tables). Use `pnpm
+start:fork:fresh` instead. It leaves the snapshot alone and indexes into
+a separate `ponder_local` schema, replaying handlers over the
+`ponder_sync` cache that `restore:fork` already populated. The only RPC
+traffic is for sources the snapshot didn't cover (e.g. contracts added
+after the dump) plus the tiny post-`safe_block` delta the fork has
+advanced past.
+
+Idempotent: subsequent boots with unchanged code reuse `ponder_local` via
+crash recovery; any build_id change drops and rebuilds it. Requires
+`pnpm restore:fork` to have run at least once (the snapshot schema's
+`safe_checkpoint` is used to trim `ponder_sync.intervals`, same as the
+snapshot path).
+
 ### Caveats
 
 - **Schema name pins to the snapshot.** `DATABASE_SCHEMA` in `.env.local`
-  must match the hash from the dump (e.g. `ponder_c896f90a9aa189f5`).
+  must match the hash from the dump (e.g. `ponder_64dff0d44e3b0262`).
   Update it whenever you take a new snapshot.
 - **Fork chainId.** `contracts/hardhat.config.ts` defines a separate
   `hardhatFork` network with `chainId: 1` so the fork matches
@@ -247,8 +315,14 @@ the repo-root `Dockerfile.indexer`; deploy config lives in
 3. Subsequent releases: `pnpm kamal:deploy`.
 4. Drop into a running container: `pnpm kamal:sh`.
 
+`pnpm kamal:deploy` runs `.kamal/hooks/pre-app-boot`, which executes
+`pnpm drizzle:migrate` once on the primary host before the new indexer app
+container boots. This applies persistent `offchain` schema migrations,
+including the prediction tables. To run the same migration command manually
+against the current app image, use `pnpm kamal:migrate`.
+
 Each deploy gets a fresh schema named after the commit hash
 (`DATABASE_SCHEMA=$(git rev-parse HEAD)`); the stable public views are
 projected into the `punks` schema by Ponder once the new schema is caught
-up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5467` on the
+up. The kamal `db` accessory binds Postgres 17 to `127.0.0.1:5469` on the
 deploy host.

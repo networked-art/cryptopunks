@@ -78,14 +78,14 @@ function paletteRgbBytes() external view returns (bytes memory);
 
 Returns the full palette as RGB triples. The length is:
 
+```text
+222 colors * 3 bytes = 666 bytes
+```
+
 Storage detail: this reads the whole RGBA `Palette` blob and copies out bytes
 `r`, `g`, and `b` for each color.
 
 Live read: [`paletteRgbBytes()`](https://evm.now/address/punksdata.eth/read#paletteRgbBytes).
-
-```text
-222 colors * 3 bytes = 666 bytes
-```
 
 Use it for PNG `PLTE` chunks or any renderer that needs RGB without alpha.
 Color id `i` starts at byte offset `i * 3`.
@@ -98,14 +98,14 @@ function paletteAlphaBytes() external view returns (bytes memory);
 
 Returns one alpha byte per palette color. The length is:
 
+```text
+222 colors * 1 byte = 222 bytes
+```
+
 Storage detail: this reads the whole RGBA `Palette` blob and copies out byte
 `a` for each color.
 
 Live read: [`paletteAlphaBytes()`](https://evm.now/address/punksdata.eth/read#paletteAlphaBytes).
-
-```text
-222 colors * 1 byte = 222 bytes
-```
 
 Use it for PNG `tRNS` chunks or transparency inspection. Color id `i` is at
 byte offset `i`.
@@ -118,13 +118,13 @@ function paletteRgbaBytes() external view returns (bytes memory);
 
 Returns the full palette as RGBA quads. The length is:
 
-Storage detail: this returns the `Palette` blob as stored.
-
-Live read: [`paletteRgbaBytes()`](https://evm.now/address/punksdata.eth/read#paletteRgbaBytes).
-
 ```text
 222 colors * 4 bytes = 888 bytes
 ```
+
+Storage detail: this returns the `Palette` blob as stored.
+
+Live read: [`paletteRgbaBytes()`](https://evm.now/address/punksdata.eth/read#paletteRgbaBytes).
 
 Use it for RGBA expansion, SVG color generation, or metadata color lists.
 Color id `i` starts at byte offset `i * 4`.

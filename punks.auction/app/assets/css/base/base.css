@@ -2,10 +2,6 @@ body {
   line-height: var(--line-height-relaxed);
 }
 
-:where(*, *::before, *::after) {
-  border-radius: 0 !important;
-}
-
 a:hover {
   color: var(--accent);
   border-color: var(--accent);

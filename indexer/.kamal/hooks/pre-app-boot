@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+args=(app exec --primary --skip-hooks)
+
+if [[ -n "${KAMAL_DESTINATION:-}" ]]; then
+  args+=(--destination "$KAMAL_DESTINATION")
+fi
+
+if [[ -n "${KAMAL_VERSION:-}" ]]; then
+  args+=(--version "$KAMAL_VERSION")
+fi
+
+args+=("pnpm drizzle:migrate")
+
+kamal "${args[@]}"

@@ -150,10 +150,20 @@ import {
   parseSearchText,
   tokenizeSearchText,
   formatSearchText,
+  compilePunksFilter,
 } from '@networked-art/punks-sdk'
 
 const parsed = parseSearchText('zombie hoodie -1234 <=4 colors')
-const text = formatSearchText({ type: 'Zombie', colorCount: { max: 4 } })
+
+// `formatSearchText` inverts a placed bid's compiled criteria back into search
+// text. It and the compiler both take the offline dataset that resolves trait
+// names (here `punks.dataset.source`).
+const text = formatSearchText(punks.dataset.source, {
+  criteria: compilePunksFilter(punks.dataset.source, {
+    type: 'Zombie',
+    colorCount: { max: 4 },
+  }),
+})
 ```
 
 ## Query Compilation

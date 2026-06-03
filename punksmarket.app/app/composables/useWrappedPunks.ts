@@ -1,8 +1,9 @@
 import { queryIndexer, IndexerNotConfigured } from '~/utils/indexer'
 
 export const WRAPPED_BG = '#a69aff'
-// export const UNWRAPPED_BG = '#444444'
 export const UNWRAPPED_BG = '#66A670'
+// export const UNWRAPPED_BG = '#444444'
+// export const UNWRAPPED_BG = '#000'
 
 const WRAPPED_QUERY = `
   query WrappedPunks($limit: Int!, $after: String) {

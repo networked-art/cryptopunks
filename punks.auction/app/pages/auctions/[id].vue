@@ -41,12 +41,12 @@
       </div>
 
       <div class="fact">
-        <dt>Ends</dt>
+        <dt>{{ status === 'live' ? 'Ends' : 'Ended' }}</dt>
         <dd>{{ endLabel }}</dd>
       </div>
 
       <div class="fact">
-        <dt>Current Bidder</dt>
+        <dt>{{ status === 'live' ? 'Current Bidder' : 'Winner' }}</dt>
         <dd>
           <NuxtLink :to="`/profile/${auction.latestBidder}`">
             <Account :address="auction.latestBidder" />
@@ -55,7 +55,7 @@
       </div>
 
       <div class="fact">
-        <dt>Curent bid</dt>
+        <dt>{{ status === 'live' ? 'Current Bid' : 'Winning Bid' }}</dt>
         <dd>
           <EthAmount :wei="auction.latestBidWei" />
         </dd>
@@ -71,13 +71,20 @@
       </div>
 
       <div
-        v-if="minimumBidWei"
+        v-if="status === 'live' && minimumBidWei"
         class="fact"
       >
         <dt>Next bid</dt>
         <dd>
           <EthAmount :wei="minimumBidWei" />
         </dd>
+      </div>
+      <div
+        v-else-if="status !== 'live'"
+        class="fact"
+      >
+        <dt>Bid Count</dt>
+        <dd>{{ bids.length }}</dd>
       </div>
     </dl>
 

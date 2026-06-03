@@ -87,13 +87,25 @@
       </li>
     </ul>
 
-    <Button
-      v-if="rows.length > LIMIT"
-      class="small link muted show-more"
-      @click="expanded = !expanded"
+    <p
+      v-if="error && rows.length"
+      class="state error"
     >
-      {{ expanded ? 'Show less' : `Show all ${rows.length}` }}
-    </Button>
+      Could not load more history: {{ error }}
+    </p>
+
+    <div
+      v-if="hasHistoryAction"
+      class="history-actions"
+    >
+      <Button
+        class="small link muted show-more"
+        :disabled="historyActionLoadsMore && loadingMore"
+        @click="handleHistoryAction"
+      >
+        {{ historyActionLabel }}
+      </Button>
+    </div>
 
     <p
       v-if="!rows.length"
@@ -116,10 +128,12 @@ const props = defineProps<{
 const LIMIT = 6
 const expanded = ref(false)
 
-const { events, pending, error } = useActivityFeed({
-  punkId: () => props.punkId,
-  limit: 60,
-})
+const { events, pending, loadingMore, error, hasMore, totalCount, loadMore } =
+  useActivityFeed({
+    punkId: () => props.punkId,
+    limit: 60,
+    includeTotalCount: true,
+  })
 
 const TRANSFER_KINDS = new Set([
   'transfer',
@@ -127,6 +141,7 @@ const TRANSFER_KINDS = new Set([
   'unstashed',
   'vaulted',
   'unvaulted',
+  'escrowed',
 ])
 
 function pickInitiator(event: ActivityEvent): Address | undefined {
@@ -179,6 +194,42 @@ const rows = computed(() =>
 const visibleRows = computed(() =>
   expanded.value ? rows.value : rows.value.slice(0, LIMIT),
 )
+
+const hasCollapsedRows = computed(() => rows.value.length > LIMIT)
+const hasHistoryAction = computed(() => hasCollapsedRows.value || hasMore.value)
+const historyActionLoadsMore = computed(
+  () => (expanded.value || !hasCollapsedRows.value) && hasMore.value,
+)
+const historyTotalLabel = computed(() =>
+  (totalCount.value ?? rows.value.length).toLocaleString(),
+)
+const historyActionLabel = computed(() => {
+  if (historyActionLoadsMore.value) {
+    return loadingMore.value
+      ? 'Loading…'
+      : `Load more (${historyTotalLabel.value})`
+  }
+
+  if (!expanded.value) {
+    return `Show more (${historyTotalLabel.value})`
+  }
+
+  return 'Show less'
+})
+
+async function handleHistoryAction() {
+  if (historyActionLoadsMore.value) {
+    await loadMoreHistory()
+    return
+  }
+
+  expanded.value = !expanded.value
+}
+
+async function loadMoreHistory() {
+  expanded.value = true
+  await loadMore()
+}
 
 const stateLabel = computed(() => {
   if (pending.value) return 'Loading history…'
@@ -294,13 +345,24 @@ const stateLabel = computed(() => {
   color: var(--accent);
 }
 
-.show-more {
-  align-self: center;
-}
-
 .state {
   margin: 0;
   font-size: var(--font-sm);
+}
+
+.state.error {
+  color: var(--accent);
+}
+
+.history-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--size-2);
+  flex-wrap: wrap;
+}
+
+.show-more {
+  align-self: center;
 }
 
 @media (max-width: 460px) {

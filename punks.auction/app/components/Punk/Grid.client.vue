@@ -6,7 +6,10 @@
       'is-scrollable': scrollable,
       'is-outline-hover': outlineHover,
       'is-static': !interactive,
+      'is-no-hover': !canHover,
+      'is-priced': hasPrices,
     }"
+    :style="{ '--price-row-height': priceRowHeight + 'px' }"
   >
     <div
       v-if="ids.length === 0"
@@ -49,7 +52,21 @@
           :class="cellClass(cell.id)"
           :style="cellStyle(cell)"
           :title="`Punk #${cell.id}`"
-        />
+        >
+          <span
+            v-if="cell.priceWei != null"
+            class="cell-price"
+          >
+            <EthAmount :wei="cell.priceWei" />
+          </span>
+          <span
+            v-else-if="cell.estimateWei != null"
+            class="cell-price cell-estimate"
+            title="Model value estimate"
+          >
+            ~<EthAmount :wei="cell.estimateWei" />
+          </span>
+        </NuxtLink>
         <span
           v-else
           class="cell"
@@ -68,9 +85,21 @@ import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
 const props = withDefaults(
   defineProps<{
     ids: number[]
+    /// Listed price in wei, keyed by punk id. Present only in "for sale" mode;
+    /// reserves a row under each image and renders an `EthAmount` for every cell
+    /// that has a price.
+    prices?: ReadonlyMap<number, bigint>
+    /// Model value estimate in wei, keyed by punk id. Rendered (as `~XXXΞ`) in
+    /// price mode for cells with no listed price. The parent fills this in for
+    /// the visible window via the `visible` event.
+    estimates?: ReadonlyMap<number, bigint>
     size?: number
     gap?: number
     overscan?: number
+    /// Cap the rendered grid to this many rows (whatever number of columns the
+    /// width fits). Unset means unbounded — render every id. Used to pin a
+    /// fixed-height strip of cells, e.g. two full rows of suggestions.
+    maxRows?: number
     selectable?: boolean
     selectedIds?: readonly number[]
     excludedIds?: readonly number[]
@@ -79,6 +108,7 @@ const props = withDefaults(
     disabled?: boolean
     outlineHover?: boolean
     interactive?: boolean
+    showWrappedStateColors?: boolean
   }>(),
   {
     size: 72,
@@ -90,17 +120,26 @@ const props = withDefaults(
     disabled: false,
     outlineHover: false,
     interactive: true,
+    showWrappedStateColors: false,
   },
 )
 const emit = defineEmits<{
   toggle: [id: number]
+  /// The ids currently in the rendered window (plus overscan), emitted as it
+  /// changes so a parent can lazily fetch per-cell data (e.g. value estimates).
+  visible: [ids: number[]]
 }>()
 
 const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
+/// Vertical room reserved beneath each image in price mode: the price line plus
+/// enough breathing space that it reads as the image's caption, not the next
+/// row's. Mirrored by the `--price-row-height` CSS var below.
+const PRICE_ROW_HEIGHT = 22
 
 const containerRef = ref<HTMLElement | null>(null)
-const { backgroundForPunk } = usePunkBackgrounds()
+const canHover = useCanHover()
+const { backgroundForPunkState } = usePunkBackgrounds()
 /// Where the visible window starts/ends inside the grid, in content
 /// coordinates. We compute these from the container's bounding rect against
 /// the viewport, so the math is identical whether the window or some ancestor
@@ -131,10 +170,23 @@ const resolvedGap = computed(() => {
   )
 })
 const colStep = computed(() => cellSize.value + resolvedGap.value)
-const rowStep = computed(() => cellSize.value + resolvedGap.value)
-const rows = computed(() => Math.ceil(props.ids.length / cols.value))
+/// In price mode each row carries an extra caption strip under the image, so
+/// rows step further apart and the grid breathes vertically. Estimates share
+/// that strip, so providing either reserves it — otherwise estimates fetched
+/// before the listed-price map loads would have nowhere to render.
+const hasPrices = computed(() => !!props.prices || !!props.estimates)
+const priceRowHeight = computed(() => (hasPrices.value ? PRICE_ROW_HEIGHT : 0))
+const rowStep = computed(
+  () => cellSize.value + resolvedGap.value + priceRowHeight.value,
+)
+const rows = computed(() => {
+  const needed = Math.ceil(props.ids.length / cols.value)
+  return props.maxRows == null ? needed : Math.min(needed, props.maxRows)
+})
 const totalHeight = computed(() =>
-  rows.value === 0 ? 0 : (rows.value - 1) * rowStep.value + cellSize.value,
+  rows.value === 0
+    ? 0
+    : (rows.value - 1) * rowStep.value + cellSize.value + priceRowHeight.value,
 )
 
 /// Scroll events are coalesced to one measure() per animation frame, so the
@@ -159,17 +211,46 @@ const end = computed(() =>
 )
 
 const visible = computed(() => {
-  const out: { id: number; row: number; col: number }[] = []
+  const out: {
+    id: number
+    row: number
+    col: number
+    priceWei?: bigint
+    estimateWei?: bigint
+  }[] = []
   const colCount = cols.value
   for (let r = start.value; r < end.value; r++) {
     for (let c = 0; c < colCount; c++) {
       const i = r * colCount + c
       if (i >= props.ids.length) break
-      out.push({ id: props.ids[i]!, row: r, col: c })
+      const id = props.ids[i]!
+      const priceWei = props.prices?.get(id)
+      // Estimate only fills the gap left by an absent listing, and only in price
+      // mode (where a caption row is reserved beneath each image).
+      const estimateWei =
+        hasPrices.value && priceWei == null ? props.estimates?.get(id) : undefined
+      out.push({ id, row: r, col: c, priceWei, estimateWei })
     }
   }
   return out
 })
+
+/// The visible window as a bare id list — deliberately independent of
+/// `prices`/`estimates` so emitting it can't feed back into its own recompute.
+const visibleIds = computed(() => {
+  const out: number[] = []
+  const colCount = cols.value
+  for (let r = start.value; r < end.value; r++) {
+    for (let c = 0; c < colCount; c++) {
+      const i = r * colCount + c
+      if (i >= props.ids.length) break
+      out.push(props.ids[i]!)
+    }
+  }
+  return out
+})
+
+watch(visibleIds, (ids) => emit('visible', ids), { immediate: true })
 const selectedSet = computed(() => new Set(props.selectedIds ?? []))
 const excludedSet = computed(() => new Set(props.excludedIds ?? []))
 
@@ -182,7 +263,9 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: backgroundForPunk(c.id),
+    backgroundColor: backgroundForPunkState(c.id, undefined, {
+      showWrappedStateColors: props.showWrappedStateColors,
+    }),
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,
@@ -333,16 +416,28 @@ button.cell:disabled {
   cursor: default;
 }
 
-.punk-grid:not(.is-outline-hover):not(.is-static) .cell:hover,
+.punk-grid:not(.is-outline-hover):not(.is-static):not(.is-no-hover) .cell:hover,
 .punk-grid:not(.is-outline-hover):not(.is-static) .cell:focus-visible {
   transform: scale(1.18);
   z-index: 5;
   outline: none;
+  /* The two `0 16px …` layers extend the white card downward to sit behind the
+     price caption, so they belong to priced mode only. `.is-priced` fills these
+     custom properties in; otherwise the empty fallback collapses them to
+     nothing, leaving the bare image card. Splitting them this way keeps the
+     tuned shadow as a single declaration in its original layer order. */
   box-shadow:
     0 0 0 6px #fff,
+    var(--price-card-fill, )
     0 0 0 7px var(--border-color),
+    var(--price-card-edge, )
     0 1px 2px rgba(10, 10, 18, 0.05),
     0 24px 48px -28px rgba(10, 10, 18, 0.4);
+}
+
+.punk-grid.is-priced {
+  --price-card-fill: 0 16px 0 6px #fff,;
+  --price-card-edge: 0 16px 0 7px var(--border-color),;
 }
 
 button.cell:disabled:hover,
@@ -366,6 +461,30 @@ button.cell:disabled:focus-visible {
 .cell.is-dimmed,
 .cell.is-excluded {
   opacity: 0.45;
+}
+
+/* Price caption in the reserved strip under a listed image; centers the
+   EthAmount, which renders the value + Ξ unit (tabular figures keep the price
+   column from jittering as the eye scans the price-sorted grid). */
+.cell-price {
+  position: absolute;
+  top: 100%;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--price-row-height);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Estimate caption for unlisted Punks: same slot as the price, dimmed and
+   prefixed with `~` so it never reads as a real ask. */
+.cell-estimate {
+  color: var(--text-dim);
 }
 
 .empty {

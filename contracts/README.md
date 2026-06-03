@@ -24,13 +24,13 @@ pnpm typecheck
 
 ## Local mainnet fork
 
-`pnpm dev:fork` boots a long-running `hardhat node` forked from mainnet at block `25171056` (matching `hardhatMainnet.forking.blockNumber` in `hardhat.config.ts`), then seeds it with Punks so a recipient wallet has things to play with. The node keeps running on `http://127.0.0.1:8545` until Ctrl-C.
+`pnpm dev:fork` boots a long-running `hardhat node` forked from mainnet at the `hardhatMainnet.forking.blockNumber` configured in `hardhat.config.ts`, syncs the local chain timestamp to the current wall clock with automine enabled, then seeds it with Punks so a recipient wallet has things to play with. The node keeps running on `http://127.0.0.1:8545` until Ctrl-C.
 
 ```sh
 pnpm dev:fork
 ```
 
-The fork block matches the `indexer/dumps/ponder-prod-block-25171056.zip` Postgres snapshot, so the indexer and the fork can be brought up against the same state.
+Use a Postgres snapshot taken at the configured fork block so the indexer and the fork can be brought up against the same state.
 
 Re-run the seed against an already-running fork:
 
@@ -39,6 +39,13 @@ pnpm seed:fork
 ```
 
 The seed is idempotent — Punks already owned by the recipient are skipped.
+
+Sync the localhost chain to the current wall-clock time and re-enable automine
+against an already-running fork:
+
+```sh
+pnpm sync:fork-time
+```
 
 Fast-forward the localhost chain time and mine one block:
 
@@ -108,7 +115,7 @@ npx hardhat ignition verify chain-<chainId>
 
 The Etherscan API key is read from the `ETHERSCAN_API_KEY` config variable.
 
-### 3. Load and seal the dataset
+### 3. Load the dataset
 
 ```sh
 pnpm load:punks-data
@@ -119,9 +126,20 @@ The script:
 - Resolves the contract address from `PUNKS_DATA_ADDRESS`, or falls back to `ignition/deployments/chain-<chainId>/deployed_addresses.json`.
 - Streams the eight blobs through `loadBlobChunk` (24,575 bytes per chunk).
 - Streams the trait mask pairs, color masks, packed scalars, and color supplies through their batched loaders.
-- Calls `seal` with the dataset commitment hashes from the manifest, then verifies the on-chain `datasetHash` matches.
 
 At default settings (`STORAGE_BATCH=200`) the full load runs in ~187 transactions.
+
+Loading does not seal. Sealing is gated behind `PUNKS_DATA_SEAL=1` so you can set the contract's ENS forward and reverse records before committing the dataset.
+
+### 4. Seal the dataset
+
+Once the ENS records are in place:
+
+```sh
+pnpm seal:punks-data
+```
+
+This calls `seal` with the dataset commitment hashes from the manifest, then verifies the on-chain `datasetHash` matches. Both `load:punks-data` and `seal:punks-data` are pinned to `--network mainnet`.
 
 ### Tuning and overrides
 
@@ -133,6 +151,7 @@ Environment variables read by the load script:
 | `PUNKS_DATA_ADDRESS`       | (Ignition lookup)           | Override the resolved contract address.                                                                                                         |
 | `PUNKS_DATA_DEPLOYMENT_ID` | `chain-<chainId>`           | Override the Ignition deployment folder used for address resolution.                                                                            |
 | `PUNKS_DATA_STORAGE_BATCH` | `200`                       | Items per `loadTraitMaskPairs` / `loadColorMasks` / `loadPackedScalars` / `loadColorSupplies` call. Higher cuts tx count; bounded by block gas. |
+| `PUNKS_DATA_SEAL`          | `0`                         | When `1`, seal the dataset after loading (set by `pnpm seal:punks-data`). A plain load never seals.                                             |
 
 ### Resumability
 

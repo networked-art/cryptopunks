@@ -20,9 +20,18 @@ import type {
 } from './types'
 import { toOfflineSearchQuery } from './query'
 import { indexedPixelsToRgba } from './client'
+import {
+  suggestSearchText,
+  type SearchSuggestion,
+  type SuggestSearchTextOptions,
+} from './suggest'
+import type { PunkStandardRef } from './constants'
 
 export type PunksDatasetConfig = {
   dataset?: OfflinePunksDataSource | OfflinePunksDataBundle
+  /// Scopes curated-collection text resolution to a single Punk standard,
+  /// forwarded to the offline client. Omitted resolves every collection.
+  standard?: PunkStandardRef
 }
 
 export class PunksDataset {
@@ -32,8 +41,10 @@ export class PunksDataset {
   constructor(config: PunksDatasetConfig = {}) {
     this.source =
       config.dataset === undefined
-        ? createOfflinePunksDataClient()
-        : createOfflinePunksDataClientFromDataset(config.dataset)
+        ? createOfflinePunksDataClient({ standard: config.standard })
+        : createOfflinePunksDataClientFromDataset(config.dataset, {
+            standard: config.standard,
+          })
     this.hash = this.source.getDatasetHashSync()
   }
 
@@ -43,6 +54,25 @@ export class PunksDataset {
 
   count(query: PunkQuery = {}): number {
     return this.source.countSync(toOfflineSearchQuery(query))
+  }
+
+  /// Rewrites unfinished, unambiguous terms in `text` to the alias they complete
+  /// to (`bur` → `burned`), matching how {@link search} resolves them. Lets a UI
+  /// keep a collection explainer in step with the grid. See
+  /// {@link OfflinePunksDataClient.completeSearchText}.
+  completeSearchText(text: string): string {
+    return this.source.completeSearchText(text)
+  }
+
+  /// Typeahead suggestions completing the word currently being typed in `text`
+  /// — trait names (with supply), curated collections, skin tones and count
+  /// hints. Returns `[]` when there is nothing to complete. See {@link
+  /// suggestSearchText}.
+  suggest(
+    text: string,
+    options: SuggestSearchTextOptions = {},
+  ): SearchSuggestion[] {
+    return suggestSearchText(this.source, text, options)
   }
 
   facets(query: PunkQuery = {}): OfflinePunksSearchFacets {

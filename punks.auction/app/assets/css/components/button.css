@@ -6,3 +6,16 @@ button:not(.unstyled),
 button.small {
   font-size: var(--font-xs);
 }
+
+button.large:not(.unstyled),
+a.button.large:not(.unstyled),
+.button.large:not(.unstyled) {
+  block-size: auto;
+  padding: var(--size-4) var(--size-5) !important;
+  font-size: var(--font-base);
+}
+
+button.primary .eth-amount .unit,
+.button.primary .eth-amount .unit {
+  color: inherit;
+}

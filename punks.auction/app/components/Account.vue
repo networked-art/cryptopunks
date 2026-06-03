@@ -4,14 +4,17 @@
     resolve-ens
   >
     <template #default="{ display }">
-      <span class="account">
+      <span
+        class="account"
+        :title="label?.name"
+      >
         <img
           v-if="avatarUri"
           class="avvatar"
           :src="avatarUri"
           :alt="`Avatar for ${address}`"
         />
-        <span class="handle">{{ display }}</span>
+        <span class="handle">{{ label?.short ?? display }}</span>
       </span>
     </template>
   </EvmAccount>
@@ -19,6 +22,7 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
+import { addressLabel } from '@networked-art/punks-sdk'
 import { accountAvvatarDataUri } from '~/utils/avvatar'
 
 const props = withDefaults(
@@ -30,6 +34,8 @@ const props = withDefaults(
     imageSize: 24,
   },
 )
+
+const label = computed(() => addressLabel(props.address))
 
 const avatarUri = computed(() =>
   accountAvvatarDataUri(props.address, props.imageSize),

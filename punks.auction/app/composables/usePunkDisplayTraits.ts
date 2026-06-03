@@ -37,6 +37,11 @@ function kindSortKey(kind: string) {
   return KIND_ORDER.get(kind) ?? 50
 }
 
+function parseAttributeCountName(name: string) {
+  const match = name.match(/^(\d+) Attributes$/)
+  return match ? Number(match[1]) : null
+}
+
 export function usePunkDisplayTraits(summary: MaybeRefOrGetter<PunkSummary>) {
   const displayTraits = computed<PunkDisplayTrait[]>(() => {
     const rows = (toValue(summary).traits ?? []).flatMap(
@@ -57,7 +62,21 @@ export function usePunkDisplayTraits(summary: MaybeRefOrGetter<PunkSummary>) {
           return [{ ...t, kind: 'Type', query: quoteIfMultiword(t.name) }]
         }
         if (t.kind === 'AttributeCount') {
-          return [{ ...t, kind: 'Attributes', query: quoteIfMultiword(t.name) }]
+          const count = parseAttributeCountName(t.name)
+          if (count === null) {
+            return [
+              { ...t, kind: 'Attributes', query: quoteIfMultiword(t.name) },
+            ]
+          }
+          const word = count === 1 ? 'Attribute' : 'Attributes'
+          return [
+            {
+              ...t,
+              kind: 'Attributes',
+              name: `${count} ${word}`,
+              query: `${count} ${word.toLowerCase()}`,
+            },
+          ]
         }
         return [{ ...t, query: quoteIfMultiword(t.name) }]
       },

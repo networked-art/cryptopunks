@@ -1,5 +1,5 @@
 const siteDescription =
-  'Zero-fee auction house for CryptoPunks — 24h auctions, multi-Punk lots, and native-ETH purchase offers.'
+  '24-hour auctions. Zero fees. Real price discovery. CryptoPunks.'
 
 // Matches the gate in `app.config.ts` — dev-only entries only ship when
 // Nuxt explicitly sets NODE_ENV=development (via `overrideEnv` in `nuxt dev`).
@@ -13,9 +13,9 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  site: {
-    url: process.env.NUXT_PUBLIC_PUBLIC_URL || 'http://localhost:3000',
-  },
+  // `site.url` (used by nuxt-og-image to build absolute og:image URLs) is set
+  // at runtime via the `NUXT_SITE_URL` env var, which nuxt-site-config reads
+  // on every request. In dev, the origin auto-detects from the request host.
 
   ogImage: {
     defaults: { width: 1200, height: 630, cacheMaxAgeSeconds: 60 * 60 * 24 },
@@ -27,7 +27,8 @@ export default defineNuxtConfig({
       meta: [
         {
           name: 'viewport',
-          content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+          content:
+            'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
         },
         {
           name: 'description',
@@ -62,10 +63,9 @@ export default defineNuxtConfig({
       // Public origin used to build absolute URLs (e.g. the in-app RPC
       // proxy). Override with NUXT_PUBLIC_PUBLIC_URL in production.
       publicUrl: 'http://localhost:3000',
-      // Public indexer base URL (Ponder/Postgres GraphQL endpoint) — the
-      // shared indexer that backs both punksmarket.app and this app.
-      // Override with NUXT_PUBLIC_INDEXER_URL.
-      indexerUrl: 'https://indexer.punksmarket.app',
+      // Public indexer base URL (Ponder/Postgres GraphQL endpoint) for this
+      // app. Override with NUXT_PUBLIC_INDEXER_URL.
+      indexerUrl: 'https://indexer.punks.auction',
       // Broker brand shown in the "branded" Contact-broker preview. Override
       // per deployment with NUXT_PUBLIC_BROKER_NAME / NUXT_PUBLIC_BROKER_LOGO.
       // `logo` is inline SVG markup; use `fill="currentColor"` so it inherits

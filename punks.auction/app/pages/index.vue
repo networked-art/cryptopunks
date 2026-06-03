@@ -5,18 +5,36 @@
       An Auction House
       <span class="headline-em">for CryptoPunks</span>
     </h1>
-    <p class="subline">
-      24-hour auctions. Zero fees. Real price discovery.
-    </p>
+    <p class="subline">24-hour auctions. Zero fees. Real price discovery.</p>
     <div class="cta-buttons">
-      <NuxtLink to="/punks" class="btn btn-primary">Browse Punks</NuxtLink>
-      <NuxtLink to="/about" class="btn btn-secondary">Learn More</NuxtLink>
+      <Button
+        class="primary large browse-cta"
+        to="/punks"
+      >
+        <kbd
+          class="cta-shortcut"
+          aria-hidden="true"
+          title="Press / to search punks"
+          >/</kbd
+        >
+        <span>Browse Punks</span>
+      </Button>
+      <Button
+        class="large"
+        to="/about"
+      >
+        Learn More
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onKeyStroke } from '@vueuse/core'
+
 const PAGE_TITLE = 'Punks Auction — An Auction House for CryptoPunks'
+const router = useRouter()
+
 useSeoMeta({
   title: PAGE_TITLE,
   ogTitle: PAGE_TITLE,
@@ -26,6 +44,40 @@ useSeoMeta({
 //   title: 'An Auction House for CryptoPunks',
 //   description: '24h auctions, multi-Punk lots, native-ETH purchase offers.',
 // })
+
+onKeyStroke('/', async (event) => {
+  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+  if (isEditableTarget(event.target)) return
+
+  event.preventDefault()
+  await router.push('/punks')
+  await focusPunkSearchInput()
+})
+
+function isEditableTarget(target: EventTarget | null) {
+  const el = target as HTMLElement | null
+  return (
+    el?.isContentEditable ||
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement
+  )
+}
+
+async function focusPunkSearchInput() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await nextTick()
+    const input = document.querySelector<HTMLInputElement>(
+      '.search-input[type="search"]',
+    )
+    if (input) {
+      input.focus()
+      input.select()
+      return
+    }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  }
+}
 </script>
 
 <style scoped>
@@ -67,32 +119,25 @@ useSeoMeta({
   margin-top: var(--size-2);
 }
 
-.btn {
-  padding: var(--size-3) var(--size-5);
-  font-size: var(--font-base);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  transition: all 0.15s ease;
+.browse-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2);
 }
 
-.btn-primary {
-  background: var(--accent-strong);
-  color: var(--bg);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover {
-  color: var(--text);
-  border-color: var(--text-muted);
+.cta-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.618rem;
+  padding: 3px 0.33em;
+  border: var(--border-width) solid rgba(255, 255, 255, 0.6);
+  border-radius: 3px;
+  background: rgb(255 255 255 / 18%);
+  font-family: var(--ui-font-family);
+  font-size: 11px;
+  line-height: 1;
+  text-transform: none;
+  opacity: 0.85;
 }
 </style>

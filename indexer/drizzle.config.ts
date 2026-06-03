@@ -7,6 +7,7 @@ export default defineConfig({
   out: './src/offchain/migrations',
   schema: './src/offchain/schema.ts',
   dialect: 'postgresql',
+  schemaFilter: ['offchain'],
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },

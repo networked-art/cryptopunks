@@ -21,6 +21,7 @@ import { PunksVaultFacade } from './vault'
 import { PunksWrappersFacade } from './wrappers'
 import { PunksDataset, type PunksDatasetConfig } from './dataset'
 import { PunkImageRenderer } from './render'
+import { PunksCollections } from './collections'
 import type { PunkQuery, PunkSummary, PunkSummaryOptions } from './types'
 
 export type PunksSdkAddresses = {
@@ -66,11 +67,16 @@ export class PunksSdk {
   readonly vault: PunksVaultFacade
   readonly auctions: PunksAuctionClient
   readonly offers: PunksOffersFacade
+  readonly collections: PunksCollections
   readonly contracts: PunksContractClients
 
   constructor(config: PunksSdkConfig = {}) {
-    this.dataset = new PunksDataset({ dataset: config.dataset })
+    this.dataset = new PunksDataset({
+      dataset: config.dataset,
+      standard: config.standard,
+    })
     this.render = new PunkImageRenderer(this.dataset)
+    this.collections = new PunksCollections(config.standard)
 
     const wallet = {
       publicClient: config.publicClient,

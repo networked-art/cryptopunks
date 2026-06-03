@@ -78,12 +78,12 @@ const pills = computed<Pill[]>(() => [
   {
     key: 'vault',
     label: 'Vault',
-    title: 'PunksVault',
+    title: 'Punks Vault',
     active: props.vaultDeployed,
     statusLabel: props.vaultDeployed ? 'Deployed' : 'Not deployed',
     address: props.vault,
     hint: props.vaultDeployed
-      ? 'Auction-aware custody for your punks.'
+      ? 'Auction-aware custody for your Punks.'
       : 'Predicted address. Deploys on first interaction.',
   },
   {

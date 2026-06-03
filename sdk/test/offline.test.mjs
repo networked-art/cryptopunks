@@ -148,6 +148,14 @@ describe('OfflinePunksDataClient', () => {
       sdk.countSync({ colorCount: 2 }),
     )
     assert.equal(
+      sdk.countSync({ text: 'two colors' }),
+      sdk.countSync({ colorCount: 2 }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'zero attributes' }),
+      sdk.countSync({ attributeCount: 0 }),
+    )
+    assert.equal(
       sdk.countSync({ text: '7 attributes' }),
       sdk.countSync({ attributeCount: 7 }),
     )
@@ -160,6 +168,55 @@ describe('OfflinePunksDataClient', () => {
       sdk.countSync({ colorCount: { min: 2, max: 4 } }),
     )
 
+    // The Unicode dash family folds to an ASCII hyphen, so an em or en dash
+    // pasted from a rich-text source reads as the same range — there is no
+    // other thing `2—4 colors` could mean.
+    assert.equal(
+      sdk.countSync({ text: '2—4 colors' }),
+      sdk.countSync({ colorCount: { min: 2, max: 4 } }),
+    )
+    assert.equal(
+      sdk.countSync({ text: '2–4 colors' }),
+      sdk.countSync({ colorCount: { min: 2, max: 4 } }),
+    )
+    // A leading em dash excludes an id like a typed `-`.
+    assert.deepEqual(
+      sdk.searchSync({ text: 'wild hair —1' }),
+      sdk.searchSync({ text: 'wild hair -1' }),
+    )
+    // Unicode comparators (≤ ≥) fold to their ASCII spellings.
+    assert.equal(
+      sdk.countSync({ text: '≥4 colors' }),
+      sdk.countSync({ colorCount: { min: 4 } }),
+    )
+    assert.equal(
+      sdk.countSync({ text: '≤3 colors' }),
+      sdk.countSync({ colorCount: { max: 3 } }),
+    )
+    // Fullwidth digits and `＃` fold to ASCII, so a fullwidth id resolves.
+    assert.deepEqual(sdk.searchSync({ text: '＃1234' }), [1234])
+    assert.equal(
+      sdk.countSync({ text: '２ colors' }),
+      sdk.countSync({ colorCount: 2 }),
+    )
+    // Smart double quotes fold to `"`, so a pasted curly phrase stays exact.
+    assert.deepEqual(
+      sdk.searchSync({ text: '“dark hair”' }),
+      sdk.searchSync({ text: '"dark hair"' }),
+    )
+    // A `-`/`_` joining word characters also matches the joined trait: the
+    // split form `3 d glasses` finds nothing, so `3-d glasses` falls back to
+    // `3d glasses` (3D Glasses), and `v-r` reaches VR.
+    assert.ok(sdk.countSync({ text: '3d glasses' }) > 0)
+    assert.deepEqual(
+      sdk.searchSync({ text: '3-d glasses' }),
+      sdk.searchSync({ text: '3d glasses' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'v-r' }),
+      sdk.searchSync({ attributes: { required: ['VR'] } }),
+    )
+
     // Skin tone covers both human genders for that slot.
     const albinos = sdk.searchSync({ text: 'albino skin' })
     assert.equal(albinos.length, 420 + 598)
@@ -170,6 +227,37 @@ describe('OfflinePunksDataClient', () => {
 
     // Bare `albino` is unambiguous and acts the same.
     assert.equal(sdk.countSync({ text: 'albino' }), albinos.length)
+    assert.equal(
+      sdk.countSync({ text: 'skin' }),
+      sdk.countSync({
+        headVariant: [
+          'Female 1',
+          'Female 2',
+          'Female 3',
+          'Female 4',
+          'Male 1',
+          'Male 2',
+          'Male 3',
+          'Male 4',
+        ],
+      }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'skin tone fair' }),
+      sdk.countSync({ text: 'fair skin' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'brown' }),
+      sdk.countSync({ text: 'brown skin' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'fair' }),
+      sdk.countSync({ text: 'fair skin' }),
+    )
+    assert.notEqual(
+      sdk.countSync({ text: 'dark' }),
+      sdk.countSync({ text: 'dark skin' }),
+    )
 
     // Include / exclude punk ids via `#id` and `-id`.
     assert.deepEqual(sdk.searchSync({ text: '#1234' }), [1234])
@@ -229,6 +317,44 @@ describe('OfflinePunksDataClient', () => {
       sdk.countSync({ text: 'masks' }),
       sdk.countSync({ text: 'mask' }),
     )
+  })
+
+  it('completes an unambiguous alias prefix in text search', () => {
+    const sdk = createOfflinePunksDataClient()
+
+    const burned = sdk.searchSync({ text: 'burned' })
+    assert.ok(burned.length > 0)
+    // Every prefix of the only alias starting with these letters resolves to
+    // the same collection — no per-length helper synonym needed.
+    for (const prefix of ['bur', 'burn', 'burne']) {
+      assert.deepEqual(sdk.searchSync({ text: prefix }), burned)
+    }
+    // A different alias of the same collection completes the same way.
+    for (const prefix of ['destro', 'destroy', 'destroye']) {
+      assert.deepEqual(sdk.searchSync({ text: prefix }), burned)
+    }
+    // A synonym prefix completes too: `claud` → `claude` → "crazy hair".
+    assert.deepEqual(
+      sdk.searchSync({ text: 'claud' }),
+      sdk.searchSync({ text: '"crazy hair"' }),
+    )
+
+    // A prefix that also names a trait is NOT hijacked: `mus` keeps matching
+    // Mustache rather than completing to the `museum` collection.
+    assert.deepEqual(
+      sdk.searchSync({ text: 'mus' }),
+      sdk.searchSync({ text: 'mustache' }),
+    )
+    assert.notDeepEqual(
+      sdk.searchSync({ text: 'mus' }),
+      sdk.searchSync({ text: 'museum' }),
+    )
+
+    // completeSearchText mirrors the rule for UI use, and leaves guarded /
+    // already-complete terms untouched.
+    assert.equal(sdk.completeSearchText('bur'), 'burned')
+    assert.equal(sdk.completeSearchText('mus'), 'mus')
+    assert.equal(sdk.completeSearchText('burned hoodie'), 'burned hoodie')
   })
 
   it('hydrates summaries and decodes compressed indexed pixels', () => {

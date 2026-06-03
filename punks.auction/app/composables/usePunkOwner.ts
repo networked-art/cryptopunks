@@ -36,6 +36,7 @@ import { TokenStandard, type TokenStandardValue } from '~/utils/auction'
 export function usePunkOwner(
   punkId: MaybeRefOrGetter<number>,
   standard: MaybeRefOrGetter<TokenStandardValue> = TokenStandard.CryptoPunks,
+  opts: { immediate?: boolean } = {},
 ) {
   const client = useReadClient()
 
@@ -168,8 +169,10 @@ export function usePunkOwner(
 
   watch(
     [() => toValue(punkId), () => toValue(standard), client],
-    () => void load(),
-    { immediate: true },
+    () => {
+      if (opts.immediate ?? true) void load()
+    },
+    { immediate: opts.immediate ?? true },
   )
 
   return {

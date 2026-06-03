@@ -21,21 +21,25 @@
               :size="48"
               :link="false"
             />
-            <span class="item-label label">
-              Punk #{{ item.punkId }}
+            <span class="item-text">
+              <span class="item-label label">
+                Punk #{{ item.punkId }}
+                <span
+                  v-if="item.standard === TokenStandard.CryptoPunksV1"
+                  class="item-standard"
+                  >(V1)</span
+                >
+              </span>
               <span
-                v-if="item.standard === TokenStandard.CryptoPunksV1"
-                class="item-standard"
-                >(V1)</span
+                v-if="estimateFor(item.standard, item.punkId)"
+                class="item-estimate"
               >
+                Estimated value ~<EthAmount
+                  :wei="estimateFor(item.standard, item.punkId)!"
+                />
+              </span>
             </span>
           </NuxtLink>
-        </template>
-        <template
-          v-if="showWeights"
-          #aside
-        >
-          <span class="weight">{{ formatWeight(item.weightBps) }}</span>
         </template>
       </DetailRow>
     </ul>
@@ -54,20 +58,21 @@ const props = defineProps<{
   items: LotItem[]
 }>()
 
-const showWeights = computed(() => {
-  const weights = props.items.map((item) => item.weightBps)
-  if (weights.length < 2) return false
-  return Math.max(...weights) - Math.min(...weights) > 100
-})
+const { estimateFor, request } = usePunkValueEstimates()
+watch(
+  () => props.items,
+  (items) =>
+    request(
+      items.map((item) => ({ standard: item.standard, punkId: item.punkId })),
+    ),
+  { immediate: true },
+)
 
+// Ordered most-valuable-first by the settlement weight; the weight itself is an
+// internal hammer-price split and is not surfaced.
 const sortedItems = computed(() =>
   [...props.items].sort((a, b) => b.weightBps - a.weightBps),
 )
-
-function formatWeight(weightBps: number) {
-  const percent = weightBps / 100
-  return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(2)}%`
-}
 
 function itemBackground(item: LotItem) {
   return lotItemBackground(item.standard)
@@ -106,6 +111,13 @@ function itemBackground(item: LotItem) {
   border-radius: 0;
 }
 
+.item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .item-label {
   min-width: 0;
   overflow: hidden;
@@ -117,9 +129,8 @@ function itemBackground(item: LotItem) {
   color: var(--text-muted);
 }
 
-.weight {
+.item-estimate {
   color: var(--text-muted);
-  font-size: var(--font-xs);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--font-sm);
 }
 </style>

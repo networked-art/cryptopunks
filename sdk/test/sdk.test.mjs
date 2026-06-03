@@ -8,6 +8,7 @@ import {
   STASH_FACTORY_ADDRESS,
   WRAPPED_PUNKS_ADDRESS,
   createPunksSdk,
+  splitPunksAuctionLotWeights,
 } from '../dist/index.js'
 import { bundledOfflinePunksDataWithPixels } from '../dist/offline-pixel-data.js'
 
@@ -89,6 +90,12 @@ describe('PunksSdk', () => {
     const twoColorSlot = punks.offers.slot({ query: { text: '2 colors' } })
     assert.equal(twoColorSlot.criteria.minColorCount, 2)
     assert.equal(twoColorSlot.criteria.maxColorCount, 2)
+
+    const spelledTwoColorSlot = punks.offers.slot({
+      query: { text: 'two colors' },
+    })
+    assert.equal(spelledTwoColorSlot.criteria.minColorCount, 2)
+    assert.equal(spelledTwoColorSlot.criteria.maxColorCount, 2)
 
     // `#1234 #5678 -9999` → includeIds [1234, 5678], excludeIds [9999].
     const idsSlot = punks.offers.slot({
@@ -227,8 +234,11 @@ describe('PunksSdk', () => {
     assert.equal(lot.request.functionName, 'createLot')
     assert.deepEqual(
       lot.request.args[0].map((item) => item.weightBps),
-      [3334, 3333, 3333],
+      [3333, 3333, 3334],
     )
+    assert.deepEqual(splitPunksAuctionLotWeights(7), [
+      1428, 1428, 1428, 1428, 1428, 1428, 1432,
+    ])
     // Default lot is public — onlySellTo falls back to the zero address.
     assert.equal(
       lot.request.args[2],

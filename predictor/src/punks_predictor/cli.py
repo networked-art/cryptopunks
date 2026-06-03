@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import argparse
+from datetime import UTC, datetime, timedelta
+import os
+import sys
+import time
+
+from .db import DatabaseConfig
+from .pipeline import train_and_store
+
+
+def main(argv: list[str] | None = None) -> int:
+  parser = argparse.ArgumentParser(prog="punk-predictor")
+  sub = parser.add_subparsers(dest="command", required=True)
+
+  sub.add_parser("run", help="Train once and store a new active prediction run")
+
+  serve = sub.add_parser("serve", help="Run the nightly scheduler")
+  serve.add_argument(
+    "--hour-utc",
+    type=int,
+    default=int(os.getenv("PREDICTOR_SCHEDULE_HOUR_UTC", "3")),
+    help="UTC hour for the nightly run",
+  )
+  serve.add_argument(
+    "--run-on-start",
+    action=argparse.BooleanOptionalAction,
+    default=os.getenv("PREDICTOR_RUN_ON_START", "true").lower() != "false",
+    help="Run immediately before waiting for the next scheduled run",
+  )
+
+  args = parser.parse_args(argv)
+  config = DatabaseConfig.from_env()
+
+  if args.command == "run":
+    run = train_and_store(config)
+    print(
+      f"stored prediction run {run.run_id} with {len(run.predictions)} rows "
+      f"({promotion_summary(run)})",
+      flush=True,
+    )
+    return 0
+
+  if args.command == "serve":
+    serve_loop(config, hour_utc=args.hour_utc, run_on_start=args.run_on_start)
+    return 0
+
+  parser.error("unknown command")
+  return 2
+
+
+def serve_loop(
+  config: DatabaseConfig,
+  *,
+  hour_utc: int,
+  run_on_start: bool,
+) -> None:
+  if not 0 <= hour_utc <= 23:
+    raise ValueError("--hour-utc must be between 0 and 23")
+
+  if run_on_start:
+    run_once(config)
+
+  while True:
+    now = datetime.now(tz=UTC)
+    next_run = now.replace(hour=hour_utc, minute=0, second=0, microsecond=0)
+    if next_run <= now:
+      next_run += timedelta(days=1)
+    sleep_seconds = max(1, int((next_run - now).total_seconds()))
+    print(f"next prediction run at {next_run.isoformat()}", flush=True)
+    time.sleep(sleep_seconds)
+    run_once(config)
+
+
+def run_once(config: DatabaseConfig) -> None:
+  started = datetime.now(tz=UTC)
+  print(f"starting prediction run at {started.isoformat()}", flush=True)
+  run = train_and_store(config)
+  finished = datetime.now(tz=UTC)
+  print(
+    f"finished prediction run {run.run_id} at {finished.isoformat()} "
+    f"({len(run.predictions)} rows, {promotion_summary(run)})",
+    flush=True,
+  )
+  print(realized_summary(run), flush=True)
+
+
+def realized_summary(run) -> str:
+  bt = run.backtests.get("live_realized", {}) if hasattr(run, "backtests") else {}
+  window = bt.get("windowDays", "?")
+  n = bt.get("n", 0)
+  if not n:
+    return f"realized backtest: no public V2 sales in the last {window}d to score yet"
+  parts = [f"realized backtest: {n} sales over {window}d ({bt.get('runsScored', '?')} runs)"]
+  for label, key, fmt in (
+    ("medAPE", "medianAbsolutePercentError", "{:.1%}"),
+    ("WAPE", "valueWeightedError", "{:.1%}"),
+    ("coverage", "intervalCoverage", "{:.0%}"),
+  ):
+    value = bt.get(key)
+    if value is not None:
+      parts.append(f"{label}={fmt.format(value)}")
+  return " — ".join([parts[0], " ".join(parts[1:])]) if len(parts) > 1 else parts[0]
+
+
+def promotion_summary(run) -> str:
+  promotion = run.metrics.get("promotion", {})
+  state = "active" if promotion.get("promote") else "kept inactive"
+  reason = promotion.get("reason", "no decision recorded")
+  return f"{state}: {reason}"
+
+
+if __name__ == "__main__":
+  raise SystemExit(main(sys.argv[1:]))

@@ -55,6 +55,7 @@ const emit = defineEmits<{ placed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
+const detail = usePunkDetailDataContext()
 
 const bidEth = ref('')
 const bidWei = ref<bigint | null>(null)
@@ -89,7 +90,11 @@ async function bid(): Promise<Hash> {
   if (!amountWei) {
     throw new Error('Enter a bid amount greater than zero.')
   }
-  const current = props.currentBid?.hasBid ? props.currentBid.valueWei : 0n
+  if (!(await detail.reconcileMarket())) {
+    throw new Error('Current market state could not be verified.')
+  }
+  const latestBid = detail.bid.value
+  const current = latestBid?.hasBid ? latestBid.valueWei : 0n
   if (amountWei <= current) {
     throw new Error('Enter a bid higher than the current high bid.')
   }

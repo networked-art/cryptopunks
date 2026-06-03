@@ -9,37 +9,46 @@ auto-registered UI primitives.
 
 ## Pages
 
-- `/` — search and grid (`PunkSearch`, `PunkGrid`).
-- `/auctions` — live auctions, with open lots listed below.
-- `/purchase-offers` — open native-ETH purchase offers.
-- `/activity` — recent `PunksAuction` events.
-- `/punk/[id]` — a canonical `CryptoPunks` Punk: traits, ownership, and any
-  auction/lot/offer it appears in.
-- `/punk/v1/[id]` — the same view for a V1 Punk.
+- `/` — landing page.
+- `/punks` — search and grid (`PunkSearch`, `PunkGrid`); `/punks/[id]` and
+  `/punks/v1/[id]` open a canonical or June 9th 2017 Punk with its traits,
+  ownership, and any auction/lot/offer it appears in.
+- `/auctions` — live auctions, with open lots below; `/auctions/[id]` is a
+  single auction.
+- `/lots/new` — create a lot from vaulted Punks; `/lots/[id]` is a single lot.
+- `/purchase-offers` — open native-ETH purchase offers; `/purchase-offers/new`
+  places one and `/purchase-offers/[id]` opens one.
+- `/activity` — recent auction-house and market activity.
 - `/profile/[handle]` — owned Punks, auction activity, and claimable escrow
-  for an address or ENS name.
-- `/about` — project context.
+  for an address or ENS name; sub-pages `/vault`, `/offers`, `/wrappers`, and
+  `/settings`.
+- `/about`, `/terms` — project context and terms.
 
 ## Architecture
-
-This is a **read-only** kickstart: every page reads chain state, no wallet
-transactions are wired yet.
 
 - **Onchain reads** go straight to the chain. The collection itself (search,
   rendering, traits) is served from the SDK's bundled offline dataset
   (`@networked-art/punks-sdk`). Auctions, lots, and offers are enumerated from
   `PunksAuction` via viem `multicall` (`lastAuctionId` / `lastLotId` /
-  `lastOfferId` + the public getters). The activity feed is built from
-  `eth_getLogs` over the contract's events. There is **no indexer**.
+  `lastOfferId` + the public getters).
+- **Wallet writes** — creating lots, opening and bidding on auctions, placing
+  and managing offers, vault deposits and approvals — are built by the SDK as
+  contract write plans and sent through the connected wallet with wagmi
+  (`app/composables/useWritePlan.ts`). The SDK owns address/ABI/args/value;
+  wagmi owns the wallet transport.
+- **Activity feed** is served by the indexer at `indexer.punks.auction` (a
+  Ponder/Postgres service). `app/composables/useActivityFeed.ts` reads the
+  `cryptopunks_v2`, `wrapped_punks`, `cryptopunks_721`, and `punks_auction`
+  sources.
 - **RPC proxy** at `server/api/rpc.post.ts` keeps the upstream URL (and its API
-  key) server-side. Only an allowlist of read methods is forwarded — including
-  `eth_call` (for `multicall`) and `eth_getLogs`. The browser-side wagmi config
-  points at the same-origin `/api/rpc`; the server-side wagmi plugin
-  (`app/plugins/wagmi.ts`) swaps in `rpcUrl` directly so Nitro SSR hits the
-  upstream without a self-loop.
-- **Contract address** — `PunksAuction` is not deployed yet. The address is a
-  placeholder constant in `app/utils/addresses.ts`; until it is set the
-  list/detail pages render an empty "not deployed" state.
+  key) server-side. Only an allowlist of read methods is forwarded. The
+  browser-side wagmi config points at the same-origin `/api/rpc`; the
+  server-side wagmi plugin (`app/plugins/wagmi.ts`) swaps in `rpcUrl` directly
+  so Nitro SSR hits the upstream without a self-loop.
+- **Contract address** — `PunksAuction` is deployed at
+  `0x6f99d7E85b4Ba6fFD9ff60A09fc12201027b7873` (escrow
+  `0x366662a518702CE9bC0Be44930ec8d176eF56aD5`), hardcoded in
+  `app/utils/addresses.ts`.
 - **Rendering** uses the CDN-hosted optimized 100×100 sprite sheet
   (`punks.optimized.png`) for grid cells; detail views render through the SDK's
   offline renderer.

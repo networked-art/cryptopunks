@@ -35,6 +35,7 @@
           :punk-id="punkId"
           @changed="onMarketChanged"
         />
+        <LazyPunkDetailPrediction />
         <LazyPunkDetailOwnerActions
           v-if="!isV1"
           :key="`owner-actions-${marketChangeKey}`"
@@ -42,11 +43,16 @@
           :standard="standard"
           @changed="onMarketChanged"
         />
+        <PunkDetailCollections
+          :punk-id="punkId"
+          :standard="standard"
+        />
         <LazyPunkDetailHistory
           v-if="!isV1"
           :key="`history-${marketChangeKey}`"
           :punk-id="punkId"
         />
+        <LazyPunkDetailSimilar :punk-id="punkId" />
       </div>
     </section>
   </article>
@@ -68,9 +74,21 @@ const summary = computed(() =>
 const { displayTraits } = usePunkDisplayTraits(summary)
 const marketChangeKey = ref(0)
 const highlightedColor = ref<string | null>(null)
+const detailData = usePunkDetailData(
+  () => props.punkId,
+  () => props.standard,
+)
+providePunkDetailData(detailData)
+providePunkPrediction(
+  usePunkPrediction(
+    () => props.punkId,
+    () => props.standard,
+  ),
+)
 
 function onMarketChanged() {
   marketChangeKey.value += 1
+  void detailData.refresh()
 }
 
 function setHighlightedColor(color: string | null) {

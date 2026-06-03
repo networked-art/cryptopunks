@@ -39,9 +39,7 @@ const PUNK_SOURCE_SIZE = 24
 const PUNK_HIGHLIGHT_SCALE = 4
 const PUNK_HIGHLIGHT_SIZE = PUNK_SOURCE_SIZE * PUNK_HIGHLIGHT_SCALE
 const PUNK_SPRITE_COLS = 100
-const DIMMED_PIXEL_OPACITY = 0.25
-const DIMMED_BACKGROUND_OPACITY = 0.18
-const INACTIVE_PIXEL_SCALE = 0.5
+const INACTIVE_PIXEL_GRAY = { r: 229, g: 229, b: 236 }
 
 let spriteImagePromise: Promise<HTMLImageElement> | null = null
 const highlightImageCache = new Map<string, string>()
@@ -137,21 +135,19 @@ async function highlightedPunkDataUrl(
       const g = source.data[offset + 1] ?? 0
       const b = source.data[offset + 2] ?? 0
       const a = source.data[offset + 3] ?? 0
+      if (a === 0) continue
+
       const isSelected =
         r === rgba.r && g === rgba.g && b === rgba.b && a === rgba.a
-      const pixelSize = isSelected
-        ? PUNK_HIGHLIGHT_SCALE
-        : Math.max(1, Math.round(PUNK_HIGHLIGHT_SCALE * INACTIVE_PIXEL_SCALE))
-      const pixelInset = Math.floor((PUNK_HIGHLIGHT_SCALE - pixelSize) / 2)
 
       outputCtx.fillStyle = isSelected
         ? `rgba(${r}, ${g}, ${b}, ${a / 255})`
-        : `rgba(${r}, ${g}, ${b}, ${(a / 255) * DIMMED_PIXEL_OPACITY})`
+        : `rgba(${INACTIVE_PIXEL_GRAY.r}, ${INACTIVE_PIXEL_GRAY.g}, ${INACTIVE_PIXEL_GRAY.b}, ${a / 255})`
       outputCtx.fillRect(
-        x * PUNK_HIGHLIGHT_SCALE + pixelInset,
-        y * PUNK_HIGHLIGHT_SCALE + pixelInset,
-        pixelSize,
-        pixelSize,
+        x * PUNK_HIGHLIGHT_SCALE,
+        y * PUNK_HIGHLIGHT_SCALE,
+        PUNK_HIGHLIGHT_SCALE,
+        PUNK_HIGHLIGHT_SCALE,
       )
     }
   }
@@ -177,14 +173,6 @@ function parseRgbaHex(value: string): RgbaParts | null {
   }
 }
 
-function cssColorWithAlpha(value: string, opacity: number): string {
-  const rgba = parseRgbaHex(value)
-  if (!rgba) return value
-  return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${(
-    (rgba.a / 255) *
-    opacity
-  ).toFixed(3)})`
-}
 </script>
 
 <script setup lang="ts">
@@ -207,20 +195,19 @@ const props = withDefaults(
   },
 )
 
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 const SPRITE_COLS = 100
 const SPRITE_SPAN = SPRITE_COLS - 1
 
 const resolvedBackground = computed(
-  () => props.background ?? backgroundForPunk(props.punkId, props.standard),
+  () =>
+    props.background ?? backgroundForPunkState(props.punkId, props.standard),
 )
 
 const rootStyle = computed(() => ({
   width: typeof props.size === 'number' ? `${props.size}px` : props.size,
   height: typeof props.size === 'number' ? `${props.size}px` : props.size,
-  backgroundColor: props.highlightedColor
-    ? cssColorWithAlpha(resolvedBackground.value, DIMMED_BACKGROUND_OPACITY)
-    : resolvedBackground.value,
+  backgroundColor: resolvedBackground.value,
 }))
 
 const highlightedImageUrl = ref<string | null>(null)

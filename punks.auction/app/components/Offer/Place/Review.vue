@@ -102,9 +102,34 @@ function slotFulfillmentText(slot: PlaceOfferDraft['slotSummaries'][number]) {
     return `one of the ${formatPunkCount(slot.previewIds.length)} in this selection`
   }
   if (slot.displayKind === 'criteria') {
-    return `one Punk matching ${formatOfferTraitTitle(slot.title)} (${formatEligibleCount(slot.previewIds.length)})`
+    const criteria = formatOfferTraitTitle(slot.title)
+    const target =
+      slot.criteriaKind === 'group'
+        ? `one Punk matching any of ${criteria}`
+        : `one Punk matching ${criteria}`
+    return `${target} (${criteriaSummaryDetails(slot).join('; ')})`
   }
   return 'any Punk'
+}
+
+function criteriaSummaryDetails(
+  slot: PlaceOfferDraft['slotSummaries'][number],
+) {
+  return [
+    formatEligibleCount(slot.previewIds.length),
+    slot.includeIds.length
+      ? `included: ${formatPunkIdList(slot.includeIds)}`
+      : '',
+    slot.excludeIds.length
+      ? `excluded: ${formatPunkIdList(slot.excludeIds)}`
+      : '',
+  ].filter(Boolean)
+}
+
+function formatPunkIdList(ids: readonly number[]) {
+  const labels = ids.map((id, index) => `${index === 0 ? 'Punk ' : ''}#${id}`)
+  if (labels.length <= 1) return labels[0] ?? ''
+  return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
 }
 
 function formatPunkCount(count: number) {

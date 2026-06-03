@@ -29,7 +29,7 @@
           class="connect-row"
         >
           <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
-          <span class="muted">Connect a wallet to open the auction.</span>
+          <span class="muted">Connect a wallet to start the auction.</span>
         </div>
 
         <Button
@@ -38,7 +38,7 @@
           :disabled="!canOpen"
           @click="actOpenAuction"
         >
-          Open auction <EthAmount :wei="lot.reserveWei" />
+          Start auction <EthAmount :wei="lot.reserveWei" />
         </Button>
       </div>
 
@@ -84,19 +84,19 @@
                 class="offer-actions"
               >
                 <Button
-                  v-if="isSeller"
-                  class="primary small"
-                  :disabled="!instantEligible || !v1ActionsAllowed"
-                  @click="actAcceptOffer(offer)"
-                >
-                  Accept <EthAmount :wei="offer.amountWei" />
-                </Button>
-                <Button
-                  :class="['small', { primary: index === 0 && !isSeller }]"
+                  :class="['small', { primary: index === 0 }]"
                   :disabled="!v1ActionsAllowed"
                   @click="actStartAuctionFromOffer(offer)"
                 >
                   Start auction
+                </Button>
+                <Button
+                  v-if="isSeller"
+                  class="small"
+                  :disabled="!instantEligible || !v1ActionsAllowed"
+                  @click="actAcceptOffer(offer)"
+                >
+                  Sell now
                 </Button>
               </div>
             </li>
@@ -116,6 +116,12 @@
           </div>
         </div>
       </template>
+
+      <DialogSettle
+        ref="settleDialog"
+        :lots="settleLots"
+        @changed="onSettled"
+      />
 
       <Dialog
         v-model:open="updateDialogOpen"
@@ -197,7 +203,6 @@
         ref="dialogRef"
         :text="dialogText"
         keep-open
-        skip-confirmation
         @complete="onComplete"
       />
     </section>
@@ -221,6 +226,7 @@ import {
   type LotRecord,
   type OfferRecord,
 } from '~/utils/auction'
+import type { SettleRequest } from '~/utils/settle'
 import { resolveAddressInput } from '~/utils/addressInput'
 
 const props = withDefaults(
@@ -247,6 +253,11 @@ const parsedReserveWei = ref<bigint | null>(null)
 const onlySellTo = ref('')
 const privateBuyerOpen = ref(false)
 const updateError = ref<string | null>(null)
+
+const settleDialog = ref<{
+  start: (request: SettleRequest) => Promise<void>
+} | null>(null)
+const settleLots = computed(() => [props.lot])
 
 const isPrivateLot = computed(
   () => !sameAddress(props.lot.onlySellTo, ZERO_ADDRESS),
@@ -290,46 +301,27 @@ const dialogText = ref<{
 
 function actOpenAuction() {
   if (!canOpen.value) return
-  runPlan(
-    sdk.value.auctions.prepareOpenAuction({
-      lotId: props.lot.id,
-      reserveWei: props.lot.reserveWei,
-      bidWei: props.lot.reserveWei,
-    }),
-    `Open lot #${props.lot.id}`,
-    `Open this lot as a 24-hour auction with an opening bid of ${formatEther(props.lot.reserveWei)} ETH.`,
-    'Open auction',
-  )
+  void settleDialog.value?.start({ mode: 'open', lot: props.lot })
 }
 
 function actAcceptOffer(offer: OfferRecord) {
   if (!isSeller.value || !instantEligible.value || !v1ActionsAllowed.value) {
     return
   }
-  runPlan(
-    sdk.value.offers.prepareAcceptFromLot({
-      offerId: offer.id,
-      lotId: props.lot.id,
-      minAmountWei: props.lot.reserveWei,
-    }),
-    `Accept offer #${offer.id}`,
-    `Settle lot #${props.lot.id} instantly at ${formatEther(offer.amountWei)} ETH.`,
-    'Accept',
-  )
+  void settleDialog.value?.start({
+    mode: 'accept',
+    lot: props.lot,
+    offer,
+  })
 }
 
 function actStartAuctionFromOffer(offer: OfferRecord) {
   if (!v1ActionsAllowed.value) return
-  runPlan(
-    sdk.value.auctions.prepareStartAuctionFromOffer({
-      offerId: offer.id,
-      lotId: props.lot.id,
-      minAmountWei: props.lot.reserveWei,
-    }),
-    `Start auction from offer #${offer.id}`,
-    `Open lot #${props.lot.id} as a 24-hour auction with this offer as the opening bid.`,
-    'Start auction',
-  )
+  void settleDialog.value?.start({
+    mode: 'start',
+    lot: props.lot,
+    offer,
+  })
 }
 
 function openUpdateDialog() {
@@ -355,29 +347,33 @@ async function actUpdateLot() {
   }
 
   updateDialogOpen.value = false
-  runPlan(
+  const buyerLine =
+    buyer === ZERO_ADDRESS
+      ? 'Anyone can start the auction.'
+      : `Only ${buyer} can start the auction.`
+  runLocalPlan(
     sdk.value.auctions.prepareUpdateLot({
       lotId: props.lot.id,
       reserveWei,
       onlySellTo: buyer,
     }),
     `Update Lot #${props.lot.id}`,
-    `Set this lot reserve to ${reserveEth.value.trim()} ETH.`,
+    `Sets the reserve to ${reserveEth.value.trim()} ETH. ${buyerLine} The lot's Punk reservations are unchanged.`,
     'Update Lot',
   )
 }
 
 function actCancelLot() {
   cancelDialogOpen.value = false
-  runPlan(
+  runLocalPlan(
     sdk.value.auctions.prepareCancelLot(props.lot.id),
     `Cancel Lot #${props.lot.id}`,
-    'Cancel this lot and release its Punk reservations.',
+    `Withdraws lot #${props.lot.id} and releases its Punks back to your account. This cannot be undone — you would need to create a new lot to relist.`,
     'Cancel Lot',
   )
 }
 
-function runPlan(
+function runLocalPlan(
   plan: ContractWritePlan,
   title: string,
   lead: string,
@@ -393,6 +389,10 @@ function runPlan(
 
 function onComplete(receipt: TransactionReceipt) {
   emit('changed', receipt.transactionHash as Hash)
+}
+
+function onSettled(tx: Hash) {
+  emit('changed', tx)
 }
 
 function seedUpdateForm() {

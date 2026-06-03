@@ -5,6 +5,7 @@ export const CryptoPunksV1Abi = parseAbi([
   'function punksOfferedForSale(uint256 punkIndex) view returns (bool isForSale, uint256 punkIndex, address seller, uint256 minValue, address onlySellTo)',
   'function punkBids(uint256 punkIndex) view returns (bool hasBid, uint256 punkIndex, address bidder, uint256 value)',
   'event Assign(address indexed to, uint256 punkIndex)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
   'event PunkTransfer(address indexed from, address indexed to, uint256 punkIndex)',
   'event PunkOffered(uint256 indexed punkIndex, uint256 minValue, address indexed toAddress)',
   'event PunkNoLongerForSale(uint256 indexed punkIndex)',

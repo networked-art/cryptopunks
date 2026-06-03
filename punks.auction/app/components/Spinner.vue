@@ -21,7 +21,7 @@ const props = withDefaults(
     interval?: number
     loop?: boolean
     playKey?: number | string
-    idlePattern?: 'full' | 'first'
+    idlePattern?: 'full' | 'first' | 'arrow-up' | 'auction-start' | 'lot-create'
     decorative?: boolean
   }>(),
   {
@@ -54,10 +54,23 @@ const FRAMES: readonly (readonly number[])[] = [
 
 const FULL_FRAME: readonly number[] = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 
+const ARROW_UP_FRAME: readonly number[] = [1, 1, 1, 0, 1, 1, 1, 0, 1]
+const AUCTION_START_FRAME: readonly number[] = [0, 1, 0, 1, 1, 1, 0, 1, 0]
+const LOT_CREATE_FRAME: readonly number[] = [1, 1, 1, 1, 0, 1, 1, 1, 1]
+
+const IDLE_FRAMES: Record<
+  NonNullable<typeof props.idlePattern>,
+  readonly number[]
+> = {
+  full: FULL_FRAME,
+  first: FRAMES[0]!,
+  'arrow-up': ARROW_UP_FRAME,
+  'auction-start': AUCTION_START_FRAME,
+  'lot-create': LOT_CREATE_FRAME,
+}
+
 const frame = ref<number | null>(null)
-const idleFrame = computed(() =>
-  props.idlePattern === 'full' ? FULL_FRAME : FRAMES[0]!,
-)
+const idleFrame = computed(() => IDLE_FRAMES[props.idlePattern])
 // When looping, CSS drives the animation directly off `.spinner-loop`, so
 // `pattern` holds the idle frame and the .on classes are a no-op. The JS
 // timer only runs for one-shot playback (loop=false + playKey changes).

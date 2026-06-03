@@ -344,10 +344,13 @@ export const backfillMarker = onchainTable('backfill_markers', (t) => ({
 }))
 
 // Unified user-facing activity stream. `source` ∈ { cryptopunks_v1,
-// cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market }.
+// cryptopunks_v2, wrapped_punks, cryptopunks_721, v1_wrapper, punks_market,
+// punks_auction }.
 // `type` ∈ { assign, transfer, stashed, unstashed, vaulted, unvaulted,
-// listing, listing_cancelled, bid, bid_adjusted, bid_cancelled, sale, wrap,
-// unwrap, escrow_credit, escrow_withdrawal }.
+// escrowed, listing, listing_cancelled, bid, bid_adjusted, bid_cancelled,
+// sale, wrap, unwrap, escrow_credit, escrow_withdrawal, lot_created,
+// lot_cancelled, lot_cleared, lot_updated, auction_started, auction_settled,
+// offer_placed, offer_cancelled, offer_adjusted }.
 // `day_unix` is the UTC day of `timestamp` — stable JOIN key against
 // `eth_usd_prices`. `usd_value_cents` is the Stripe-style USD-cent equivalent
 // of `wei_amount` at the day's ETH/USD price, cached on the row at indexing
@@ -374,6 +377,14 @@ export const event = onchainTable(
     settlement_wei: t.bigint(),
     only_sell_to: t.hex(),
     bid_id: t.bigint(),
+    lot_id: t.bigint(),
+    auction_id: t.bigint(),
+    offer_id: t.bigint(),
+    // `offer_kind` ∈ { collection, trait, selection }. Populated for
+    // `offer_placed` rows from the per-slot `OfferSlotDetail` events that
+    // follow `OfferPlaced` in the same tx, and copied onto `offer_cancelled`
+    // / `offer_adjusted` rows from the stored offer.
+    offer_kind: t.text(),
     tx_hash: t.hex().notNull(),
     block_number: t.bigint().notNull(),
     log_index: t.integer().notNull(),
@@ -407,5 +418,106 @@ export const event = onchainTable(
       table.to,
       table.timestamp,
     ),
+  }),
+)
+
+// PunksAuction lot state. One row per lot. Stays around after a lot is
+// consumed/cancelled so cancellation/clearance handlers can recover the seller
+// without an extra RPC call.
+export const auctionLot = onchainTable(
+  'auction_lots',
+  (t) => ({
+    lot_id: t.bigint().primaryKey(),
+    seller: t.hex().notNull(),
+    reserve_wei: t.bigint().notNull(),
+    only_sell_to: t.hex(),
+    item_count: t.integer().notNull(),
+    active: t.boolean().notNull(),
+    tx_hash: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    log_index: t.integer().notNull(),
+    timestamp: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+  }),
+  (table) => ({
+    sellerIdx: index('auction_lot_seller_idx').on(table.seller),
+    activeIdx: index('auction_lot_active_idx').on(table.active),
+  }),
+)
+
+// One row per Punk stored on a lot, populated from `LotItemDetail`. Read at
+// instant-settle / cancellation time so handlers can emit per-Punk activity
+// without re-reading lot items from chain (the contract has already deleted
+// them by the time those events fire).
+// `standard` ∈ { cryptopunks, cryptopunks_v1 } — mirrors the `TokenStandard`
+// enum in `IPunksAuction`.
+export const auctionLotItem = onchainTable(
+  'auction_lot_items',
+  (t) => ({
+    lot_id: t.bigint().notNull(),
+    item_index: t.integer().notNull(),
+    standard: t.text().notNull(),
+    punk_id: t.bigint().notNull(),
+    weight_bps: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.lot_id, table.item_index] }),
+    lotIdx: index('auction_lot_item_lot_idx').on(table.lot_id),
+    punkIdx: index('auction_lot_item_punk_idx').on(table.punk_id),
+  }),
+)
+
+// PunksAuction live auction state. Mirrors the contract `Auction` struct so
+// settlement handlers can recover the seller for each delivered item.
+export const auctionAuction = onchainTable(
+  'auction_auctions',
+  (t) => ({
+    auction_id: t.bigint().primaryKey(),
+    lot_id: t.bigint().notNull(),
+    seller: t.hex().notNull(),
+    latest_bidder: t.hex().notNull(),
+    latest_bid_wei: t.bigint().notNull(),
+    end_timestamp: t.bigint().notNull(),
+    settled: t.boolean().notNull(),
+    item_count: t.integer().notNull(),
+    tx_hash: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    log_index: t.integer().notNull(),
+    timestamp: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+  }),
+  (table) => ({
+    sellerIdx: index('auction_auction_seller_idx').on(table.seller),
+    settledIdx: index('auction_auction_settled_idx').on(table.settled),
+  }),
+)
+
+// PunksAuction purchase offer state. Mirrors the contract `Offer` struct so
+// adjust/cancel/accept handlers can recover the offerer without re-reading
+// from chain.
+export const auctionOffer = onchainTable(
+  'auction_offers',
+  (t) => ({
+    offer_id: t.bigint().primaryKey(),
+    offerer: t.hex().notNull(),
+    amount_wei: t.bigint().notNull(),
+    slot_count: t.integer().notNull(),
+    // Aggregated kind across the offer's slots, populated as `OfferSlotDetail`
+    // events arrive. Precedence trait > selection > specific > collection so
+    // the icon tracks the most specific slot.
+    kind: t.text(),
+    // For single-slot offers where the slot targets exactly one Punk, this
+    // holds that Punk id so cancel/adjust rows can resurface the same thumb.
+    specific_punk_id: t.bigint(),
+    active: t.boolean().notNull(),
+    tx_hash: t.hex().notNull(),
+    block_number: t.bigint().notNull(),
+    log_index: t.integer().notNull(),
+    timestamp: t.bigint().notNull(),
+    updated_at: t.bigint().notNull(),
+  }),
+  (table) => ({
+    offererIdx: index('auction_offer_offerer_idx').on(table.offerer),
+    activeIdx: index('auction_offer_active_idx').on(table.active),
   }),
 )

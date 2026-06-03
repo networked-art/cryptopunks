@@ -13,26 +13,68 @@
           <div class="profile-title">
             <ClientOnly>
               <h1
-                v-if="ensProfile.data.value?.ens"
                 class="profile-name"
+                :class="{
+                  muted:
+                    !addressLabel(resolvedAddress) &&
+                    !ensProfile.data.value?.ens,
+                }"
               >
-                {{ ensProfile.data.value.ens }}
-              </h1>
-              <h1
-                v-else
-                class="profile-name muted"
-              >
-                {{ shortAddr }}
+                {{ titleLabel }}
               </h1>
               <template #fallback>
-                <h1 class="profile-name muted">{{ shortAddr }}</h1>
+                <h1
+                  class="profile-name"
+                  :class="{ muted: !addressLabel(resolvedAddress) }"
+                >
+                  {{ addressLabel(resolvedAddress)?.name ?? shortAddr }}
+                </h1>
               </template>
             </ClientOnly>
           </div>
 
-          <p class="profile-address muted">
-            {{ resolvedAddress }}
-          </p>
+          <CopyText
+            :value="resolvedAddress"
+            class="profile-address muted"
+          >
+            <template #default="{ copied }">
+              <span class="profile-address-value">{{ resolvedAddress }}</span>
+              <Icon
+                :name="copied ? 'lucide:check' : 'lucide:copy'"
+                class="profile-address-copy"
+                aria-hidden="true"
+              />
+            </template>
+          </CopyText>
+
+          <nav class="external-links">
+            <a
+              :href="`https://www.cryptopunks.app/cryptopunks/accountinfo?account=${resolvedAddress}`"
+              target="_blank"
+              rel="noopener"
+              class="external-link"
+            >
+              cryptopunks.app
+              <Icon
+                name="lucide:external-link"
+                class="external-link-icon"
+                aria-hidden="true"
+              />
+            </a>
+            <a
+              :href="`https://evm.now/address/${resolvedAddress}`"
+              target="_blank"
+              rel="noopener"
+              class="external-link"
+            >
+              evm.now
+              <Icon
+                name="lucide:external-link"
+                class="external-link-icon"
+                aria-hidden="true"
+              />
+            </a>
+          </nav>
 
           <LazyProfileStatusPills
             :vault="vault"
@@ -73,6 +115,7 @@ import { useConfig, useConnection } from '@wagmi/vue'
 import type { Address, PublicClient } from 'viem'
 import { isAddress } from 'viem'
 import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
+import { addressLabel } from '@networked-art/punks-sdk'
 import { accountAvvatarDataUri } from '~/utils/avvatar'
 import { ProfileContextKey } from '~/composables/useProfileContext'
 
@@ -156,7 +199,12 @@ const ownAccount = computed(() =>
   isOwnProfile.value ? (resolvedAddress.value ?? undefined) : undefined,
 )
 
-const titleLabel = computed(() => ensProfile.data.value?.ens ?? shortAddr.value)
+const titleLabel = computed(
+  () =>
+    addressLabel(resolvedAddress.value)?.name ??
+    ensProfile.data.value?.ens ??
+    shortAddr.value,
+)
 const profileAvatarUri = computed(() =>
   resolvedAddress.value
     ? accountAvvatarDataUri(resolvedAddress.value, 90)
@@ -242,7 +290,7 @@ provide(ProfileContextKey, {
 }
 
 .profile-avvatar {
-  width: clamp(56px, 12vw, 90px);
+  width: clamp(64px, 16vw, 109px);
   aspect-ratio: 1;
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px var(--border-color) inset;
@@ -273,7 +321,48 @@ provide(ProfileContextKey, {
 .profile-address {
   margin: 0;
   font-size: var(--font-sm);
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+}
+
+.profile-address-value {
   overflow-wrap: anywhere;
+}
+
+.profile-address-copy {
+  flex: 0 0 auto;
+  width: 0.9em;
+  height: 0.9em;
+  opacity: 0.6;
+}
+
+.external-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-3);
+}
+
+.external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-1);
+  font-size: var(--font-xs);
+  letter-spacing: var(--letter-spacing-md);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.external-link:hover {
+  color: var(--text);
+}
+
+.external-link-icon {
+  flex: 0 0 auto;
+  width: 0.85em;
+  height: 0.85em;
 }
 
 .profile-loading {

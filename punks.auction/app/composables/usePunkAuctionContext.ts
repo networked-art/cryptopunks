@@ -52,5 +52,5 @@ export function usePunkAuctionContext(
     () => auctionsPending.value || lotsPending.value || offersPending.value,
   )
 
-  return { punkAuctions, punkLots, punkOffers, pending }
+  return { punkAuctions, punkLots, punkOffers, lots, pending }
 }

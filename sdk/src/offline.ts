@@ -18,6 +18,8 @@ import {
   traitKindNames,
   type HeadVariantName,
   type HeadVariantValue,
+  type PunkStandardRef,
+  type PunkStandardValue,
   type PunkTypeName,
   type PunkTypeValue,
   type SkinToneValue,
@@ -58,9 +60,11 @@ import {
   assertIndexedPixels,
   assertIntegerInRange,
   bytesToHex,
+  canonicalizeSearchInput,
   idsFromMask,
   maskFromIds,
   normalizeNumericRange,
+  normalizePunkStandard,
   normalizeRgbaHex,
   rgbaHexToParts,
   validateBitmapWordIndex,
@@ -75,7 +79,9 @@ import {
 } from './utils'
 import { bundledOfflinePunksData } from './offline-data'
 import {
+  findUniquePrefixCompletion,
   parseSearchTextWithExactTraitsSync,
+  tokenizeSearchText,
   type ParsedNumericConstraint,
   type ParsedSearchTextGroup,
   type SearchTextTerm,
@@ -165,6 +171,11 @@ export type OfflinePunksDataManifest = {
 export type OfflinePunksDataClientConfig = {
   dataset?: OfflinePunksDataSource | OfflinePunksDataBundle
   cache?: boolean
+  /// Scopes curated-collection text resolution to a single Punk standard. When
+  /// set, only collections of this standard resolve as id sets in `text`
+  /// search; aliases of other standards fall through to trait matching. Omitted
+  /// means every collection resolves.
+  standard?: PunkStandardRef
 }
 
 export type LoadOfflinePunksDataOptions = {
@@ -296,6 +307,9 @@ const VISIBLE_BITMAP_BYTES = 72
 
 export class OfflinePunksDataClient {
   readonly manifest: OfflinePunksDataManifest
+  /// The standard this client scopes curated-collection resolution to, read by
+  /// the text parser. Undefined resolves every collection.
+  readonly standard?: PunkStandardValue
 
   private readonly store: OfflineStore
   private readonly indexedPixelsCache = new Map<number, Uint8Array>()
@@ -303,6 +317,10 @@ export class OfflinePunksDataClient {
   constructor(config: OfflinePunksDataClientConfig = {}) {
     this.store = parseOfflineStore(config.dataset ?? bundledOfflinePunksData)
     this.manifest = this.store.manifest
+    this.standard =
+      config.standard === undefined
+        ? undefined
+        : normalizePunkStandard(config.standard)
   }
 
   clearCache(): void {
@@ -994,21 +1012,23 @@ export class OfflinePunksDataClient {
   /// substring rules as offline search: a fuzzy term matches a trait whose
   /// normalized name starts with the term or contains it as a whole word
   /// (` ${term}`). An `exact: true` term only matches a trait whose
-  /// normalized name equals the normalized term. Returns `[]` for an empty
-  /// or non-matching term.
+  /// normalized name equals the normalized term. A `-`/`_` joining word
+  /// characters is also tried with the separator removed, so `3-d glasses`
+  /// reaches `3D Glasses` (see {@link searchTextVariants}). Returns `[]` for an
+  /// empty or non-matching term.
   findTraitsByTextSync(
     text: string,
     options: { exact?: boolean } & PunksDataReadOptions = {},
   ): TraitRecord[] {
     const { exact = false, ...readOptions } = options
     validateOfflineReadOptions(readOptions)
-    const normalized = normalizeSearchText(text)
-    if (!normalized) return []
+    const variants = searchTextVariants(text)
+    if (variants.length === 0) return []
     const out: TraitRecord[] = []
     for (const trait of this.store.traits) {
       const key = normalizeSearchText(trait.name)
       if (!key) continue
-      if (matchesTextIndexKey(key, normalized, exact)) {
+      if (matchesAnyTextVariant(key, variants, exact)) {
         out.push({ ...trait })
       }
     }
@@ -1020,6 +1040,35 @@ export class OfflinePunksDataClient {
     options: { exact?: boolean } & PunksDataReadOptions = {},
   ): Promise<TraitRecord[]> {
     return this.findTraitsByTextSync(text, options)
+  }
+
+  /// Completes an unfinished search term to the curated-collection alias or
+  /// synonym it unambiguously prefixes (`bur` → `burned`), so a partial word
+  /// resolves when nothing else in the dataset could match it. Returns
+  /// `undefined` when a trait already matches the term — there is another
+  /// possible match, so the fuzzy trait path handles it — or when the prefix is
+  /// ambiguous. Used by the search/filter parser via {@link
+  /// parseSearchTextWithExactTraitsSync}; see {@link findUniquePrefixCompletion}.
+  completeSearchPrefix(term: string): string | undefined {
+    if (typeof term !== 'string') return undefined
+    if (this.findTraitsByTextSync(term).length > 0) return undefined
+    return findUniquePrefixCompletion(term, this.standard)
+  }
+
+  /// Rewrites each unfinished, unambiguous term in `text` to the alias it
+  /// completes to (see {@link completeSearchPrefix}), leaving everything else
+  /// verbatim. Lets a UI resolve `bur` to the same `burned` collection the grid
+  /// resolves — e.g. to surface a collection explainer — without re-implementing
+  /// the rule. Quoted (exact) terms are preserved.
+  completeSearchText(text: string): string {
+    if (typeof text !== 'string') return ''
+    return tokenizeSearchText(text)
+      .map((term) =>
+        term.exact
+          ? `"${term.text}"`
+          : (this.completeSearchPrefix(term.text) ?? term.text),
+      )
+      .join(' ')
   }
 
   resolveTraitCriteriaSync(
@@ -1511,17 +1560,17 @@ export class OfflinePunksDataClient {
   }
 
   private bitmapForTextTermSync(term: SearchTextTerm): PunkBitmap {
-    const normalized = normalizeSearchText(term.text)
-    if (!normalized) return fullPunkBitmap()
+    const variants = searchTextVariants(term.text)
+    if (variants.length === 0) return fullPunkBitmap()
 
     const matches: PunkBitmap[] = []
     for (const entry of this.store.textIndex) {
-      if (matchesTextIndexKey(entry.key, normalized, term.exact)) {
+      if (matchesAnyTextVariant(entry.key, variants, term.exact)) {
         matches.push(entry.bitmap)
       }
     }
 
-    const colorId = this.tryResolveTextColorId(normalized)
+    const colorId = this.tryResolveTextColorId(variants[0])
     if (colorId !== undefined) matches.push(this.store.colorBitmaps[colorId])
 
     return matches.length === 0 ? emptyPunkBitmap() : unionPunkBitmaps(matches)
@@ -2257,29 +2306,30 @@ export function parseOfflinePunksSearchText(
 
 function readTextSearchTokens(input: string): OfflinePunksTextSearchTerm[] {
   const tokens: OfflinePunksTextSearchTerm[] = []
+  const source = canonicalizeSearchInput(input)
   let cursor = 0
 
-  while (cursor < input.length) {
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor++
-    if (cursor >= input.length) break
+  while (cursor < source.length) {
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor++
+    if (cursor >= source.length) break
 
-    if (input[cursor] === '"') {
+    if (source[cursor] === '"') {
       cursor++
       const start = cursor
-      while (cursor < input.length && input[cursor] !== '"') cursor++
+      while (cursor < source.length && source[cursor] !== '"') cursor++
       // Only the closing quote flips the term to exact — an unclosed
       // opening quote (mid-typing `"cap forw`) stays fuzzy so it can still
       // match `cap forward` via substring lookup.
-      const closed = cursor < input.length && input[cursor] === '"'
-      const text = input.slice(start, cursor).trim()
+      const closed = cursor < source.length && source[cursor] === '"'
+      const text = source.slice(start, cursor).trim()
       if (closed) cursor++
       if (text) tokens.push({ text, exact: closed })
       continue
     }
 
     const start = cursor
-    while (cursor < input.length && !/\s/.test(input[cursor])) cursor++
-    const text = input.slice(start, cursor).replaceAll('"', '').trim()
+    while (cursor < source.length && !/\s/.test(source[cursor])) cursor++
+    const text = source.slice(start, cursor).replaceAll('"', '').trim()
     if (text) tokens.push({ text, exact: false })
   }
 
@@ -2314,6 +2364,31 @@ function matchesTextIndexKey(
   exact: boolean,
 ): boolean {
   return exact ? key === term : key.startsWith(term) || key.includes(` ${term}`)
+}
+
+/// Comparison keys for a raw search term. The first is the standard
+/// {@link normalizeSearchText} form (`-`/`_` → space); when the term joins word
+/// characters with a `-`/`_` a second form with the separator removed is
+/// appended, so `3-d glasses` also reaches `3D Glasses` and `v-r` reaches `VR`.
+/// A term matches a key when it matches ANY variant — the joined form only ever
+/// broadens, never drops, the spaced form's matches.
+function searchTextVariants(value: string): string[] {
+  const spaced = normalizeSearchText(value)
+  if (!spaced) return []
+  const joined = value
+    .toLowerCase()
+    .replaceAll(/[_-]+/g, '')
+    .replaceAll(/[^#a-z0-9]+/g, ' ')
+    .trim()
+  return joined && joined !== spaced ? [spaced, joined] : [spaced]
+}
+
+function matchesAnyTextVariant(
+  key: string,
+  variants: readonly string[],
+  exact: boolean,
+): boolean {
+  return variants.some((variant) => matchesTextIndexKey(key, variant, exact))
 }
 
 function expandConstraint(

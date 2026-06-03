@@ -4,12 +4,15 @@
     resolve-ens
   >
     <template #default="{ display }">
-      <span class="account-badge">
+      <span
+        class="account-badge"
+        :title="label?.name"
+      >
         <span
           class="dot"
           :style="{ background: dotColor }"
         />
-        <span class="label">{{ display }}</span>
+        <span class="label">{{ label?.short ?? display }}</span>
       </span>
     </template>
   </EvmAccount>
@@ -17,10 +20,13 @@
 
 <script setup lang="ts">
 import type { Address } from 'viem'
+import { addressLabel } from '@networked-art/punks-sdk'
 
 const props = defineProps<{
   address: Address
 }>()
+
+const label = computed(() => addressLabel(props.address))
 
 // Cheap deterministic color from address for the dot.
 const dotColor = computed(() => `#${props.address.slice(2, 8)}`)

@@ -2,7 +2,9 @@ import type { Abi, Address, Hex, PublicClient, WalletClient } from 'viem'
 import {
   CRYPTOPUNKS_MARKET_ADDRESS,
   PUNKS_AUCTION_ADDRESS,
+  PUNK_COUNT,
   PunkStandard,
+  TRAIT_COUNT,
   ZERO_ADDRESS,
   type PunkStandardValue,
 } from './constants'
@@ -27,6 +29,7 @@ import {
   PUNKS_AUCTION_MAX_SLOT_IDS,
   PUNKS_AUCTION_TOTAL_WEIGHT_BPS,
   splitPunksAuctionLotWeights,
+  splitPunksAuctionLotWeightsByValue,
 } from './auction'
 import {
   PunksDataValidationError,
@@ -54,6 +57,7 @@ export type PlanKind =
   | 'withdraw-punk-bid'
   // Auction vault
   | 'deposit-vault'
+  | 'deposit-vault-v1'
   | 'deploy-vault'
   | 'setup-vault'
   | 'reclaim-vault'
@@ -556,9 +560,12 @@ export class PunksAuctionClient {
       this.vaultFor(params.owner),
       this.marketAddressFor(standard),
     ])
+    const isV1 = standard === PunkStandard.CryptoPunksV1
     return {
-      kind: 'deposit-vault',
-      description: `Deposit CryptoPunk ${params.punkId} to auction vault`,
+      kind: isV1 ? 'deposit-vault-v1' : 'deposit-vault',
+      description: `Deposit ${isV1 ? 'V1 Punk' : 'CryptoPunk'} ${
+        params.punkId
+      } to auction vault`,
       request: {
         address: market,
         abi: cryptoPunksMarketAbi,
@@ -677,6 +684,29 @@ export class PunksAuctionClient {
     onlySellTo?: Address
   }): Promise<TransactionHash> {
     return this.write(this.prepareCreateLot(params))
+  }
+
+  /// Apportions lot weight across `punkIds` by the dataset's offline
+  /// trait-rarity ranking — the fallback used when a market valuation is
+  /// unavailable. Rarer Punks (by summed trait scarcity, the same measure
+  /// `search({ sort: 'rarity' })` orders by) take a larger share of the hammer
+  /// price. Standard is irrelevant: a V1 and its CryptoPunk share the artwork
+  /// and therefore the rarity. Returns integer basis points ready for
+  /// `prepareCreateLot` — each at least 1 and summing to the lot total.
+  lotWeightsFromRarity(punkIds: readonly number[]): number[] {
+    const supplyById = new Float64Array(TRAIT_COUNT)
+    for (const trait of this.dataset.traits()) {
+      supplyById[trait.id] = trait.supply
+    }
+    const values = punkIds.map((punkId) => {
+      let rarity = 0
+      for (const traitId of this.dataset.get(punkId).traitIds) {
+        rarity += Math.log1p(PUNK_COUNT / Math.max(1, supplyById[traitId] || 1))
+      }
+      // Scale to an integer magnitude; the allocator only reads ratios.
+      return BigInt(Math.round(rarity * 1_000_000))
+    })
+    return splitPunksAuctionLotWeightsByValue(values)
   }
 
   prepareUpdateLot(params: {

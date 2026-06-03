@@ -1,6 +1,7 @@
 import {
   createPunksSdk,
   CRYPTOPUNKS_V1_ADDRESS,
+  PunkStandard,
   type PunksSdk,
 } from '@networked-art/punks-sdk'
 import { getPublicClient, getWalletClient } from '@wagmi/core'
@@ -46,6 +47,7 @@ export function usePunksSdk() {
 
     sdk.value = createPunksSdk({
       dataset,
+      standard: PunkStandard.CryptoPunksV1,
       publicClient: publicClient.value,
       walletClient: wallet,
       account,

@@ -13,7 +13,7 @@
     "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
   },
   "dependencies": {
-    "@1001-digital/layers.evm": "^2.7.25",
+    "@1001-digital/layers.evm": "^2.7.27",
     "@networked-art/punks-sdk": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "@takumi-rs/core": "^1.6.0",
@@ -22,6 +22,7 @@
     "@wagmi/core": "3.4.6",
     "@wagmi/vue": "0.5.6",
     "avvatars": "^0.1.0",
+    "reka-ui": "^2.9.6",
     "satori": "^0.26.0",
     "viem": "2.48.4"
   },

@@ -87,7 +87,19 @@ export {
   createPunks,
   createPunksSdk,
 } from './sdk'
+export {
+  addressLabel,
+  addressForLabel,
+  suggestAddressLabels,
+} from './address-labels'
+export type { AddressLabel, AddressLabelSuggestion } from './address-labels'
 export { PunksDataset, createPunksDataset } from './dataset'
+export {
+  PunksCollections,
+  createPunksCollections,
+  getSearchCollection,
+  searchCollections,
+} from './collections'
 export { PunkSimilarityIndex, createPunksSimilarity } from './similarity'
 export { PunkImageRenderer, createPunkImageRenderer } from './render'
 export { PunksAuctionClient, PunksMarketClient } from './actions'
@@ -106,6 +118,7 @@ export {
   punksAuctionLotMatchesOffer,
   punksAuctionOfferSlotMatchesPunk,
   splitPunksAuctionLotWeights,
+  splitPunksAuctionLotWeightsByValue,
 } from './auction'
 export { PunksV1MarketClient } from './v1-market'
 export type {
@@ -146,6 +159,7 @@ export {
   tokenizeSearchText,
 } from './text-parse'
 export type {
+  ParseSearchTextOptions,
   ParsedNumericConstraint,
   ParsedSearchText,
   ParsedSearchTextGroup,
@@ -154,6 +168,13 @@ export type {
 } from './text-parse'
 export { formatSearchText } from './text-format'
 export type { FormatSearchTextInput } from './text-format'
+export { activeSearchToken, suggestSearchText } from './suggest'
+export type {
+  ActiveSearchToken,
+  SearchSuggestion,
+  SearchSuggestionKind,
+  SuggestSearchTextOptions,
+} from './suggest'
 export {
   PunksDataClient,
   createPunksDataClient,
@@ -246,6 +267,10 @@ export type {
   BitmapToPunkIdsOptions,
   ColorCriteriaInput,
   ColorRef,
+  CuratedCollection,
+  CuratedCollectionInstitution,
+  CuratedCollectionMatch,
+  CuratedCollectionMembership,
   NumericRange,
   PaletteColor,
   PunkMetadata,

@@ -8,12 +8,12 @@
         <div class="button-row">
           <Button
             class="primary"
-            @click="startFulfillment('start')"
+            @click="startSettle('start')"
           >
             Start auction
           </Button>
-          <Button @click="startFulfillment('accept')">
-            Accept <EthAmount :wei="offer.amountWei" />
+          <Button @click="startSettle('accept')">
+            Sell now <EthAmount :wei="offer.amountWei" />
           </Button>
         </div>
       </template>
@@ -50,11 +50,9 @@
         </div>
       </template>
 
-      <DialogOfferFulfillment
-        ref="fulfillmentDialogRef"
-        :offer="offer"
+      <DialogSettle
+        ref="settleDialog"
         :lots="lots"
-        :matching-lots="matchingLots"
         @changed="onChanged"
       />
 
@@ -87,7 +85,7 @@ import {
   type LotRecord,
   type OfferRecord,
 } from '~/utils/auction'
-import type { OfferFulfillmentMode } from '~/utils/offerFulfillment'
+import type { OfferFulfillmentMode, SettleRequest } from '~/utils/settle'
 
 const props = defineProps<{
   offer: OfferRecord
@@ -105,8 +103,8 @@ const inventory = useAccountPunkInventory(() => address.value)
 const amountEth = ref('')
 const parsedAmountWei = ref<bigint | null>(null)
 
-const fulfillmentDialogRef = ref<{
-  start: (mode: OfferFulfillmentMode) => Promise<void>
+const settleDialog = ref<{
+  start: (request: SettleRequest) => Promise<void>
 } | null>(null)
 const transactionFlow = useTransactionFlowRunner({
   onComplete: (tx) => emit('changed', tx),
@@ -184,8 +182,8 @@ const showActionsPanel = computed(
   () => !!address.value && (isOfferer.value || showSellerActions.value),
 )
 
-function startFulfillment(mode: OfferFulfillmentMode) {
-  void fulfillmentDialogRef.value?.start(mode)
+function startSettle(mode: OfferFulfillmentMode) {
+  void settleDialog.value?.start({ mode, offer: props.offer })
 }
 
 function actCancel() {

@@ -81,7 +81,7 @@ import { TokenStandard } from '~/utils/auction'
 import type {
   OfferFulfillmentCandidate,
   OfferFulfillmentSlot,
-} from '~/utils/offerFulfillment'
+} from '~/utils/settle'
 
 const props = defineProps<{
   slots: OfferFulfillmentSlot[]

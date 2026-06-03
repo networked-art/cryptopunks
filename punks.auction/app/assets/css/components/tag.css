@@ -12,6 +12,10 @@
     color: var(--button-primary-color) !important;
     box-shadow: 0 0 0 var(--border-width) var(--button-primary-border-color) !important;
 
+    > span:has(+ button) {
+      padding-right: var(--size-1) !important;
+    }
+
     button {
       background: var(--button-primary-background) !important;
       color: var(--button-primary-color) !important;

@@ -69,7 +69,7 @@ const SPRITE_COLS = 100
 const PUNK_PIXEL_SIZE = 24
 
 const containerRef = ref<HTMLElement | null>(null)
-const { backgroundForPunk } = usePunkBackgrounds()
+const { backgroundForPunkState } = usePunkBackgrounds()
 
 const scrollTop = ref(0)
 const clientHeight = ref(0)
@@ -155,7 +155,7 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: backgroundForPunk(c.id),
+    backgroundColor: backgroundForPunkState(c.id),
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,

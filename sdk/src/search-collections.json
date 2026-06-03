@@ -1,0 +1,77 @@
+{
+  "burned": {
+    "title": "Burned Punks",
+    "description": "Punks provably sent to a burn address or otherwise removed from circulation.",
+    "aliases": ["burned punks", "destroyed punks"],
+    "source": "https://burnedpunks.com",
+    "sourceTemplate": "https://burnedpunks.com/{id}",
+    "standard": "v2",
+    "ids": [
+      685, 2317, 2761, 2838, 3493, 3808, 5041, 5237, 5449, 7755, 8611, 9146
+    ]
+  },
+  "museum": {
+    "title": "Museum Punks",
+    "description": "Punks held in the permanent collections of art institutions.",
+    "aliases": ["museum punks", "institution punks"],
+    "source": "https://museumpunks.com",
+    "sourceTemplate": "https://museumpunks.com/{id}",
+    "standard": "v2",
+    "institutions": {
+      "moma": {
+        "title": "Museum of Modern Art (MoMA)",
+        "aliases": ["moma", "museum of modern art", "modern"],
+        "source": "https://museumpunks.com/institution/moma/",
+        "ids": [74, 2786, 3407, 4018, 5160, 5616, 7178, 7899]
+      },
+      "zkm": {
+        "title": "ZKM | Center for Art and Media Karlsruhe",
+        "aliases": ["zkm", "zkm karlsruhe"],
+        "source": "https://museumpunks.com/institution/zkm/",
+        "ids": [1286, 2554, 2838, 5449]
+      },
+      "lacma": {
+        "title": "Los Angeles County Museum of Art (LACMA)",
+        "aliases": ["lacma", "los angeles county museum of art"],
+        "source": "https://museumpunks.com/institution/lacma/",
+        "ids": [3831]
+      },
+      "centrepompidou": {
+        "title": "Centre Pompidou",
+        "aliases": ["centre pompidou", "pompidou"],
+        "source": "https://museumpunks.com/institution/centrepompidou/",
+        "ids": [110]
+      },
+      "icam": {
+        "title": "Institute of Contemporary Art Miami",
+        "aliases": ["ica miami", "institute of contemporary art miami"],
+        "source": "https://museumpunks.com/institution/icam/",
+        "ids": [305]
+      },
+      "tma": {
+        "title": "Toledo Museum of Art",
+        "aliases": ["toledo museum of art", "toledo"],
+        "source": "https://museumpunks.com/institution/tma/",
+        "ids": [9833]
+      }
+    }
+  },
+  "perfect-and-priceless": {
+    "title": "Perfect & Priceless Punks",
+    "description": "Punks printed and shown in Kate Vass Galerie's 2018-2019 'Perfect & Priceless' exhibition, each framed print backed by its seed phrase sealed in an envelope.",
+    "aliases": [
+      "perfect and priceless",
+      "perfect & priceless",
+      "kate vass",
+      "kate vass galerie",
+      "paper punks",
+      "paper"
+    ],
+    "source": "https://www.katevassgalerie.com/perfect-and-priceless",
+    "standard": "v2",
+    "ids": [
+      207, 269, 636, 652, 672, 722, 726, 728, 770, 795, 872, 910, 934, 1819,
+      2134, 2830, 3036, 3122, 4530, 4946, 5127, 6347, 6675, 8773
+    ]
+  }
+}

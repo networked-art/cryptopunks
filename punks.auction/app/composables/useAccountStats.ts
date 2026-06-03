@@ -39,10 +39,14 @@ const EMPTY: AccountStats = {
 
 /**
  * Lifetime aggregates for the profile address — sum of sale wei the user has
- * spent (as buyer) and earned (as seller) across V1/V2/PunksMarket, plus the
- * indexer's `accounts.last_interaction_at` for the EOA. The `*UsdCents` totals
- * are stamped at indexing time using the daily ETH/USD close, so they reflect
- * dollar value at the moment of each trade rather than today's price.
+ * spent (as buyer) and earned (as seller) on the canonical `CryptoPunksMarket`,
+ * plus the indexer's `accounts.last_interaction_at` for the EOA. The
+ * `*UsdCents` totals are stamped at indexing time using the daily ETH/USD
+ * close, so they reflect dollar value at the moment of each trade rather than
+ * today's price. C̷̢̛͙ryptoPunks-side sales (the original C̷̢̛͙ryptoPunks
+ * market, the V1 wrapper, and `PunksMarket`) are intentionally excluded; the
+ * `punksClaimedCount` is the only stat sourced from C̷̢̛͙ryptoPunks (the
+ * original assigns).
  *
  * `addresses` is the custody set (EOA + vault + stash). `eoa` is just the
  * signing address; the indexer uses it for the last-active lookup, which
@@ -75,6 +79,7 @@ export function useAccountStats(opts: {
       const raw = await fetchIndexer<RawStats>('/accounts/stats', {
         addresses: addresses.join(','),
         eoa,
+        scope: 'v2',
       })
       if (t !== token) return
       stats.value = {
