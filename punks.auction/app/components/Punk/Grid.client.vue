@@ -59,6 +59,13 @@
           >
             <EthAmount :wei="cell.priceWei" />
           </span>
+          <span
+            v-else-if="cell.estimateWei != null"
+            class="cell-price cell-estimate"
+            title="Model value estimate"
+          >
+            ~<EthAmount :wei="cell.estimateWei" />
+          </span>
         </NuxtLink>
         <span
           v-else
@@ -82,6 +89,10 @@ const props = withDefaults(
     /// reserves a row under each image and renders an `EthAmount` for every cell
     /// that has a price.
     prices?: ReadonlyMap<number, bigint>
+    /// Model value estimate in wei, keyed by punk id. Rendered (as `~XXXΞ`) in
+    /// price mode for cells with no listed price. The parent fills this in for
+    /// the visible window via the `visible` event.
+    estimates?: ReadonlyMap<number, bigint>
     size?: number
     gap?: number
     overscan?: number
@@ -110,6 +121,9 @@ const props = withDefaults(
 )
 const emit = defineEmits<{
   toggle: [id: number]
+  /// The ids currently in the rendered window (plus overscan), emitted as it
+  /// changes so a parent can lazily fetch per-cell data (e.g. value estimates).
+  visible: [ids: number[]]
 }>()
 
 const SPRITE_COLS = 100
@@ -153,8 +167,10 @@ const resolvedGap = computed(() => {
 })
 const colStep = computed(() => cellSize.value + resolvedGap.value)
 /// In price mode each row carries an extra caption strip under the image, so
-/// rows step further apart and the grid breathes vertically.
-const hasPrices = computed(() => !!props.prices)
+/// rows step further apart and the grid breathes vertically. Estimates share
+/// that strip, so providing either reserves it — otherwise estimates fetched
+/// before the listed-price map loads would have nowhere to render.
+const hasPrices = computed(() => !!props.prices || !!props.estimates)
 const priceRowHeight = computed(() => (hasPrices.value ? PRICE_ROW_HEIGHT : 0))
 const rowStep = computed(
   () => cellSize.value + resolvedGap.value + priceRowHeight.value,
@@ -188,18 +204,46 @@ const end = computed(() =>
 )
 
 const visible = computed(() => {
-  const out: { id: number; row: number; col: number; priceWei?: bigint }[] = []
+  const out: {
+    id: number
+    row: number
+    col: number
+    priceWei?: bigint
+    estimateWei?: bigint
+  }[] = []
   const colCount = cols.value
   for (let r = start.value; r < end.value; r++) {
     for (let c = 0; c < colCount; c++) {
       const i = r * colCount + c
       if (i >= props.ids.length) break
       const id = props.ids[i]!
-      out.push({ id, row: r, col: c, priceWei: props.prices?.get(id) })
+      const priceWei = props.prices?.get(id)
+      // Estimate only fills the gap left by an absent listing, and only in price
+      // mode (where a caption row is reserved beneath each image).
+      const estimateWei =
+        hasPrices.value && priceWei == null ? props.estimates?.get(id) : undefined
+      out.push({ id, row: r, col: c, priceWei, estimateWei })
     }
   }
   return out
 })
+
+/// The visible window as a bare id list — deliberately independent of
+/// `prices`/`estimates` so emitting it can't feed back into its own recompute.
+const visibleIds = computed(() => {
+  const out: number[] = []
+  const colCount = cols.value
+  for (let r = start.value; r < end.value; r++) {
+    for (let c = 0; c < colCount; c++) {
+      const i = r * colCount + c
+      if (i >= props.ids.length) break
+      out.push(props.ids[i]!)
+    }
+  }
+  return out
+})
+
+watch(visibleIds, (ids) => emit('visible', ids), { immediate: true })
 const selectedSet = computed(() => new Set(props.selectedIds ?? []))
 const excludedSet = computed(() => new Set(props.excludedIds ?? []))
 
@@ -428,6 +472,12 @@ button.cell:disabled:focus-visible {
   color: var(--text-muted);
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Estimate caption for unlisted Punks: same slot as the price, dimmed and
+   prefixed with `~` so it never reads as a real ask. */
+.cell-estimate {
+  color: var(--text-dim);
 }
 
 .empty {

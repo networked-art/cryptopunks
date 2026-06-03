@@ -35,6 +35,7 @@
           :punk-id="punkId"
           @changed="onMarketChanged"
         />
+        <LazyPunkDetailPrediction />
         <LazyPunkDetailOwnerActions
           v-if="!isV1"
           :key="`owner-actions-${marketChangeKey}`"
@@ -77,6 +78,12 @@ const detailData = usePunkDetailData(
   () => props.standard,
 )
 providePunkDetailData(detailData)
+providePunkPrediction(
+  usePunkPrediction(
+    () => props.punkId,
+    () => props.standard,
+  ),
+)
 
 function onMarketChanged() {
   marketChangeKey.value += 1
