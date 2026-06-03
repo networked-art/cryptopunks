@@ -9,19 +9,29 @@
       compat
       @closed="reset"
     >
-      <p
-        v-if="branded"
-        class="brand-attribution"
-      >
-        <span class="brand-label">Service provided by</span>
-        <PunkDetailMarketBrokerLogo class="brand-logo" />
-      </p>
+      <div class="dialog-intro">
+        <PunkThumb
+          class="intro-thumb"
+          :punk-id="punkId"
+          :size="56"
+          :link="false"
+        />
+        <div class="intro-meta">
+          <p class="intro-id">Punk #{{ punkId }}</p>
+          <p
+            v-if="ownerLastActiveAgo"
+            class="last-active"
+          >
+            Owner last active {{ ownerLastActiveAgo }}
+          </p>
+        </div>
+      </div>
 
       <template v-if="!submitted">
         <p class="form-note muted">
-          Interested in Punk #{{ punkId }}? Leave your email and {{ brokerName }}
-          may reach out to discuss placing a bid or arranging a private sale.
-          Submitting this doesn’t guarantee a response or a placement.
+          Leave your email and a broker may reach out to discuss placing a bid
+          or arranging a private sale. Submitting this doesn’t guarantee a
+          response or a placement.
         </p>
 
         <form
@@ -80,84 +90,60 @@
         </Button>
       </template>
     </Dialog>
-
-    <Teleport to="body">
-      <button
-        v-if="open"
-        type="button"
-        class="brand-toggle"
-        :style="toggleStyle"
-        @click="branded = !branded"
-      >
-        {{ branded ? 'View standard version' : 'View broker-branded version' }}
-      </button>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
+import type { Address } from 'viem'
 
 defineProps<{
   punkId: number
 }>()
 
-const open = ref(false)
+const route = useRoute()
+const router = useRouter()
+
+// Mirror the contact modal in the URL so an open dialog is linkable. The query
+// is the source of truth on load; opening or closing writes it back.
+const open = ref(route.query.broker === 'open')
+
+watch(open, (isOpen) => {
+  if ((route.query.broker === 'open') === isOpen) return
+  const { broker: _omit, ...rest } = route.query
+  router.replace({ query: isOpen ? { ...rest, broker: 'open' } : rest })
+})
+
+watch(
+  () => route.query.broker,
+  (value) => {
+    open.value = value === 'open'
+  },
+)
+
+// Owner's wallet last-active, sourced from the indexer's tx-from tracking, so a
+// broker can gauge how reachable the holder is. Custody set covers vault/stash;
+// the EOA drives the last-active lookup.
+const { owner: resolvedOwner, nativeOwner } = usePunkDetailDataContext()
+const ownerAddresses = computed<Address[]>(() => {
+  const set = new Set<Address>()
+  if (resolvedOwner.value) set.add(resolvedOwner.value)
+  if (nativeOwner.value) set.add(nativeOwner.value)
+  return [...set]
+})
+const { stats: ownerStats } = useAccountStats({
+  addresses: ownerAddresses,
+  eoa: () => resolvedOwner.value ?? undefined,
+})
+const ownerLastActiveIso = computed(() =>
+  ownerStats.value.lastActiveAt
+    ? new Date(ownerStats.value.lastActiveAt * 1000).toISOString()
+    : undefined,
+)
+const ownerLastActiveAgo = useTimeAgo(ownerLastActiveIso)
+
 const email = ref('')
 const error = ref<string | null>(null)
 const submitted = ref(false)
-// Demo affordance: flips the dialog to a co-branded broker preview. Persists
-// across reopen so it can be shown/screen-shared without re-toggling.
-const branded = ref(false)
-// Named broker (from runtime config) in the branded preview; generic in the
-// standard version.
-const broker = useRuntimeConfig().public.broker as { name: string; logo: string }
-const brokerName = computed(() => (branded.value ? broker.name : 'a broker'))
-
-// Float the version toggle just below the dialog box: present only while the
-// popover is open and anchored to the live dialog rect, so it reads as a
-// detached control — not page chrome, not part of the dialog's own UI.
-const dialogRect = ref<{ left: number; bottom: number; width: number } | null>(
-  null,
-)
-
-function measureDialog() {
-  if (!import.meta.client) return
-  const el = document.querySelector('.broker-dialog') as HTMLElement | null
-  if (!el) {
-    dialogRect.value = null
-    return
-  }
-  const r = el.getBoundingClientRect()
-  dialogRect.value = { left: r.left, bottom: r.bottom, width: r.width }
-}
-
-const toggleStyle = computed(() => {
-  const r = dialogRect.value
-  if (!r) return { display: 'none' }
-  return {
-    position: 'fixed',
-    top: `${r.bottom + 12}px`,
-    left: `${r.left + r.width / 2}px`,
-    transform: 'translateX(-50%)',
-  }
-})
-
-// Re-anchor whenever the dialog opens or its height changes (branded banner,
-// success state, validation error all reflow it).
-watch([open, branded, submitted, error], async () => {
-  if (!open.value) {
-    dialogRect.value = null
-    return
-  }
-  await nextTick()
-  measureDialog()
-  requestAnimationFrame(measureDialog)
-})
-
-if (import.meta.client) {
-  useEventListener('resize', measureDialog)
-}
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -183,6 +169,34 @@ function reset() {
 <style scoped>
 .broker-contact {
   display: contents;
+}
+
+.dialog-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3);
+}
+
+.intro-thumb {
+  flex-shrink: 0;
+}
+
+.intro-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-1);
+  min-width: 0;
+}
+
+.intro-id {
+  margin: 0;
+  font-size: var(--font-md);
+}
+
+.last-active {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--text-dim);
 }
 
 .form-note {
@@ -221,58 +235,5 @@ function reset() {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
-}
-
-.brand-attribution {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--size-2);
-  margin: 0;
-  padding-bottom: var(--size-3);
-  border-bottom: var(--border);
-}
-
-.brand-label {
-  font-size: var(--font-xs);
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.brand-logo {
-  height: 0.875rem;
-  color: var(--text, #030301);
-}
-
-.brand-toggle {
-  z-index: 2147483000;
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: var(--font-xs);
-  white-space: nowrap;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-  box-shadow: none;
-  opacity: 0.85;
-  transition: opacity 120ms ease;
-}
-
-.brand-toggle:hover,
-.brand-toggle:active,
-.brand-toggle:focus,
-.brand-toggle:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-.brand-toggle:hover,
-.brand-toggle:focus-visible {
-  opacity: 1;
 }
 </style>
