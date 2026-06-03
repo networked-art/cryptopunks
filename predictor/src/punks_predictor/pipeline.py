@@ -17,7 +17,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 
 from . import __version__, features
 from .db import DatabaseConfig, connect
-from .trait_names import trait_name_for_id
+from .trait_names import display_trait_name, trait_name_for_id
 
 
 PUNK_COUNT = 10_000
@@ -1494,10 +1494,13 @@ def top_trait_premiums(
     premium = premiums.get(trait_id)
     if not premium:
       continue
+    name = display_trait_name(trait_id)
+    if name is None:
+      continue
     rows.append(
       {
         "traitId": trait_id,
-        "traitName": trait_name_for_id(trait_id),
+        "traitName": name,
         "saleCount": int(premium["saleCount"]),
         "multiplier": float(premium["multiplier"]),
         "logPremium": float(premium["logPremium"]),

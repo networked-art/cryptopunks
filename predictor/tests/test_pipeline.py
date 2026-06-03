@@ -450,6 +450,46 @@ def test_trait_premium_driver_uses_resolved_trait_name():
   assert trait_driver["traitName"] == "Hoodie"
 
 
+def test_head_variant_premium_reads_as_skin_tone():
+  # Male 1 (id 11) and Female 3 (id 9) carry skin tones Dark and Fair.
+  premium = {"saleCount": 100, "logPremium": 0.5, "multiplier": 1.65}
+  by_id = {11: premium, 9: premium}
+
+  male_dark = top_trait_premiums([11], by_id)
+  assert male_dark[0]["traitName"] == "Dark skin"
+
+  female_fair = top_trait_premiums([9], by_id)
+  assert female_fair[0]["traitName"] == "Fair skin"
+
+  drivers = prediction_drivers(
+    floor_eth=None,
+    best_bid_eth=None,
+    fair_eth=100.0,
+    trait_drivers=male_dark,
+    comps=[],
+  )
+  trait_driver = next(driver for driver in drivers if driver["kind"] == "trait")
+  assert trait_driver["label"] == "Dark skin premium"
+
+
+def test_non_human_head_variant_premium_is_dropped():
+  # Alien head variant (id 5) duplicates the Alien Type trait (id 0); only the
+  # Type trait should surface as a driver, matching the front-end.
+  premium = {"saleCount": 9, "logPremium": 3.0, "multiplier": 20.0}
+  rows = top_trait_premiums([0, 5], {0: premium, 5: premium})
+  assert [row["traitId"] for row in rows] == [0]
+  assert rows[0]["traitName"] == "Alien"
+
+
+def test_attribute_count_premium_is_singularized():
+  premium = {"saleCount": 8, "logPremium": 1.0, "multiplier": 2.7}
+  single = top_trait_premiums([17], {17: premium})
+  assert single[0]["traitName"] == "1 Attribute"
+
+  several = top_trait_premiums([19], {19: premium})
+  assert several[0]["traitName"] == "3 Attributes"
+
+
 def test_promotion_allows_reservation_run_past_baseline_within_tolerance():
   decision = promotion_decision(
     model_ape=0.50,
