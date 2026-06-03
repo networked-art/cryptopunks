@@ -49,12 +49,12 @@
 
           <nav class="external-links">
             <a
-              :href="`https://evm.now/address/${resolvedAddress}`"
+              :href="`https://www.cryptopunks.app/cryptopunks/accountinfo?account=${resolvedAddress}`"
               target="_blank"
               rel="noopener"
               class="external-link"
             >
-              evm.now
+              cryptopunks.app
               <Icon
                 name="lucide:external-link"
                 class="external-link-icon"
@@ -62,12 +62,12 @@
               />
             </a>
             <a
-              :href="`https://www.cryptopunks.app/cryptopunks/accountinfo?account=${resolvedAddress}`"
+              :href="`https://evm.now/address/${resolvedAddress}`"
               target="_blank"
               rel="noopener"
               class="external-link"
             >
-              cryptopunks.app
+              evm.now
               <Icon
                 name="lucide:external-link"
                 class="external-link-icon"
