@@ -32,6 +32,8 @@ builder:
 env:
   clear:
     NUXT_PUBLIC_INDEXER_URL: <%= ENV["NUXT_PUBLIC_INDEXER_URL"] %>
+    # Off-chain networked.art API base; enables the broker contact flow.
+    NUXT_PUBLIC_NETWORKED_API_URL: <%= ENV["NUXT_PUBLIC_NETWORKED_API_URL"] %>
     # Site origin for nuxt-site-config (used by nuxt-og-image for absolute URLs).
     NUXT_SITE_URL: <%= ENV["NUXT_SITE_URL"] %>
     # Cap Nitro's node-cluster preset at 4 workers (default = one per CPU).
