@@ -31,12 +31,6 @@
             </span>
           </NuxtLink>
         </template>
-        <template
-          v-if="showWeights"
-          #aside
-        >
-          <span class="weight">{{ formatWeight(item.weightBps) }}</span>
-        </template>
       </DetailRow>
     </ul>
   </section>
@@ -54,20 +48,11 @@ const props = defineProps<{
   items: LotItem[]
 }>()
 
-const showWeights = computed(() => {
-  const weights = props.items.map((item) => item.weightBps)
-  if (weights.length < 2) return false
-  return Math.max(...weights) - Math.min(...weights) > 100
-})
-
+// Ordered most-valuable-first by the settlement weight; the weight itself is an
+// internal hammer-price split and is not surfaced.
 const sortedItems = computed(() =>
   [...props.items].sort((a, b) => b.weightBps - a.weightBps),
 )
-
-function formatWeight(weightBps: number) {
-  const percent = weightBps / 100
-  return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(2)}%`
-}
 
 function itemBackground(item: LotItem) {
   return lotItemBackground(item.standard)
@@ -115,11 +100,5 @@ function itemBackground(item: LotItem) {
 
 .item-standard {
   color: var(--text-muted);
-}
-
-.weight {
-  color: var(--text-muted);
-  font-size: var(--font-xs);
-  font-variant-numeric: tabular-nums;
 }
 </style>
