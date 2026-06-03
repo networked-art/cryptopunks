@@ -1,29 +1,6 @@
 <template>
   <article class="pair-card">
     <div class="pair-bodies">
-      <div class="side">
-        <span
-          class="punk-tile"
-          :style="canonicalStyle"
-          :title="`Canonical CryptoPunks #${punkId} — the fixed June 22nd 2017 redeploy`"
-        />
-        <span class="side-label">
-          <span>Canonical</span>
-          <Tag
-            v-if="canonical.isWrapped"
-            small
-            :title="wrapperTitle(canonical.wrapper)"
-            >wrapped</Tag
-          >
-        </span>
-      </div>
-
-      <span
-        class="bridge"
-        aria-hidden="true"
-        >⟷</span
-      >
-
       <NuxtLink
         class="side original-side"
         :to="`/punk/${punkId}`"
@@ -34,7 +11,7 @@
           :style="originalStyle"
         />
         <span class="side-label">
-          <span class="glitch-name">{{ ORIGINAL_NAME }}</span>
+          <span>V1</span>
           <Tag
             v-if="original.isWrapped"
             small
@@ -43,6 +20,23 @@
           >
         </span>
       </NuxtLink>
+
+      <div class="side">
+        <span
+          class="punk-tile"
+          :style="canonicalStyle"
+          :title="`Canonical CryptoPunks #${punkId} — the fixed June 22nd 2017 redeploy`"
+        />
+        <span class="side-label">
+          <span>CANONICAL</span>
+          <Tag
+            v-if="canonical.isWrapped"
+            small
+            :title="wrapperTitle(canonical.wrapper)"
+            >wrapped</Tag
+          >
+        </span>
+      </div>
     </div>
 
     <footer class="pair-meta">
@@ -82,10 +76,6 @@ const props = withDefaults(
 /// The iconic CryptoPunks teal marks the canonical tile as the unbroken
 /// collection, set clean against the glitched original beside it.
 const CANONICAL_BG = '#638596'
-
-/// The same zalgo "CryptoPunks" the V1 panel uses, so the original collection
-/// reads with the broken-glyph treatment wherever it's named.
-const ORIGINAL_NAME = 'Ç̭̮̾r͚y̜ͥ͌́ͥp̈t̟ͪ͐̚o̘P̸̌̀ụ͖̲̐͡n̬̱̻̗̆̕ͅk̡̯̤̰̭̎ͭs'
 
 const spriteLayers = usePunkSpriteLayers()
 
@@ -184,11 +174,6 @@ function wrapperTitle(wrapper: string | null): string {
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.glitch-name {
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .bridge {
