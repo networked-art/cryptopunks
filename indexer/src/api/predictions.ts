@@ -1,6 +1,12 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { OfflinePunksDataClient } from '@networked-art/punks-sdk/offline'
+import {
+  TraitKind,
+  headVariantNames,
+  skinToneHeadVariants,
+  skinToneNames,
+} from '@networked-art/punks-sdk'
 import { sql } from 'ponder'
 import { db } from 'ponder:api'
 import { listing, punk, punkTrait } from 'ponder:schema'
@@ -590,15 +596,55 @@ function jsonArray(value: unknown): unknown[] {
   return []
 }
 
+// Map each human head-variant trait to its skin tone, mirroring
+// `usePunkDisplayTraits` in punks.auction. Alien/Ape/Zombie head variants have
+// no skin tone and are dropped from prediction labels — they duplicate the Type
+// trait of the same name.
+const skinToneByHeadVariantName = new Map<string, string>()
+for (const [tone, pair] of skinToneHeadVariants.entries()) {
+  for (const headVariant of pair) {
+    skinToneByHeadVariantName.set(
+      headVariantNames[headVariant],
+      skinToneNames[tone]!,
+    )
+  }
+}
+
+// Front-end-aligned display name for a trait premium, or null when the trait
+// carries no standalone label and should be dropped. Mirrors
+// `usePunkDisplayTraits` (punks.auction) and `display_trait_name` (predictor):
+//   - human head variants            -> "<Dark|Brown|Fair|Albino> skin"
+//   - Alien/Ape/Zombie head variants -> null (drop)
+//   - "1 Attributes"                 -> "1 Attribute" (singular)
+//   - everything else                -> the raw catalog name
+function displayTraitName(traitId: number): string | null {
+  const name = offlinePunks.getTraitNameSync(traitId)
+  const kind = offlinePunks.getTraitKindSync(traitId)
+  if (kind === TraitKind.HeadVariant) {
+    const tone = skinToneByHeadVariantName.get(name)
+    return tone === undefined ? null : `${tone} skin`
+  }
+  if (kind === TraitKind.AttributeCount) {
+    const match = name.match(/^(\d+) Attributes$/)
+    if (match) {
+      const count = Number(match[1])
+      return `${count} ${count === 1 ? 'Attribute' : 'Attributes'}`
+    }
+  }
+  return name
+}
+
 function withTraitPremiumLabels(items: unknown[]): unknown[] {
-  return items.map((item) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return item
+  return items.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [item]
 
     const row = item as Record<string, unknown>
     const traitId = traitIdFrom(row.traitId)
-    if (traitId === null) return item
+    if (traitId === null) return [item]
 
-    const traitName = offlinePunks.getTraitNameSync(traitId)
+    const traitName = displayTraitName(traitId)
+    if (traitName === null) return []
+
     const normalized: Record<string, unknown> = {
       ...row,
       traitName,
@@ -606,7 +652,7 @@ function withTraitPremiumLabels(items: unknown[]): unknown[] {
     if (row.kind === 'trait' || typeof row.label === 'string') {
       normalized.label = `${traitName} premium`
     }
-    return normalized
+    return [normalized]
   })
 }
 
