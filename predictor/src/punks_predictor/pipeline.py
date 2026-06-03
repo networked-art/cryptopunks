@@ -1522,7 +1522,7 @@ def prediction_drivers(
     drivers.append(
       {
         "kind": "floor",
-        "label": "Current V2 floor",
+        "label": "Current floor",
         "eth": floor_eth,
         "ratioToFair": floor_eth / fair_eth if fair_eth > 0 else None,
       }
