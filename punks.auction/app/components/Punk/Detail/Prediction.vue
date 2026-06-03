@@ -39,7 +39,7 @@
         compat
       >
         <p class="block-note muted">
-          How the model values Punk #{{ prediction.punkId }} — the signals behind
+          How the model values Punk #{{ prediction.punkId }}, the signals behind
           the estimate and the recent sales it compares against.
         </p>
 
@@ -120,7 +120,7 @@
         </div>
 
         <p class="model-note muted">
-          Estimates are model output, not advice — they can be wrong, especially
+          Estimates are model output, not advice. They can be wrong, especially
           for rarely traded Punks.
         </p>
       </Dialog>
@@ -150,10 +150,16 @@ const driverRows = computed(() =>
         return { label: driver.label!, valueWei: ethFloatToWei(driver.eth) }
       }
       if (typeof driver.medianEth === 'number') {
-        return { label: driver.label!, valueWei: ethFloatToWei(driver.medianEth) }
+        return {
+          label: driver.label!,
+          valueWei: ethFloatToWei(driver.medianEth),
+        }
       }
       if (typeof driver.multiplier === 'number') {
-        return { label: driver.label!, valueText: `${driver.multiplier.toFixed(2)}×` }
+        return {
+          label: driver.label!,
+          valueText: `${driver.multiplier.toFixed(2)}×`,
+        }
       }
       return { label: driver.label! }
     }),
