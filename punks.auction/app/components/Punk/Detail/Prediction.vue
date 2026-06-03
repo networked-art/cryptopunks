@@ -9,7 +9,7 @@
       <div class="prediction-panel">
         <dl class="state-grid">
           <div class="state-cell">
-            <dt class="label">Fair value</dt>
+            <dt class="label">Modeled value</dt>
             <dd class="fair"><EthAmount :wei="prediction.fairValueWei" /></dd>
           </div>
           <div class="state-cell">
