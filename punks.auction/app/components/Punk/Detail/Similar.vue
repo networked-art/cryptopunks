@@ -1,17 +1,21 @@
 <template>
   <section class="block punk-similar">
     <h2 class="block-title eyebrow">Similar Punks</h2>
-    <LazyPunkGrid
-      v-if="similarIds.length"
-      :ids="similarIds"
-      :max-rows="SUGGESTION_ROWS"
-    />
     <p
-      v-else
+      v-if="!similarIds.length"
       class="block-note muted"
     >
       Finding similar Punks…
     </p>
+    <div
+      v-else
+      class="similar-panel"
+    >
+      <LazyPunkGrid
+        :ids="similarIds"
+        :max-rows="SUGGESTION_ROWS"
+      />
+    </div>
   </section>
 </template>
 
@@ -77,5 +81,12 @@ function scheduleIdle(callback: () => void) {
 .block-note {
   margin: 0;
   font-size: var(--font-sm);
+}
+
+/* Bordered, elevated box matching the other detail sections (e.g. Market). */
+.similar-panel {
+  padding: var(--size-3);
+  border: var(--border);
+  background: var(--bg-elevated);
 }
 </style>
