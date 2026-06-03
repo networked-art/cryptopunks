@@ -263,7 +263,7 @@ app.get('/trait-floors', async (c) => {
       ORDER BY MIN(p.fair_value_wei::numeric) DESC
     `),
   )
-  return c.json({ items: rows.map(serializeTraitFloor) })
+  return c.json({ items: rows.map(serializeTraitFloor).filter((r) => r !== null) })
 })
 
 app.get('/v1/:punkId{[0-9]+}', async (c) =>
@@ -381,11 +381,17 @@ function serializeOpportunity(row: Row) {
   }
 }
 
+// Returns null for traits dropped from display (non-human head variants, which
+// duplicate the Type floor). Female/Male head-variant floors are distinct
+// cohorts that share a skin-tone label (e.g. two "Dark skin" rows) —
+// disambiguate by `traitId` if a consumer needs the gender split.
 function serializeTraitFloor(row: Row) {
   const traitId = toInt(row.trait_id)
+  const traitName = displayTraitName(traitId)
+  if (traitName === null) return null
   return {
     traitId,
-    traitName: offlinePunks.getTraitNameSync(traitId),
+    traitName,
     supply: toInt(row.supply),
     predictedFloorWei: bigStr(row.predicted_floor_wei),
     predictedMedianWei: bigStr(row.predicted_median_wei),
