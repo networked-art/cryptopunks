@@ -10,6 +10,7 @@ from punks_predictor.pipeline import (
   MarketContext,
   apply_reservation_band,
   build_reservations,
+  compute_trait_premiums,
   credible_relative_floor,
   matching_market_bids_by_punk,
   normalize_native_bids,
@@ -479,6 +480,37 @@ def test_non_human_head_variant_premium_is_dropped():
   rows = top_trait_premiums([0, 5], {0: premium, 5: premium})
   assert [row["traitId"] for row in rows] == [0]
   assert rows[0]["traitName"] == "Alien"
+
+  ape_rows = top_trait_premiums([1, 6], {1: premium, 6: premium})
+  assert [row["traitId"] for row in ape_rows] == [1]
+  assert ape_rows[0]["traitName"] == "Ape"
+
+
+def test_negative_trait_effect_is_not_displayed_as_premium():
+  premium = {"saleCount": 9, "logPremium": -0.597837, "multiplier": 0.55}
+  assert top_trait_premiums([1], {1: premium}) == []
+
+
+def test_trait_premiums_use_market_relative_logs_when_provided():
+  sales = pd.DataFrame(
+    [
+      {"punk_id": 0, "eth": 1.0},
+      {"punk_id": 1, "eth": 2.0},
+      {"punk_id": 2, "eth": 100.0},
+    ]
+  )
+  trait_matrix = np.zeros((PUNK_COUNT, 111), dtype=np.float32)
+  trait_matrix[0, 1] = 1.0
+  trait_matrix[1, 1] = 1.0
+
+  premiums = compute_trait_premiums(
+    sales,
+    trait_matrix,
+    premium_logs=np.array([math.log(20.0), math.log(25.0), math.log(1.0)]),
+  )
+
+  assert premiums[1]["multiplier"] > 1
+  assert premiums[1]["logPremium"] > 0
 
 
 def test_attribute_count_premium_is_singularized():

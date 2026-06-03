@@ -183,7 +183,10 @@ def build_prediction_run(
     now_ts=now_ts,
   )
 
-  trait_premiums = compute_trait_premiums(v2_sales, static["trait_matrix"])
+  premium_sales, premium_logs = trait_premium_training_data(dataset, v2_sales, static)
+  trait_premiums = compute_trait_premiums(
+    premium_sales, static["trait_matrix"], premium_logs=premium_logs
+  )
   comps_index = build_comps_index(v2_sales, static["traits_by_punk"])
   v2_model = train_price_model(dataset, v2_sales, static, now_ts)
   sale_prob_model = train_sale_probability(dataset, v2_sales, static, now_ts)
@@ -832,15 +835,25 @@ def v1_v2_multiplier(
 def compute_trait_premiums(
   v2_sales: pd.DataFrame,
   trait_matrix: np.ndarray,
+  *,
+  premium_logs: np.ndarray | None = None,
 ) -> dict[int, dict[str, float | int]]:
   if v2_sales.empty:
     return {}
-  global_median = float(np.median(np.log(v2_sales["eth"].to_numpy(dtype=float))))
+  if premium_logs is None:
+    sale_logs = np.log(v2_sales["eth"].to_numpy(dtype=float))
+  else:
+    sale_logs = np.asarray(premium_logs, dtype=float)
+    if len(sale_logs) != len(v2_sales):
+      raise ValueError("premium_logs must align with v2_sales")
+  finite_logs = np.isfinite(sale_logs)
+  if not bool(finite_logs.any()):
+    return {}
+  global_median = float(np.median(sale_logs[finite_logs]))
   premiums: dict[int, dict[str, float | int]] = {}
   sale_punks = v2_sales["punk_id"].to_numpy(dtype=int)
-  sale_logs = np.log(v2_sales["eth"].to_numpy(dtype=float))
   for trait_id in range(TRAIT_COUNT):
-    has_trait = trait_matrix[sale_punks, trait_id] > 0
+    has_trait = (trait_matrix[sale_punks, trait_id] > 0) & finite_logs
     count = int(has_trait.sum())
     if count == 0:
       continue
@@ -853,6 +866,46 @@ def compute_trait_premiums(
       "multiplier": float(math.exp(raw * shrink)),
     }
   return premiums
+
+
+def trait_premium_training_data(
+  dataset: dict[str, pd.DataFrame],
+  v2_sales: pd.DataFrame,
+  static: dict[str, Any],
+) -> tuple[pd.DataFrame, np.ndarray]:
+  if v2_sales.empty:
+    return v2_sales, np.array([], dtype=float)
+  supply = features.trait_supply(static["traits_by_punk"])
+  built = features.build_training_frame(
+    sales=v2_sales[["punk_id", "timestamp", "eth"]],
+    listings=v2_listing_events(dataset["events"]),
+    moves=dataset["moves"],
+    bid_events=v2_bid_events(dataset["native_bids"]),
+    traits_by_punk=static["traits_by_punk"],
+    supply=supply,
+    pixel_count=static["pixel_count"],
+    color_count=static["color_count"],
+  )
+  frame = built["frame"]
+  frame = frame[(frame["target_eth"] > 0.05) & (frame["target_eth"] < 100_000)].copy()
+  if frame.empty:
+    return pd.DataFrame(columns=["punk_id", "eth"]), np.array([], dtype=float)
+
+  target = frame["target_eth"].to_numpy(dtype=float)
+  floor = frame["floor"].to_numpy(dtype=float)
+  med90 = frame["med90"].to_numpy(dtype=float)
+  anchor = np.where(np.isfinite(floor) & (floor > 0), floor, med90)
+  ok = np.isfinite(target) & (target > 0) & np.isfinite(anchor) & (anchor > 0)
+  if not bool(ok.any()):
+    return pd.DataFrame(columns=["punk_id", "eth"]), np.array([], dtype=float)
+
+  sales = pd.DataFrame(
+    {
+      "punk_id": frame.loc[ok, "punk_id"].to_numpy(dtype=int),
+      "eth": target[ok],
+    }
+  )
+  return sales, np.log(target[ok]) - np.log(anchor[ok])
 
 
 def _floor_model() -> HistGradientBoostingRegressor:
@@ -1489,24 +1542,31 @@ def top_trait_premiums(
   traits: Iterable[int],
   premiums: dict[int, dict[str, float | int]],
 ) -> list[dict[str, Any]]:
-  rows = []
+  by_name: dict[str, dict[str, Any]] = {}
   for trait_id in traits:
     premium = premiums.get(trait_id)
     if not premium:
       continue
+    log_premium = float(premium["logPremium"])
+    multiplier = float(premium["multiplier"])
+    if log_premium <= 0 or multiplier <= 1.0:
+      continue
     name = display_trait_name(trait_id)
     if name is None:
       continue
-    rows.append(
-      {
-        "traitId": trait_id,
-        "traitName": name,
-        "saleCount": int(premium["saleCount"]),
-        "multiplier": float(premium["multiplier"]),
-        "logPremium": float(premium["logPremium"]),
-      }
-    )
-  return sorted(rows, key=lambda row: abs(float(row["logPremium"])), reverse=True)[:6]
+    row = {
+      "traitId": trait_id,
+      "traitName": name,
+      "saleCount": int(premium["saleCount"]),
+      "multiplier": multiplier,
+      "logPremium": log_premium,
+    }
+    current = by_name.get(name)
+    if current is None or log_premium > float(current["logPremium"]):
+      by_name[name] = row
+  return sorted(
+    by_name.values(), key=lambda row: float(row["logPremium"]), reverse=True
+  )[:6]
 
 
 def prediction_drivers(

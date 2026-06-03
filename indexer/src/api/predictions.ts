@@ -263,7 +263,9 @@ app.get('/trait-floors', async (c) => {
       ORDER BY MIN(p.fair_value_wei::numeric) DESC
     `),
   )
-  return c.json({ items: rows.map(serializeTraitFloor).filter((r) => r !== null) })
+  return c.json({
+    items: rows.map(serializeTraitFloor).filter((r) => r !== null),
+  })
 })
 
 app.get('/v1/:punkId{[0-9]+}', async (c) =>
@@ -641,25 +643,54 @@ function displayTraitName(traitId: number): string | null {
 }
 
 function withTraitPremiumLabels(items: unknown[]): unknown[] {
-  return items.flatMap((item) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return [item]
+  const out: unknown[] = []
+  const seenTraitNames = new Set<string>()
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      out.push(item)
+      continue
+    }
 
     const row = item as Record<string, unknown>
     const traitId = traitIdFrom(row.traitId)
-    if (traitId === null) return [item]
+    if (traitId === null) {
+      out.push(item)
+      continue
+    }
 
     const traitName = displayTraitName(traitId)
-    if (traitName === null) return []
+    if (traitName === null || !isPositiveTraitPremium(row)) continue
+    if (seenTraitNames.has(traitName)) continue
+    seenTraitNames.add(traitName)
 
     const normalized: Record<string, unknown> = {
       ...row,
       traitName,
     }
-    if (row.kind === 'trait' || typeof row.label === 'string') {
-      normalized.label = `${traitName} premium`
-    }
-    return [normalized]
-  })
+    normalized.label = `${traitName} premium`
+    out.push(normalized)
+  }
+  return out
+}
+
+function isPositiveTraitPremium(row: Record<string, unknown>): boolean {
+  const logPremium = finiteNumber(row.logPremium)
+  if (logPremium !== null) return logPremium > 0
+
+  const multiplier = finiteNumber(row.multiplier)
+  if (multiplier !== null) return multiplier > 1
+
+  return true
+}
+
+function finiteNumber(value: unknown): number | null {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN
+  return Number.isFinite(number) ? number : null
 }
 
 function traitIdFrom(value: unknown): number | null {
