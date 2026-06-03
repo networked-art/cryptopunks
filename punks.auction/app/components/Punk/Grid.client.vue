@@ -96,6 +96,10 @@ const props = withDefaults(
     size?: number
     gap?: number
     overscan?: number
+    /// Cap the rendered grid to this many rows (whatever number of columns the
+    /// width fits). Unset means unbounded — render every id. Used to pin a
+    /// fixed-height strip of cells, e.g. two full rows of suggestions.
+    maxRows?: number
     selectable?: boolean
     selectedIds?: readonly number[]
     excludedIds?: readonly number[]
@@ -175,7 +179,10 @@ const priceRowHeight = computed(() => (hasPrices.value ? PRICE_ROW_HEIGHT : 0))
 const rowStep = computed(
   () => cellSize.value + resolvedGap.value + priceRowHeight.value,
 )
-const rows = computed(() => Math.ceil(props.ids.length / cols.value))
+const rows = computed(() => {
+  const needed = Math.ceil(props.ids.length / cols.value)
+  return props.maxRows == null ? needed : Math.min(needed, props.maxRows)
+})
 const totalHeight = computed(() =>
   rows.value === 0
     ? 0
