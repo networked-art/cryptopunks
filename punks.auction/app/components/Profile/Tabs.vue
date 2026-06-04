@@ -26,9 +26,17 @@ const props = defineProps<{
   handle: string
 }>()
 
+const na = useNetworkedArt()
+
+// Resolve the networked.art link on mount so the Watchlist tab reflects the
+// real auth state even when the visitor lands straight on their own profile.
+onMounted(() => {
+  if (na.isConfigured && !na.ready.value && !na.pending.value) void na.refresh()
+})
+
 const tabs = computed(() => {
   const base = `/profile/${props.handle}`
-  return [
+  const items = [
     { slug: '', label: 'Profile', icon: 'lucide:user', to: base },
     {
       slug: 'vault',
@@ -48,13 +56,27 @@ const tabs = computed(() => {
       icon: 'lucide:layers',
       to: `${base}/wrappers`,
     },
-    {
-      slug: 'settings',
-      label: 'Settings',
-      icon: 'lucide:settings',
-      to: `${base}/settings`,
-    },
   ]
+
+  // The watchlist lives on the linked networked.art account, so only surface it
+  // once that account is authenticated.
+  if (na.isConfigured && na.isAuthenticated.value) {
+    items.push({
+      slug: 'watchlist',
+      label: 'Watchlist',
+      icon: 'lucide:star',
+      to: `${base}/watchlist`,
+    })
+  }
+
+  items.push({
+    slug: 'settings',
+    label: 'Settings',
+    icon: 'lucide:settings',
+    to: `${base}/settings`,
+  })
+
+  return items
 })
 </script>
 
@@ -93,7 +115,7 @@ const tabs = computed(() => {
   font-size: var(--font-md);
 }
 
-@media (max-width: 520px) {
+@media (max-width: 800px) {
   .profile-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;

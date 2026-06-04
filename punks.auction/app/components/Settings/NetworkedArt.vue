@@ -9,58 +9,11 @@
       Checking your account…
     </p>
 
-    <!-- Linked: show the account + its watchlist -->
+    <!-- Linked: show the account + disconnect -->
     <template v-else-if="isAuthenticated">
       <p class="muted setting-status">
         Synced as <code>{{ identity }}</code>
       </p>
-
-      <div class="watchlist">
-        <h3 class="subhead eyebrow">Watchlist</h3>
-
-        <p
-          v-if="watchPending && !watchItems.length"
-          class="muted"
-        >
-          Loading…
-        </p>
-        <p
-          v-else-if="!watchItems.length"
-          class="muted"
-        >
-          You're not watching anything yet. Use the star on a Punk, or “Alert
-          me” on a search, to start.
-        </p>
-        <ul
-          v-else
-          class="watch-items"
-        >
-          <li
-            v-for="item in watchItems"
-            :key="item.id"
-            class="watch-item"
-          >
-            <div class="watch-item-text">
-              <p class="watch-item-title">{{ item.label || item.description }}</p>
-              <p class="watch-item-events muted">{{ eventSummary(item.events) }}</p>
-            </div>
-            <Button
-              class="icon-button"
-              title="Remove alert"
-              @click="removeWatch(item.id)"
-            >
-              <Icon name="lucide:x" />
-            </Button>
-          </li>
-        </ul>
-
-        <p
-          v-if="watchError"
-          class="error"
-        >
-          {{ watchError }}
-        </p>
-      </div>
 
       <Button
         class="danger"
@@ -177,28 +130,8 @@ import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
 // components.evm composable), matching how the rest of the app pulls layer
 // helpers — no explicit import needed.
 
-// Same event vocabulary the watch flows write (WatchStar / SearchAlert).
-const EVENT_LABELS: Record<string, string> = {
-  listed: 'Listed for sale',
-  new_lot: 'Listed for auction',
-  auction_start: 'Auction starts',
-  sold: 'Sold',
-}
-
 const na = useNetworkedArt()
 const { user, ready, pending, isAuthenticated } = na
-
-const {
-  items: watchItems,
-  pending: watchPending,
-  error: watchError,
-  load: loadWatchlist,
-  remove: removeWatch,
-  clear: clearWatchlist,
-} = useWatchlist()
-
-const eventSummary = (events: string[]) =>
-  events.map((event) => EVENT_LABELS[event] ?? event).join(' · ')
 
 const identity = computed(() => {
   const account = user.value
@@ -277,22 +210,13 @@ const resetEmail = () => {
 }
 
 const disconnect = async () => {
-  // signOut() drops the user, which flips isAuthenticated and lets the watch
-  // below clear the watchlist — no manual reset needed here.
+  // signOut() drops the shared user state, flipping isAuthenticated app-wide —
+  // the panel falls back to the sign-in view and the Watchlist tab disappears.
   await na.signOut()
 }
 
-// Resolve the link on mount, then keep the watchlist in step with auth state:
-// load on sign-in, clear on sign-out (or a token the API rejected).
+// Resolve the account link on mount so the panel reflects the real auth state.
 onMounted(() => na.refresh())
-watch(
-  isAuthenticated,
-  (authed) => {
-    if (authed) loadWatchlist()
-    else clearWatchlist()
-  },
-  { immediate: true },
-)
 </script>
 
 <style scoped>
@@ -309,52 +233,6 @@ watch(
 .setting-status {
   margin: 0;
   font-size: var(--font-md);
-}
-
-.subhead {
-  margin: 0 0 var(--size-2);
-}
-
-.watchlist {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-}
-
-.watch-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.watch-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--size-3);
-  padding: var(--size-2) var(--size-3);
-  border: var(--border);
-  background: var(--bg-elevated);
-}
-
-.watch-item-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-  min-width: 0;
-}
-
-.watch-item-title {
-  margin: 0;
-  font-size: var(--font-sm);
-}
-
-.watch-item-events {
-  margin: 0;
-  font-size: var(--font-xs);
 }
 
 .email-alt {
