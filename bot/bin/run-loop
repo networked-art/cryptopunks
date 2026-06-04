@@ -1,0 +1,13 @@
+#!/bin/sh
+# Re-invokes the one-shot bot on a fixed interval. Keeping the loop in the shell
+# (rather than a long-lived Node process) means every tick starts from clean
+# state and a crash can't wedge an in-memory timer — the next tick just runs.
+
+INTERVAL="${POLL_INTERVAL:-60}"
+
+while true; do
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Running bot..."
+  pnpm start || echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Run failed"
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Sleeping ${INTERVAL}s..."
+  sleep "$INTERVAL"
+done

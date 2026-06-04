@@ -1,0 +1,19 @@
+# Node dependencies and logs
+node_modules
+logs
+*.log
+
+# Bot runtime state (cursor + rotated Twitter tokens)
+.bot-state.json
+
+# Preview output
+preview.png
+
+# Local env files
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Misc
+.DS_Store

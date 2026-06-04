@@ -1,0 +1,26 @@
+FROM node:24-slim AS base
+RUN npm install -g corepack && corepack enable && corepack prepare pnpm@10.32.1 --activate
+WORKDIR /app
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY sdk/package.json ./sdk/
+COPY bot/package.json ./bot/
+RUN pnpm install --frozen-lockfile --filter @networked-art/punks-bot...
+
+FROM deps AS build
+COPY sdk ./sdk
+COPY bot ./bot
+WORKDIR /app/sdk
+RUN pnpm build
+
+FROM base AS production
+# Workspace files so the bot resolves @networked-art/punks-sdk (workspace:*) at
+# runtime — without them /app is not a valid pnpm workspace.
+COPY --from=build /app/pnpm-workspace.yaml /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/sdk ./sdk
+COPY --from=build /app/bot ./bot
+WORKDIR /app/bot
+
+CMD ["/app/bot/bin/run-loop"]

@@ -4,6 +4,7 @@ packages:
   - images
   - indexer
   - sdk
+  - bot
   - punksmarket.app
   - punks.auction
 

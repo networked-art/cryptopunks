@@ -1,0 +1,31 @@
+{
+  "name": "@networked-art/punks-bot",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Twitter bot that posts a grid of an account's CryptoPunks when it acquires new ones",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx --watch src/index.ts",
+    "preview": "tsx src/preview.ts",
+    "typecheck": "tsc --noEmit",
+    "kamal:setup": "set -a && . ./.env.production && set +a && kamal setup",
+    "kamal:deploy": "set -a && . ./.env.production && set +a && kamal deploy",
+    "kamal:sh": "set -a && . ./.env.production && set +a && kamal app exec -i --reuse sh"
+  },
+  "dependencies": {
+    "@networked-art/punks-sdk": "workspace:*",
+    "@visualizevalue/img-grid": "^0.1.3",
+    "dotenv": "^16.5.0",
+    "twitter-api-v2": "^1.23.2",
+    "viem": "^2.48.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "tsx": "^4.19.4",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

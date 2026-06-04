@@ -1,0 +1,43 @@
+service: punks-bot
+
+image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punks-bot
+
+# A worker, not a web service: it polls the indexer and tweets on a loop, so it
+# exposes no port and runs no proxy.
+servers:
+  worker:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+    cmd: /app/bot/bin/run-loop
+    options:
+      network: shared
+
+primary_role: worker
+
+registry:
+  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: ../Dockerfile.bot
+
+env:
+  clear:
+    INDEXER_URL: <%= ENV["INDEXER_URL"] %>
+    POLL_INTERVAL: <%= ENV["POLL_INTERVAL"] %>
+  secret:
+    - TWITTER_CLIENT_ID
+    - TWITTER_CLIENT_SECRET
+    - TWITTER_ACCESS_TOKEN
+    - TWITTER_REFRESH_TOKEN
+    - RPC_URL
+
+# Persist the cursor and rotated Twitter tokens across deploys.
+volumes:
+  - /var/lib/punks-bot:/app/data
+
+ssh:
+  user: root
