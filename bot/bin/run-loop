@@ -1,13 +1,28 @@
 #!/bin/sh
-# Re-invokes the one-shot bot on a fixed interval. Keeping the loop in the shell
-# (rather than a long-lived Node process) means every tick starts from clean
-# state and a crash can't wedge an in-memory timer — the next tick just runs.
+# Polls roughly once per Ethereum block (~12s). A non-blocking flock keeps
+# exactly one tick running at a time: if a tick is still computing or posting
+# when the next poll comes due, that poll is skipped rather than overlapping —
+# so a slow burst never double-posts. Keeping the loop in the shell means every
+# tick starts from clean state and a crash can't wedge an in-memory timer.
+#
+# Output is intentionally quiet (no per-tick banner) since at this cadence the
+# bot only logs when it actually does something; container health covers liveness.
 
-INTERVAL="${POLL_INTERVAL:-60}"
+INTERVAL="${POLL_INTERVAL:-12}"
+LOCK_FILE="${LOCK_FILE:-/tmp/punks-bot.lock}"
 
 while true; do
-  echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Running bot..."
-  pnpm start || echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Run failed"
-  echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] Sleeping ${INTERVAL}s..."
-  sleep "$INTERVAL"
+  START=$(date +%s)
+
+  # -n: don't wait for the lock — if a prior tick still holds it, skip this poll.
+  flock -n "$LOCK_FILE" node --import tsx src/index.ts \
+    || echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] tick skipped (busy) or failed"
+
+  # Sleep only the remainder of the interval, so the cadence stays ~INTERVAL
+  # instead of INTERVAL + tick time; a tick longer than INTERVAL just runs the
+  # next one back-to-back.
+  ELAPSED=$(($(date +%s) - START))
+  if [ "$ELAPSED" -lt "$INTERVAL" ]; then
+    sleep "$((INTERVAL - ELAPSED))"
+  fi
 done
