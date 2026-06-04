@@ -26,17 +26,18 @@
           class="alert-form"
           @submit.prevent="submit"
         >
-          <label class="field">
-            <span class="label">Email</span>
-            <input
-              v-model.trim="email"
-              type="email"
-              name="email"
-              autocomplete="email"
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+          <FormGroup>
+            <FormLabel label="Email">
+              <input
+                v-model.trim="email"
+                type="email"
+                name="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </FormLabel>
+          </FormGroup>
 
           <div class="events">
             <span class="label">Alert me when a match is:</span>
@@ -203,19 +204,8 @@ function reset() {
   gap: var(--size-3);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-}
-
-.field .label,
 .events .label {
   color: var(--text-dim);
-}
-
-.field input {
-  width: 100%;
 }
 
 .events {

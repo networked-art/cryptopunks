@@ -1,3 +1,15 @@
 label > .label {
   color: var(--text-dim);
 }
+
+.form-label {
+  gap: var(--size-1) !important;
+}
+
+.form-label > span:first-child {
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  letter-spacing: normal;
+  text-transform: uppercase;
+  margin-bottom: var(--size-1);
+}
