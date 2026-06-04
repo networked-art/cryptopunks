@@ -45,7 +45,7 @@
               <Button
                 class="icon-button"
                 title="Remove alert"
-                @click="removeWatch(item.id)"
+                @click="confirmRemove(item)"
               >
                 <Icon name="lucide:x" />
               </Button>
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { isApiConfigured } from '~/utils/api'
+import type { WatchItem } from '~/composables/useWatchlist'
 
 useOwnProfileGuard()
 
@@ -100,6 +101,8 @@ const {
   clear: clearWatchlist,
 } = useWatchlist()
 
+const { confirm } = useConfirm()
+
 // Same event vocabulary the watch flows write (WatchStar / SearchAlert).
 const EVENT_LABELS: Record<string, string> = {
   listed: 'Listed for sale',
@@ -109,6 +112,17 @@ const EVENT_LABELS: Record<string, string> = {
 }
 const eventSummary = (events: string[]) =>
   events.map((event) => EVENT_LABELS[event] ?? event).join(' · ')
+
+// Confirm before dropping an alert — removal is a one-click, irreversible call.
+const confirmRemove = async (item: WatchItem) => {
+  const confirmed = await confirm({
+    title: 'Remove this alert?',
+    description: `Stop watching “${item.label || item.description}”. You can add it again any time.`,
+    okText: 'Remove',
+    cancelText: 'Cancel',
+  })
+  if (confirmed) await removeWatch(item.id)
+}
 
 // Resolve the link on mount, then keep the watchlist in step with auth state:
 // load on sign-in, clear on sign-out (or a token the API rejected).

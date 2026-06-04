@@ -119,10 +119,12 @@ export const useNetworkedArt = () => {
 
   // ---- Email PIN ----
 
+  // `source` brands the sign-in email as punks.auction (separate sender + icon)
+  // on the API side; the main networked.art app omits it.
   const requestEmailCode = (email: string) =>
     api<{ ok: true; expires_at: string }>('/auth/email/request', {
       method: 'POST',
-      body: { email },
+      body: { email, source: 'punks_auctions' },
     })
 
   const verifyEmailCode = async (email: string, code: number) => {

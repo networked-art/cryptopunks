@@ -147,10 +147,21 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const na = useNetworkedArt()
+const { items: watchItems, load: loadWatchlist } = useWatchlist()
 
 onMounted(() => {
   if (!na.ready.value && !na.pending.value) void na.refresh()
 })
+
+// Load the signed-in user's watchlist so an already-watched punk reads
+// "Watching" on mount — not only after a submit in this session.
+watch(
+  () => na.isAuthenticated.value,
+  (authed) => {
+    if (authed) void loadWatchlist()
+  },
+  { immediate: true },
+)
 
 // Mirror the dialog in the URL so an open watch dialog is linkable, matching the
 // broker-contact dialog's behaviour.
@@ -195,9 +206,20 @@ const submitLabel = computed(() => {
   return 'Watch punk'
 })
 
-// Once submitted, reflect the just-submitted intent in the star. Guest watches
-// still need email confirmation before the API treats them as active.
-const watching = computed(() => submitted.value)
+// True when the connected account already has an active watch scoped to this
+// punk. Guest watches aren't tracked here (they need email confirmation), so
+// for guests this stays false until they submit.
+const alreadyWatching = computed(() =>
+  watchItems.value.some(
+    (item) =>
+      item.scope.token_id === String(props.punkId) &&
+      item.scope.contract_address.toLowerCase() ===
+        CRYPTOPUNKS_ADDRESS.toLowerCase(),
+  ),
+)
+
+// Reflect either the persisted watch or a just-submitted intent in the star.
+const watching = computed(() => submitted.value || alreadyWatching.value)
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -248,6 +270,9 @@ async function submit() {
     }
     if (useAccount) {
       await na.api('/watch/subscriptions', { method: 'POST', body })
+      // Refresh the cached list so the star stays "Watching" after the dialog
+      // closes and reset() clears the just-submitted flag.
+      void loadWatchlist()
     } else {
       await postApi('/watch/subscriptions', body)
     }

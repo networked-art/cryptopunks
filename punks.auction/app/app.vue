@@ -28,6 +28,9 @@
         >Activity</NuxtLink
       >
     </BottomNav>
+
+    <!-- Singleton overlay driven by useConfirm(); renders nothing until asked. -->
+    <ConfirmDialog />
   </div>
 </template>
 

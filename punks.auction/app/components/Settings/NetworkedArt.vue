@@ -216,7 +216,11 @@ const disconnect = async () => {
 }
 
 // Resolve the account link on mount so the panel reflects the real auth state.
-onMounted(() => na.refresh())
+// Guarded so it doesn't re-fetch when another mounted consumer (e.g. the
+// profile's Watchlist tab) already resolved or is resolving the link.
+onMounted(() => {
+  if (na.isConfigured && !ready.value && !pending.value) void na.refresh()
+})
 </script>
 
 <style scoped>
