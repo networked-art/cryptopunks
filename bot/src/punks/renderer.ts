@@ -93,7 +93,7 @@ export class PunksRenderer implements Renderer<Acquisition> {
 
   private caption(acquisition: Acquisition, name: string): string {
     const lines = [
-      acquisition.newCollector ? `New collector — ${name}` : name,
+      acquisition.newCollector ? `New collector ${name}` : name,
       this.acquiredLine(acquisition),
     ]
     // A debut single-punk buy is fully described by the first two lines; in
@@ -124,9 +124,9 @@ export class PunksRenderer implements Renderer<Acquisition> {
     if (acquisition.spentWei <= 0n) return ''
     const usd =
       acquisition.spentUsdCents !== null
-        ? ` — ${formatUsd(acquisition.spentUsdCents)}`
+        ? ` (${formatUsd(acquisition.spentUsdCents)})`
         : ''
-    return ` (${formatEth(acquisition.spentWei)}${usd})`
+    return ` for ${formatEth(acquisition.spentWei)}${usd}`
   }
 
   private altText(acquisition: Acquisition, name: string): string {

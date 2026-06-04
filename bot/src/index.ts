@@ -33,7 +33,7 @@ async function main(): Promise<void> {
       : undefined,
   })
   const renderer = new PunksRenderer({
-    names: new NameResolver(process.env.RPC_URL),
+    names: new NameResolver(indexer),
     minSpendWei: process.env.MIN_SPEND_WEI
       ? BigInt(process.env.MIN_SPEND_WEI)
       : undefined,

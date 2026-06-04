@@ -37,7 +37,7 @@ src/
     indexer.ts     #   PunksIndexer: sales feed + holdings (GraphQL)
     source.ts      #   PunksSource: sales → per-buyer Acquisition subjects
     renderer.ts    #   PunksRenderer: Acquisition → caption + 2×-highlight grid
-    names.ts       #   NameResolver: curated label → ENS → shortened address
+    names.ts       #   NameResolver: ENS (indexer profiles) → label → short addr
   index.ts         # wires the punk bot together and runs one tick
   preview.ts       # render a grid locally without Twitter
 ```

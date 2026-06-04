@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   }
 
   const renderer = new PunksRenderer({
-    names: new NameResolver(process.env.RPC_URL),
+    names: new NameResolver(indexer),
     maxWidth: process.env.GRID_MAX_WIDTH
       ? Number(process.env.GRID_MAX_WIDTH)
       : undefined,

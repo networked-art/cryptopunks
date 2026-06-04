@@ -70,27 +70,21 @@ const PUNKS_QUERY = `
   }
 `
 
-const V1_PUNKS_QUERY = `
-  query OwnedV1Punks($addrs: [String!]!, $limit: Int!, $after: String) {
-    v1Punks(
-      where: { owner_in: $addrs }
-      orderBy: "punk_id"
-      orderDirection: "asc"
-      limit: $limit
-      after: $after
-    ) {
-      items { punk_id }
-      pageInfo { hasNextPage endCursor }
-    }
-  }
-`
+// Canonical (V2) event sources — the same set the punks.auction activity feed
+// uses. Excludes the V1-native markets (cryptopunks_v1, v1_wrapper, punks_market).
+const CANONICAL_SOURCES = [
+  'cryptopunks_v2',
+  'wrapped_punks',
+  'cryptopunks_721',
+  'punks_auction',
+]
 
 const SALES_PAGE_SIZE = 100
 const HOLDINGS_PAGE_SIZE = 1000
 
-/// GraphQL client for the deployed Ponder indexer. Two reads matter to the bot:
-/// the sales feed (what just got bought) and an account's full holdings (what
-/// to render in the grid).
+/// Client for the deployed Ponder indexer. The bot reads three things: the
+/// canonical (V2) sales feed (what just got bought), an account's canonical
+/// holdings (the grid), and an address's ENS name (the caption).
 export class PunksIndexer {
   constructor(
     private readonly url: string,
@@ -103,7 +97,11 @@ export class PunksIndexer {
   /// Sales with `timestamp` strictly greater than `since` (a unix timestamp),
   /// oldest first.
   async salesSince(since: number): Promise<PunkSale[]> {
-    const where = { type_in: ['sale'], timestamp_gt: String(since) }
+    const where = {
+      type_in: ['sale'],
+      source_in: CANONICAL_SOURCES,
+      timestamp_gt: String(since),
+    }
     const sales: PunkSale[] = []
     let after: string | null = null
 
@@ -137,36 +135,36 @@ export class PunksIndexer {
     return sales
   }
 
-  /// Every punk id held across the given addresses, unioning canonical and V1
-  /// holdings (which share the 0–9999 id space and render identically).
+  /// Every canonical (V2) punk id held across the given addresses. V1 holdings
+  /// are intentionally not queried — this bot is canonical-only.
   async ownedPunks(addresses: Address[]): Promise<number[]> {
     const addrs = addresses.map((address) => address.toLowerCase())
-    const [canonical, v1] = await Promise.all([
-      this.allPunkIds(PUNKS_QUERY, 'punks', addrs),
-      this.allPunkIds(V1_PUNKS_QUERY, 'v1Punks', addrs),
-    ])
-    const ids = new Set<number>([...canonical, ...v1])
-    return [...ids].sort((a, b) => a - b)
+    const ids = await this.allPunkIds(addrs)
+    return [...new Set(ids)].sort((a, b) => a - b)
   }
 
-  private async allPunkIds(
-    gql: string,
-    key: 'punks' | 'v1Punks',
-    addrs: string[],
-  ): Promise<number[]> {
+  /// The ENS name for an address from the indexer's profiles API, or null.
+  async ensName(address: string): Promise<string | null> {
+    try {
+      const response = await fetch(`${this.url}/profiles/${address}`)
+      if (!response.ok) return null
+      const json = (await response.json()) as { ens?: string | null }
+      return json.ens ?? null
+    } catch {
+      return null
+    }
+  }
+
+  private async allPunkIds(addrs: string[]): Promise<number[]> {
     const ids: number[] = []
     let after: string | null = null
 
     do {
-      const data: Record<string, Connection<PunkRow>> = await this.request(
-        gql,
-        {
-          addrs,
-          limit: HOLDINGS_PAGE_SIZE,
-          after,
-        },
+      const data: { punks: Connection<PunkRow> } = await this.request(
+        PUNKS_QUERY,
+        { addrs, limit: HOLDINGS_PAGE_SIZE, after },
       )
-      const page = data[key]
+      const page = data.punks
       for (const row of page.items) ids.push(Number(row.punk_id))
       after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null
     } while (after)

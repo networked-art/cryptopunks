@@ -37,7 +37,6 @@ env:
     - TWITTER_API_SECRET
     - TWITTER_ACCESS_TOKEN
     - TWITTER_ACCESS_SECRET
-    - RPC_URL
 
 # Persist the sales cursor across deploys.
 volumes:
