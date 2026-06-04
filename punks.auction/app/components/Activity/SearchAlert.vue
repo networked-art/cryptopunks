@@ -39,7 +39,7 @@
           </label>
 
           <div class="events">
-            <span class="label">Alert me when a match is</span>
+            <span class="label">Alert me when a match is:</span>
             <FormCheckbox
               v-for="option in eventOptions"
               :key="option.value"
@@ -108,13 +108,16 @@ const props = defineProps<{
 const open = ref(false)
 
 const eventOptions = [
-  { value: 'listed', label: 'listed for sale' },
-  { value: 'auction_started', label: 'in a new auction' },
-  { value: 'sold', label: 'sold' },
+  { value: 'listed', label: 'Listed for sale' },
+  { value: 'new_lot', label: 'Listed for auction' },
+  { value: 'auction_start', label: 'Auction starts' },
+  { value: 'sold', label: 'Sold' },
 ] as const
 
+const allEvents = eventOptions.map((option) => option.value)
+
 const email = ref('')
-const selectedEvents = ref<string[]>(['listed', 'auction_started', 'sold'])
+const selectedEvents = ref<string[]>([...allEvents])
 const error = ref<string | null>(null)
 const pending = ref(false)
 const submitted = ref(false)
@@ -144,8 +147,11 @@ async function submit() {
   error.value = null
   pending.value = true
   try {
+    // The confirmation link lands the visitor back on this app. `?label` lets
+    // the landing page name the search they alerted on, mirroring WatchStar's
+    // `?punk`.
     const redirectUrl = new URL(
-      '/alerts/confirmed',
+      `/alerts/confirmed?label=${encodeURIComponent(props.label)}`,
       'https://punks.auction',
     ).toString()
     await postApi('/watch/subscriptions', {
@@ -176,7 +182,7 @@ function reset() {
   error.value = null
   pending.value = false
   submitted.value = false
-  selectedEvents.value = ['listed', 'auction_started', 'sold']
+  selectedEvents.value = [...allEvents]
 }
 </script>
 

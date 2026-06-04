@@ -1,10 +1,12 @@
 <template>
-  <div
-    v-if="false"
-    class="watch-punk"
-  >
-    <Button @click="open = true">
-      {{ watching ? 'Watching' : 'Watch' }}
+  <div class="watch-star">
+    <Button
+      class="icon-button"
+      :class="{ watching }"
+      @click="open = true"
+    >
+      <Icon name="lucide:star" />
+      <span>{{ watching ? 'Watching' : 'Watch' }}</span>
     </Button>
 
     <Dialog
@@ -29,9 +31,8 @@
 
       <template v-if="!submitted">
         <p class="form-note muted">
-          We'll email you when Punk #{{ punkId }} is listed for sale, an auction
-          starts, or it sells. Confirm your email once and you can unsubscribe
-          from any alert with one click.
+          We'll email you about market activity for Punk #{{ punkId }}. Confirm
+          your email once and you can unsubscribe from any alert with one click.
         </p>
 
         <form
@@ -51,7 +52,7 @@
           </label>
 
           <div class="events">
-            <span class="label">Alert me when it's</span>
+            <span class="label">Alert me when:</span>
             <FormCheckbox
               v-for="option in eventOptions"
               :key="option.value"
@@ -137,29 +138,32 @@ watch(
 )
 
 const eventOptions = [
-  { value: 'listed', label: 'listed for sale' },
-  { value: 'auction_started', label: 'in a new auction' },
-  { value: 'sold', label: 'sold' },
+  { value: 'listed', label: 'Listed for sale' },
+  { value: 'new_lot', label: 'Listed for auction' },
+  { value: 'auction_start', label: 'Auction starts' },
+  { value: 'sold', label: 'Sold' },
 ] as const
 
+const allEvents = eventOptions.map((option) => option.value)
+
 const email = ref('')
-const selectedEvents = ref<string[]>(['listed', 'auction_started', 'sold'])
+const selectedEvents = ref<string[]>([...allEvents])
 const error = ref<string | null>(null)
 const pending = ref(false)
 const submitted = ref(false)
 
 // Once confirmed, the alert is active; we don't have a networked.art session here
-// to read live state, so reflect the just-submitted intent in the button label.
+// to read live state, so reflect the just-submitted intent in the star.
 const watching = computed(() => submitted.value)
+
+// Loose RFC-pragmatic check — good enough to catch typos before handoff.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function toggleEvent(value: string) {
   selectedEvents.value = selectedEvents.value.includes(value)
     ? selectedEvents.value.filter((v) => v !== value)
     : [...selectedEvents.value, value]
 }
-
-// Loose RFC-pragmatic check — good enough to catch typos before handoff.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function submit() {
   if (pending.value) return
@@ -188,7 +192,8 @@ async function submit() {
       label: `Punk #${props.punkId}`,
       events: selectedEvents.value,
       scope: {
-        // Market (and so this form) only renders for canonical CryptoPunks.
+        // The detail page (and so this control) only renders for canonical
+        // CryptoPunks.
         contract_address: CRYPTOPUNKS_ADDRESS,
         token_id: String(props.punkId),
         search: null,
@@ -207,13 +212,18 @@ function reset() {
   error.value = null
   pending.value = false
   submitted.value = false
-  selectedEvents.value = ['listed', 'auction_started', 'sold']
+  selectedEvents.value = [...allEvents]
 }
 </script>
 
 <style scoped>
-.watch-punk {
+.watch-star {
   display: contents;
+}
+
+.watching :deep(.icon) {
+  color: var(--primary);
+  fill: currentColor;
 }
 
 .dialog-intro {

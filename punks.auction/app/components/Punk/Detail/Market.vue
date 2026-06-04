@@ -140,11 +140,6 @@
               :punk-id="punkId"
             />
           </template>
-
-          <LazyPunkDetailMarketWatchPunk
-            v-if="watchEnabled"
-            :punk-id="punkId"
-          />
         </div>
       </div>
 
@@ -174,10 +169,8 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
-// Broker contact and watchlist alerts ride on the networked.art API; hide them
-// unless that's wired up.
+// Broker contact rides on the networked.art API; hide it unless that's wired up.
 const brokerEnabled = isApiConfigured()
-const watchEnabled = isApiConfigured()
 const detail = usePunkDetailDataContext()
 const {
   owner: resolvedOwner,
