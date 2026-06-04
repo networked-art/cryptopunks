@@ -28,6 +28,16 @@ export function roundedUsdDollarsForCents(centsInput: AmountInput) {
   return (BigInt(centsInput) + 50n) / 100n
 }
 
+export function roundUsdDollars(
+  dollarsInput: AmountInput,
+  roundToInput: AmountInput,
+) {
+  const dollars = BigInt(dollarsInput)
+  const roundTo = BigInt(roundToInput)
+  if (roundTo <= 1n) return dollars
+  return ((dollars + roundTo / 2n) / roundTo) * roundTo
+}
+
 export function formatUsdDollars(dollarsInput: AmountInput, compact = false) {
   const dollars = BigInt(dollarsInput)
   if (compact || dollars >= USD_COMPACT_THRESHOLD) {

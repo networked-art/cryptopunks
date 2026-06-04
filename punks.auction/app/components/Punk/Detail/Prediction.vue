@@ -10,14 +10,25 @@
         <dl class="state-grid">
           <div class="state-cell">
             <dt class="label">Modeled value</dt>
-            <dd class="fair"><EthAmount :wei="prediction.fairValueWei" /></dd>
+            <dd class="fair">
+              <EthAmount
+                :wei="prediction.fairValueWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
+            </dd>
           </div>
           <div class="state-cell">
             <dt class="label">Likely range</dt>
             <dd>
-              <EthAmount :wei="prediction.p10SaleWei" />
+              <EthAmount
+                :wei="prediction.p10SaleWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
               <span class="dim">–</span>
-              <EthAmount :wei="prediction.p90SaleWei" />
+              <EthAmount
+                :wei="prediction.p90SaleWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
             </dd>
           </div>
         </dl>
@@ -55,14 +66,25 @@
         <dl class="state-grid">
           <div class="state-cell">
             <dt class="label">Modeled value</dt>
-            <dd><EthAmount :wei="prediction.fairValueWei" /></dd>
+            <dd>
+              <EthAmount
+                :wei="prediction.fairValueWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
+            </dd>
           </div>
           <div class="state-cell">
             <dt class="label">Likely range</dt>
             <dd>
-              <EthAmount :wei="prediction.p10SaleWei" />
+              <EthAmount
+                :wei="prediction.p10SaleWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
               <span class="dim">–</span>
-              <EthAmount :wei="prediction.p90SaleWei" />
+              <EthAmount
+                :wei="prediction.p90SaleWei"
+                :usd-round-to="PREDICTION_USD_ROUND_TO"
+              />
             </dd>
           </div>
           <div class="state-cell">
@@ -142,6 +164,7 @@ import { TokenStandard } from '~/utils/auction'
 import { ethFloatToWei } from '~/utils/predictions'
 
 const { prediction } = usePunkPredictionContext()
+const PREDICTION_USD_ROUND_TO = 1_000n
 
 const introStandard = computed(() =>
   prediction.value?.standard === 'v1'

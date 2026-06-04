@@ -20,6 +20,7 @@ import {
   formatCompactWhole,
   formatFullUsdDollars,
   formatUsdDollars,
+  roundUsdDollars,
   roundedUsdDollarsForCents,
   roundedUsdDollarsForWei,
 } from '~/utils/priceDisplay'
@@ -32,6 +33,7 @@ const props = withDefaults(
     compact?: boolean
     historical?: boolean
     historicalUsdCents?: bigint | number | string | null
+    usdRoundTo?: bigint | number | string | null
   }>(),
   { precision: 4, symbol: 'Ξ', compact: false },
 )
@@ -83,10 +85,19 @@ const currentUsdDollars = computed(() =>
 const usdDollars = computed(() =>
   props.historical ? historicalUsdDollars.value : currentUsdDollars.value,
 )
+const usdRoundTo = computed(() =>
+  props.usdRoundTo == null ? null : BigInt(props.usdRoundTo),
+)
+const displayUsdDollars = computed(() => {
+  if (usdDollars.value == null) return null
+  if (usdRoundTo.value == null || usdRoundTo.value <= 1n)
+    return usdDollars.value
+  return roundUsdDollars(usdDollars.value, usdRoundTo.value)
+})
 const usdDisplay = computed(() =>
-  usdDollars.value == null
+  displayUsdDollars.value == null
     ? '—'
-    : formatUsdDollars(usdDollars.value, props.compact),
+    : formatUsdDollars(displayUsdDollars.value, props.compact),
 )
 
 const title = computed(() => {
