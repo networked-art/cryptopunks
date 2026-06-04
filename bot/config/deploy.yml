@@ -29,6 +29,9 @@ env:
   clear:
     INDEXER_URL: <%= ENV["INDEXER_URL"] %>
     POLL_INTERVAL: <%= ENV["POLL_INTERVAL"] %>
+    # One-time backfill seed: on the first run (empty volume) the bot starts from
+    # this unix timestamp instead of "now". Ignored once the cursor is persisted.
+    START_TIMESTAMP: <%= ENV["START_TIMESTAMP"] %>
   secret:
     - TWITTER_API_KEY
     - TWITTER_API_SECRET

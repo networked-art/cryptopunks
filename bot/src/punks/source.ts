@@ -22,15 +22,28 @@ export interface Acquisition {
 /// Cursor is the unix timestamp of the newest sale already handled.
 export type PunksCursor = { timestamp: number }
 
+export interface PunksSourceOptions {
+  /// Unix timestamp (seconds) to begin from on the very first run, instead of
+  /// "now". Lets a fresh deploy backfill recent sales (e.g. the last few days)
+  /// rather than only reacting to future activity. Ignored once a cursor is
+  /// stored, so it's a one-time seed.
+  startTimestamp?: number
+}
+
 /// Watches the indexer's sales feed and turns it into per-buyer acquisitions —
 /// the punk analogue of the EVM bot's "group sales by buyer" step.
 export class PunksSource implements Source<PunksCursor, Acquisition> {
   readonly name = 'punk-sales'
 
-  constructor(private readonly indexer: PunksIndexer) {}
+  constructor(
+    private readonly indexer: PunksIndexer,
+    private readonly options: PunksSourceOptions = {},
+  ) {}
 
   async start(): Promise<PunksCursor> {
-    return { timestamp: Math.floor(Date.now() / 1000) }
+    return {
+      timestamp: this.options.startTimestamp ?? Math.floor(Date.now() / 1000),
+    }
   }
 
   async pull(

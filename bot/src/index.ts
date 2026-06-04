@@ -27,7 +27,11 @@ async function main(): Promise<void> {
   const indexer = new PunksIndexer(
     process.env.INDEXER_URL || DEFAULT_INDEXER_URL,
   )
-  const source = new PunksSource(indexer)
+  const source = new PunksSource(indexer, {
+    startTimestamp: process.env.START_TIMESTAMP
+      ? Number(process.env.START_TIMESTAMP)
+      : undefined,
+  })
   const renderer = new PunksRenderer({
     names: new NameResolver(process.env.RPC_URL),
     minSpendWei: process.env.MIN_SPEND_WEI
