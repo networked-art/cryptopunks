@@ -31,7 +31,7 @@ src/
   core/            # generic, domain-agnostic bot framework
     types.ts       #   Source / Renderer / Publisher / Post contracts
     bot.ts         #   runOnce: read cursor → pull → render → publish → save
-    twitter.ts     #   TwitterPublisher (OAuth2 + token rotation) + DryRunPublisher
+    twitter.ts     #   TwitterPublisher (OAuth 1.0a) + DryRunPublisher
     state.ts       #   StateFile: the single JSON state file
   punks/           # the concrete renderer service
     indexer.ts     #   PunksIndexer: sales feed + holdings (GraphQL)
@@ -61,14 +61,15 @@ pnpm preview --ids 1,2,3,4,5 --new 1
 DRY_RUN=true pnpm start
 ```
 
-Copy `.env.example` to `.env` and fill in the Twitter credentials to post for
-real. See the file for every option.
+Copy `.env.example` to `.env` and fill in the Twitter/X OAuth 1.0a credentials
+(API key/secret + the account's access token/secret, app set to Read + Write)
+to post for real. See the file for every option.
 
 ## Deploy
 
 Kamal config lives in `config/deploy.yml` and builds the root `Dockerfile.bot`.
 It runs as a worker (no exposed port) and mounts `/var/lib/punks-bot` so the
-cursor and rotated Twitter tokens survive deploys.
+sales cursor survives deploys.
 
 ```bash
 cp .env.production.example .env.production   # fill in, then:

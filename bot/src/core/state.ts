@@ -2,9 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 /// A small JSON file used as the bot's only durable state. It holds whatever
-/// keys callers put in it — the source cursor under one key, rotated Twitter
-/// tokens under another — so a single file survives restarts and deploys (it's
-/// the volume mounted into the container).
+/// keys callers put in it — currently just the source cursor — so a single file
+/// survives restarts and deploys (it's the volume mounted into the container).
 export class StateFile {
   private cache: Record<string, unknown> | null = null
 

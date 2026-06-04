@@ -3,12 +3,13 @@ service: punks-bot
 image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/punks-bot
 
 # A worker, not a web service: it polls the indexer and tweets on a loop, so it
-# exposes no port and runs no proxy.
+# exposes no port and opts out of the proxy (`proxy: false`, like the predictor).
+# The container command comes from Dockerfile.bot's CMD (bin/run-loop).
 servers:
   worker:
     hosts:
       - <%= ENV["DEPLOY_HOST"] %>
-    cmd: /app/bot/bin/run-loop
+    proxy: false
     options:
       network: shared
 
@@ -29,13 +30,13 @@ env:
     INDEXER_URL: <%= ENV["INDEXER_URL"] %>
     POLL_INTERVAL: <%= ENV["POLL_INTERVAL"] %>
   secret:
-    - TWITTER_CLIENT_ID
-    - TWITTER_CLIENT_SECRET
+    - TWITTER_API_KEY
+    - TWITTER_API_SECRET
     - TWITTER_ACCESS_TOKEN
-    - TWITTER_REFRESH_TOKEN
+    - TWITTER_ACCESS_SECRET
     - RPC_URL
 
-# Persist the cursor and rotated Twitter tokens across deploys.
+# Persist the sales cursor across deploys.
 volumes:
   - /var/lib/punks-bot:/app/data
 

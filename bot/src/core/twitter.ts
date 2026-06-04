@@ -2,85 +2,61 @@ import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TwitterApi, type EUploadMimeType } from 'twitter-api-v2'
-import { log, formatError } from './log'
-import type { StateFile } from './state'
+import { log } from './log'
 import type { Post, Publisher } from './types'
 
+/// OAuth 1.0a user-context credentials for a single posting account. Unlike
+/// OAuth2 they never expire and need no refresh: the app's API key/secret plus
+/// an access token/secret minted for the account (with Read + Write permission).
 export interface TwitterCredentials {
-  clientId: string
-  clientSecret: string
-  /// Seed OAuth2 tokens. The first run refreshes them; rotated tokens are then
-  /// persisted in the state file and used in preference to these.
+  /// "API Key" / Consumer Key.
+  apiKey: string
+  /// "API Key Secret" / Consumer Secret.
+  apiSecret: string
+  /// The account's Access Token.
   accessToken: string
-  refreshToken: string
+  /// The account's Access Token Secret.
+  accessSecret: string
 }
 
-interface StoredTokens {
-  accessToken: string
-  refreshToken: string
-}
-
-const TOKEN_KEY = 'twitter'
-
-/// Posts to Twitter over the OAuth2 user-context flow. The refresh token
-/// rotates on every refresh, so it's persisted back to the state file —
-/// otherwise the bot would be locked out after the seed token is first used.
+/// Posts to Twitter/X as a single account over OAuth 1.0a. Media is uploaded
+/// first, then attached to the tweet. The credentials are static, so there's no
+/// connect/refresh dance — the client is built once.
 export class TwitterPublisher implements Publisher {
-  private client: TwitterApi | null = null
+  private readonly client: TwitterApi
 
-  constructor(
-    private readonly credentials: TwitterCredentials,
-    private readonly state: StateFile,
-  ) {}
+  constructor(credentials: TwitterCredentials) {
+    this.client = new TwitterApi({
+      appKey: credentials.apiKey,
+      appSecret: credentials.apiSecret,
+      accessToken: credentials.accessToken,
+      accessSecret: credentials.accessSecret,
+    })
+  }
 
   async publish(post: Post): Promise<void> {
-    const client = await this.connect()
-
     if (!post.media) {
-      await client.v2.tweet({ text: post.text })
+      await this.client.v2.tweet({ text: post.text })
       log.info(`Tweeted: ${firstLine(post.text)}`)
       return
     }
 
-    const mediaId = await client.v2.uploadMedia(Buffer.from(post.media.data), {
-      media_type: post.media.mimeType as EUploadMimeType,
-    })
+    const mediaId = await this.client.v2.uploadMedia(
+      Buffer.from(post.media.data),
+      {
+        media_type: post.media.mimeType as EUploadMimeType,
+      },
+    )
     if (post.media.alt) {
-      await client.v2.createMediaMetadata(mediaId, {
+      await this.client.v2.createMediaMetadata(mediaId, {
         alt_text: { text: post.media.alt },
       })
     }
-    await client.v2.tweet({ text: post.text, media: { media_ids: [mediaId] } })
-    log.info(`Tweeted: ${firstLine(post.text)}`)
-  }
-
-  private async connect(): Promise<TwitterApi> {
-    if (this.client) return this.client
-
-    const oauth = new TwitterApi({
-      clientId: this.credentials.clientId,
-      clientSecret: this.credentials.clientSecret,
+    await this.client.v2.tweet({
+      text: post.text,
+      media: { media_ids: [mediaId] },
     })
-
-    const stored = this.state.get<StoredTokens>(TOKEN_KEY)
-    const refreshToken = stored?.refreshToken ?? this.credentials.refreshToken
-    let accessToken = stored?.accessToken ?? this.credentials.accessToken
-
-    try {
-      const refreshed = await oauth.refreshOAuth2Token(refreshToken)
-      accessToken = refreshed.accessToken
-      this.state.set<StoredTokens>(TOKEN_KEY, {
-        accessToken: refreshed.accessToken,
-        refreshToken: refreshed.refreshToken ?? refreshToken,
-      })
-    } catch (error) {
-      // A failed refresh isn't fatal — the existing access token may still be
-      // valid. Surface it and let the tweet attempt be the real test.
-      log.warn(`Twitter token refresh failed: ${formatError(error)}`)
-    }
-
-    this.client = new TwitterApi(accessToken)
-    return this.client
+    log.info(`Tweeted: ${firstLine(post.text)}`)
   }
 }
 

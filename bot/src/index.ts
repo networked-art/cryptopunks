@@ -40,15 +40,12 @@ async function main(): Promise<void> {
 
   const publisher: Publisher = dryRun
     ? new DryRunPublisher()
-    : new TwitterPublisher(
-        {
-          clientId: required('TWITTER_CLIENT_ID'),
-          clientSecret: required('TWITTER_CLIENT_SECRET'),
-          accessToken: required('TWITTER_ACCESS_TOKEN'),
-          refreshToken: required('TWITTER_REFRESH_TOKEN'),
-        },
-        state,
-      )
+    : new TwitterPublisher({
+        apiKey: required('TWITTER_API_KEY'),
+        apiSecret: required('TWITTER_API_SECRET'),
+        accessToken: required('TWITTER_ACCESS_TOKEN'),
+        accessSecret: required('TWITTER_ACCESS_SECRET'),
+      })
 
   await runOnce({ source, renderer, publisher, state })
 }
