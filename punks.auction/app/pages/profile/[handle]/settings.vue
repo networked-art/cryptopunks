@@ -31,6 +31,8 @@
           <span>Sign out</span>
         </Button>
       </section>
+
+      <SettingsNetworkedArt v-if="apiConfigured" />
     </div>
   </ClientOnly>
 </template>
@@ -38,6 +40,7 @@
 <script setup lang="ts">
 import { useDisconnect } from '@wagmi/vue'
 import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
+import { isApiConfigured } from '~/utils/api'
 
 useOwnProfileGuard()
 
@@ -45,6 +48,7 @@ const { ownAccount } = useProfileContext()
 const { mutate: disconnect } = useDisconnect()
 
 const dev = import.meta.dev
+const apiConfigured = isApiConfigured()
 
 const shortAddr = computed(() =>
   ownAccount.value ? shortAddress(ownAccount.value) : '',
