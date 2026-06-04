@@ -25,12 +25,33 @@
         />
         <div class="intro-meta">
           <p class="intro-id">Punk #{{ punkId }}</p>
-          <p class="intro-sub muted">Get an email on market activity</p>
+          <p class="intro-sub muted">
+            {{
+              usesConnectedAccount
+                ? 'Save to your watchlist'
+                : 'Get an email on market activity'
+            }}
+          </p>
         </div>
       </div>
 
       <template v-if="!submitted">
-        <p class="form-note muted">
+        <p
+          v-if="usesConnectedAccount"
+          class="form-note muted"
+        >
+          We'll add Punk #{{ punkId }} to your watchlist.
+        </p>
+        <p
+          v-else-if="accountChecking"
+          class="form-note muted"
+        >
+          Checking your networked.art account…
+        </p>
+        <p
+          v-else
+          class="form-note muted"
+        >
           We'll email you about market activity for Punk #{{ punkId }}. Confirm
           your email once and you can unsubscribe from any alert with one click.
         </p>
@@ -39,17 +60,18 @@
           class="watch-form"
           @submit.prevent="submit"
         >
-          <label class="field">
-            <span class="label">Email</span>
-            <input
-              v-model.trim="email"
-              type="email"
-              name="email"
-              autocomplete="email"
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+          <FormGroup v-if="needsEmail">
+            <FormLabel label="Email">
+              <input
+                v-model.trim="email"
+                type="email"
+                name="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </FormLabel>
+          </FormGroup>
 
           <div class="events">
             <span class="label">Alert me when:</span>
@@ -76,9 +98,14 @@
         v-else
         class="form-note"
       >
-        Check your inbox! We sent a confirmation link to
-        <strong>{{ email }}</strong
-        >. Confirm it to start receiving alerts for Punk #{{ punkId }}.
+        <template v-if="submittedWithAccount">
+          Punk #{{ punkId }} is on your watchlist.
+        </template>
+        <template v-else>
+          Check your inbox! We sent a confirmation link to
+          <strong>{{ email }}</strong
+          >. Confirm it to start receiving alerts for Punk #{{ punkId }}.
+        </template>
       </p>
 
       <template #footer>
@@ -91,10 +118,10 @@
           </Button>
           <Button
             class="primary"
-            :disabled="pending || !selectedEvents.length"
+            :disabled="pending || accountChecking || !selectedEvents.length"
             @click="submit"
           >
-            {{ pending ? 'Sending…' : 'Watch punk' }}
+            {{ submitLabel }}
           </Button>
         </template>
         <Button
@@ -119,6 +146,11 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+const na = useNetworkedArt()
+
+onMounted(() => {
+  if (!na.ready.value && !na.pending.value) void na.refresh()
+})
 
 // Mirror the dialog in the URL so an open watch dialog is linkable, matching the
 // broker-contact dialog's behaviour.
@@ -151,9 +183,20 @@ const selectedEvents = ref<string[]>([...allEvents])
 const error = ref<string | null>(null)
 const pending = ref(false)
 const submitted = ref(false)
+const submittedWithAccount = ref(false)
+const usesConnectedAccount = computed(() => na.isAuthenticated.value)
+const accountChecking = computed(() => !!na.token.value && !na.ready.value)
+const needsEmail = computed(
+  () => !usesConnectedAccount.value && !accountChecking.value,
+)
+const submitLabel = computed(() => {
+  if (pending.value) return 'Sending…'
+  if (accountChecking.value) return 'Checking…'
+  return 'Watch punk'
+})
 
-// Once confirmed, the alert is active; we don't have a networked.art session here
-// to read live state, so reflect the just-submitted intent in the star.
+// Once submitted, reflect the just-submitted intent in the star. Guest watches
+// still need email confirmation before the API treats them as active.
 const watching = computed(() => submitted.value)
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
@@ -167,7 +210,11 @@ function toggleEvent(value: string) {
 
 async function submit() {
   if (pending.value) return
-  if (!EMAIL_RE.test(email.value)) {
+  if (accountChecking.value) return
+
+  const useAccount = usesConnectedAccount.value
+
+  if (!useAccount && !EMAIL_RE.test(email.value)) {
     error.value = 'Enter a valid email address.'
     return
   }
@@ -178,15 +225,15 @@ async function submit() {
   error.value = null
   pending.value = true
   try {
-    // The confirmation link lands the visitor back on this app. The API only
-    // allows redirects to this app's own origin; `?punk` lets the landing page
-    // show context.
+    // Guest confirmation links land the visitor back on this app once
+    // confirmed; authenticated requests keep the same context if the API needs
+    // it.
     const redirectUrl = new URL(
       `/alerts/confirmed?punk=${props.punkId}`,
       'https://punks.auction',
     ).toString()
-    await postApi('/watch/subscriptions', {
-      email: email.value,
+    const body = {
+      ...(!useAccount ? { email: email.value } : {}),
       source: 'punks_auctions',
       redirect_url: redirectUrl,
       label: `Punk #${props.punkId}`,
@@ -198,7 +245,13 @@ async function submit() {
         token_id: String(props.punkId),
         search: null,
       },
-    })
+    }
+    if (useAccount) {
+      await na.api('/watch/subscriptions', { method: 'POST', body })
+    } else {
+      await postApi('/watch/subscriptions', body)
+    }
+    submittedWithAccount.value = useAccount
     submitted.value = true
   } catch {
     error.value = 'Something went wrong. Please try again.'
@@ -212,6 +265,7 @@ function reset() {
   error.value = null
   pending.value = false
   submitted.value = false
+  submittedWithAccount.value = false
   selectedEvents.value = [...allEvents]
 }
 </script>
@@ -265,19 +319,8 @@ function reset() {
   gap: var(--size-3);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-}
-
-.field .label,
 .events .label {
   color: var(--text-dim);
-}
-
-.field input {
-  width: 100%;
 }
 
 .events {

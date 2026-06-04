@@ -28,7 +28,23 @@
       </div>
 
       <template v-if="!submitted">
-        <p class="form-note muted">
+        <p
+          v-if="usesConnectedAccount"
+          class="form-note muted"
+        >
+          A broker may reach out to discuss placing a bid or arranging a private
+          sale.
+        </p>
+        <p
+          v-else-if="accountChecking"
+          class="form-note muted"
+        >
+          Checking your networked.art account…
+        </p>
+        <p
+          v-else
+          class="form-note muted"
+        >
           Leave your email and a broker may reach out to discuss placing a bid
           or arranging a private sale. We'll email a link to confirm it first —
           submitting doesn't guarantee a response or a placement.
@@ -38,7 +54,10 @@
           class="broker-form"
           @submit.prevent="submit"
         >
-          <label class="field">
+          <label
+            v-if="needsEmail"
+            class="field"
+          >
             <span class="label">Email</span>
             <input
               v-model.trim="email"
@@ -72,9 +91,15 @@
         v-else
         class="form-note"
       >
-        Check your inbox! We sent a confirmation link to
-        <strong>{{ email }}</strong
-        >. Confirm it and a broker may reach out if there's a match.
+        <template v-if="submittedWithAccount">
+          Your request is in. A broker may reach out through your connected
+          networked.art account if there's a match.
+        </template>
+        <template v-else>
+          Check your inbox! We sent a confirmation link to
+          <strong>{{ email }}</strong
+          >. Confirm it and a broker may reach out if there's a match.
+        </template>
       </p>
 
       <template #footer>
@@ -87,10 +112,10 @@
           </Button>
           <Button
             class="primary"
-            :disabled="pending"
+            :disabled="pending || accountChecking"
             @click="submit"
           >
-            {{ pending ? 'Sending…' : 'Request contact' }}
+            {{ submitLabel }}
           </Button>
         </template>
         <Button
@@ -117,8 +142,12 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
-const config = useRuntimeConfig()
 const { address } = useConnection()
+const na = useNetworkedArt()
+
+onMounted(() => {
+  if (!na.ready.value && !na.pending.value) void na.refresh()
+})
 
 // Mirror the contact modal in the URL so an open dialog is linkable. The query
 // is the source of truth on load; opening or closing writes it back.
@@ -166,29 +195,42 @@ const note = ref('')
 const error = ref<string | null>(null)
 const pending = ref(false)
 const submitted = ref(false)
+const submittedWithAccount = ref(false)
+const usesConnectedAccount = computed(() => na.isAuthenticated.value)
+const accountChecking = computed(() => !!na.token.value && !na.ready.value)
+const needsEmail = computed(
+  () => !usesConnectedAccount.value && !accountChecking.value,
+)
+const submitLabel = computed(() => {
+  if (pending.value) return 'Sending…'
+  if (accountChecking.value) return 'Checking…'
+  return 'Request contact'
+})
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function submit() {
   if (pending.value) return
-  if (!EMAIL_RE.test(email.value)) {
+  if (accountChecking.value) return
+
+  const useAccount = usesConnectedAccount.value
+
+  if (!useAccount && !EMAIL_RE.test(email.value)) {
     error.value = 'Enter a valid email address.'
     return
   }
   error.value = null
   pending.value = true
   try {
-    // The email's confirmation link lands the buyer back on this app once
-    // confirmed. The API only allows redirects to this app's own origin, so
-    // build it from `publicUrl`; `?punk` lets the landing page show context.
+    // Guest confirmation links land the buyer back on this app once confirmed;
+    // authenticated requests keep the same context if the API needs it.
     const redirectUrl = new URL(
       `/brokerage/confirmed?punk=${props.punkId}`,
       'https://punks.auction',
-      // config.public.publicUrl as string,
     ).toString()
-    await postApi('/brokerage/requests', {
-      email: email.value,
+    const body = {
+      ...(!useAccount ? { email: email.value } : {}),
       source: 'punks_auctions',
       user_address: address.value ?? null,
       redirect_url: redirectUrl,
@@ -199,7 +241,13 @@ async function submit() {
         token_id: String(props.punkId),
         search: null,
       },
-    })
+    }
+    if (useAccount) {
+      await na.api('/brokerage/requests', { method: 'POST', body })
+    } else {
+      await postApi('/brokerage/requests', body)
+    }
+    submittedWithAccount.value = useAccount
     submitted.value = true
   } catch {
     error.value = 'Something went wrong. Please try again.'
@@ -214,6 +262,7 @@ function reset() {
   error.value = null
   pending.value = false
   submitted.value = false
+  submittedWithAccount.value = false
 }
 </script>
 
