@@ -59,20 +59,7 @@
           {{ error }}
         </p>
 
-        <div
-          v-if="!address"
-          class="connect-row"
-        >
-          <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
-          <span class="muted"
-            >Connect a wallet to interact with this Punk.</span
-          >
-        </div>
-
-        <div
-          v-else
-          class="actions"
-        >
+        <div class="actions">
           <template v-if="isOwner">
             <div class="action-group">
               <LazyPunkDetailMarketListForm
@@ -103,7 +90,17 @@
           </template>
 
           <template v-else>
-            <div class="action-group min-50">
+            <div
+              v-if="!address"
+              class="action-group min-50"
+            >
+              <EvmConnectDialog class-name="primary">Connect</EvmConnectDialog>
+            </div>
+
+            <div
+              v-else
+              class="action-group min-50"
+            >
               <Button
                 v-if="canBuy"
                 class="primary"
@@ -369,14 +366,6 @@ function sameAddress(a?: Address | string | null, b?: Address | string | null) {
 .label {
   margin-bottom: var(--size-1);
   color: var(--text-dim);
-}
-
-.connect-row {
-  display: flex;
-  align-items: center;
-  gap: var(--size-3);
-  flex-wrap: wrap;
-  font-size: var(--font-sm);
 }
 
 .actions {
