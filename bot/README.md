@@ -11,9 +11,9 @@ first concrete renderer — adding another bot is a matter of writing a new
 
 Each tick is a one-shot run, re-invoked on an interval by `bin/run-loop`:
 
-1. **Source** — `PunksSource` reads the indexer's sales feed since the stored
-   cursor, groups sales by buyer, and fetches each buyer's full holdings
-   (canonical + V1, unioned).
+1. **Source** — `PunksSource` reads the indexer's canonical (V2) sales feed
+   since the stored cursor, groups sales by buyer, and fetches each buyer's
+   canonical holdings.
 2. **Renderer** — `PunksRenderer` renders every owned punk offline via the SDK
    and hands them to [`@visualizevalue/img-grid`](https://www.npmjs.com/package/@visualizevalue/img-grid)
    as `data:` URIs, marking the just-acquired ones as `highlight` (img-grid

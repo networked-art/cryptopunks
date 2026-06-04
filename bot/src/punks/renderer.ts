@@ -31,6 +31,8 @@ const DEFAULT_MAX_LISTED_IDS = 6
 // instead of showing img-grid's default black.
 const GRID_BACKGROUND = `#${PUNKS_RENDERER_BACKGROUND_DEFAULT.slice(2, 8)}`
 
+const PUNKS_AUCTION_URL = 'https://punks.auction'
+
 /// The concrete renderer service: an account's acquisition becomes a tweet —
 /// a one-line caption and a grid of its whole collection with the newly-bought
 /// punks enlarged to 2×2 via img-grid's `highlight`. Punk artwork is produced
@@ -103,7 +105,17 @@ export class PunksRenderer implements Renderer<Acquisition> {
         `Now holds ${acquisition.owned.length} ${plural(acquisition.owned.length, 'CryptoPunk')}`,
       )
     }
+    lines.push(this.link(acquisition))
     return lines.join('\n')
+  }
+
+  /// A link to view the acquisition: the punk's page for a single buy, the
+  /// buyer's collection for several (one tidy URL beats a wall of punk links).
+  private link(acquisition: Acquisition): string {
+    if (acquisition.acquired.length === 1) {
+      return `${PUNKS_AUCTION_URL}/punks/${acquisition.acquired[0]}`
+    }
+    return `${PUNKS_AUCTION_URL}/profile/${acquisition.account.toLowerCase()}`
   }
 
   private acquiredLine(acquisition: Acquisition): string {
