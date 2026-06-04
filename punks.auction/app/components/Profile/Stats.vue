@@ -23,32 +23,14 @@
         >
       </dt>
       <template v-if="stats.totalSpentWei > 0n">
-        <dd class="usd">
-          <Tooltip
-            v-if="totalSpentUsdHistorical"
-            side="bottom"
-          >
-            <template #trigger>
-              <span class="usd-trigger">${{ totalSpentUsdHistorical }}</span>
-            </template>
-            <div class="tooltip-body">
-              <span class="eyebrow muted">Value today</span>
-              <span v-if="totalSpentUsdNow">${{ totalSpentUsdNow }}</span>
-              <span
-                v-else
-                class="muted"
-                >—</span
-              >
-            </div>
-          </Tooltip>
-          <span
-            v-else
-            class="muted"
-            >—</span
-          >
-        </dd>
         <dd>
-          <EthAmount :wei="stats.totalSpentWei" />
+          <EthAmount
+            :wei="stats.totalSpentWei"
+            historical
+            :historical-usd-cents="
+              stats.totalSpentUsdCents > 0n ? stats.totalSpentUsdCents : null
+            "
+          />
         </dd>
       </template>
       <dd
@@ -66,32 +48,14 @@
         >
       </dt>
       <template v-if="stats.totalEarnedWei > 0n">
-        <dd class="usd">
-          <Tooltip
-            v-if="totalEarnedUsdHistorical"
-            side="bottom"
-          >
-            <template #trigger>
-              <span class="usd-trigger">${{ totalEarnedUsdHistorical }}</span>
-            </template>
-            <div class="tooltip-body">
-              <span class="eyebrow muted">Value today</span>
-              <span v-if="totalEarnedUsdNow">${{ totalEarnedUsdNow }}</span>
-              <span
-                v-else
-                class="muted"
-                >—</span
-              >
-            </div>
-          </Tooltip>
-          <span
-            v-else
-            class="muted"
-            >—</span
-          >
-        </dd>
         <dd>
-          <EthAmount :wei="stats.totalEarnedWei" />
+          <EthAmount
+            :wei="stats.totalEarnedWei"
+            historical
+            :historical-usd-cents="
+              stats.totalEarnedUsdCents > 0n ? stats.totalEarnedUsdCents : null
+            "
+          />
         </dd>
       </template>
       <dd
@@ -108,37 +72,6 @@
 import type { AccountStats } from '~/composables/useAccountStats'
 
 const props = defineProps<{ stats: AccountStats }>()
-
-const { ethUSDRaw, weiToUSD, fetchPrice } = usePriceFeed()
-onMounted(() => {
-  void fetchPrice()
-})
-
-// Historical USD at trade time, summed from event.usd_value_cents.
-// Falls back to null when every contributing sale predates the price cache.
-function centsToUsd(cents: bigint): string | null {
-  if (cents <= 0n) return null
-  return formatPrice(Number(cents) / 100, 2)
-}
-
-const totalSpentUsdHistorical = computed(() =>
-  centsToUsd(props.stats.totalSpentUsdCents),
-)
-const totalEarnedUsdHistorical = computed(() =>
-  centsToUsd(props.stats.totalEarnedUsdCents),
-)
-
-// Today's USD equivalent — shown in the tooltip for comparison.
-const totalSpentUsdNow = computed(() =>
-  ethUSDRaw.value && props.stats.totalSpentWei > 0n
-    ? weiToUSD(props.stats.totalSpentWei)
-    : null,
-)
-const totalEarnedUsdNow = computed(() =>
-  ethUSDRaw.value && props.stats.totalEarnedWei > 0n
-    ? weiToUSD(props.stats.totalEarnedWei)
-    : null,
-)
 
 const lastActiveIso = computed(() =>
   props.stats.lastActiveAt
@@ -204,23 +137,6 @@ dd {
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-.usd {
-  color: var(--text-dim);
-  font-size: var(--font-xs);
-}
-
-.usd-trigger {
-  cursor: help;
-  border-bottom: 1px dotted var(--text-dim);
-}
-
-.tooltip-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Desktop: 2-col when there are only 4 rows (no Claimed). With Claimed

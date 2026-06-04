@@ -937,17 +937,18 @@ async function insertActivity(
   >,
 ) {
   if (shouldSuppressV2Activity(values)) return
-  // Compute USD cents whenever the event carries a wei amount. Cache lookup
-  // first (zero RPC for any day in `eth_usd_prices`); on miss the helper
-  // reads Chainlink's `latestRoundData` at this block and back-fills the
-  // cache so the next event on the same day is a cheap hit. Pre-aggregator
-  // days that aren't in the CSV stay null.
+  // Compute USD cents whenever the event carries an amount the activity UI
+  // displays. Cache lookup first (zero RPC for any day in `eth_usd_prices`);
+  // on miss the helper reads Chainlink's `latestRoundData` at this block and
+  // back-fills the cache so the next event on the same day is a cheap hit.
+  // Pre-aggregator days that aren't in the CSV stay null.
   let usdValueCents: bigint | null = null
-  if (values.wei_amount !== null && values.wei_amount !== undefined) {
+  const displayedWeiAmount = values.wei_amount ?? values.listing_wei
+  if (displayedWeiAmount !== null && displayedWeiAmount !== undefined) {
     usdValueCents = await usdValueCentsForBlock(
       context,
       { number: values.block_number, timestamp: values.timestamp },
-      values.wei_amount,
+      displayedWeiAmount,
     )
   }
 

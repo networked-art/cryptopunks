@@ -100,7 +100,6 @@ import {
 import { useConnection } from '@wagmi/vue'
 import {
   decodeEventLog,
-  formatEther,
   type Address,
   type Hash,
   type TransactionReceipt,
@@ -150,6 +149,7 @@ const { sdk } = usePunksSdk()
 const { address } = useConnection()
 const offline = usePunksOffline()
 const renderV1 = useV1Rendering()
+const { formatWeiAmount } = usePriceDisplayText()
 const { matchesItem: slotMatchesItem, criteriaMatchesPunk } =
   useOfferSlotMatching()
 const inventory = useAccountPunkInventory(() => address.value)
@@ -354,8 +354,8 @@ async function runDiscover(request: DiscoverRequest) {
 
   selectedKeys.value = slots.map(
     (slot) =>
-      slot.candidates.find((candidate) => !candidate.unavailableReason)
-        ?.key ?? '',
+      slot.candidates.find((candidate) => !candidate.unavailableReason)?.key ??
+      '',
   )
   decisionStep.value = 'punk-selection'
 }
@@ -370,10 +370,7 @@ async function runFromPreselectedItems(
     )
     return
   }
-  if (
-    request.mode === 'accept' &&
-    request.items.length > MAX_INSTANT_ITEMS
-  ) {
+  if (request.mode === 'accept' && request.items.length > MAX_INSTANT_ITEMS) {
     showEmpty(
       `Instant accept is limited to ${MAX_INSTANT_ITEMS} Punks. Start an auction from this offer instead.`,
     )
@@ -384,9 +381,7 @@ async function runFromPreselectedItems(
   const items: SelectedFulfillmentItem[] = []
   for (const [index, ref_] of request.items.entries()) {
     const key = `${ref_.standard}-${ref_.punkId}`
-    const inventoryItem = inventory.items.value.find(
-      (item) => item.key === key,
-    )
+    const inventoryItem = inventory.items.value.find((item) => item.key === key)
     if (!inventoryItem) {
       showEmpty(`You do not own Punk #${ref_.punkId}.`)
       return
@@ -466,7 +461,10 @@ async function executeNewLotPlans(items: readonly SelectedFulfillmentItem[]) {
       items,
     })
     const finalPlan = finalNewLotPlan(items, request.mode, offerRecord)
-    await runPlans([...prepPlans, finalPlan], transactionTextForNewLot(request.mode))
+    await runPlans(
+      [...prepPlans, finalPlan],
+      transactionTextForNewLot(request.mode),
+    )
   } catch (e) {
     showEmpty((e as Error).message)
   }
@@ -633,12 +631,12 @@ function transactionTextForLot(
       lead: {
         confirm:
           nextMode === 'accept'
-            ? `Settle lot #${lot.id} immediately to the offerer for ${formatEther(
+            ? `Settle lot #${lot.id} immediately to the offerer for ${formatWeiAmount(
                 offerRecord.amountWei,
-              )} ETH.`
-            : `Open lot #${lot.id} as a 24-hour auction seeded with this ${formatEther(
+              )}.`
+            : `Open lot #${lot.id} as a 24-hour auction seeded with this ${formatWeiAmount(
                 offerRecord.amountWei,
-              )} ETH offer as the opening bid.`,
+              )} offer as the opening bid.`,
       },
       action: { confirm: action },
     },
@@ -649,7 +647,7 @@ function transactionTextForNewLot(nextMode: 'start' | 'accept') {
   const dialogTitle = nextMode === 'accept' ? 'Sell now' : 'Start auction'
   const complete = nextMode === 'accept' ? 'Offer accepted' : 'Auction started'
   const offerRecord = offer.value
-  const amount = offerRecord ? formatEther(offerRecord.amountWei) : ''
+  const amount = offerRecord ? formatWeiAmount(offerRecord.amountWei) : ''
   return {
     dialogTitle,
     single: {
@@ -657,8 +655,8 @@ function transactionTextForNewLot(nextMode: 'start' | 'accept') {
       lead: {
         confirm:
           nextMode === 'accept'
-            ? `Create a matching lot and settle it instantly to the offerer for ${amount} ETH.`
-            : `Create a matching lot and start a 24-hour auction with this ${amount} ETH offer as the opening bid.`,
+            ? `Create a matching lot and settle it instantly to the offerer for ${amount}.`
+            : `Create a matching lot and start a 24-hour auction with this ${amount} offer as the opening bid.`,
       },
       action: { confirm: nextMode === 'accept' ? 'Sell now' : 'Start auction' },
     },
@@ -678,13 +676,17 @@ function transactionTextForNewLot(nextMode: 'start' | 'accept') {
 
 function transactionTextForOpenAuction(lot: LotRecord) {
   const dialogTitle = 'Start auction'
-  const reserve = formatEther(lot.reserveWei)
+  const reserve = formatWeiAmount(lot.reserveWei)
   return {
     dialogTitle,
     single: {
-      title: { confirm: dialogTitle, waiting: dialogTitle, complete: 'Auction started' },
+      title: {
+        confirm: dialogTitle,
+        waiting: dialogTitle,
+        complete: 'Auction started',
+      },
       lead: {
-        confirm: `Open lot #${lot.id} as a 24-hour auction and place your own opening bid of ${reserve} ETH. The bid is refunded if you are outbid; the auction settles to the highest bidder when the timer ends.`,
+        confirm: `Open lot #${lot.id} as a 24-hour auction and place your own opening bid of ${reserve}. The bid is refunded if you are outbid; the auction settles to the highest bidder when the timer ends.`,
       },
       action: { confirm: `Start auction` },
     },
@@ -786,8 +788,7 @@ async function redirectAfterSettlement(
   if (!request) return
 
   if (request.mode === 'accept') {
-    const recipient =
-      'offer' in request ? request.offer.offerer : address.value
+    const recipient = 'offer' in request ? request.offer.offerer : address.value
     if (recipient) await router.replace(`/profile/${recipient}`)
     return
   }

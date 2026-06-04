@@ -26,6 +26,7 @@
         </a>
       </div>
       <div class="footer-links footer-links-right">
+        <PriceModeSwitch />
         <NuxtLink
           to="/about"
           active-class="nav-active"
@@ -52,12 +53,15 @@
   min-height: 48px;
   padding: 0 var(--size-4);
   justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: var(--size-2);
 }
 
 .footer-links {
   display: flex;
   align-items: center;
   gap: var(--size-4);
+  flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {
@@ -69,6 +73,7 @@
 
   .footer-nav {
     min-height: 56px;
+    padding-block: var(--size-2);
   }
 
   .footer-nav a,

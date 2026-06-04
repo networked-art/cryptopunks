@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, type Hash } from 'viem'
+import type { Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 
 const props = defineProps<{
@@ -53,6 +53,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const detail = usePunkDetailDataContext()
+const { formatWeiAmount } = usePriceDisplayText()
 
 const priceEth = ref('')
 const priceWei = ref<bigint | null>(null)
@@ -61,7 +62,7 @@ const dialogText = computed(() => {
   const current = props.currentPriceWei
   const title = current ? 'Update listing' : 'List for sale'
   const lead = current
-    ? `Current listing: ${formatEther(current)} ETH. Enter a new ETH price.`
+    ? `Current listing: ${formatWeiAmount(current)}. Enter a new ETH price.`
     : 'Enter the ETH price for the canonical CryptoPunks market.'
   return {
     title: { confirm: title },

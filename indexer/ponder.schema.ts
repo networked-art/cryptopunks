@@ -353,8 +353,9 @@ export const backfillMarker = onchainTable('backfill_markers', (t) => ({
 // offer_placed, offer_cancelled, offer_adjusted }.
 // `day_unix` is the UTC day of `timestamp` — stable JOIN key against
 // `eth_usd_prices`. `usd_value_cents` is the Stripe-style USD-cent equivalent
-// of `wei_amount` at the day's ETH/USD price, cached on the row at indexing
-// time so sale lookups don't need a JOIN.
+// of the row's displayed ETH amount (`wei_amount`, or `listing_wei` for
+// listing-style activity) at the day's ETH/USD price, cached on the row at
+// indexing time so historical price lookups don't need a JOIN.
 export const event = onchainTable(
   'events',
   (t) => ({

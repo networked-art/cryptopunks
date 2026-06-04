@@ -717,11 +717,12 @@ async function insertActivity(
   >,
 ) {
   let usdValueCents: bigint | null = null
-  if (values.wei_amount !== null && values.wei_amount !== undefined) {
+  const displayedWeiAmount = values.wei_amount ?? values.listing_wei
+  if (displayedWeiAmount !== null && displayedWeiAmount !== undefined) {
     usdValueCents = await usdValueCentsForBlock(
       context,
       { number: values.block_number, timestamp: values.timestamp },
-      values.wei_amount,
+      displayedWeiAmount,
     )
   }
 

@@ -62,6 +62,7 @@ export type ActivityEvent = {
   from?: Address
   to?: Address
   amountWei?: bigint
+  usdValueCents?: bigint
   offerKind?: OfferKind
   offerId?: bigint
   lotId?: bigint
@@ -84,6 +85,7 @@ type RawEvent = {
   seller: string | null
   bidder: string | null
   wei_amount: string | null
+  usd_value_cents: string | null
   listing_wei: string | null
   offer_kind: OfferKind | null
   offer_id: string | null
@@ -108,6 +110,7 @@ const EVENT_CONNECTION_FIELDS = `
     seller
     bidder
     wei_amount
+    usd_value_cents
     listing_wei
     offer_kind
     offer_id
@@ -363,6 +366,8 @@ function mapEvent(row: RawEvent): ActivityEvent {
     from: pickFrom(row),
     to: pickTo(row),
     amountWei: pickAmount(row),
+    usdValueCents:
+      row.usd_value_cents != null ? BigInt(row.usd_value_cents) : undefined,
     offerKind: row.offer_kind ?? undefined,
     offerId: row.offer_id != null ? BigInt(row.offer_id) : undefined,
     lotId: row.lot_id != null ? BigInt(row.lot_id) : undefined,

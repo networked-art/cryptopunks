@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatEther, type Address, type Hash } from 'viem'
+import type { Address, Hash } from 'viem'
 import { useConnection } from '@wagmi/vue'
 import type { PunkMarketBid } from '@networked-art/punks-sdk'
 
@@ -56,6 +56,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const detail = usePunkDetailDataContext()
+const { formatWeiAmount } = usePriceDisplayText()
 
 const bidEth = ref('')
 const bidWei = ref<bigint | null>(null)
@@ -76,7 +77,7 @@ const dialogText = computed(() => {
   const title = actionLabel.value
   const current = props.currentBid?.hasBid ? props.currentBid.valueWei : null
   const lead = current
-    ? `Current high bid: ${formatEther(current)} ETH. Enter a higher ETH amount.`
+    ? `Current high bid: ${formatWeiAmount(current)}. Enter a higher ETH amount.`
     : 'Enter the ETH amount you want to bid for this Punk.'
   return {
     title: { confirm: title },

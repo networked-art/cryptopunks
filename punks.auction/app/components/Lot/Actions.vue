@@ -245,6 +245,7 @@ const { execute } = useWritePlan()
 const config = useConfig()
 const { address } = useConnection()
 const renderV1 = useV1Rendering()
+const { formatWeiAmount } = usePriceDisplayText()
 
 const updateDialogOpen = ref(false)
 const cancelDialogOpen = ref(false)
@@ -358,7 +359,7 @@ async function actUpdateLot() {
       onlySellTo: buyer,
     }),
     `Update Lot #${props.lot.id}`,
-    `Sets the reserve to ${reserveEth.value.trim()} ETH. ${buyerLine} The lot's Punk reservations are unchanged.`,
+    `Sets the reserve to ${formatWeiAmount(reserveWei)}. ${buyerLine} The lot's Punk reservations are unchanged.`,
     'Update Lot',
   )
 }

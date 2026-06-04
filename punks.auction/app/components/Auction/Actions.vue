@@ -119,6 +119,7 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
 const now = useNow({ interval: 1000 })
+const { formatWeiAmount } = usePriceDisplayText()
 
 const status = computed<AuctionStatus>(() =>
   auctionStatus(props.auction, Math.floor(now.value.getTime() / 1000)),
@@ -148,9 +149,7 @@ watch(
 const bidDialogText = computed(() => ({
   title: { confirm: `Bid on auction #${props.auction.id}` },
   lead: {
-    confirm: `Current high bid: ${formatEther(
-      props.auction.latestBidWei,
-    )} ETH.`,
+    confirm: `Current high bid: ${formatWeiAmount(props.auction.latestBidWei)}.`,
   },
   action: { confirm: 'Bid' },
 }))

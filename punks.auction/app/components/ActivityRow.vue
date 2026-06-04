@@ -81,6 +81,8 @@
       <EthAmount
         v-if="event.amountWei !== undefined"
         :wei="event.amountWei"
+        historical
+        :historical-usd-cents="event.usdValueCents"
       />
       <a
         class="tx"

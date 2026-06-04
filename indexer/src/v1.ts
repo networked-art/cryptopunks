@@ -1059,11 +1059,12 @@ async function insertActivity(
   const normalized = normalizeZeroEthSale(values)
 
   let usdValueCents: bigint | null = null
-  if (normalized.wei_amount !== null && normalized.wei_amount !== undefined) {
+  const displayedWeiAmount = normalized.wei_amount ?? normalized.listing_wei
+  if (displayedWeiAmount !== null && displayedWeiAmount !== undefined) {
     usdValueCents = await usdValueCentsForBlock(
       context,
       { number: normalized.block_number, timestamp: normalized.timestamp },
-      normalized.wei_amount,
+      displayedWeiAmount,
     )
   }
 

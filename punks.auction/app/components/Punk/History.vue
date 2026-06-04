@@ -72,6 +72,8 @@
             v-if="row.amountWei !== undefined"
             class="event-amount"
             :wei="row.amountWei"
+            historical
+            :historical-usd-cents="row.usdValueCents"
           />
           <a
             class="event-time"
@@ -185,6 +187,7 @@ const rows = computed(() =>
       event.amountWei !== undefined && event.amountWei > 0n
         ? event.amountWei
         : undefined,
+    usdValueCents: event.usdValueCents,
     txHash: event.txHash,
     relative: formatAgo(event.timestamp),
     absolute: new Date(event.timestamp * 1000).toLocaleString(),

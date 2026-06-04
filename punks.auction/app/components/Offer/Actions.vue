@@ -100,6 +100,7 @@ const { address } = useConnection()
 const renderV1 = useV1Rendering()
 const { matchesItem: slotMatchesItem } = useOfferSlotMatching()
 const inventory = useAccountPunkInventory(() => address.value)
+const { formatWeiAmount } = usePriceDisplayText()
 const amountEth = ref('')
 const parsedAmountWei = ref<bigint | null>(null)
 
@@ -175,8 +176,7 @@ const canFillOfferFromInventory = computed(() => {
 })
 const showSellerActions = computed(
   () =>
-    !!address.value &&
-    (hasSellerLot.value || canFillOfferFromInventory.value),
+    !!address.value && (hasSellerLot.value || canFillOfferFromInventory.value),
 )
 const showActionsPanel = computed(
   () => !!address.value && (isOfferer.value || showSellerActions.value),
@@ -213,7 +213,7 @@ function actAdjustAmount() {
         waiting: `Adjust offer #${props.offer.id}`,
       },
       lead: {
-        confirm: `Set this offer to ${amountEth.value.trim()} ETH.`,
+        confirm: `Set this offer to ${formatWeiAmount(newAmountWei)}.`,
       },
       action: { confirm: 'Adjust' },
     },
