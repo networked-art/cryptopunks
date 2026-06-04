@@ -68,6 +68,15 @@
                   View profile
                 </Button>
               </template>
+              <template
+                v-else-if="canAlertSearch"
+                #action
+              >
+                <ActivitySearchAlert
+                  :label="searchText"
+                  :token-ids="searchPunkIds ?? []"
+                />
+              </template>
             </PunkSearchBar>
           </div>
         </Transition>
@@ -116,6 +125,8 @@
 </template>
 
 <script setup lang="ts">
+import { isApiConfigured } from '~/utils/api'
+
 useSeoMeta({
   title: 'Activity · Punks Auction',
   ogTitle: 'Activity · Punks Auction',
@@ -150,6 +161,16 @@ const {
 
 const hasActiveControls = computed(
   () => hasFilters.value || hasSearchInput.value || searchPanelOpen.value,
+)
+
+// Offer a watchlist alert for a resolved trait/attribute search (not an owner
+// search, which has no stable token set). Needs the networked.art API wired up.
+const canAlertSearch = computed(
+  () =>
+    isApiConfigured() &&
+    hasSearch.value &&
+    !searchOwnerHandle.value &&
+    (searchPunkIds.value?.length ?? 0) > 0,
 )
 
 function clear() {

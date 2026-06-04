@@ -1,41 +1,29 @@
 <template>
-  <div
-    v-if="false"
-    class="watch-punk"
-  >
-    <Button @click="open = true">
-      {{ watching ? 'Watching' : 'Watch' }}
+  <div class="search-alert">
+    <Button
+      class="search-bar-action"
+      @click="open = true"
+    >
+      Alert me
     </Button>
 
     <Dialog
       v-model:open="open"
-      title="Watch this punk"
-      class="watch-dialog"
+      title="Alert me for this search"
+      class="search-alert-dialog"
       compat
       @closed="reset"
     >
-      <div class="dialog-intro">
-        <PunkThumb
-          class="intro-thumb"
-          :punk-id="punkId"
-          :size="56"
-          :link="false"
-        />
-        <div class="intro-meta">
-          <p class="intro-id">Punk #{{ punkId }}</p>
-          <p class="intro-sub muted">Get an email on market activity</p>
-        </div>
-      </div>
-
       <template v-if="!submitted">
         <p class="form-note muted">
-          We'll email you when Punk #{{ punkId }} is listed for sale, an auction
-          starts, or it sells. Confirm your email once and you can unsubscribe
-          from any alert with one click.
+          We'll email you when any of the
+          <strong>{{ tokenIds.length }}</strong> punks matching
+          <strong>“{{ label }}”</strong> are listed for sale, enter a new
+          auction, or sell. Confirm your email once; unsubscribe anytime.
         </p>
 
         <form
-          class="watch-form"
+          class="alert-form"
           @submit.prevent="submit"
         >
           <label class="field">
@@ -51,7 +39,7 @@
           </label>
 
           <div class="events">
-            <span class="label">Alert me when it's</span>
+            <span class="label">Alert me when a match is</span>
             <FormCheckbox
               v-for="option in eventOptions"
               :key="option.value"
@@ -77,7 +65,7 @@
       >
         Check your inbox! We sent a confirmation link to
         <strong>{{ email }}</strong
-        >. Confirm it to start receiving alerts for Punk #{{ punkId }}.
+        >. Confirm it to start receiving alerts for “{{ label }}”.
       </p>
 
       <template #footer>
@@ -93,7 +81,7 @@
             :disabled="pending || !selectedEvents.length"
             @click="submit"
           >
-            {{ pending ? 'Sending…' : 'Watch punk' }}
+            {{ pending ? 'Sending…' : 'Create alert' }}
           </Button>
         </template>
         <Button
@@ -113,28 +101,11 @@ import { CRYPTOPUNKS_ADDRESS } from '~/utils/addresses'
 import { postApi } from '~/utils/api'
 
 const props = defineProps<{
-  punkId: number
+  label: string
+  tokenIds: readonly number[]
 }>()
 
-const route = useRoute()
-const router = useRouter()
-
-// Mirror the dialog in the URL so an open watch dialog is linkable, matching the
-// broker-contact dialog's behaviour.
-const open = ref(route.query.watch === 'open')
-
-watch(open, (isOpen) => {
-  if ((route.query.watch === 'open') === isOpen) return
-  const { watch: _omit, ...rest } = route.query
-  router.replace({ query: isOpen ? { ...rest, watch: 'open' } : rest })
-})
-
-watch(
-  () => route.query.watch,
-  (value) => {
-    open.value = value === 'open'
-  },
-)
+const open = ref(false)
 
 const eventOptions = [
   { value: 'listed', label: 'listed for sale' },
@@ -148,18 +119,13 @@ const error = ref<string | null>(null)
 const pending = ref(false)
 const submitted = ref(false)
 
-// Once confirmed, the alert is active; we don't have a networked.art session here
-// to read live state, so reflect the just-submitted intent in the button label.
-const watching = computed(() => submitted.value)
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function toggleEvent(value: string) {
   selectedEvents.value = selectedEvents.value.includes(value)
     ? selectedEvents.value.filter((v) => v !== value)
     : [...selectedEvents.value, value]
 }
-
-// Loose RFC-pragmatic check — good enough to catch typos before handoff.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function submit() {
   if (pending.value) return
@@ -171,27 +137,30 @@ async function submit() {
     error.value = 'Pick at least one alert.'
     return
   }
+  if (!props.tokenIds.length) {
+    error.value = 'This search matches no punks to alert on.'
+    return
+  }
   error.value = null
   pending.value = true
   try {
-    // The confirmation link lands the visitor back on this app. The API only
-    // allows redirects to this app's own origin; `?punk` lets the landing page
-    // show context.
     const redirectUrl = new URL(
-      `/alerts/confirmed?punk=${props.punkId}`,
+      '/alerts/confirmed',
       'https://punks.auction',
     ).toString()
     await postApi('/watch/subscriptions', {
       email: email.value,
       source: 'punks_auctions',
       redirect_url: redirectUrl,
-      label: `Punk #${props.punkId}`,
+      label: props.label,
       events: selectedEvents.value,
+      // Punk traits are immutable, so the resolved id set is stable; the API
+      // matches events by membership and never needs the trait data itself.
+      criteria: { token_ids: [...props.tokenIds] },
       scope: {
-        // Market (and so this form) only renders for canonical CryptoPunks.
         contract_address: CRYPTOPUNKS_ADDRESS,
-        token_id: String(props.punkId),
-        search: null,
+        token_id: null,
+        search: props.label,
       },
     })
     submitted.value = true
@@ -212,35 +181,8 @@ function reset() {
 </script>
 
 <style scoped>
-.watch-punk {
+.search-alert {
   display: contents;
-}
-
-.dialog-intro {
-  display: flex;
-  align-items: center;
-  gap: var(--size-3);
-}
-
-.intro-thumb {
-  flex-shrink: 0;
-}
-
-.intro-meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-  min-width: 0;
-}
-
-.intro-id {
-  margin: 0;
-  font-size: var(--font-md);
-}
-
-.intro-sub {
-  margin: 0;
-  font-size: var(--font-xs);
 }
 
 .form-note {
@@ -249,7 +191,7 @@ function reset() {
   line-height: 1.6;
 }
 
-.watch-form {
+.alert-form {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
@@ -282,7 +224,7 @@ function reset() {
   color: var(--accent);
 }
 
-.watch-dialog :deep(section) {
+.search-alert-dialog :deep(section) {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
