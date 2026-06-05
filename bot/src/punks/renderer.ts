@@ -1,7 +1,7 @@
 import {
   createPunkImageRenderer,
   createPunksDataset,
-  PUNKS_RENDERER_BACKGROUND_DEFAULT,
+  PUNK_WIDTH,
   type PunkImageRenderer,
 } from '@networked-art/punks-sdk'
 import { bundledOfflinePunksDataWithPixels } from '@networked-art/punks-sdk/offline-pixel-data'
@@ -25,11 +25,18 @@ export interface PunksRendererOptions {
 
 const DEFAULT_MAX_LISTED_IDS = 6
 
-// The classic punk background (`#638596`), derived from the same SDK constant
-// the tiles are painted with. Passing it to the grid makes any cell a tile
-// doesn't fill (trailing gaps in an imperfect pack) blend with the artwork
-// instead of showing img-grid's default black.
-const GRID_BACKGROUND = `#${PUNKS_RENDERER_BACKGROUND_DEFAULT.slice(2, 8)}`
+// The off-white the grid sits on: img-grid paints it into the margin, the
+// gutters between tiles, and any trailing gaps in an imperfect pack. The punk
+// tiles keep their own `#638596` field (drawn by the SDK), so they read as
+// framed tiles on the light canvas rather than blending into it.
+const GRID_BACKGROUND = '#f0f0f3'
+
+// img-grid's own default output width, mirrored here so the padding and gutter
+// can be sized as fractions of the output even when GRID_MAX_WIDTH is unset.
+const DEFAULT_MAX_WIDTH = 1920
+
+// Margin around the whole grid, per side, as a fraction of the output width.
+const PADDING_FRACTION = 0.16
 
 const PUNKS_AUCTION_URL = 'https://punks.auction'
 
@@ -83,14 +90,31 @@ export class PunksRenderer implements Renderer<Acquisition> {
       url: this.punks.pngDataUri(id, { background: 'default' }),
     }))
 
+    const maxWidth = this.options.maxWidth ?? DEFAULT_MAX_WIDTH
+    const padding = Math.round(maxWidth * PADDING_FRACTION)
+    // Each highlighted punk fills a 2×2 block, i.e. 3 cells beyond its own.
+    const cells = images.length + acquisition.acquired.length * 3
+
     return grid(images, {
       highlight: acquisition.acquired.map(String),
-      maxWidth: this.options.maxWidth,
+      maxWidth,
       background: GRID_BACKGROUND,
+      padding,
+      gutter: this.gutter(cells, maxWidth, padding),
       // Punks are 24×24 pixel art; nearest-neighbour keeps them crisp when the
       // grid scales a cell up rather than blurring the pixels.
       pixelated: true,
     })
+  }
+
+  /// A gutter one punk-pixel wide at the scale tiles are drawn — 1/PUNK_WIDTH of
+  /// a column. img-grid sizes columns internally from the layout it picks, so we
+  /// approximate the column width from a near-square column count; the gutter is
+  /// thin enough that landing a column or two off doesn't show.
+  private gutter(cells: number, maxWidth: number, padding: number): number {
+    const columns = Math.max(1, Math.round(Math.sqrt(cells)))
+    const columnWidth = (maxWidth - 2 * padding) / columns
+    return Math.max(1, Math.round(columnWidth / PUNK_WIDTH))
   }
 
   private caption(acquisition: Acquisition, name: string): string {
