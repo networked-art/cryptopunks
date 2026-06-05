@@ -5,6 +5,7 @@ import {
 } from './constants'
 import { getSearchCollection, searchCollectionEntries } from './collections'
 import type { OfflinePunksDataClient } from './offline'
+import { allHiddenTraitIds, hiddenTraitRecords } from './hidden-traits'
 import type { TraitRecord } from './types'
 import {
   searchSynonyms,
@@ -71,13 +72,21 @@ export function activeSearchToken(text: string): ActiveSearchToken | undefined {
 /// first (they need at least two meaningful characters), then trait names by
 /// supply.
 /// Returns `[]` when there is nothing to complete (see {@link
-/// activeSearchToken}). Pure and synchronous — the caller owns presentation
-/// and any app-specific qualifiers (e.g. market state) layered on top.
+/// activeSearchToken}), except for grammar contexts that intentionally suggest
+/// the next token after a space, such as `hidden `. Pure and synchronous — the
+/// caller owns presentation and any app-specific qualifiers (e.g. market state)
+/// layered on top.
 export function suggestSearchText(
   data: OfflinePunksDataClient,
   text: string,
   options: SuggestSearchTextOptions = {},
 ): SearchSuggestion[] {
+  const hiddenGapSuggestions = hiddenTraitGapSuggestions(
+    text,
+    options.traitLimit ?? 7,
+  )
+  if (hiddenGapSuggestions !== undefined) return hiddenGapSuggestions
+
   const token = activeSearchToken(text)
   if (token === undefined) return []
   const activeVariants = suggestionTextVariants(token.active)
@@ -89,6 +98,11 @@ export function suggestSearchText(
   const preceding = tokenizeSearchText(token.preceding)
 
   return [
+    ...hiddenTraitSearchSuggestions(
+      activeVariants,
+      preceding,
+      options.traitLimit ?? 7,
+    ),
     ...collectionSuggestions(activeVariants, preceding, standard),
     ...skinToneSuggestions(activeVariants, preceding),
     ...countSuggestions(activeVariants, preceding),
@@ -100,6 +114,154 @@ export function suggestSearchText(
       options.traitLimit ?? 7,
     ),
   ]
+}
+
+type HiddenSearchKeyword = {
+  keyword: 'hidden' | 'invisible'
+  label: string
+}
+
+const HIDDEN_SEARCH_KEYWORDS: readonly HiddenSearchKeyword[] = [
+  { keyword: 'hidden', label: 'Hidden traits' },
+  { keyword: 'invisible', label: 'Invisible traits' },
+]
+
+const HIDDEN_SEARCH_FILLER = new Set(['trait', 'traits'])
+
+function hiddenTraitGapSuggestions(
+  text: string,
+  limit: number,
+): SearchSuggestion[] | undefined {
+  if (typeof text !== 'string') return undefined
+  const canon = canonicalizeSearchInput(text)
+  if (canon === '' || !/\s$/.test(canon)) return undefined
+  if (((canon.match(/"/g)?.length ?? 0) & 1) === 1) return undefined
+
+  const context = hiddenTraitSuggestionContext(tokenizeSearchText(canon))
+  if (context === undefined) return undefined
+  if (context.traitPreceding.length > 0) return undefined
+  return hiddenAccessorySuggestions([], context, limit)
+}
+
+function hiddenTraitSearchSuggestions(
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+  limit: number,
+): SearchSuggestion[] {
+  const context = hiddenTraitSuggestionContext(preceding)
+  if (context !== undefined) {
+    return [
+      ...hiddenTraitFillerSuggestions(activeVariants, context),
+      ...hiddenAccessorySuggestions(activeVariants, context, limit),
+    ]
+  }
+
+  if (!hasMinimumSignal(activeVariants, 2)) return []
+  return HIDDEN_SEARCH_KEYWORDS.filter(({ keyword }) =>
+    matchesWord(keyword, activeVariants),
+  ).map(({ keyword, label }) => ({
+    kind: 'collection',
+    label,
+    query: withCompletion(preceding, keyword),
+    count: allHiddenTraitIds.length,
+  }))
+}
+
+type HiddenTraitSuggestionContext = {
+  keyword: 'hidden' | 'invisible'
+  labelPrefix: string
+  beforeKeyword: readonly SearchTextTerm[]
+  traitPreceding: readonly SearchTextTerm[]
+}
+
+function hiddenTraitSuggestionContext(
+  preceding: readonly SearchTextTerm[],
+): HiddenTraitSuggestionContext | undefined {
+  for (let index = preceding.length - 1; index >= 0; index--) {
+    const term = preceding[index]
+    if (term.exact) continue
+    const keyword = normalizeSynonymText(term.text)
+    if (keyword !== 'hidden' && keyword !== 'invisible') continue
+
+    let traitStart = index + 1
+    const next = preceding[traitStart]
+    if (
+      next !== undefined &&
+      !next.exact &&
+      HIDDEN_SEARCH_FILLER.has(normalizeSynonymText(next.text))
+    ) {
+      traitStart++
+    }
+
+    return {
+      keyword,
+      labelPrefix: keyword === 'hidden' ? 'Hidden' : 'Invisible',
+      beforeKeyword: preceding.slice(0, index),
+      traitPreceding: preceding.slice(traitStart),
+    }
+  }
+  return undefined
+}
+
+function hiddenTraitFillerSuggestions(
+  activeVariants: readonly string[],
+  context: HiddenTraitSuggestionContext,
+): SearchSuggestion[] {
+  if (!hasMinimumSignal(activeVariants, 2)) return []
+  if (
+    ![...HIDDEN_SEARCH_FILLER].some((word) => matchesWord(word, activeVariants))
+  ) {
+    return []
+  }
+  return [
+    {
+      kind: 'collection',
+      label: `${context.labelPrefix} traits`,
+      query: withCompletion(context.beforeKeyword, context.keyword),
+      count: allHiddenTraitIds.length,
+    },
+  ]
+}
+
+function hiddenAccessorySuggestions(
+  activeVariants: readonly string[],
+  context: HiddenTraitSuggestionContext,
+  limit: number,
+): SearchSuggestion[] {
+  const matches: {
+    trait: (typeof hiddenTraitRecords)[number]
+    absorbed: number
+  }[] = []
+  for (const trait of hiddenTraitRecords) {
+    const words = normalizedWords(trait.name)
+    const match =
+      activeVariants.length === 0
+        ? { absorbed: 0 }
+        : bestMatchedWord(words, activeVariants, context.traitPreceding)
+    if (match === undefined) continue
+    matches.push({ trait, absorbed: match.absorbed })
+  }
+  const maxAbsorbed = matches.reduce((max, m) => Math.max(max, m.absorbed), 0)
+  return matches
+    .filter((m) => m.absorbed === maxAbsorbed)
+    .sort((a, b) => b.trait.ids.length - a.trait.ids.length)
+    .slice(0, Math.max(0, limit))
+    .map(({ trait, absorbed }) => ({
+      kind: 'collection',
+      label: `${context.labelPrefix} ${trait.name}`,
+      count: trait.ids.length,
+      query: withCompletion(
+        [
+          ...context.beforeKeyword,
+          { text: context.keyword, exact: false },
+          ...context.traitPreceding.slice(
+            0,
+            context.traitPreceding.length - absorbed,
+          ),
+        ],
+        `"${trait.name}"`,
+      ),
+    }))
 }
 
 function traitSuggestions(

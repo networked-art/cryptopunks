@@ -1,6 +1,7 @@
 import {
   PUNK_COUNT,
   SkinTone,
+  TraitKind,
   skinToneNames,
   type PunkStandardRef,
   type PunkStandardValue,
@@ -8,6 +9,7 @@ import {
 } from './constants'
 import { searchCollectionEntries } from './collections'
 import type { SearchCollectionEntry } from './collections'
+import { allHiddenTraitIds, hiddenIdsForTraitIds } from './hidden-traits'
 import searchSynonymsJson from './search-synonyms.json'
 import {
   canonicalizeSearchInput,
@@ -56,11 +58,15 @@ export type ParsedSearchText = {
 
 export type SearchSynonymsMap = Record<string, string>
 
+type MutableParsedSearchTextGroup = ParsedSearchTextGroup & {
+  includeIdConstraints?: number[][]
+}
+
 type ExactTraitTextResolver = {
   findTraitsByTextSync(
     text: string,
     options?: { exact?: boolean },
-  ): readonly { name: string }[]
+  ): readonly { id: number; name: string; kindId: number }[]
   /// When set, scopes curated-collection resolution to this standard. Carried
   /// by the offline client so both the search and filter-compile paths inherit
   /// the SDK's configured standard without a separate argument.
@@ -108,6 +114,8 @@ export type ParseSearchTextOptions = {
   /// (e.g. `bur` → `burned`) before grouping; return `undefined` to leave a
   /// term unchanged. Wired from {@link ExactTraitTextResolver.completeSearchPrefix}.
   completePrefix?: (term: string) => string | undefined
+  /// Resolves hidden/invisible trait phrases against the live trait catalog.
+  traitResolver?: ExactTraitTextResolver
 }
 
 export function parseSearchText(
@@ -130,7 +138,9 @@ export function parseSearchText(
   for (const token of tokens) {
     if (!token.exact && /^(or|\|\|)$/i.test(token.text)) {
       if (current.length > 0) {
-        orGroups.push(parseSearchTextGroup(current, standard))
+        orGroups.push(
+          parseSearchTextGroup(current, standard, options.traitResolver),
+        )
         current = []
       }
       continue
@@ -138,7 +148,9 @@ export function parseSearchText(
     current.push(token)
   }
   if (current.length > 0 || orGroups.length === 0) {
-    orGroups.push(parseSearchTextGroup(current, standard))
+    orGroups.push(
+      parseSearchTextGroup(current, standard, options.traitResolver),
+    )
   }
   return { orGroups }
 }
@@ -168,6 +180,7 @@ export function parseSearchTextWithExactTraitsSync(
   }
   return parseSearchText(input, {
     standard: data.standard,
+    traitResolver: data,
     completePrefix: data.completeSearchPrefix
       ? (term) => data.completeSearchPrefix!(term)
       : undefined,
@@ -284,8 +297,9 @@ export function tokenizeSearchText(input: string): SearchTextTerm[] {
 function parseSearchTextGroup(
   tokens: readonly SearchTextTerm[],
   standard?: PunkStandardValue,
+  traitResolver?: ExactTraitTextResolver,
 ): ParsedSearchTextGroup {
-  const group: ParsedSearchTextGroup = { freeTerms: [] }
+  const group: MutableParsedSearchTextGroup = { freeTerms: [] }
   let i = 0
 
   while (i < tokens.length) {
@@ -295,6 +309,13 @@ function parseSearchTextGroup(
 
     if (!t0.exact) {
       const word0 = normalizeWord(t0.text)
+
+      const hidden = matchHiddenTraitSearch(tokens, i, traitResolver)
+      if (hidden !== undefined) {
+        constrainIncludeIds(group, hidden.ids)
+        i += hidden.consumed
+        continue
+      }
 
       // `<comparator> <n> <axis>` — `<= 4 colors`, `>= 3 attributes`, etc.
       if (t1 !== undefined && t2 !== undefined && !t1.exact && !t2.exact) {
@@ -460,6 +481,7 @@ function parseSearchTextGroup(
     group.freeTerms,
     standard,
   )
+  finalizeIncludeIdConstraints(group)
   group.freeTerms = expandSearchSynonymTerms(group.freeTerms)
   return group
 }
@@ -537,12 +559,98 @@ function matchSearchSynonymEntry(
   return undefined
 }
 
+type HiddenTraitSearchMatch = {
+  ids: readonly number[]
+  consumed: number
+}
+
+const HIDDEN_TRAIT_KEYWORDS = new Set(['hidden', 'invisible'])
+const HIDDEN_TRAIT_FILLER = new Set(['trait', 'traits'])
+const MAX_HIDDEN_TRAIT_WORDS = 4
+
+function matchHiddenTraitSearch(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  resolver: ExactTraitTextResolver | undefined,
+): HiddenTraitSearchMatch | undefined {
+  if (resolver === undefined) return undefined
+  const first = terms[start]
+  if (first === undefined || first.exact) return undefined
+  if (!HIDDEN_TRAIT_KEYWORDS.has(normalizeWord(first.text))) return undefined
+
+  let cursor = start + 1
+  if (
+    cursor < terms.length &&
+    !terms[cursor].exact &&
+    HIDDEN_TRAIT_FILLER.has(normalizeWord(terms[cursor].text))
+  ) {
+    cursor++
+  }
+
+  const traitMatch = matchHiddenAccessoryTrait(terms, cursor, resolver)
+  if (traitMatch !== undefined) {
+    return {
+      ids: hiddenIdsForTraitIds(traitMatch.traitIds),
+      consumed: cursor - start + traitMatch.consumed,
+    }
+  }
+
+  return {
+    ids: allHiddenTraitIds,
+    consumed: cursor - start,
+  }
+}
+
+function matchHiddenAccessoryTrait(
+  terms: readonly SearchTextTerm[],
+  start: number,
+  resolver: ExactTraitTextResolver,
+): { traitIds: number[]; consumed: number } | undefined {
+  const first = terms[start]
+  if (first === undefined) return undefined
+
+  if (first.exact) {
+    const exact = accessoryTraitMatches(resolver, first.text, true)
+    return exact.length === 0
+      ? undefined
+      : { traitIds: exact.map((trait) => trait.id), consumed: 1 }
+  }
+
+  const maxWords = Math.min(MAX_HIDDEN_TRAIT_WORDS, terms.length - start)
+  for (let words = maxWords; words >= 2; words--) {
+    if (terms.slice(start, start + words).some((term) => term.exact)) continue
+    const phrase = terms
+      .slice(start, start + words)
+      .map((term) => term.text)
+      .join(' ')
+    const exact = accessoryTraitMatches(resolver, phrase, true)
+    if (exact.length > 0) {
+      return { traitIds: exact.map((trait) => trait.id), consumed: words }
+    }
+  }
+
+  const fuzzy = accessoryTraitMatches(resolver, first.text, false)
+  return fuzzy.length === 0
+    ? undefined
+    : { traitIds: fuzzy.map((trait) => trait.id), consumed: 1 }
+}
+
+function accessoryTraitMatches(
+  resolver: ExactTraitTextResolver,
+  text: string,
+  exact: boolean,
+): readonly { id: number; name: string; kindId: number }[] {
+  return resolver
+    .findTraitsByTextSync(text, { exact })
+    .filter((trait) => trait.kindId === TraitKind.Accessory)
+}
+
 /// Replaces whole-phrase collection aliases in `terms` with their id set,
 /// pushed onto `group.includeIds`, and returns the terms left for downstream
 /// trait/synonym resolution. Only non-exact terms match, so a quoted `"burned"`
 /// stays a literal trait lookup.
 function resolveSearchCollectionTerms(
-  group: ParsedSearchTextGroup,
+  group: MutableParsedSearchTextGroup,
   terms: readonly SearchTextTerm[],
   standard?: PunkStandardValue,
 ): SearchTextTerm[] {
@@ -558,7 +666,7 @@ function resolveSearchCollectionTerms(
       i += 1
       continue
     }
-    for (const id of match.entry.ids) addIncludeId(group, id)
+    constrainIncludeIds(group, match.entry.ids)
     i += match.consumed
   }
   return remaining
@@ -733,6 +841,61 @@ function addAllSkinTones(group: ParsedSearchTextGroup): void {
 function addIncludeId(group: ParsedSearchTextGroup, id: number): void {
   if (group.includeIds === undefined) group.includeIds = []
   if (!group.includeIds.includes(id)) group.includeIds.push(id)
+}
+
+function constrainIncludeIds(
+  group: MutableParsedSearchTextGroup,
+  ids: readonly number[],
+): void {
+  if (group.includeIdConstraints === undefined) {
+    group.includeIdConstraints = []
+  }
+  group.includeIdConstraints.push(uniqueSortedIds(ids))
+}
+
+function finalizeIncludeIdConstraints(
+  group: MutableParsedSearchTextGroup,
+): void {
+  if (group.includeIdConstraints === undefined) return
+  let ids =
+    group.includeIds === undefined
+      ? undefined
+      : uniqueSortedIds(group.includeIds)
+  for (const constraint of group.includeIdConstraints) {
+    ids =
+      ids === undefined
+        ? constraint.slice()
+        : intersectSortedIds(ids, constraint)
+  }
+  group.includeIds = ids ?? []
+  delete group.includeIdConstraints
+}
+
+function uniqueSortedIds(ids: readonly number[]): number[] {
+  return [...new Set(ids)].sort((a, b) => a - b)
+}
+
+function intersectSortedIds(
+  left: readonly number[],
+  right: readonly number[],
+): number[] {
+  const out: number[] = []
+  let i = 0
+  let j = 0
+  while (i < left.length && j < right.length) {
+    const a = left[i]
+    const b = right[j]
+    if (a === b) {
+      out.push(a)
+      i++
+      j++
+    } else if (a < b) {
+      i++
+    } else {
+      j++
+    }
+  }
+  return out
 }
 
 function addExcludeId(group: ParsedSearchTextGroup, id: number): void {

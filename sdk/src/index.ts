@@ -166,6 +166,17 @@ export type {
   SearchSynonymsMap,
   SearchTextTerm,
 } from './text-parse'
+export {
+  allHiddenTraitIds,
+  hiddenIdsForTraitId,
+  hiddenIdsForTraitIds,
+  hiddenTraitCatalog,
+  hiddenTraitRecords,
+} from './hidden-traits'
+export type {
+  HiddenTraitCatalog,
+  HiddenTraitCatalogTrait,
+} from './hidden-traits'
 export { formatSearchText } from './text-format'
 export type { FormatSearchTextInput } from './text-format'
 export { activeSearchToken, suggestSearchText } from './suggest'

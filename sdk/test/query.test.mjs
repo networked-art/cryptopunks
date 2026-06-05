@@ -4,6 +4,7 @@ import {
   compileOfferSlot,
   compilePunksFilter,
   emptyPunksFilter,
+  hiddenIdsForTraitId,
   PunkType,
 } from '../dist/index.js'
 import { createOfflinePunksDataClient } from '../dist/offline.js'
@@ -84,7 +85,10 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.deepEqual(bigShades.includeIds, [])
 
     const buckTeeth = compileOfferSlot(data, { query: { text: 'buck teeth' } })
-    assert.equal(buckTeeth.criteria.requiredTraitMask, mask(BUCK_TEETH_TRAIT_ID))
+    assert.equal(
+      buckTeeth.criteria.requiredTraitMask,
+      mask(BUCK_TEETH_TRAIT_ID),
+    )
     assert.equal(buckTeeth.criteria.anyOfTraitMask, 0n)
     assert.deepEqual(buckTeeth.includeIds, [])
 
@@ -194,6 +198,23 @@ describe('compileOfferSlot — text-search free terms', () => {
     assert.deepEqual(slot.criteria, emptyPunksFilter())
     assert.deepEqual(slot.includeIds, data.searchSync({ text: 'burned' }))
     assert.equal(slot.includeIds.length, 12)
+  })
+
+  it('keeps small hidden-trait text as an exact includeIds slot', () => {
+    const slot = compileOfferSlot(data, {
+      query: { text: 'hidden buck teeth' },
+    })
+
+    assert.deepEqual(slot.criteria, emptyPunksFilter())
+    assert.deepEqual(slot.includeIds, hiddenIdsForTraitId(BUCK_TEETH_TRAIT_ID))
+    assert.equal(slot.includeIds.length, 11)
+  })
+
+  it('rejects hidden-trait includeIds that exceed the offer cap', () => {
+    assert.throws(
+      () => compileOfferSlot(data, { query: { text: 'hidden earring' } }),
+      /query matches 376 punks; refine it to 64 or fewer ids/,
+    )
   })
 
   it('materializes collection ids combined with compiled criteria', () => {

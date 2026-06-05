@@ -1541,7 +1541,7 @@ export class OfflinePunksDataClient {
       ])
       hasConstraint = true
     }
-    if (group.includeIds !== undefined && group.includeIds.length > 0) {
+    if (group.includeIds !== undefined) {
       bitmap = intersectPunkBitmaps([
         bitmap,
         punkBitmapFromIds(group.includeIds),

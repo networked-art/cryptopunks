@@ -11,6 +11,9 @@ dumps
 # Lockfile
 pnpm-lock.yaml
 
+# Generated SDK catalogs
+sdk/src/hidden-traits.json
+
 # Hardhat
 contracts/artifacts
 contracts/cache
