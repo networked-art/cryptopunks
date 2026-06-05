@@ -105,7 +105,7 @@ const pills = computed<Pill[]>(() => [
     statusLabel: props.wrapperProxy ? 'Registered' : 'Not registered',
     address: props.wrapperProxy,
     hint: props.wrapperProxy
-      ? 'Holds C̝ͫ̔̏̑r̬̋͂ͯ̇y̷̹͎͊͌͊p͇̪͓͓̀͜͝t̜̀ͭͮ̒̍oPủ̯̹͈n͎͌kş̮͍̓ͭ̍̈́ during legacy wrap and unwrap.'
+      ? 'Holds CryptoPunks during legacy wrap and unwrap.'
       : 'Registered on demand via WrappedPunks.registerProxy().',
   },
 ])
