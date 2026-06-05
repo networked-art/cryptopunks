@@ -24,111 +24,78 @@
       </Button>
     </template>
 
-    <!-- Not linked: offer wallet (SIWE) and email sign-in -->
+    <!-- Not linked: offer email sign-in -->
     <template v-else>
       <p class="muted setting-status">
         Sync your account with networked.art to receive email alerts and manage
         your watchlist across the network.
       </p>
 
-      <Button
-        class="primary"
-        :disabled="siweBusy"
-        @click="signInWallet"
+      <Form
+        v-if="emailStep === 'request'"
+        @submit.prevent="requestCode"
       >
-        <Icon name="lucide:wallet" />
-        <span>{{ siweBusy ? siweStatus : 'Sign in with your wallet' }}</span>
-      </Button>
+        <FormGroup>
+          <FormLabel label="Email">
+            <FormInputGroup>
+              <input
+                v-model.trim="email"
+                type="email"
+                name="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+              />
+              <Button
+                class="primary"
+                type="submit"
+                :disabled="emailBusy"
+              >
+                {{ emailBusy ? 'Sending…' : 'Send code' }}
+              </Button>
+            </FormInputGroup>
+          </FormLabel>
+        </FormGroup>
+      </Form>
 
-      <p
-        v-if="siweError"
-        class="error"
+      <Form
+        v-else
+        @submit.prevent="verifyCode"
       >
-        {{ siweError }}
-      </p>
-
-      <div class="email-alt">
-        <p
-          v-if="!showEmail"
-          class="muted"
-        >
+        <p class="muted">
+          Enter the 6-digit code we sent to <strong>{{ email }}</strong
+          >.
+        </p>
+        <PinInput
+          v-model="code"
+          :length="6"
+          type="number"
+          otp
+          :disabled="emailBusy"
+          @complete="verifyCode"
+        />
+        <p class="muted">
           <a
             href="#"
-            @click.prevent="showEmail = true"
-            >Use email instead</a
+            @click.prevent="resetEmail"
+            >Use a different email</a
           >
         </p>
+      </Form>
 
-        <Form
-          v-else-if="emailStep === 'request'"
-          @submit.prevent="requestCode"
-        >
-          <FormGroup>
-            <FormLabel label="Email">
-              <FormInputGroup>
-                <input
-                  v-model.trim="email"
-                  type="email"
-                  name="email"
-                  autocomplete="email"
-                  placeholder="you@example.com"
-                  required
-                />
-                <Button
-                  class="secondary"
-                  type="submit"
-                  :disabled="emailBusy"
-                >
-                  {{ emailBusy ? 'Sending…' : 'Send code' }}
-                </Button>
-              </FormInputGroup>
-            </FormLabel>
-          </FormGroup>
-        </Form>
-
-        <Form
-          v-else
-          @submit.prevent="verifyCode"
-        >
-          <p class="muted">
-            Enter the 6-digit code we sent to <strong>{{ email }}</strong
-            >.
-          </p>
-          <PinInput
-            v-model="code"
-            :length="6"
-            type="number"
-            otp
-            :disabled="emailBusy"
-            @complete="verifyCode"
-          />
-          <p class="muted">
-            <a
-              href="#"
-              @click.prevent="resetEmail"
-              >Use a different email</a
-            >
-          </p>
-        </Form>
-
-        <p
-          v-if="emailError"
-          class="error"
-          role="alert"
-        >
-          {{ emailError }}
-        </p>
-      </div>
+      <p
+        v-if="emailError"
+        class="error"
+        role="alert"
+      >
+        {{ emailError }}
+      </p>
     </template>
   </section>
 </template>
 
 <script setup lang="ts">
 import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
-
-// `useSiwe` is auto-imported via the layers.evm layer (it re-exports the
-// components.evm composable), matching how the rest of the app pulls layer
-// helpers — no explicit import needed.
 
 const na = useNetworkedArt()
 const { user, ready, pending, isAuthenticated } = na
@@ -143,26 +110,7 @@ const identity = computed(() => {
   return primary.ens_name ?? shortAddress(primary.address)
 })
 
-// ---- SIWE ----
-const siwe = useSiwe()
-const siweBusy = computed(
-  () => siwe.step.value === 'signing' || siwe.step.value === 'verifying',
-)
-const siweStatus = computed(() => siwe.statusText.value || 'Signing…')
-const siweError = ref<string | null>(null)
-
-const signInWallet = async () => {
-  siweError.value = null
-  const result = await siwe.signIn({
-    getNonce: na.getNonce,
-    verify: na.verifySiwe,
-    statement: 'Sign in to sync your account with networked.art.',
-  })
-  if (!result) siweError.value = siwe.errorMessage.value || 'Sign-in failed.'
-}
-
 // ---- Email PIN ----
-const showEmail = ref(false)
 const emailStep = ref<'request' | 'code'>('request')
 const email = ref('')
 // PinInput models the code as one entry per digit.
@@ -237,16 +185,6 @@ onMounted(() => {
 .setting-status {
   margin: 0;
   font-size: var(--font-md);
-}
-
-.email-alt {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-2);
-}
-
-.email-alt > p {
-  margin: 0;
 }
 
 .error {

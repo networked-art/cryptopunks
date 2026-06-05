@@ -32,10 +32,8 @@ type ApiNuxtApp = ReturnType<typeof useNuxtApp> & {
 
 /**
  * The punks.auction ↔ networked.art account link. The API issues an Adonis
- * bearer token after email or SIWE sign-in; we keep it in the `na_auth_token`
- * cookie (see useNetworkedArtToken) and send it as a Bearer header. Cross-origin
- * SIWE also needs the API's `adonis-session` cookie (it holds the nonce) to
- * round-trip, so every request includes credentials.
+ * bearer token after email sign-in; we keep it in the `na_auth_token` cookie
+ * (see useNetworkedArtToken) and send it as a Bearer header.
  *
  * Everything here assumes `isConfigured` — callers gate the whole feature on it.
  */
@@ -50,8 +48,8 @@ export const useNetworkedArt = () => {
 
   // One shared client across every useNetworkedArt()/useWatchlist() call, cached
   // on the Nuxt app (per-request on the server). It reads the latest token off
-  // the same cached ref on each request, and includes credentials so the API's
-  // `adonis-session` cookie (which holds the SIWE nonce) round-trips.
+  // the same cached ref on each request and sends it as a Bearer header;
+  // credentials are included so any cross-origin API cookies round-trip.
   const nuxtApp = useNuxtApp() as ApiNuxtApp
   const api = (nuxtApp._naApi ??= $fetch.create({
     baseURL: getApiUrl(),
@@ -99,24 +97,6 @@ export const useNetworkedArt = () => {
     }
   }
 
-  // ---- SIWE ----
-
-  /** Challenge from the API; the nonce is also stashed in its session cookie. */
-  const getNonce = async () => {
-    const { nonce } = await api<{ nonce: string }>('/auth/nonce')
-    return nonce
-  }
-
-  /** `verify` callback for the layer's `useSiwe().signIn()`; signs us in. */
-  const verifySiwe = async (message: string, signature: string) => {
-    const session = await api<NetworkedArtSession>('/auth/siwe/verify', {
-      method: 'POST',
-      body: { message, signature },
-    })
-    applySession(session)
-    return true
-  }
-
   // ---- Email PIN ----
 
   // `source` brands the sign-in email as punks.auction (separate sender + icon)
@@ -155,8 +135,6 @@ export const useNetworkedArt = () => {
     isAuthenticated,
     api,
     refresh,
-    getNonce,
-    verifySiwe,
     requestEmailCode,
     verifyEmailCode,
     signOut,

@@ -3,7 +3,7 @@ import { effectScope, type Ref } from 'vue'
 const YEAR_SECONDS = 60 * 60 * 24 * 365
 
 // The networked.art API returns its Adonis bearer token in the JSON body of the
-// email/SIWE verify calls; we persist that copy here and replay it as an
+// email verify call; we persist that copy here and replay it as an
 // `Authorization: Bearer` header. This is punks.auction's own first-party
 // cookie — distinct from the API's `na_bearer`, which is httpOnly and on the
 // API origin, so JS here could never read it. We reuse networked.art's app
