@@ -18,6 +18,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "@takumi-rs/core": "^1.6.0",
     "@tanstack/vue-query": "5.95.2",
+    "@visualizevalue/img-grid": "^0.1.4",
     "@vueuse/core": "^14.2.1",
     "@wagmi/core": "3.4.6",
     "@wagmi/vue": "0.5.6",

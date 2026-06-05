@@ -1,150 +1,52 @@
 <template>
   <div :style="root">
-    <div :style="left">
+    <div :style="panel">
       <img
-        :src="avatarSrc"
-        :width="AVATAR_SIZE"
-        :height="AVATAR_SIZE"
-        :style="avatarStyle"
+        :src="gridSrc"
+        :width="GRID_SIZE"
+        :height="GRID_SIZE"
+        :style="gridImage"
         alt=""
       />
-    </div>
-
-    <div :style="side">
-      <div :style="brandRow">
-        <span :style="dot" />
-        <span :style="brand">Punks Auction</span>
-      </div>
-
-      <div :style="titleBlock">
-        <div :style="eyebrow">Profile</div>
-        <div
-          v-if="ens"
-          :style="ensEl"
-        >
-          {{ ens }}
-        </div>
-        <div :style="ens ? addressDim : addressLarge">{{ shortAddr }}</div>
-      </div>
-
-      <div :style="footer">punks.auction</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Address } from 'viem'
-import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
-import { accountAvvatarDataUri } from '~/utils/avvatar'
-
 const props = withDefaults(
   defineProps<{
-    address?: string
-    ens?: string | null
+    gridSrc?: string
   }>(),
   {
-    address: '0x0000000000000000000000000000000000000000',
-    ens: null,
+    gridSrc: '/og.png',
   },
 )
 
-const AVATAR_SIZE = 360
-
-const avatarSrc = computed(() =>
-  accountAvvatarDataUri(props.address, AVATAR_SIZE),
-)
-const shortAddr = computed(() => shortAddress(props.address as Address))
+const GRID_SIZE = 630
 
 const root = {
   width: '1200px',
   height: '630px',
   display: 'flex',
-  flexDirection: 'row' as const,
+  alignItems: 'center',
+  justifyContent: 'center',
   background: '#f0f0f3',
-  fontFamily: 'JetBrains Mono, monospace',
 }
 
-const left = {
-  width: '630px',
-  height: '630px',
+const panel = {
+  width: `${GRID_SIZE}px`,
+  height: `${GRID_SIZE}px`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#f14eba',
-  flexShrink: 0,
+  background: '#f0f0f3',
 }
 
-const avatarStyle = {
-  width: `${AVATAR_SIZE}px`,
-  height: `${AVATAR_SIZE}px`,
+const gridImage = computed(() => ({
+  width: `${GRID_SIZE}px`,
+  height: `${GRID_SIZE}px`,
   display: 'block',
-}
-
-const side = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  justifyContent: 'space-between',
-  padding: '64px',
-  color: '#0a0a12',
-}
-
-const brandRow = {
-  display: 'flex',
-  flexDirection: 'row' as const,
-  alignItems: 'center',
-  gap: '14px',
-}
-
-const dot = {
-  width: '14px',
-  height: '14px',
-  background: '#f14eba',
-}
-
-const brand = {
-  fontSize: '22px',
-  fontWeight: 600,
-  letterSpacing: '-0.02em',
-}
-
-const titleBlock = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: '12px',
-}
-
-const eyebrow = {
-  fontSize: '22px',
-  color: '#6a6a82',
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase' as const,
-}
-
-const ensEl = {
-  fontSize: '64px',
-  fontWeight: 600,
-  lineHeight: 1.05,
-  letterSpacing: '-0.03em',
-  overflowWrap: 'anywhere' as const,
-}
-
-const addressLarge = {
-  fontSize: '48px',
-  fontWeight: 600,
-  letterSpacing: '-0.02em',
-  color: '#0a0a12',
-}
-
-const addressDim = {
-  fontSize: '26px',
-  color: '#6a6a82',
-  letterSpacing: '0.02em',
-}
-
-const footer = {
-  fontSize: '18px',
-  color: '#6a6a82',
-  letterSpacing: '0.05em',
-}
+  objectFit: 'contain' as const,
+  imageRendering: 'pixelated' as const,
+}))
 </script>

@@ -118,6 +118,7 @@ import { shortAddress } from '@1001-digital/layers.evm/app/utils/addresses'
 import { addressLabel } from '@networked-art/punks-sdk'
 import { accountAvvatarDataUri } from '~/utils/avvatar'
 import { ProfileContextKey } from '~/composables/useProfileContext'
+import { loadProfileOgPresence } from '~/utils/profileOg'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,36 +220,14 @@ useSeoMeta({
 
 const { data: ogProfile } = await useAsyncData(
   () => `og-profile-${handle.value}`,
-  async () => {
-    const h = handle.value
-    const client = getPublicClient(config) as PublicClient | undefined
-    if (!client) return null
-
-    if (isAddress(h)) {
-      let ens: string | null = null
-      try {
-        ens = (await client.getEnsName({ address: h as Address })) ?? null
-      } catch {
-        ens = null
-      }
-      return { address: h as Address, ens }
-    }
-
-    try {
-      const addr = await client.getEnsAddress({ name: h })
-      if (!addr) return null
-      return { address: addr as Address, ens: h }
-    } catch {
-      return null
-    }
-  },
+  () => loadProfileOgPresence(handle.value),
 )
 
-// defineOgImage('Profile', {
-//   address:
-//     ogProfile.value?.address ?? '0x0000000000000000000000000000000000000000',
-//   ens: ogProfile.value?.ens ?? null,
-// })
+if (ogProfile.value?.hasPunks) {
+  defineOgImage('Profile', {
+    gridSrc: `/og/profile-grid/${ogProfile.value.address}`,
+  })
+}
 
 const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
