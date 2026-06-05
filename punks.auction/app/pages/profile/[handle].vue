@@ -211,11 +211,17 @@ const profileAvatarUri = computed(() =>
     ? accountAvvatarDataUri(resolvedAddress.value, 90)
     : undefined,
 )
+const profileDescription = computed(
+  () => `View the CryptoPunks owned by ${titleLabel.value}.`,
+)
 
 useSeoMeta({
   title: () => `${titleLabel.value} · Punks Auction`,
+  description: () => profileDescription.value,
   ogTitle: () => `${titleLabel.value} · Punks Auction`,
+  ogDescription: () => profileDescription.value,
   twitterTitle: () => `${titleLabel.value} · Punks Auction`,
+  twitterDescription: () => profileDescription.value,
 })
 
 const { data: ogProfile } = await useAsyncData(
