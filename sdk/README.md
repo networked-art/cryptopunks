@@ -95,15 +95,16 @@ punks.facets({ text: 'mohawk' })
 `query.text` is parsed into the same shape as the structured fields above and
 compiles 1:1 to an onchain `Punks.Filter`. Recognized phrases:
 
-| Phrase                                                   | Maps to                                               |
-| -------------------------------------------------------- | ----------------------------------------------------- |
+| Phrase                                                    | Maps to                                               |
+| --------------------------------------------------------- | ----------------------------------------------------- |
 | `2 colors`, `two colors`, `zero attributes`, `220 pixels` | `colorCount` / `attributeCount` / `pixelCount` (`eq`) |
-| `<=4 colors`, `>= 3 attributes`, `2-4 colors`            | numeric range on the same axis                        |
-| `dark skin`, `albino skin`, `skin fair`, `albino`        | `skinTone` (expands to Female + Male slot)            |
-| `#1234`, bare `1234`                                     | offer-slot `includeIds[]`                             |
-| `-1234`, `-#1234`                                        | offer-slot `excludeIds[]`                             |
-| `burned`, `burned punks`                                 | curated-collection id set (see below)                 |
-| Anything else                                            | case-insensitive trait name match                     |
+| `<=4 colors`, `>= 3 attributes`, `2-4 colors`             | numeric range on the same axis                        |
+| `dark skin`, `albino skin`, `skin fair`, `albino`         | `skinTone` (expands to Female + Male slot)            |
+| `#1234`, bare `1234`                                      | offer-slot `includeIds[]`                             |
+| `-1234`, `-#1234`                                         | offer-slot `excludeIds[]`                             |
+| `burned`, `burned punks`                                  | curated-collection id set (see below)                 |
+| `hidden`, `invisible`, `hidden earring`                   | hidden-trait id set                                   |
+| Anything else                                             | case-insensitive trait name match                     |
 
 Skin tones map to the four human head-variant slots: `Dark → 1`, `Brown → 2`,
 `Fair → 3`, `Albino → 4`. Aliens, Apes, and Zombies are never selected by a
