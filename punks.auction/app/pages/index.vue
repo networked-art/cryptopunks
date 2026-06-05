@@ -8,15 +8,9 @@
     <p class="subline">24-hour auctions. Zero fees. Real price discovery.</p>
     <div class="cta-buttons">
       <Button
-        class="primary large browse-cta"
+        class="primary large"
         to="/punks"
       >
-        <kbd
-          class="cta-shortcut"
-          aria-hidden="true"
-          title="Press / to search punks"
-          >/</kbd
-        >
         <span>Browse Punks</span>
       </Button>
       <Button
@@ -119,25 +113,4 @@ async function focusPunkSearchInput() {
   margin-top: var(--size-2);
 }
 
-.browse-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-2);
-}
-
-.cta-shortcut {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 1.618rem;
-  padding: 3px 0.33em;
-  border: var(--border-width) solid rgba(255, 255, 255, 0.6);
-  border-radius: 3px;
-  background: rgb(255 255 255 / 18%);
-  font-family: var(--ui-font-family);
-  font-size: 11px;
-  line-height: 1;
-  text-transform: none;
-  opacity: 0.85;
-}
 </style>
