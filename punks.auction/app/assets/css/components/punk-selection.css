@@ -27,7 +27,6 @@
   block-size: 18px;
   background: var(--primary);
   color: white;
-  border-radius: 50%;
   font-size: 12px;
   line-height: 1;
   pointer-events: none;
