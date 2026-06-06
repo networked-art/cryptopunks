@@ -301,6 +301,10 @@ useSeoMeta({
   border: 0;
 }
 
+.subtitle > span:first-child {
+  text-transform: capitalize;
+}
+
 .subtitle-link:hover,
 .subtitle-link:focus-visible {
   color: var(--accent);
