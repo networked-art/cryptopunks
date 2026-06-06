@@ -82,7 +82,7 @@
                 <Icon name="lucide:x" />
               </button>
               <span class="picked-meta muted"
-                >V1 {{ custodyShort(tile.item.custody) }}</span
+                >V1<br />{{ custodyShort(tile.item.custody) }}</span
               >
             </div>
           </template>
