@@ -318,9 +318,16 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     const resolved = ensData.value?.address
     return resolved && isAddress(resolved) ? (resolved as Address) : undefined
   })
-  const { ids: ownedIds, loading: ownedLoading } = useOwnedPunks(
-    () => ownerAddress.value,
-  )
+  const {
+    vault: ownerVault,
+    stash: ownerStash,
+    loading: ownerCustodyLoading,
+  } = useAccountAddresses(() => ownerAddress.value)
+  const { v2Ids: ownedIds, loading: ownedLoading } = useAccountPunks({
+    account: () => ownerAddress.value,
+    vault: ownerVault,
+    stash: ownerStash,
+  })
 
   const parsedText = computed(() => parsePunkSearchText(qualifiers.value.text))
 
@@ -356,7 +363,11 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
 
     let ids: Iterable<number> | undefined = baseQuery.value?.ids
     if (ownerMode) {
-      if (!ownerAddress.value || ownedLoading.value) {
+      if (
+        !ownerAddress.value ||
+        ownerCustodyLoading.value ||
+        ownedLoading.value
+      ) {
         ids = []
       } else {
         ids = intersectIds(ids, ownedIds.value)

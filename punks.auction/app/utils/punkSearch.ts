@@ -95,6 +95,10 @@ export function parsePunkSearchText(raw: string) {
   }
 }
 
+/// Owner mode also triggers on a curated address label (e.g. `NODE`,
+/// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
+/// (e.g. `moma`) are left to the trait/collection path so the grid keeps
+/// showing the curated set rather than the wallet's current holdings.
 export function resolvePunkSearchOwnerHandle(
   input: string,
   sdk: PunksSdk,
@@ -107,6 +111,8 @@ export function resolvePunkSearchOwnerHandle(
   return addressForLabel(value) ?? null
 }
 
+/// Complete unfinished aliases (`bur` -> `burned`) so a prefix that the grid
+/// reads as a collection isn't mistaken for an owner label.
 export function punkSearchResolvesToCollection(
   input: string,
   sdk: PunksSdk,
