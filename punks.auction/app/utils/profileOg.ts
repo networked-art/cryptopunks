@@ -79,14 +79,21 @@ export async function loadProfileOgData(
 ): Promise<ProfileOgData | null> {
   try {
     const indexerUrl = getIndexerUrl()
-    const profile = await resolveProfileOgAddresses(handle, indexerUrl)
-    if (!profile) return null
-
-    const ids = await fetchAllV2PunkIds(indexerUrl, profile.addrs)
-    return { address: profile.address, ids }
+    return await loadProfileOgDataAt(handle, indexerUrl)
   } catch {
     return null
   }
+}
+
+export async function loadProfileOgDataAt(
+  handle: string,
+  indexerUrl: string,
+): Promise<ProfileOgData | null> {
+  const profile = await resolveProfileOgAddresses(handle, indexerUrl)
+  if (!profile) return null
+
+  const ids = await fetchAllV2PunkIds(indexerUrl, profile.addrs)
+  return { address: profile.address, ids }
 }
 
 export async function loadProfileOgPresence(
@@ -94,15 +101,22 @@ export async function loadProfileOgPresence(
 ): Promise<ProfileOgPresence | null> {
   try {
     const indexerUrl = getIndexerUrl()
-    const profile = await resolveProfileOgAddresses(handle, indexerUrl)
-    if (!profile) return null
-
-    return {
-      address: profile.address,
-      hasPunks: await hasAnyV2Punk(indexerUrl, profile.addrs),
-    }
+    return await loadProfileOgPresenceAt(handle, indexerUrl)
   } catch {
     return null
+  }
+}
+
+export async function loadProfileOgPresenceAt(
+  handle: string,
+  indexerUrl: string,
+): Promise<ProfileOgPresence | null> {
+  const profile = await resolveProfileOgAddresses(handle, indexerUrl)
+  if (!profile) return null
+
+  return {
+    address: profile.address,
+    hasPunks: await hasAnyV2Punk(indexerUrl, profile.addrs),
   }
 }
 
