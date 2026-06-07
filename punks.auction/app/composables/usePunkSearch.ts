@@ -1,7 +1,6 @@
 import { refDebounced, useMediaQuery } from '@vueuse/core'
 import {
   activeSearchToken,
-  addressForLabel,
   suggestAddressLabels,
   tokenizeSearchText,
   type PunkQuery,
@@ -10,6 +9,14 @@ import {
 } from '@networked-art/punks-sdk'
 import { isAddress, type Address } from 'viem'
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import {
+  extractPunkSearchQualifiers,
+  intersectIds,
+  parsePunkSearchText,
+  punkSearchResolvesToCollection,
+  resolvePunkSearchOwnerHandle,
+  unionIds,
+} from '~/utils/punkSearch'
 
 type PunkSearchOptions = {
   baseQuery?: MaybeRefOrGetter<PunkQuery | undefined>
@@ -32,7 +39,7 @@ export type PunkSuggestion = Omit<SearchSuggestion, 'kind'> & {
 /// Market qualifiers live in the app, not the SDK: they resolve against
 /// on-chain market state, not the dataset. `insert` is the canonical phrase
 /// the parser understands; `aliases` mirror the looser phrases accepted by
-/// `extractQualifiers` below.
+/// `extractPunkSearchQualifiers`.
 const MARKET_QUALIFIERS: {
   label: string
   insert: string
@@ -212,25 +219,6 @@ function absorbedPrecedingCount(
   return absorbed
 }
 
-const LISTED_QUALIFIER =
-  /(^|[\s,])(?:for\s+sale|on\s+sale|list(?:ed|ing|ings)?|sale)(?=$|[\s,])/gi
-const BID_QUALIFIER =
-  /(^|[\s,])(?:has\s+bids?|with\s+bids?|active\s+bids?|bids?)(?=$|[\s,])/gi
-const WRAPPED_WORD = 'wrap(?:ped|per)?'
-const LEGACY_WRAPPER_SYNONYM = 'wrapped[_\\s-]*punks'
-const MODERN_WRAPPER_SYNONYM = '(?:erc[-\\s]?721|cryptopunks\\s*721)'
-const LEGACY_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${LEGACY_WRAPPER_SYNONYM})`
-const MODERN_WRAPPED_WORD = `(?:${WRAPPED_WORD}|${MODERN_WRAPPER_SYNONYM})`
-const LEGACY_WRAPPED_QUALIFIER = qualifierPattern(
-  `(?:legacy\\s+${LEGACY_WRAPPED_WORD}|${LEGACY_WRAPPED_WORD}\\s+legacy|${LEGACY_WRAPPER_SYNONYM})`,
-)
-const MODERN_WRAPPED_QUALIFIER = qualifierPattern(
-  `(?:modern\\s+${MODERN_WRAPPED_WORD}|${MODERN_WRAPPED_WORD}\\s+modern|${MODERN_WRAPPER_SYNONYM})`,
-)
-const WRAPPED_QUALIFIER = qualifierPattern(WRAPPED_WORD)
-const ENS_HANDLE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i
-const HEX_COLOR_TOKEN = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g
-
 export function usePunkSearch(options: PunkSearchOptions = {}) {
   const offline = usePunksOffline()
   const route = options.syncRoute ? useRoute() : null
@@ -254,7 +242,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
 
   const debouncedText = refDebounced(text, debounceMs)
   const qualifiers = computed(() =>
-    extractQualifiers(debouncedText.value, {
+    extractPunkSearchQualifiers(debouncedText.value, {
       enableMarketQualifiers,
     }),
   )
@@ -312,30 +300,10 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
       : 'Try hoodie, 2 colors, vault.eth, #1234',
   )
 
-  /// Owner mode also triggers on a curated address label (e.g. `NODE`,
-  /// `NODE FOUNDATION`) resolving to its account. Curated collection aliases
-  /// (e.g. `moma`) are left to the trait/collection path so the grid keeps
-  /// showing the curated set rather than the wallet's current holdings.
-  function resolvesToCollection(input: string): boolean {
-    const value = input.trim()
-    if (!value) return false
-    const completed = offline.dataset.completeSearchText(value)
-    return offline.collections.matches(completed).length > 0
-  }
-
-  function resolveOwnerHandle(input: string): string | null {
-    const direct = detectOwnerHandle(input)
-    if (direct) return direct
-    const value = input.trim()
-    if (!value) return null
-    // Complete unfinished aliases (`bur` → `burned`) so a prefix that the grid
-    // reads as a collection isn't mistaken for an owner label here.
-    if (resolvesToCollection(value)) return null
-    return addressForLabel(value) ?? null
-  }
-
   const ownerHandle = computed(() =>
-    enableOwnerSearch ? resolveOwnerHandle(debouncedText.value) : null,
+    enableOwnerSearch
+      ? resolvePunkSearchOwnerHandle(debouncedText.value, offline)
+      : null,
   )
   const ensIdentifier = computed(() => {
     const handle = ownerHandle.value
@@ -354,19 +322,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     () => ownerAddress.value,
   )
 
-  const parsedText = computed(() => {
-    const raw = qualifiers.value.text.trim()
-    if (!raw) return { text: undefined, colors: undefined }
-    const colors = raw.match(HEX_COLOR_TOKEN)
-    const remaining = raw
-      .replace(HEX_COLOR_TOKEN, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-    return {
-      text: remaining || undefined,
-      colors: colors?.length ? colors : undefined,
-    }
-  })
+  const parsedText = computed(() => parsePunkSearchText(qualifiers.value.text))
 
   // Curated collections the live query mentions (e.g. `burned`, `moma`), for
   // surfacing an explainer. Scans the trait text after market qualifiers and
@@ -488,7 +444,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     if (!enableSuggestions) return []
     const market = enableMarketQualifiers ? marketSuggestions(text.value) : []
     const owner =
-      enableOwnerSearch && !resolvesToCollection(text.value)
+      enableOwnerSearch && !punkSearchResolvesToCollection(text.value, offline)
         ? ownerSuggestions(text.value)
         : []
     return [...market, ...owner, ...offline.dataset.suggest(text.value)]
@@ -496,7 +452,7 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
 
   function onEnter() {
     if (!enableEnterNavigation) return
-    const handle = resolveOwnerHandle(text.value)
+    const handle = resolvePunkSearchOwnerHandle(text.value, offline)
     if (handle) {
       router.push(`/profile/${handle}`)
       return
@@ -535,83 +491,6 @@ export function usePunkSearch(options: PunkSearchOptions = {}) {
     onEnter,
     clearSearch,
   }
-}
-
-function qualifierPattern(source: string): RegExp {
-  return new RegExp(`(^|[\\s,])${source}(?=$|[\\s,])`, 'gi')
-}
-
-function detectOwnerHandle(input: string): string | null {
-  const value = input.trim()
-  if (!value) return null
-  if (isAddress(value)) return value
-  if (ENS_HANDLE.test(value) && /\.eth$/i.test(value)) return value
-  return null
-}
-
-function extractQualifiers(
-  input: string,
-  options: { enableMarketQualifiers: boolean },
-) {
-  let listed = false
-  let activeBids = false
-  let wrapped = false
-  let legacyWrapped = false
-  let modernWrapped = false
-
-  const cleaned = options.enableMarketQualifiers
-    ? input
-        .replace(LEGACY_WRAPPED_QUALIFIER, (_match, prefix: string) => {
-          legacyWrapped = true
-          return prefix || ''
-        })
-        .replace(MODERN_WRAPPED_QUALIFIER, (_match, prefix: string) => {
-          modernWrapped = true
-          return prefix || ''
-        })
-        .replace(LISTED_QUALIFIER, (_match, prefix: string) => {
-          listed = true
-          return prefix || ''
-        })
-        .replace(BID_QUALIFIER, (_match, prefix: string) => {
-          activeBids = true
-          return prefix || ''
-        })
-        .replace(WRAPPED_QUALIFIER, (_match, prefix: string) => {
-          wrapped = true
-          return prefix || ''
-        })
-    : input
-
-  return {
-    text: normalizeQualifierText(cleaned),
-    listed,
-    activeBids,
-    wrapped,
-    legacyWrapped,
-    modernWrapped,
-  }
-}
-
-function normalizeQualifierText(input: string) {
-  return input
-    .replace(/\s*,\s*,+/g, ', ')
-    .replace(/(^[\s,]+|[\s,]+$)/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function intersectIds(
-  baseIds: Iterable<number> | undefined,
-  filterIds: Iterable<number>,
-) {
-  if (!baseIds) return Array.from(filterIds)
-  const filter = new Set(filterIds)
-  return Array.from(baseIds).filter((id) => filter.has(id))
-}
-
-function unionIds(...groups: Iterable<number>[]) {
-  return new Set(groups.flatMap((group) => Array.from(group)))
 }
 
 function toOfferCompatibleQuery(query: PunkQuery): PunkQuery {
