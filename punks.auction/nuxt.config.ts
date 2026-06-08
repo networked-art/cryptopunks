@@ -50,6 +50,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/app.css'],
 
+  // Bundle reka-ui into the server build instead of externalizing it. Left
+  // external, its `import { renderSlot } from 'vue'` resolves to a *second*
+  // copy of Vue's runtime in `.output/server/node_modules`, whose
+  // `currentRenderingInstance` is null during SSR.
+  build: { transpile: ['reka-ui'] },
+
   routeRules: {
     // `/punks/v1` has no page of its own — only `/punks/v1/:id`. Bounce to
     // the grid so it doesn't fall through to the `/punks/:id` not-found state.
