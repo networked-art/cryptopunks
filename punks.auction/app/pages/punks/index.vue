@@ -5,6 +5,7 @@
 </template>
 
 <script setup lang="ts">
+import { titleCase } from '@networked-art/punks-sdk'
 import { resolveSearchOg, searchOgDescription } from '~/utils/searchOg'
 
 const route = useRoute()
@@ -17,7 +18,7 @@ const description = computed(() =>
 )
 const titleFor = (suffix: string) =>
   query.value
-    ? `${query.value} · ${suffix}`
+    ? `${titleCase(query.value)} · ${suffix}`
     : sale.value
       ? `Listed Punks · ${suffix}`
       : `Browse Punks · ${suffix}`

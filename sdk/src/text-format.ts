@@ -141,6 +141,18 @@ export function formatSearchText(
   return tokens.join(' ')
 }
 
+/// Upper-cases the first letter of each whitespace-separated word, leaving the
+/// rest of each word as-is so existing acronyms (`VR`, `3D`) survive. A display
+/// helper for labels — search titles, suggestion aliases — not a linguistic
+/// title-caser: it applies no small-word, punctuation, or acronym rules.
+export function titleCase(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 /// Recognizes compact names for any-of trait masks that the compile path
 /// produces:
 ///   - exactly the two head variants of one skin tone pair → `<tone> skin`

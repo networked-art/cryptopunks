@@ -4,6 +4,7 @@ import {
   type PunkStandardValue,
 } from './constants'
 import { getSearchCollection, searchCollectionEntries } from './collections'
+import { titleCase } from './text-format'
 import type { OfflinePunksDataClient } from './offline'
 import { allHiddenTraitIds, hiddenTraitRecords } from './hidden-traits'
 import type { TraitRecord } from './types'
@@ -426,7 +427,7 @@ function synonymSuggestions(
   }
   return Array.from(best.values()).map(({ entry, absorbed }) => ({
     kind: 'synonym',
-    label: titleizeAlias(entry.key),
+    label: titleCase(entry.key),
     query: withCompletion(
       preceding.slice(0, preceding.length - absorbed),
       entry.key,
@@ -737,13 +738,6 @@ function withCompletion(
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
-}
-
-function titleizeAlias(value: string): string {
-  return value
-    .split(' ')
-    .map((word) => (word.length === 1 ? word.toUpperCase() : capitalize(word)))
-    .join(' ')
 }
 
 function safeTextCount(

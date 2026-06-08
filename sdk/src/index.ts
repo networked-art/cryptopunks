@@ -177,7 +177,7 @@ export type {
   HiddenTraitCatalog,
   HiddenTraitCatalogTrait,
 } from './hidden-traits'
-export { formatSearchText } from './text-format'
+export { formatSearchText, titleCase } from './text-format'
 export type { FormatSearchTextInput } from './text-format'
 export { activeSearchToken, suggestSearchText } from './suggest'
 export type {
