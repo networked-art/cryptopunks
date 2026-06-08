@@ -67,12 +67,13 @@ export async function resolveSearchOgAt(
   indexerUrl: string,
 ): Promise<SearchOgResult | null> {
   const label = input.q.trim()
-  if (!label) return null
+  const listedOnly = !label && input.sale === true
+  if (!label && !listedOnly) return null
 
   const limit = Math.max(1, Math.floor(input.limit ?? SEARCH_OG_LIMIT))
   const sdk = punks()
   const qualifiers = extractPunkSearchQualifiers(label)
-  const ownerHandle = resolvePunkSearchOwnerHandle(label, sdk)
+  const ownerHandle = label ? resolvePunkSearchOwnerHandle(label, sdk) : null
   const needsMarketState =
     input.sale === true ||
     qualifiers.listed ||
@@ -95,6 +96,9 @@ export async function resolveSearchOgAt(
 
   if (marketState) {
     const sets = toMarketStateSets(marketState)
+    if (listedOnly) {
+      ids = intersectIds(ids, sets.listed)
+    }
     if (qualifiers.listed) {
       ids = intersectIds(ids, sets.listed)
     }
@@ -140,12 +144,16 @@ export async function resolveSearchOgAt(
   return {
     ids: result.slice(0, limit),
     total: result.length,
-    label,
+    label: label || 'listed',
   }
 }
 
-export function searchOgDescription(query: string): string | undefined {
+export function searchOgDescription(
+  query: string,
+  options: { sale?: boolean } = {},
+): string | undefined {
   const label = query.trim()
+  if (!label && options.sale) return 'Browse listed CryptoPunks.'
   return label ? `Browse CryptoPunks matching "${label}".` : undefined
 }
 
