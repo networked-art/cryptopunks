@@ -110,6 +110,15 @@ describe('suggestSearchText', () => {
     assert.equal(find('mr t', 'Mr T').query, 'mr t')
   })
 
+  it('suggests `human` as a male-or-female alias', () => {
+    const human = find('hum', 'Humans')
+    assert.ok(human)
+    assert.equal(human.kind, 'synonym')
+    assert.equal(human.query, 'human')
+    assert.equal(human.count, client.countSync({ text: 'human' }))
+    assert.ok(suggest('h').every((s) => s.label !== 'Humans')) // one letter is too thin
+  })
+
   it('absorbs a leading skin-tone grammar word instead of duplicating it', () => {
     // `skin da` / `tone da` already say "skin"; completing must not yield
     // `skin dark skin`.

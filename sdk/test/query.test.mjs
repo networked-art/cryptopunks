@@ -75,6 +75,18 @@ describe('compileOfferSlot — text-search free terms', () => {
     )
   })
 
+  it('compiles `human` to the any-of head-variant set (male or female)', () => {
+    const slot = compileOfferSlot(data, { query: { text: 'human' } })
+    /// `human` → every skin-tone slot → HeadVariant Female 1..4 + Male 1..4 as a
+    /// single any-of group, with no required traits. This is "male OR female",
+    /// which a plain AND-joined synonym could never express.
+    const humanHeadVariantMask = mask(
+      ...[2, 3, 4, 5, 6, 7, 8, 9].map((v) => HEAD_VARIANT_TRAIT_OFFSET + v),
+    )
+    assert.equal(slot.criteria.requiredTraitMask, 0n)
+    assert.equal(slot.criteria.anyOfTraitMask, humanHeadVariantMask)
+  })
+
   it('compiles whole exact trait-name text as one required trait', () => {
     const bigShades = compileOfferSlot(data, { query: { text: 'big shades' } })
     assert.equal(

@@ -106,6 +106,7 @@ export function suggestSearchText(
     ),
     ...collectionSuggestions(activeVariants, preceding, standard),
     ...skinToneSuggestions(activeVariants, preceding),
+    ...humanSuggestions(data, activeVariants, preceding),
     ...countSuggestions(activeVariants, preceding),
     ...synonymSuggestions(data, activeVariants, preceding),
     ...traitSuggestions(
@@ -493,6 +494,28 @@ function skinToneSuggestions(
     })
   }
   return result
+}
+
+/// `human` / `humans` resolve to every skin-tone slot — exactly the Female and
+/// Male punks — so they surface as one discoverable alias the same way `girl`
+/// or `albino skin` do.
+const HUMAN_WORDS = ['human', 'humans']
+
+function humanSuggestions(
+  data: OfflinePunksDataClient,
+  activeVariants: readonly string[],
+  preceding: readonly SearchTextTerm[],
+): SearchSuggestion[] {
+  if (!hasMinimumSignal(activeVariants, 2)) return []
+  if (!HUMAN_WORDS.some((word) => matchesWord(word, activeVariants))) return []
+  return [
+    {
+      kind: 'synonym',
+      label: 'Humans',
+      query: withCompletion(preceding, 'human'),
+      count: safeTextCount(data, 'human'),
+    },
+  ]
 }
 
 type CountSuggestionAxis = {

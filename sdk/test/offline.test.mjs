@@ -259,6 +259,27 @@ describe('OfflinePunksDataClient', () => {
       sdk.countSync({ text: 'dark skin' }),
     )
 
+    // `human` / `humans` are the union of every skin-tone slot — every Female
+    // and Male punk, the otherwise un-chainable "male OR female".
+    assert.deepEqual(
+      sdk.searchSync({ text: 'human' }),
+      sdk.searchSync({ text: 'skin' }),
+    )
+    assert.deepEqual(
+      sdk.searchSync({ text: 'humans' }),
+      sdk.searchSync({ text: 'human' }),
+    )
+    assert.equal(
+      sdk.countSync({ text: 'human' }),
+      sdk.countSync({ attributes: { required: ['Female'] } }) +
+        sdk.countSync({ attributes: { required: ['Male'] } }),
+    )
+    // Composes with other traits: humans wearing a cap.
+    assert.deepEqual(
+      sdk.searchSync({ text: 'human cap' }),
+      sdk.searchSync({ text: 'skin cap' }),
+    )
+
     // Include / exclude punk ids via `#id` and `-id`.
     assert.deepEqual(sdk.searchSync({ text: '#1234' }), [1234])
     assert.equal(sdk.countSync({ text: '-1234' }), 10000 - 1)

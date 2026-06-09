@@ -427,6 +427,16 @@ function parseSearchTextGroup(
         continue
       }
 
+      // `human`, `humans` — only Female and Male punks carry a skin tone
+      // (Aliens, Apes, and Zombies do not), so the union of every skin-tone
+      // slot is exactly the human population. This expresses the otherwise
+      // un-chainable "male OR female" as the existing any-tone constraint.
+      if (word0 === 'human' || word0 === 'humans') {
+        addAllSkinTones(group)
+        i += 1
+        continue
+      }
+
       // `fair` and `brown` are unambiguous tone words. Keep bare `dark` on the
       // trait path because it also names Dark Hair / Mohawk Dark / etc.
       const bareTone = matchBareSkinToneWord(word0)
