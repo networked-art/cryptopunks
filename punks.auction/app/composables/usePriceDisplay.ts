@@ -13,8 +13,7 @@ const PRICE_DISPLAY_COOKIE = 'punks_auction_price_mode'
 let pendingEthUsdFetch: Promise<void> | null = null
 
 export function usePriceDisplayMode() {
-  const cookie = useCookie<PriceDisplayMode>(PRICE_DISPLAY_COOKIE, {
-    default: () => 'eth',
+  const cookie = useCookie<PriceDisplayMode | null>(PRICE_DISPLAY_COOKIE, {
     sameSite: 'lax',
   })
   const mode = useState<PriceDisplayMode>(PRICE_DISPLAY_STATE_KEY, () =>
@@ -85,6 +84,21 @@ export function usePriceDisplayText() {
   }
 }
 
+export function parsePriceDisplayMode(
+  value: unknown,
+): PriceDisplayMode | null {
+  const values = Array.isArray(value) ? value : [value]
+
+  for (const raw of values) {
+    if (typeof raw !== 'string') continue
+
+    const normalized = raw.trim().toLowerCase()
+    if (normalized === 'eth' || normalized === 'usd') return normalized
+  }
+
+  return null
+}
+
 function normalizePriceDisplayMode(value: unknown): PriceDisplayMode {
-  return value === 'usd' ? 'usd' : 'eth'
+  return parsePriceDisplayMode(value) ?? 'eth'
 }
