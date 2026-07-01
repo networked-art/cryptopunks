@@ -25,9 +25,12 @@ SECONDS_PER_DAY = 86_400
 # value. We weight the own-sale premium by an exponential recency on the sale's
 # age (this half-life, in days) so a recent sale keeps ~full strength while an
 # old one reverts toward the floor and lets the trait/cohort features carry the
-# value. Recent sales dominate the calibration holdout, so this only reshapes
-# the stale-own-sale tail — out-of-time accuracy (and promotion) are unmoved.
-OWN_PREMIUM_HALF_LIFE_DAYS = 540.0
+# value. The half-life is deliberately long (~4y): the own-sale signal is
+# genuinely predictive for high-value Punks even at 1-2 years, and those recent
+# sales dominate the value-weighted holdout — so a shorter half-life measurably
+# hurt WAPE while a long one still collapses the multi-year stale tail (e.g. a
+# 6y-old sale keeps only ~a third of its premium).
+OWN_PREMIUM_HALF_LIFE_DAYS = 1460.0
 
 # Raw per-row columns every feature frame carries; numeric_block turns them into
 # the model matrix. Training rows add `target_eth`; both carry `punk_id`.

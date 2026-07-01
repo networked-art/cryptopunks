@@ -181,15 +181,21 @@ def test_promotion_rejects_unevaluated_run_when_incumbent_exists():
   assert decision["promote"] is False
 
 
-def test_promotion_rejects_regression_versus_incumbent():
+def test_promotion_refreshes_daily_even_when_worse_than_incumbent():
+  # No incumbent-regression gate: a run that clears the median-baseline floor
+  # promotes as the daily refresh even if its holdout error is worse than the
+  # incumbent's frozen, differently-windowed number — otherwise a lucky-low
+  # incumbent locks out every fresh run and goes stale.
   decision = promotion_decision(
     model_ape=0.50,
     baseline_ape=0.80,
     incumbent_ape=0.40,
     has_incumbent=True,
+    model_wape=0.13,
+    incumbent_wape=0.10,
   )
-  assert decision["promote"] is False
-  assert "active model" in decision["reason"]
+  assert decision["promote"] is True
+  assert "daily refresh" in decision["reason"]
 
 
 def test_promotion_allows_refresh_within_tolerance():
@@ -202,31 +208,19 @@ def test_promotion_allows_refresh_within_tolerance():
   assert decision["promote"] is True
 
 
-def test_promotion_judges_incumbent_on_wape_not_noisy_medape():
-  # Worse (noisier) medAPE but a better WAPE — the metric that matters — should
-  # promote, not get locked out by a lucky-low-medAPE incumbent.
+def test_promotion_promotes_when_baseline_beaten_regardless_of_wape():
+  # WAPE is no longer a promotion gate; clearing the median baseline is enough,
+  # whether the run's WAPE is better or worse than the incumbent's.
   decision = promotion_decision(
     model_ape=0.054,
     baseline_ape=0.29,
     incumbent_ape=0.0478,
     has_incumbent=True,
-    model_wape=0.1048,
-    incumbent_wape=0.1060,
-  )
-  assert decision["promote"] is True
-
-
-def test_promotion_rejects_wape_regression_versus_incumbent():
-  decision = promotion_decision(
-    model_ape=0.05,
-    baseline_ape=0.29,
-    incumbent_ape=0.05,
-    has_incumbent=True,
     model_wape=0.130,
     incumbent_wape=0.106,
   )
-  assert decision["promote"] is False
-  assert "active model" in decision["reason"]
+  assert decision["promote"] is True
+  assert "daily refresh" in decision["reason"]
 
 
 def test_matching_market_bids_by_punk_respects_trait_masks():
@@ -578,7 +572,10 @@ def test_promotion_without_reservation_still_requires_baseline():
   assert "baseline" in decision["reason"]
 
 
-def test_promotion_reservation_run_still_rejected_when_regressing():
+def test_promotion_reservation_run_refreshes_daily_when_worse_than_incumbent():
+  # A reservation-signal run is waived past the median-baseline floor and, with
+  # no regression gate, promotes as the daily refresh even when worse than the
+  # incumbent.
   decision = promotion_decision(
     model_ape=0.80,
     baseline_ape=0.40,
@@ -586,8 +583,8 @@ def test_promotion_reservation_run_still_rejected_when_regressing():
     has_incumbent=True,
     has_reservation_signal=True,
   )
-  assert decision["promote"] is False
-  assert "active model" in decision["reason"]
+  assert decision["promote"] is True
+  assert "baseline gate waived" in decision["reason"]
 
 
 # --------------------------------------------------------------------------- #
@@ -685,9 +682,13 @@ def test_stale_own_sale_reverts_toward_the_floor_anchor():
   x_fresh, anchor = F.design_matrix(make_row(30.0), trait_matrix)
   x_stale, _ = F.design_matrix(make_row(8 * 365.0), trait_matrix)
   a = float(anchor[0])
-  # lown (col 4): fresh keeps ~the full log(3) premium; stale nearly gone
-  assert float(x_fresh[0, 4]) - a > 0.9
-  assert float(x_stale[0, 4]) - a < 0.1
+  # lown (col 4) = anchor + log(3) * recency; both weights track the half-life.
+  prem = math.log(90.0) - math.log(30.0)  # the raw 3x-floor premium
+  w_fresh = 0.5 ** (30.0 / F.OWN_PREMIUM_HALF_LIFE_DAYS)
+  w_stale = 0.5 ** (min(8 * 365.0, 3650.0) / F.OWN_PREMIUM_HALF_LIFE_DAYS)
+  assert abs((float(x_fresh[0, 4]) - a) - prem * w_fresh) < 1e-4
+  assert abs((float(x_stale[0, 4]) - a) - prem * w_stale) < 1e-4
+  assert w_fresh > 0.9 > w_stale  # fresh ~untouched, a multi-year sale materially cut
   # own_premium feature (col 17) decays the same way, staying non-negative
   assert float(x_fresh[0, 17]) > float(x_stale[0, 17]) > 0
 

@@ -50,9 +50,6 @@ INTERVAL_PREMIUM_SCALE = 1.4
 # window (not just the outgoing run's brief life) gives a stable sample now that
 # runs promote frequently.
 REALIZED_WINDOW_DAYS = 14
-# A refreshed run may carry a little more error than the incumbent (different
-# out-of-time test set) and still be worth promoting for the newer market data.
-PROMOTION_REGRESSION_TOLERANCE = 0.05
 
 V2_SALE_SOURCES = {"cryptopunks_v2"}
 V1_SALE_SOURCES = {"cryptopunks_v1", "punks_market"}
@@ -1838,51 +1835,34 @@ def promotion_decision(
     "incumbentMedianApe": incumbent_ape,
     "modelWape": model_wape,
     "incumbentWape": incumbent_wape,
-    "regressionTolerance": PROMOTION_REGRESSION_TOLERANCE,
     "hasReservationSignal": has_reservation_signal,
   }
+  # The worker retrains nightly on the freshest data, so the newest run should
+  # win by default — its whole value is being more current than the incumbent.
+  # We do NOT gate on regression versus the incumbent: each run's holdout is a
+  # different out-of-time window, so its self-reported error is not comparable
+  # to the incumbent's frozen number, and a lucky-low incumbent would lock out
+  # every fresh run and go stale (it did — 19 days). The only bar is a sanity
+  # floor: the run must have a holdout evaluation and beat the trivial median
+  # baseline, which catches a broken model (bug, data outage) without blocking a
+  # healthy daily refresh.
   if not has_incumbent:
     return {**decision, "promote": True, "reason": "bootstrap: no active model"}
   if model_ape is None:
     return {**decision, "promote": False, "reason": "no holdout evaluation (testCount=0)"}
   beats_baseline = baseline_ape is None or model_ape <= baseline_ape
   # The median-sale baseline rewards regressing toward the global median, which
-  # the reservation signal deliberately does not. So a reservation-signal run is
-  # allowed past the baseline gate as long as it still holds versus the active
-  # model; runs without that signal must still beat the baseline.
+  # the reservation signal deliberately does not — so a reservation-signal run is
+  # allowed past the baseline floor; runs without that signal must clear it.
   if not beats_baseline and not has_reservation_signal:
     return {**decision, "promote": False, "reason": "does not beat the median baseline"}
-  # Judge regression versus the incumbent on WAPE (value-weighted error) — the
-  # metric the model optimizes and the one that reflects expensive-Punk accuracy.
-  # medAPE is floor-dominated and swings ~13% run-to-run on noise (WAPE ~2%), so
-  # gating on it lets a lucky-low-medAPE incumbent lock out equal-or-better runs
-  # and go stale. Fall back to medAPE only when WAPE is unavailable (older runs).
-  if model_wape is not None and incumbent_wape is not None:
-    regresses = model_wape > incumbent_wape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
-    metric = "WAPE"
-  else:
-    regresses = (
-      incumbent_ape is not None
-      and model_ape > incumbent_ape * (1.0 + PROMOTION_REGRESSION_TOLERANCE)
-    )
-    metric = "medAPE"
-  if regresses:
-    return {
-      **decision,
-      "promote": False,
-      "reason": f"regresses versus the active model ({metric})",
-    }
   if not beats_baseline:
     return {
       **decision,
       "promote": True,
-      "reason": "reservation-signal run holds versus the active model (baseline gate waived)",
+      "reason": "daily refresh: reservation-signal run (baseline gate waived)",
     }
-  return {
-    **decision,
-    "promote": True,
-    "reason": "beats baseline and holds versus the active model",
-  }
+  return {**decision, "promote": True, "reason": "daily refresh: beats the median baseline"}
 
 
 def realized_backtest(conn: Connection, dataset: dict[str, pd.DataFrame]) -> dict[str, Any]:
