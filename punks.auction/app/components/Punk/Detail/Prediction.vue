@@ -145,7 +145,7 @@
             >
               <NuxtLink
                 class="comp-link"
-                :to="`/punks/${comp.punkId}`"
+                :to="{ path: `/punks/${comp.punkId}`, query: { estimate: 'open' } }"
               >
                 <PunkThumb
                   :punk-id="comp.punkId"

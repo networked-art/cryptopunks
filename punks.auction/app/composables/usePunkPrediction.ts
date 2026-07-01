@@ -15,7 +15,12 @@ export function usePunkPrediction(
   // Client-only: a lazy SSR fetch would serialize a not-yet-resolved `null`
   // into the payload and the client would never refetch, leaving the section
   // hidden. This matches how the rest of the indexer-backed detail data loads.
+  // Key per Punk+standard. The detail page reuses this component across Punks
+  // (route param change), so a bare auto-key would cache the first Punk's
+  // prediction and the reused instance would keep serving it — the reactive key
+  // gives each Punk its own entry and refetches on navigation.
   const { data: prediction, pending } = useLazyAsyncData(
+    () => `punk-prediction:${std.value}:${id.value}`,
     () => fetchPunkPrediction(id.value, std.value),
     { watch: [id, std], default: () => null, server: false },
   )
