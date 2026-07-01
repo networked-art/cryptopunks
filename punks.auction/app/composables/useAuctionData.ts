@@ -34,8 +34,9 @@ function useChainResource<T>(read: (client: PublicClient) => Promise<T[]>) {
     try {
       items.value = await read(c)
     } catch (e) {
+      // Keep the last good snapshot — a transient RPC failure during a
+      // background refresh shouldn't blank the page.
       error.value = (e as Error).message
-      items.value = []
     } finally {
       pending.value = false
     }

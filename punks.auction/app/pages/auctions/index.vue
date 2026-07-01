@@ -63,11 +63,14 @@
 </template>
 
 <script setup lang="ts">
+import { useIntervalFn } from '@vueuse/core'
 import {
   auctionStatus,
   type AuctionRecord,
   type LotRecord,
 } from '~/utils/auction'
+
+const REFRESH_INTERVAL_MS = 12_000
 
 useSeoMeta({
   title: 'Auctions · Punks Auction',
@@ -157,6 +160,9 @@ function refreshMarket() {
   void refreshAuctions()
   void refreshLots()
 }
+
+// New lots and auctions can appear at any time, so the poll never idles.
+useIntervalFn(refreshMarket, REFRESH_INTERVAL_MS)
 
 function compareLotsByAverageReserve(a: LotRecord, b: LotRecord): number {
   const aCount = BigInt(Math.max(1, a.items.length))
