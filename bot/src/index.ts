@@ -9,6 +9,8 @@ import {
   runOnce,
   type Publisher,
 } from './core'
+import { AuctionRenderer } from './punks/auction-renderer'
+import { AuctionSource } from './punks/auction-source'
 import { PunksIndexer } from './punks/indexer'
 import { PunksRenderer } from './punks/renderer'
 import { PunksSource } from './punks/source'
@@ -27,19 +29,21 @@ async function main(): Promise<void> {
   const indexer = new PunksIndexer(
     process.env.INDEXER_URL || DEFAULT_INDEXER_URL,
   )
-  const source = new PunksSource(indexer, {
-    startTimestamp: process.env.START_TIMESTAMP
-      ? Number(process.env.START_TIMESTAMP)
-      : undefined,
-  })
+  const names = new NameResolver(indexer)
+  const startTimestamp = process.env.START_TIMESTAMP
+    ? Number(process.env.START_TIMESTAMP)
+    : undefined
+  const maxWidth = process.env.GRID_MAX_WIDTH
+    ? Number(process.env.GRID_MAX_WIDTH)
+    : undefined
+
+  const source = new PunksSource(indexer, { startTimestamp })
   const renderer = new PunksRenderer({
-    names: new NameResolver(indexer),
+    names,
     minSpendWei: process.env.MIN_SPEND_WEI
       ? BigInt(process.env.MIN_SPEND_WEI)
       : undefined,
-    maxWidth: process.env.GRID_MAX_WIDTH
-      ? Number(process.env.GRID_MAX_WIDTH)
-      : undefined,
+    maxWidth,
   })
 
   const publisher: Publisher = dryRun
@@ -52,6 +56,16 @@ async function main(): Promise<void> {
       })
 
   await runOnce({ source, renderer, publisher, state })
+
+  // The auction feed runs as a second bot against the same state file, its
+  // cursor kept under its own key.
+  await runOnce({
+    source: new AuctionSource(indexer, { startTimestamp }),
+    renderer: new AuctionRenderer({ names, maxWidth }),
+    publisher,
+    state,
+    cursorKey: 'auction-cursor',
+  })
 }
 
 function required(name: string): string {
