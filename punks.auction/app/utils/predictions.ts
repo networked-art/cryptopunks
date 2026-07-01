@@ -74,6 +74,11 @@ export type PredictionDriver = {
   saleCount?: number
   multiplier?: number
   logPremium?: number
+  // `own_sale` driver: the Punk's own last sale as a floor-multiple + age. The
+  // model decays this by age, so an old one is context/caveat, not the estimate.
+  floorMultiple?: number
+  floorThenEth?: number
+  ageDays?: number
 }
 
 export type PredictionComp = {

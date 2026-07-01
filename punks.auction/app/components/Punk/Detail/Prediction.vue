@@ -34,6 +34,10 @@
         </dl>
 
         <div class="panel-actions">
+          <span
+            class="confidence-chip"
+            :class="`conf-${prediction.confidence}`"
+          >{{ confidenceLabel }}</span>
           <Button
             class="secondary"
             @click="open = true"
@@ -96,6 +100,14 @@
             <dd class="confidence">{{ prediction.confidence }}</dd>
           </div>
         </dl>
+
+        <p
+          v-if="prediction.confidence !== 'high'"
+          class="confidence-note muted"
+        >
+          Based on limited recent trading for this Punk — treat the estimate as a
+          rough guide.
+        </p>
 
         <div
           v-if="driverRows.length"
@@ -161,10 +173,15 @@
 
 <script setup lang="ts">
 import { TokenStandard } from '~/utils/auction'
-import { ethFloatToWei } from '~/utils/predictions'
+import { ethFloatToWei, type PredictionDriver } from '~/utils/predictions'
 
 const { prediction } = usePunkPredictionContext()
 const PREDICTION_USD_ROUND_TO = 1_000n
+
+const confidenceLabel = computed(() => {
+  const level = prediction.value?.confidence
+  return level ? `${level[0]!.toUpperCase()}${level.slice(1)} confidence` : ''
+})
 
 const introStandard = computed(() =>
   prediction.value?.standard === 'v1'
@@ -203,6 +220,11 @@ const driverRows = computed(() =>
   (prediction.value?.drivers ?? [])
     .filter((driver) => driver.kind !== 'sale_probability' && driver.label)
     .map((driver) => {
+      // Own last sale reads as a floor-multiple + age; a raw ETH figure is
+      // meaningless without the floor that stood at the time of that sale.
+      if (driver.kind === 'own_sale') {
+        return { label: driver.label!, valueText: formatOwnSale(driver) }
+      }
       if (typeof driver.eth === 'number') {
         return { label: driver.label!, valueWei: ethFloatToWei(driver.eth) }
       }
@@ -227,13 +249,29 @@ const driverRows = computed(() =>
 )
 
 function formatAgo(timestamp: number): string {
-  const seconds = Math.max(0, Math.floor(Date.now() / 1000) - timestamp)
-  const days = Math.floor(seconds / 86_400)
-  if (days < 1) return 'today'
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
+  return formatAgeDays(Math.floor(Date.now() / 1000 - timestamp) / 86_400)
+}
+
+function formatAgeDays(days: number): string {
+  const whole = Math.max(0, Math.floor(days))
+  if (whole < 1) return 'today'
+  if (whole < 30) return `${whole}d ago`
+  const months = Math.floor(whole / 30)
   if (months < 12) return `${months}mo ago`
-  return `${Math.floor(days / 365)}y ago`
+  return `${Math.floor(whole / 365)}y ago`
+}
+
+// "Own last sale" as a floor-multiple + age, e.g. "~3.6× floor · 6y ago".
+function formatOwnSale(driver: PredictionDriver): string {
+  const parts: string[] = []
+  const multiple = driver.floorMultiple
+  if (typeof multiple === 'number' && Number.isFinite(multiple)) {
+    parts.push(`~${multiple >= 10 ? Math.round(multiple) : multiple.toFixed(1)}× floor`)
+  }
+  if (typeof driver.ageDays === 'number' && Number.isFinite(driver.ageDays)) {
+    parts.push(formatAgeDays(driver.ageDays))
+  }
+  return parts.join(' · ')
 }
 </script>
 
@@ -259,8 +297,32 @@ function formatAgo(timestamp: number): string {
 
 .panel-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
   padding-top: var(--size-3);
   border-top: var(--border);
+}
+
+/* Confidence label on the card — muted when high, drawn out when the estimate
+   leans on thin/old data so it reads as a caveat, not decoration. */
+.confidence-chip {
+  padding: var(--size-1) var(--size-2);
+  border: var(--border);
+  font-size: var(--font-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.conf-low,
+.conf-medium {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.confidence-note {
+  margin: 0;
+  font-size: var(--font-sm);
 }
 
 .block-note {
