@@ -12,6 +12,34 @@ export interface PunkSale {
   source: string
 }
 
+/// One token in an auction lot. The same punk id can appear twice — once as
+/// the V2 token and once as its V1 counterpart — so items carry their standard
+/// instead of being collapsed to ids.
+export interface LotItem {
+  punkId: number
+  v1: boolean
+}
+
+/// A punks.auction lifecycle event: a lot getting listed (`lot_created`), the
+/// first bid making it a live auction (`auction_started`) or a further bid
+/// landing (`bid`). Ids stay strings — they're only used for URLs and lookups.
+/// Which fields are set depends on the type: listings carry `lotId`,
+/// `listingWei` and `onlySellTo`; auction/bid rows carry `auctionId`; only
+/// bids carry `bidder`/`bidWei`.
+export interface AuctionActivity {
+  type: 'lot_created' | 'auction_started' | 'bid'
+  txHash: string
+  auctionId: string | null
+  lotId: string | null
+  seller: Address | null
+  bidder: Address | null
+  bidWei: bigint | null
+  listingWei: bigint | null
+  onlySellTo: string | null
+  usdCents: bigint | null
+  timestamp: number
+}
+
 interface Connection<T> {
   items: T[]
   pageInfo: { hasNextPage: boolean; endCursor: string | null }
@@ -28,6 +56,20 @@ interface SaleRow {
 
 interface PunkRow {
   punk_id: string
+}
+
+interface AuctionRow {
+  type: string
+  tx_hash: string
+  auction_id: string | null
+  lot_id: string | null
+  seller: string | null
+  bidder: string | null
+  bid_wei: string | null
+  listing_wei: string | null
+  only_sell_to: string | null
+  usd_value_cents: string | null
+  timestamp: string
 }
 
 const SALES_QUERY = `
@@ -51,6 +93,57 @@ const SALES_QUERY = `
         hasNextPage
         endCursor
       }
+    }
+  }
+`
+
+const AUCTION_ACTIVITY_QUERY = `
+  query AuctionActivity($where: eventFilter, $limit: Int!, $after: String) {
+    events(
+      where: $where
+      orderBy: "timestamp"
+      orderDirection: "asc"
+      limit: $limit
+      after: $after
+    ) {
+      items {
+        type
+        tx_hash
+        auction_id
+        lot_id
+        seller
+        bidder
+        bid_wei
+        listing_wei
+        only_sell_to
+        usd_value_cents
+        timestamp
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`
+
+const LOT_ITEMS_QUERY = `
+  query LotItems($lotId: BigInt!) {
+    auctionLotItems(
+      where: { lot_id: $lotId }
+      orderBy: "item_index"
+      orderDirection: "asc"
+      limit: 100
+    ) {
+      items { punk_id standard }
+    }
+  }
+`
+
+const AUCTION_LOT_QUERY = `
+  query AuctionLot($auctionId: BigInt!) {
+    auctionAuctions(where: { auction_id: $auctionId }) {
+      items { lot_id }
     }
   }
 `
@@ -133,6 +226,73 @@ export class PunksIndexer {
     }
 
     return sales
+  }
+
+  /// Auction lifecycle events (lot listings, lots going live and bids) with
+  /// `timestamp` strictly greater than `since`, oldest first. Same
+  /// cap-as-backpressure behavior as `salesSince`.
+  async auctionActivitySince(since: number): Promise<AuctionActivity[]> {
+    const where = {
+      type_in: ['lot_created', 'auction_started', 'bid'],
+      source_in: ['punks_auction'],
+      timestamp_gt: String(since),
+    }
+    const activity: AuctionActivity[] = []
+    let after: string | null = null
+
+    while (activity.length < this.maxSalesPerTick) {
+      const result: { events: Connection<AuctionRow> } = await this.request(
+        AUCTION_ACTIVITY_QUERY,
+        { where, limit: SALES_PAGE_SIZE, after },
+      )
+      const events = result.events
+
+      for (const row of events.items) {
+        if (
+          row.type !== 'lot_created' &&
+          row.type !== 'auction_started' &&
+          row.type !== 'bid'
+        ) {
+          continue
+        }
+        activity.push({
+          type: row.type,
+          txHash: row.tx_hash,
+          auctionId: row.auction_id,
+          lotId: row.lot_id,
+          seller: row.seller ? (row.seller.toLowerCase() as Address) : null,
+          bidder: row.bidder ? (row.bidder.toLowerCase() as Address) : null,
+          bidWei: row.bid_wei ? BigInt(row.bid_wei) : null,
+          listingWei: row.listing_wei ? BigInt(row.listing_wei) : null,
+          onlySellTo: row.only_sell_to,
+          usdCents: row.usd_value_cents ? BigInt(row.usd_value_cents) : null,
+          timestamp: Number(row.timestamp),
+        })
+      }
+
+      if (!events.pageInfo.hasNextPage || !events.pageInfo.endCursor) break
+      after = events.pageInfo.endCursor
+    }
+
+    return activity
+  }
+
+  /// The tokens in an auction lot, in the lot's own order.
+  async lotItems(lotId: string): Promise<LotItem[]> {
+    const data: {
+      auctionLotItems: { items: { punk_id: string; standard: string }[] }
+    } = await this.request(LOT_ITEMS_QUERY, { lotId })
+    return data.auctionLotItems.items.map((row) => ({
+      punkId: Number(row.punk_id),
+      v1: row.standard === 'cryptopunks_v1',
+    }))
+  }
+
+  /// The lot behind an auction, or null if the auction is unknown.
+  async auctionLotId(auctionId: string): Promise<string | null> {
+    const data: { auctionAuctions: { items: { lot_id: string }[] } } =
+      await this.request(AUCTION_LOT_QUERY, { auctionId })
+    return data.auctionAuctions.items[0]?.lot_id ?? null
   }
 
   /// Every canonical (V2) punk id held across the given addresses. V1 holdings
