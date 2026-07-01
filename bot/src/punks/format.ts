@@ -1,5 +1,7 @@
 import { formatEther } from 'viem'
 
+export const PUNKS_AUCTION_URL = 'https://punks.auction'
+
 /// An ether amount as `Ξ50`, `Ξ1.23`, `Ξ0.0042` — fewer decimals as the number
 /// grows, trailing zeros trimmed, so tweet copy stays tight.
 export function formatEth(wei: bigint): string {
