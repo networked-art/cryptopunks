@@ -3,6 +3,7 @@
     v-if="to"
     class="offer-item-shell"
     :to="to"
+    v-bind="linkTarget(to)"
     :aria-label="ariaLabel"
   >
     <slot />
@@ -17,6 +18,7 @@
 
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
+import { linkTarget } from '~/utils/links'
 
 defineProps<{
   to?: RouteLocationRaw

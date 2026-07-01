@@ -47,11 +47,11 @@
         </button>
         <NuxtLink
           v-else-if="interactive"
-          :to="`/punks/${cell.id}`"
+          v-bind="cellLink(cell.id)"
           class="cell"
           :class="cellClass(cell.id)"
           :style="cellStyle(cell)"
-          :title="`Punk #${cell.id}`"
+          :title="cellTitle(cell.id)"
         >
           <span
             v-if="cell.priceWei != null"
@@ -80,7 +80,9 @@
 </template>
 
 <script setup lang="ts">
+import { punkLink, TokenStandard } from '~/utils/auction'
 import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
+import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 const props = withDefaults(
   defineProps<{
@@ -100,6 +102,9 @@ const props = withDefaults(
     /// width fits). Unset means unbounded — render every id. Used to pin a
     /// fixed-height strip of cells, e.g. two full rows of suggestions.
     maxRows?: number
+    /// Ids shown as V1 punks (owned on the V1 contract only). V1 punks have
+    /// no pages here, so their cells link out to OpenSea.
+    v1Ids?: readonly number[]
     selectable?: boolean
     selectedIds?: readonly number[]
     excludedIds?: readonly number[]
@@ -253,6 +258,20 @@ const visibleIds = computed(() => {
 watch(visibleIds, (ids) => emit('visible', ids), { immediate: true })
 const selectedSet = computed(() => new Set(props.selectedIds ?? []))
 const excludedSet = computed(() => new Set(props.excludedIds ?? []))
+const v1Set = computed(() => new Set(props.v1Ids ?? []))
+
+function cellLink(id: number) {
+  return punkLink(
+    v1Set.value.has(id)
+      ? TokenStandard.CryptoPunksV1
+      : TokenStandard.CryptoPunks,
+    id,
+  )
+}
+
+function cellTitle(id: number) {
+  return `Punk #${id}${v1Set.value.has(id) ? ' (V1)' : ''}`
+}
 
 function cellStyle(c: { id: number; row: number; col: number }) {
   const spriteRow = Math.floor(c.id / SPRITE_COLS)
@@ -263,9 +282,11 @@ function cellStyle(c: { id: number; row: number; col: number }) {
     left: `${c.col * colStep.value}px`,
     width: `${px}px`,
     height: `${px}px`,
-    backgroundColor: backgroundForPunkState(c.id, undefined, {
-      showWrappedStateColors: props.showWrappedStateColors,
-    }),
+    backgroundColor: v1Set.value.has(c.id)
+      ? PUNK_BACKGROUNDS.v1
+      : backgroundForPunkState(c.id, undefined, {
+          showWrappedStateColors: props.showWrappedStateColors,
+        }),
     backgroundImage: `url('${PUNK_SPRITE_URL}')`,
     backgroundSize: `${SPRITE_COLS * px}px ${SPRITE_COLS * px}px`,
     backgroundPosition: `-${spriteCol * px}px -${spriteRow * px}px`,

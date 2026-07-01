@@ -17,12 +17,6 @@
           </NuxtLink>
           .
         </p>
-        <p
-          v-else-if="!v1ActionsAllowed"
-          class="hint muted"
-        >
-          Enable V1 rendering in settings to use V1 lots.
-        </p>
 
         <div
           v-if="!address"
@@ -56,12 +50,6 @@
             This lot is too large for instant settlement; start an auction from
             the offer instead.
           </p>
-          <p
-            v-else-if="!v1ActionsAllowed"
-            class="hint muted"
-          >
-            Enable V1 rendering in settings to use V1 lots.
-          </p>
 
           <div
             v-if="!address"
@@ -85,7 +73,6 @@
               >
                 <Button
                   :class="['small', { primary: index === 0 }]"
-                  :disabled="!v1ActionsAllowed"
                   @click="actStartAuctionFromOffer(offer)"
                 >
                   Start auction
@@ -93,7 +80,7 @@
                 <Button
                   v-if="isSeller"
                   class="small"
-                  :disabled="!instantEligible || !v1ActionsAllowed"
+                  :disabled="!instantEligible"
                   @click="actAcceptOffer(offer)"
                 >
                   Sell now
@@ -222,7 +209,6 @@ import type { ContractWritePlan } from '@networked-art/punks-sdk'
 import {
   MAX_INSTANT_ITEMS,
   ZERO_ADDRESS,
-  TokenStandard,
   type LotRecord,
   type OfferRecord,
 } from '~/utils/auction'
@@ -244,7 +230,6 @@ const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const config = useConfig()
 const { address } = useConnection()
-const renderV1 = useV1Rendering()
 const { formatWeiAmount } = usePriceDisplayText()
 
 const updateDialogOpen = ref(false)
@@ -264,13 +249,8 @@ const isPrivateLot = computed(
   () => !sameAddress(props.lot.onlySellTo, ZERO_ADDRESS),
 )
 const isSeller = computed(() => sameAddress(address.value, props.lot.seller))
-const lotUsesV1 = computed(() =>
-  props.lot.items.some((item) => item.standard === TokenStandard.CryptoPunksV1),
-)
-const v1ActionsAllowed = computed(() => renderV1.value || !lotUsesV1.value)
 const canOpen = computed(() => {
   if (!address.value) return false
-  if (!v1ActionsAllowed.value) return false
   return !isPrivateLot.value || sameAddress(props.lot.onlySellTo, address.value)
 })
 const instantEligible = computed(
@@ -306,9 +286,7 @@ function actOpenAuction() {
 }
 
 function actAcceptOffer(offer: OfferRecord) {
-  if (!isSeller.value || !instantEligible.value || !v1ActionsAllowed.value) {
-    return
-  }
+  if (!isSeller.value || !instantEligible.value) return
   void settleDialog.value?.start({
     mode: 'accept',
     lot: props.lot,
@@ -317,7 +295,6 @@ function actAcceptOffer(offer: OfferRecord) {
 }
 
 function actStartAuctionFromOffer(offer: OfferRecord) {
-  if (!v1ActionsAllowed.value) return
   void settleDialog.value?.start({
     mode: 'start',
     lot: props.lot,

@@ -80,7 +80,6 @@
 import { useConnection } from '@wagmi/vue'
 import { formatEther, type Address, type Hash } from 'viem'
 import {
-  TokenStandard,
   ZERO_ADDRESS,
   type LotRecord,
   type OfferRecord,
@@ -97,9 +96,10 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 
 const { sdk } = usePunksSdk()
 const { address } = useConnection()
-const renderV1 = useV1Rendering()
 const { matchesItem: slotMatchesItem } = useOfferSlotMatching()
-const inventory = useAccountPunkInventory(() => address.value)
+const inventory = useAccountPunkInventory(() => address.value, {
+  includeV1: true,
+})
 const { formatWeiAmount } = usePriceDisplayText()
 const amountEth = ref('')
 const parsedAmountWei = ref<bigint | null>(null)
@@ -140,23 +140,11 @@ const hasSellerLot = computed(() =>
     (lot) =>
       sameAddress(lot.seller, address.value) &&
       (sameAddress(lot.onlySellTo, ZERO_ADDRESS) ||
-        sameAddress(lot.onlySellTo, props.offer.offerer)) &&
-      (renderV1.value ||
-        !lot.items.some(
-          (item) => item.standard === TokenStandard.CryptoPunksV1,
-        )),
+        sameAddress(lot.onlySellTo, props.offer.offerer)),
   ),
 )
 const canFillOfferFromInventory = computed(() => {
   if (!address.value) return false
-  if (
-    !renderV1.value &&
-    props.offer.slots.some(
-      (slot) => slot.standard === TokenStandard.CryptoPunksV1,
-    )
-  ) {
-    return false
-  }
 
   const reservedKeys = activeLotItemKeys()
   const candidateKeysBySlot = props.offer.slots.map((slot) =>

@@ -107,7 +107,6 @@ import {
 import {
   MAX_INSTANT_ITEMS,
   TOTAL_WEIGHT_BPS,
-  TokenStandard,
   ZERO_ADDRESS,
   equalLotWeights,
   lotMatchesOffer,
@@ -148,11 +147,12 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { address } = useConnection()
 const offline = usePunksOffline()
-const renderV1 = useV1Rendering()
 const { formatWeiAmount } = usePriceDisplayText()
 const { matchesItem: slotMatchesItem, criteriaMatchesPunk } =
   useOfferSlotMatching()
-const inventory = useAccountPunkInventory(() => address.value)
+const inventory = useAccountPunkInventory(() => address.value, {
+  includeV1: true,
+})
 const custodyPlan = usePunkCustodyPlan()
 const router = useRouter()
 const transactionFlow = useTransactionFlowRunner({
@@ -271,24 +271,11 @@ async function start(request: SettleRequest) {
     }
 
     if (request.mode === 'open') {
-      if (!v1AllowedForLot(request.lot)) {
-        showEmpty('Enable V1 rendering in settings to open this auction.')
-        return
-      }
       await runOpenAuction(request.lot)
       return
     }
 
-    if (!v1AllowedForOffer(request.offer)) {
-      showEmpty('Enable V1 rendering in settings to use V1 offers.')
-      return
-    }
-
     if ('lot' in request) {
-      if (!v1AllowedForLot(request.lot)) {
-        showEmpty('Enable V1 rendering in settings to use this lot.')
-        return
-      }
       if (
         request.mode === 'accept' &&
         request.lot.items.length > MAX_INSTANT_ITEMS
@@ -588,7 +575,6 @@ function sellerMatchingLots(
   return props.lots
     .filter((lot) => sameAddress(lot.seller, address.value))
     .filter((lot) => lotCanUseOffer(lot, offerRecord))
-    .filter((lot) => v1AllowedForLot(lot))
     .filter((lot) =>
       nextMode === 'accept' ? lot.items.length <= MAX_INSTANT_ITEMS : true,
     )
@@ -698,22 +684,6 @@ function lotCanUseOffer(lot: LotRecord, offerRecord: OfferRecord) {
     lotMatchesOffer(offerRecord, lot, criteriaMatchesPunk) &&
     (sameAddress(lot.onlySellTo, ZERO_ADDRESS) ||
       sameAddress(lot.onlySellTo, offerRecord.offerer))
-  )
-}
-
-function v1AllowedForLot(lot: LotRecord) {
-  return (
-    renderV1.value ||
-    !lot.items.some((item) => item.standard === TokenStandard.CryptoPunksV1)
-  )
-}
-
-function v1AllowedForOffer(offerRecord: OfferRecord) {
-  return (
-    renderV1.value ||
-    !offerRecord.slots.some(
-      (slot) => slot.standard === TokenStandard.CryptoPunksV1,
-    )
   )
 }
 

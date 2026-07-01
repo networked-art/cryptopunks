@@ -24,7 +24,9 @@ import {
 import {
   PUNKS_AUCTION_ADDRESS,
   PUNKS_AUCTION_START_BLOCK,
+  PUNKS_V1_ADDRESS,
 } from '~/utils/addresses'
+import { linkTarget } from '~/utils/links'
 import { PUNK_BACKGROUNDS } from '~/utils/render'
 
 // ──────────────────────────────── Constants ────────────────────────────────
@@ -55,11 +57,19 @@ export function standardLabel(standard: TokenStandardValue): string {
   return standard === TokenStandard.CryptoPunksV1 ? 'V1' : 'CryptoPunks'
 }
 
-/// Route to the right punk detail page for an item's standard.
+/// Route to a punk's detail page. V1 punks have no pages of their own here —
+/// they link out to their OpenSea item page instead.
 export function punkHref(standard: TokenStandardValue, punkId: number): string {
   return standard === TokenStandard.CryptoPunksV1
-    ? `/punks/v1/${punkId}`
+    ? `https://opensea.io/item/ethereum/${PUNKS_V1_ADDRESS}/${punkId}`
     : `/punks/${punkId}`
+}
+
+/// `punkHref` plus the `target`/`rel` attrs external links need — spread into
+/// a `NuxtLink` with `v-bind`.
+export function punkLink(standard: TokenStandardValue, punkId: number) {
+  const to = punkHref(standard, punkId)
+  return { to, ...linkTarget(to) }
 }
 
 export type LotItem = SdkLotItem

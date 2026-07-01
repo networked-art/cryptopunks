@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
-    v-if="to"
-    :to="to"
+    v-if="linkProps"
+    v-bind="linkProps"
     class="punk-thumb"
     :class="{ fluid }"
     :style="style"
@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import {
   TokenStandard,
-  punkHref,
+  punkLink,
   type TokenStandardValue,
 } from '~/utils/auction'
 import { PUNK_SPRITE_URL } from '~/utils/punkSprites'
@@ -47,8 +47,8 @@ const SPRITE_COLS = 100
 const SPRITE_SPAN = SPRITE_COLS - 1
 const { backgroundForPunkState } = usePunkBackgrounds()
 
-const to = computed(() =>
-  props.link ? punkHref(props.standard, props.punkId) : undefined,
+const linkProps = computed(() =>
+  props.link ? punkLink(props.standard, props.punkId) : undefined,
 )
 
 const title = computed(

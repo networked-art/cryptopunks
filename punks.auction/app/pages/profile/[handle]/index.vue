@@ -26,6 +26,7 @@
         <LazyPunkGrid
           v-else-if="owned.length"
           :ids="owned"
+          :v1-ids="v1OnlyIds"
           :size="48"
         />
         <p
@@ -156,9 +157,18 @@ const profileAddress = computed(() => resolvedAddress.value ?? undefined)
 
 const {
   ids: owned,
+  v1Ids,
+  v2Ids,
   loading: ownedLoading,
   error: ownedError,
 } = useAccountPunks({ account: profileAddress, vault, stash })
+
+// A cell held in both worlds keeps the internal (CryptoPunks) punk page;
+// only punks owned purely as V1 render — and link — as V1.
+const v1OnlyIds = computed(() => {
+  const v2 = new Set(v2Ids.value)
+  return v1Ids.value.filter((id) => !v2.has(id))
+})
 
 const ownedTitle = computed(() => {
   const count = owned.value.length

@@ -12,7 +12,7 @@
         <template #main>
           <NuxtLink
             class="item-link"
-            :to="punkHref(item.standard, item.punkId)"
+            v-bind="punkLink(item.standard, item.punkId)"
           >
             <PunkThumb
               :punk-id="item.punkId"
@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import {
   lotItemBackground,
-  punkHref,
+  punkLink,
   TokenStandard,
   type LotItem,
 } from '~/utils/auction'

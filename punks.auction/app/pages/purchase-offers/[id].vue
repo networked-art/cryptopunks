@@ -8,7 +8,7 @@
       <h1 class="title">
         <NuxtLink
           v-if="exactOfferItem"
-          :to="punkHref(exactOfferItem.standard, exactOfferItem.punkId)"
+          v-bind="punkLink(exactOfferItem.standard, exactOfferItem.punkId)"
         >
           Punk <span class="dim">#</span>{{ exactOfferItem.punkId }}
           <Tag
@@ -32,6 +32,7 @@
             v-if="part.href"
             class="subtitle-link"
             :to="part.href"
+            v-bind="linkTarget(part.href)"
           >
             {{ part.text }}
           </NuxtLink>
@@ -102,10 +103,11 @@ import {
   lotMatchesOffer,
   offerSlotCriteriaToQuery,
   offerSlotMatchingIds,
-  punkHref,
+  punkLink,
   TokenStandard,
   type OfferSlot,
 } from '~/utils/auction'
+import { linkTarget } from '~/utils/links'
 import {
   offerSlotExactItem,
   offerSlotHeading,

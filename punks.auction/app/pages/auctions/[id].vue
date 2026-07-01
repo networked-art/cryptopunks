@@ -8,7 +8,7 @@
       <h1 class="title">
         <NuxtLink
           v-if="singleItem"
-          :to="punkHref(singleItem.standard, singleItem.punkId)"
+          v-bind="punkLink(singleItem.standard, singleItem.punkId)"
         >
           Punk <span class="dim">#</span>{{ singleItem.punkId }}
           <Tag
@@ -151,7 +151,7 @@ import { useIntervalFn } from '@vueuse/core'
 import {
   auctionStatus,
   formatLotItemsLabel,
-  punkHref,
+  punkLink,
   readAuction,
   TokenStandard,
   type AuctionStatus,
