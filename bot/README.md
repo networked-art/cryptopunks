@@ -2,6 +2,9 @@
 
 A Twitter bot that watches CryptoPunks sales and, for each buyer, posts a grid
 of their whole collection with the **newly-acquired punks rendered at 2× scale**.
+It also watches punks.auction and posts every public lot listing, every
+auction opening (the first bid, which takes the lot live) and **every bid** as
+it lands, always linking to the lot.
 
 It's built as a small, generic Twitter-bot framework with the punk grid as the
 first concrete renderer — adding another bot is a matter of writing a new
@@ -21,6 +24,12 @@ Each tick is a one-shot run, re-invoked on an interval by `bin/run-loop`:
 3. **Publisher** — `TwitterPublisher` posts text + image (or `DryRunPublisher`
    prints the text and writes the image to a temp file).
 
+A second pipeline runs the same way for punks.auction lifecycle events:
+`AuctionSource` reads `lot_created`, `auction_started` and `bid` events —
+skipping private (only-sell-to) listings and folding each opening bid into its
+"opened" post — and `AuctionRenderer` captions them over a grid of the lot's
+punks. It shares the state file under its own `auction-cursor` key.
+
 The first ever run just records "now" as the cursor and posts nothing, so a
 fresh deploy reacts to new sales instead of replaying history.
 
@@ -34,11 +43,14 @@ src/
     twitter.ts     #   TwitterPublisher (OAuth 1.0a) + DryRunPublisher
     state.ts       #   StateFile: the single JSON state file
   punks/           # the concrete renderer service
-    indexer.ts     #   PunksIndexer: sales feed + holdings (GraphQL)
+    indexer.ts     #   PunksIndexer: sales/auction feeds + holdings (GraphQL)
     source.ts      #   PunksSource: sales → per-buyer Acquisition subjects
     renderer.ts    #   PunksRenderer: Acquisition → caption + 2×-highlight grid
+    auction-source.ts    # AuctionSource: auction openings + every bid
+    auction-renderer.ts  # AuctionRenderer: auction event → caption + lot grid
+    image.ts       #   punkGrid: offline punk artwork → img-grid PNG
     names.ts       #   NameResolver: ENS (indexer profiles) → label → short addr
-  index.ts         # wires the punk bot together and runs one tick
+  index.ts         # wires both pipelines together and runs one tick each
   preview.ts       # render a grid locally without Twitter
 ```
 
