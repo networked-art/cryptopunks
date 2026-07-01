@@ -20,6 +20,15 @@ PUNK_COUNT = 10_000
 TRAIT_COUNT = 111
 SECONDS_PER_DAY = 86_400
 
+# A prior own sale's floor-multiple is Punk-specific evidence that fades as the
+# market re-rates the Punk: a single years-old trade says little about today's
+# value. We weight the own-sale premium by an exponential recency on the sale's
+# age (this half-life, in days) so a recent sale keeps ~full strength while an
+# old one reverts toward the floor and lets the trait/cohort features carry the
+# value. Recent sales dominate the calibration holdout, so this only reshapes
+# the stale-own-sale tail — out-of-time accuracy (and promotion) are unmoved.
+OWN_PREMIUM_HALF_LIFE_DAYS = 540.0
+
 # Raw per-row columns every feature frame carries; numeric_block turns them into
 # the model matrix. Training rows add `target_eth`; both carry `punk_id`.
 RAW_COLUMNS = [
@@ -166,18 +175,25 @@ def numeric_block(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
   lmed90 = _logfill(med90, df["med365"])
   lmed365 = _logfill(df["med365"], med90)
   # Restate prior own sales through the current anchor; a 2017 nominal price is
-  # only useful as a current signal through its sale-time floor multiple.
+  # only useful as a current signal through its sale-time floor multiple. That
+  # multiple is decayed by the sale's age (OWN_PREMIUM_HALF_LIFE_DAYS): a recent
+  # sale keeps ~full strength, a years-old one collapses toward the anchor so the
+  # trait/cohort features — not one stale trade restated onto today's floor —
+  # carry the value.
   own = df["own_last"].to_numpy(dtype=float)
   ofl = df["own_last_floor"].to_numpy(dtype=float)
   has_prem = (np.isfinite(own) & np.isfinite(ofl) & (own > 0) & (ofl > 0)).astype(float)
-  with np.errstate(divide="ignore", invalid="ignore"):
-    own_premium = np.where(has_prem > 0, np.log(own) - np.log(ofl), 0.0)
-    adjusted_lown = anchor + own_premium
-  raw_lown = _logfill(df["own_last"], floor.where(floor.notna(), med90))
-  lown = np.where((has_prem > 0) & np.isfinite(adjusted_lown), adjusted_lown, raw_lown)
   own_age = df["own_age_days"].to_numpy(dtype=float)
   has_own = np.isfinite(own_age).astype(float)
   own_age = np.where(np.isfinite(own_age), np.minimum(own_age, 3650.0), 3650.0)
+  own_recency = np.where(has_own > 0, np.power(0.5, own_age / OWN_PREMIUM_HALF_LIFE_DAYS), 0.0)
+  with np.errstate(divide="ignore", invalid="ignore"):
+    own_premium = np.where(has_prem > 0, (np.log(own) - np.log(ofl)) * own_recency, 0.0)
+    adjusted_lown = anchor + own_premium
+  raw_lown = _logfill(df["own_last"], floor.where(floor.notna(), med90))
+  # Shrink a floor-less nominal own price toward the anchor by the same recency.
+  raw_lown = np.where(np.isfinite(anchor), anchor + own_recency * (raw_lown - anchor), raw_lown)
+  lown = np.where((has_prem > 0) & np.isfinite(adjusted_lown), adjusted_lown, raw_lown)
   lcohort = _logfill(df["cohort_med"], med90)
   bid = df["best_bid"].to_numpy(dtype=float)
   has_bid = (np.isfinite(bid) & (bid > 0)).astype(float)

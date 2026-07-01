@@ -658,7 +658,52 @@ def test_design_matrix_shape_and_anchor():
   X, anchor = F.design_matrix(df, trait_matrix)
   assert X.shape == (1, 24 + F.TRAIT_COUNT)
   assert abs(float(anchor[0]) - math.log(30.0)) < 1e-6  # anchor = log(floor)
-  assert abs(float(X[0, 4]) - math.log(90.0)) < 1e-6  # own_last restated via floor
+  # own_last restated via its floor multiple, decayed by the sale's age (100d)
+  recency = 0.5 ** (100.0 / F.OWN_PREMIUM_HALF_LIFE_DAYS)
+  expected_lown = math.log(30.0) + (math.log(60.0) - math.log(20.0)) * recency
+  assert abs(float(X[0, 4]) - expected_lown) < 1e-5
+
+
+def test_stale_own_sale_reverts_toward_the_floor_anchor():
+  # Same 3x-floor prior sale, fresh vs 8 years old: the stale one must collapse
+  # toward the floor anchor rather than be restated at full strength onto the
+  # current floor (the 2110-style artifact).
+  trait_matrix = np.zeros((F.PUNK_COUNT, F.TRAIT_COUNT), dtype=np.float32)
+
+  def make_row(age_days: float) -> pd.DataFrame:
+    return pd.DataFrame(
+      [{
+        "punk_id": 0, "floor": 30.0, "best_bid": float("nan"), "active_listings": 5,
+        "med30": 32.0, "med90": 33.0, "med365": 35.0, "cohort_med": 40.0, "cohort_cnt": 3,
+        "cohort_med90": 41.0, "cohort_cnt90": 1,
+        "own_last": 90.0, "own_last_floor": 30.0, "own_age_days": age_days,
+        "own_sale_count": 1, "trait_count": 0, "pixel_count": 220.0,
+        "color_count": 6.0, "rarest_supply": 100,
+      }]
+    )
+
+  x_fresh, anchor = F.design_matrix(make_row(30.0), trait_matrix)
+  x_stale, _ = F.design_matrix(make_row(8 * 365.0), trait_matrix)
+  a = float(anchor[0])
+  # lown (col 4): fresh keeps ~the full log(3) premium; stale nearly gone
+  assert float(x_fresh[0, 4]) - a > 0.9
+  assert float(x_stale[0, 4]) - a < 0.1
+  # own_premium feature (col 17) decays the same way, staying non-negative
+  assert float(x_fresh[0, 17]) > float(x_stale[0, 17]) > 0
+
+
+def test_confidence_reflects_cohort_depth_and_own_sale_recency():
+  from punks_predictor.pipeline import confidence_for
+
+  comps3 = [{}, {}, {}]
+  # active market + comps + a deep trait cohort -> high
+  assert confidence_for(comps3, 25, cohort_count=30) == "high"
+  # a recent own sale earns high even with a thin cohort
+  assert confidence_for(comps3, 25, cohort_count=1, own_age_days=100.0) == "high"
+  # thin cohort and only a years-old own sale -> not high
+  assert confidence_for(comps3, 25, cohort_count=1, own_age_days=2200.0) == "medium"
+  # a quiet market caps confidence regardless of the Punk's own evidence
+  assert confidence_for(comps3, 2, cohort_count=30) == "low"
 
 
 def test_listing_snapshot_labels_24h_sale():

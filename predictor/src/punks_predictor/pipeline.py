@@ -1267,12 +1267,25 @@ def predict_v2(
   )
   prob_24h = horizon_probs["sold24h"]
 
+  # Per-Punk own-sale (raw, un-adjusted) and cohort depth, used to surface the
+  # own-sale basis driver and to gauge confidence from this Punk's evidence.
+  own_last_raw = serving["own_last"].to_numpy(dtype=float) if serving is not None else None
+  own_floor_raw = serving["own_last_floor"].to_numpy(dtype=float) if serving is not None else None
+  own_age_raw = serving["own_age_days"].to_numpy(dtype=float) if serving is not None else None
+  cohort_cnts = serving["cohort_cnt"].to_numpy(dtype=float) if serving is not None else None
+
   out: list[dict[str, Any]] = []
   for idx, rec in enumerate(records):
     punk_id = rec["punk_id"]
     probability = float(prob_24h[idx])
     comps = comps_index.get(punk_id, [])
-    confidence = confidence_for(comps, market.recent_v2_sales_count)
+    own_sale = own_sale_info(punk_id, own_last_raw, own_floor_raw, own_age_raw)
+    confidence = confidence_for(
+      comps,
+      market.recent_v2_sales_count,
+      cohort_count=int(cohort_cnts[punk_id]) if cohort_cnts is not None else 0,
+      own_age_days=float(own_age_raw[punk_id]) if own_age_raw is not None else None,
+    )
     trait_drivers = top_trait_premiums(static["traits_by_punk"][punk_id], trait_premiums)
     drivers = prediction_drivers(
       floor_eth=floor_eth,
@@ -1281,6 +1294,7 @@ def predict_v2(
       trait_drivers=trait_drivers,
       comps=comps,
       reservation=rec["reservation"],
+      own_sale=own_sale,
     )
     if len(horizon_probs) > 1:
       drivers.append(
@@ -1593,6 +1607,35 @@ def top_trait_premiums(
   )[:6]
 
 
+def own_sale_info(
+  punk_id: int,
+  own_last: np.ndarray | None,
+  own_last_floor: np.ndarray | None,
+  own_age_days: np.ndarray | None,
+) -> dict[str, Any] | None:
+  """The Punk's own last sale as a floor-multiple + age, or None when it never
+  sold or the sale-time floor is unknown (a multiple needs both)."""
+  if own_last is None or own_last_floor is None or own_age_days is None:
+    return None
+  eth = float(own_last[punk_id])
+  floor_then = float(own_last_floor[punk_id])
+  age = float(own_age_days[punk_id])
+  if not (
+    np.isfinite(eth)
+    and eth > 0
+    and np.isfinite(floor_then)
+    and floor_then > 0
+    and np.isfinite(age)
+  ):
+    return None
+  return {
+    "eth": eth,
+    "floorThenEth": floor_then,
+    "floorMultiple": eth / floor_then,
+    "ageDays": age,
+  }
+
+
 def prediction_drivers(
   *,
   floor_eth: float | None,
@@ -1601,6 +1644,7 @@ def prediction_drivers(
   trait_drivers: list[dict[str, Any]],
   comps: list[dict[str, Any]],
   reservation: dict[str, Any] | None = None,
+  own_sale: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
   drivers: list[dict[str, Any]] = []
   if reservation:
@@ -1612,6 +1656,21 @@ def prediction_drivers(
         "label": "Current floor",
         "eth": floor_eth,
         "ratioToFair": floor_eth / fair_eth if fair_eth > 0 else None,
+      }
+    )
+  # The Punk's own last sale, quoted as a floor-multiple (its price relative to
+  # the floor that stood then) plus its age — a raw ETH figure is meaningless
+  # without the contemporaneous floor. Surfaces the basis for a Punk priced off
+  # its own history and flags when that history is stale.
+  if own_sale:
+    drivers.append(
+      {
+        "kind": "own_sale",
+        "label": "Own last sale",
+        "eth": own_sale["eth"],
+        "floorThenEth": own_sale["floorThenEth"],
+        "floorMultiple": own_sale["floorMultiple"],
+        "ageDays": own_sale["ageDays"],
       }
     )
   if best_bid_eth:
@@ -2044,10 +2103,23 @@ def sale_probability_heuristic(
   return float(np.clip(probability, 0.05, 0.95))
 
 
-def confidence_for(comps: list[dict[str, Any]], recent_sales_count: int) -> str:
-  if recent_sales_count >= 20 and len(comps) >= 3:
+def confidence_for(
+  comps: list[dict[str, Any]],
+  recent_sales_count: int,
+  *,
+  cohort_count: int = 0,
+  own_age_days: float | None = None,
+) -> str:
+  """Per-Punk confidence in the estimate. High needs an active market AND real
+  evidence for *this* Punk — several comparable sales backed by a populated
+  trait cohort, or a recent own sale. A Punk priced off a thin cohort or a
+  years-old trade reads lower, which the UI surfaces as a caveat."""
+  recent_own = (
+    own_age_days is not None and own_age_days == own_age_days and own_age_days <= 365
+  )
+  if recent_sales_count >= 20 and len(comps) >= 3 and (cohort_count >= 12 or recent_own):
     return "high"
-  if recent_sales_count >= 5 or len(comps) >= 2:
+  if recent_sales_count >= 5 and (len(comps) >= 2 or cohort_count >= 4 or recent_own):
     return "medium"
   return "low"
 
