@@ -1,6 +1,6 @@
 import type { Address } from 'viem'
 import type { Source } from '../core'
-import { PunksIndexer, type PunkSale } from './indexer'
+import { PunksIndexer, type LotItem, type PunkSale } from './indexer'
 
 /// What a single account bought in one tick, plus the collection it now sits
 /// on. The renderer turns this into a grid: every `owned` punk at base scale,
@@ -52,7 +52,7 @@ export class PunksSource implements Source<PunksCursor, Acquisition> {
     const sales = await this.indexer.salesSince(cursor.timestamp)
     if (sales.length === 0) return { subjects: [], cursor }
 
-    const byBuyer = groupByBuyer(sales)
+    const byBuyer = groupByBuyer(await this.dropV1Deliveries(sales))
     const subjects = await Promise.all(
       [...byBuyer].map(([buyer, buyerSales]) =>
         this.buildAcquisition(buyer as Address, buyerSales),
@@ -63,6 +63,43 @@ export class PunksSource implements Source<PunksCursor, Acquisition> {
     // continues from here (the feed is read oldest-first).
     const newest = Math.max(...sales.map((sale) => sale.timestamp))
     return { subjects, cursor: { timestamp: newest } }
+  }
+
+  /// Auction settlements deliver every lot token as its own `sale` row, V1
+  /// tokens included — this bot is canonical-only, so those are dropped. The
+  /// feed doesn't carry the token standard, but deliveries land in lot order,
+  /// so per punk id the rows line up with the lot's items.
+  private async dropV1Deliveries(sales: PunkSale[]): Promise<PunkSale[]> {
+    const byPunk = new Map<string, PunkSale[]>()
+    for (const sale of sales) {
+      if (sale.source !== 'punks_auction' || sale.auctionId === null) continue
+      const key = `${sale.txHash}:${sale.punkId}`
+      const existing = byPunk.get(key)
+      if (existing) existing.push(sale)
+      else byPunk.set(key, [sale])
+    }
+    if (byPunk.size === 0) return sales
+
+    const lots = new Map<string, LotItem[]>()
+    const dropped = new Set<PunkSale>()
+    for (const group of byPunk.values()) {
+      const { auctionId, punkId } = group[0]
+      let items = lots.get(auctionId as string)
+      if (!items) {
+        const lotId = await this.indexer.auctionLotId(auctionId as string)
+        items = lotId ? await this.indexer.lotItems(lotId) : []
+        lots.set(auctionId as string, items)
+      }
+
+      const punkItems = items.filter((item) => item.punkId === punkId)
+      if (!punkItems.some((item) => item.v1)) continue
+      group.sort((a, b) => a.logIndex - b.logIndex)
+      group.forEach((sale, index) => {
+        if (punkItems[index]?.v1) dropped.add(sale)
+      })
+    }
+
+    return sales.filter((sale) => !dropped.has(sale))
   }
 
   private async buildAcquisition(

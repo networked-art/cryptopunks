@@ -10,6 +10,10 @@ export interface PunkSale {
   usdCents: bigint | null
   timestamp: number
   source: string
+  txHash: string
+  logIndex: number
+  /// Set on punks.auction settlement deliveries, null elsewhere.
+  auctionId: string | null
 }
 
 /// One token in an auction lot. The same punk id can appear twice — once as
@@ -52,6 +56,9 @@ interface SaleRow {
   usd_value_cents: string | null
   timestamp: string
   source: string
+  tx_hash: string
+  log_index: string
+  auction_id: string | null
 }
 
 interface PunkRow {
@@ -88,6 +95,9 @@ const SALES_QUERY = `
         usd_value_cents
         timestamp
         source
+        tx_hash
+        log_index
+        auction_id
       }
       pageInfo {
         hasNextPage
@@ -218,6 +228,9 @@ export class PunksIndexer {
           usdCents: row.usd_value_cents ? BigInt(row.usd_value_cents) : null,
           timestamp: Number(row.timestamp),
           source: row.source,
+          txHash: row.tx_hash,
+          logIndex: Number(row.log_index),
+          auctionId: row.auction_id,
         })
       }
 
