@@ -7,7 +7,7 @@ import type { CompiledOfferSlot } from './query'
 export { isPunksFilterEmpty } from './query'
 
 /// Mirrors `PunksAuction`'s bidding constants.
-export const PUNKS_AUCTION_BID_INCREASE_BPS = 1_000n
+export const PUNKS_AUCTION_BID_INCREASE_BPS = 100n
 export const PUNKS_AUCTION_BPS = 10_000n
 export const PUNKS_AUCTION_DURATION_SECONDS = 24 * 60 * 60
 export const PUNKS_AUCTION_BIDDING_GRACE_SECONDS = 15 * 60
