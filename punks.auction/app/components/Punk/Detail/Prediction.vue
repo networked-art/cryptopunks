@@ -101,8 +101,8 @@
           v-if="prediction.confidence !== 'high'"
           class="confidence-note muted"
         >
-          Based on limited recent trading for this Punk — treat the estimate as a
-          rough guide.
+          Based on limited recent trading for this Punk — treat the estimate as
+          a rough guide.
         </p>
 
         <div
@@ -141,7 +141,10 @@
             >
               <NuxtLink
                 class="comp-link"
-                :to="{ path: `/punks/${comp.punkId}`, query: { estimate: 'open' } }"
+                :to="{
+                  path: `/punks/${comp.punkId}`,
+                  query: { estimate: 'open' },
+                }"
               >
                 <PunkThumb
                   :punk-id="comp.punkId"
@@ -257,7 +260,9 @@ function formatOwnSale(driver: PredictionDriver): string {
   const parts: string[] = []
   const multiple = driver.floorMultiple
   if (typeof multiple === 'number' && Number.isFinite(multiple)) {
-    parts.push(`~${multiple >= 10 ? Math.round(multiple) : multiple.toFixed(1)}× floor`)
+    parts.push(
+      `~${multiple >= 10 ? Math.round(multiple) : multiple.toFixed(1)}× floor`,
+    )
   }
   if (typeof driver.ageDays === 'number' && Number.isFinite(driver.ageDays)) {
     parts.push(formatAgeDays(driver.ageDays))
@@ -289,7 +294,7 @@ function formatOwnSale(driver: PredictionDriver): string {
 .panel-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--size-3);
   padding-top: var(--size-3);
   border-top: var(--border);
