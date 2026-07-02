@@ -34,10 +34,6 @@
         </dl>
 
         <div class="panel-actions">
-          <span
-            class="confidence-chip"
-            :class="`conf-${prediction.confidence}`"
-          >{{ confidenceLabel }}</span>
           <Button
             class="secondary"
             @click="open = true"
@@ -178,11 +174,6 @@ import { ethFloatToWei, type PredictionDriver } from '~/utils/predictions'
 const { prediction } = usePunkPredictionContext()
 const PREDICTION_USD_ROUND_TO = 1_000n
 
-const confidenceLabel = computed(() => {
-  const level = prediction.value?.confidence
-  return level ? `${level[0]!.toUpperCase()}${level.slice(1)} confidence` : ''
-})
-
 const introStandard = computed(() =>
   prediction.value?.standard === 'v1'
     ? TokenStandard.CryptoPunksV1
@@ -298,26 +289,10 @@ function formatOwnSale(driver: PredictionDriver): string {
 .panel-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--size-3);
   padding-top: var(--size-3);
   border-top: var(--border);
-}
-
-/* Confidence label on the card — muted when high, drawn out when the estimate
-   leans on thin/old data so it reads as a caveat, not decoration. */
-.confidence-chip {
-  padding: var(--size-1) var(--size-2);
-  border: var(--border);
-  font-size: var(--font-xs);
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-
-.conf-low,
-.conf-medium {
-  color: var(--text);
-  border-color: var(--accent);
 }
 
 .confidence-note {
