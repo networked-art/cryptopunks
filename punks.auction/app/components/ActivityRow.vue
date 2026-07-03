@@ -7,6 +7,7 @@
       <PunkThumb
         v-if="event.punkId !== undefined"
         :punk-id="event.punkId"
+        :standard="punkStandard"
         :size="44"
         :background="eventBackground"
       />
@@ -50,10 +51,10 @@
         />
         <NuxtLink
           v-if="event.punkId !== undefined"
-          :to="`/punks/${event.punkId}`"
+          v-bind="punkLink(punkStandard, event.punkId)"
           class="punk-id"
-          >#{{ event.punkId
-          }}<span v-if="event.wrapped"> (Wrapped)</span></NuxtLink
+          >#{{ event.punkId }}<span v-if="isV1"> (V1)</span
+          ><span v-else-if="event.wrapped"> (Wrapped)</span></NuxtLink
         >
       </div>
       <div class="row-line muted">
@@ -104,6 +105,7 @@
 
 <script setup lang="ts">
 import type { ActivityEvent } from '~/composables/useActivityFeed'
+import { punkLink, TokenStandard } from '~/utils/auction'
 import { txUrl } from '~/utils/explorer'
 import type { ActivityRowMarkKind } from './ActivityRowMark.vue'
 
@@ -111,6 +113,11 @@ const props = defineProps<{
   event: ActivityEvent
   hideThumb?: boolean
 }>()
+
+const isV1 = computed(() => props.event.standard === 'cryptopunks_v1')
+const punkStandard = computed(() =>
+  isV1.value ? TokenStandard.CryptoPunksV1 : TokenStandard.CryptoPunks,
+)
 
 const { backgroundForActivityEvent } = usePunkBackgrounds()
 const eventBackground = computed(() => backgroundForActivityEvent(props.event))

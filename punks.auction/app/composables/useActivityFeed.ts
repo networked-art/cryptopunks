@@ -53,11 +53,17 @@ const WRAPPED_SOURCES = new Set<ActivitySource>([
 
 export type OfferKind = 'collection' | 'specific' | 'selection' | 'trait'
 
+// Which market a row's `punkId` refers to. Only `punks_auction` rows carry it
+// (a lot can hold a Punk and its V1 twin under the same id); for the other
+// sources the `source` already names the market and `standard` is undefined.
+export type ActivityStandard = 'cryptopunks' | 'cryptopunks_v1'
+
 export type ActivityEvent = {
   id: string
   kind: ActivityKind
   source: ActivitySource
   punkId?: number
+  standard?: ActivityStandard
   wrapped?: boolean
   from?: Address
   to?: Address
@@ -78,6 +84,7 @@ type RawEvent = {
   type: ActivityKind
   source: ActivitySource
   punk_id: string | null
+  standard: ActivityStandard | null
   actor: string | null
   from: string | null
   to: string | null
@@ -103,6 +110,7 @@ const EVENT_CONNECTION_FIELDS = `
     type
     source
     punk_id
+    standard
     actor
     from
     to
@@ -181,6 +189,15 @@ export function useActivityFeed(
     if (!punkWhere) return null
 
     const and: Record<string, unknown>[] = [hideZeroListingsWhere()]
+    // Punk-scoped feeds are CryptoPunks pages, but an auction lot can hold
+    // the V1 twin under the same punk id — drop the rows stamped as V1.
+    // Non-auction rows carry a null `standard` and pass through the first
+    // branch; their `source` already splits the markets.
+    if (Object.keys(punkWhere).length) {
+      and.push({
+        OR: [{ standard: null }, { standard_not: 'cryptopunks_v1' }],
+      })
+    }
     const kindWhere = buildKindFilterWhere(toValue(opts.kindFilters))
     const addressWhere = buildAddressWhere(toValue(opts.address))
 
@@ -362,6 +379,7 @@ function mapEvent(row: RawEvent): ActivityEvent {
     kind: row.type,
     source: row.source,
     punkId: row.punk_id != null ? Number(row.punk_id) : undefined,
+    standard: row.standard ?? undefined,
     wrapped: isWrappedEvent(row),
     from: pickFrom(row),
     to: pickTo(row),
