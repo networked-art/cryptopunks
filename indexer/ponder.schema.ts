@@ -364,6 +364,13 @@ export const event = onchainTable(
     source_event: t.text().notNull(),
     type: t.text().notNull(),
     punk_id: t.bigint(),
+    // Which market `punk_id` refers to, ∈ { cryptopunks, cryptopunks_v1 } —
+    // same names as `auction_lot_items.standard`. Only stamped on
+    // `punks_auction` rows: an auction lot can hold a Punk and its V1 twin
+    // under the same id, so `source` alone can't split them there. Rows from
+    // the other sources leave it null — their `source` already names the
+    // market.
+    standard: t.text(),
     actor: t.hex(),
     from: t.hex(),
     to: t.hex(),
@@ -510,6 +517,10 @@ export const auctionOffer = onchainTable(
     // For single-slot offers where the slot targets exactly one Punk, this
     // holds that Punk id so cancel/adjust rows can resurface the same thumb.
     specific_punk_id: t.bigint(),
+    // Slot standard, ∈ { cryptopunks, cryptopunks_v1 }, stored for single-slot
+    // offers (the only shape `acceptOffer` can fill directly) so accept /
+    // cancel / adjust activity rows can carry it. Null for multi-slot offers.
+    standard: t.text(),
     active: t.boolean().notNull(),
     tx_hash: t.hex().notNull(),
     block_number: t.bigint().notNull(),

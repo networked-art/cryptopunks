@@ -328,6 +328,7 @@ ponder.on('PunksAuction:AuctionItemDelivered', async ({ event, context }) => {
     source_event: 'AuctionItemDelivered',
     type: 'sale',
     punk_id: BigInt(event.args.punkId),
+    standard: standardName(event.args.standard),
     actor: recipient,
     buyer: recipient,
     seller: auction?.seller ?? null,
@@ -450,11 +451,15 @@ ponder.on('PunksAuction:OfferSlotDetail', async ({ event, context }) => {
     existing.slot_count === 1 && slotKind === 'specific'
       ? BigInt(event.args.includeIds[0]!)
       : null
+  const slotStandard =
+    existing.slot_count === 1 ? standardName(event.args.standard) : null
 
   const offerPatch: Partial<typeof auctionOffer.$inferInsert> = {}
   if (combinedKind !== existing.kind) offerPatch.kind = combinedKind
   if (specificPunkId !== null && existing.specific_punk_id !== specificPunkId)
     offerPatch.specific_punk_id = specificPunkId
+  if (slotStandard !== null && existing.standard !== slotStandard)
+    offerPatch.standard = slotStandard
   if (Object.keys(offerPatch).length) {
     await context.db
       .update(auctionOffer, { offer_id: event.args.offerId })
@@ -468,7 +473,10 @@ ponder.on('PunksAuction:OfferSlotDetail', async ({ event, context }) => {
   const activityPatch: Partial<typeof activityEvent.$inferInsert> = {
     offer_kind: combinedKind,
   }
-  if (specificPunkId !== null) activityPatch.punk_id = specificPunkId
+  if (specificPunkId !== null) {
+    activityPatch.punk_id = specificPunkId
+    activityPatch.standard = slotStandard
+  }
   await context.db
     .update(activityEvent, { id: placedEventId })
     .set(activityPatch)
@@ -498,6 +506,7 @@ ponder.on('PunksAuction:OfferCancelled', async ({ event, context }) => {
     offer_id: event.args.offerId,
     offer_kind: existing?.kind ?? null,
     punk_id: existing?.specific_punk_id ?? null,
+    standard: existing?.standard ?? null,
     ...meta,
   })
 })
@@ -531,6 +540,7 @@ ponder.on('PunksAuction:OfferAmountAdjusted', async ({ event, context }) => {
     offer_id: event.args.offerId,
     offer_kind: existing?.kind ?? null,
     punk_id: existing?.specific_punk_id ?? null,
+    standard: existing?.standard ?? null,
     ...meta,
   })
 })
@@ -547,6 +557,11 @@ ponder.on('PunksAuction:OfferAccepted', async ({ event, context }) => {
     event.block.timestamp,
   )
 
+  // `acceptOffer` only works on single-slot offers, so the stored slot
+  // standard says which market the accepted punk id belongs to.
+  const existing = await context.db.find(auctionOffer, {
+    offer_id: event.args.offerId,
+  })
   await context.db
     .update(auctionOffer, { offer_id: event.args.offerId })
     .set({ active: false, updated_at: event.block.timestamp })
@@ -557,6 +572,7 @@ ponder.on('PunksAuction:OfferAccepted', async ({ event, context }) => {
     source_event: 'OfferAccepted',
     type: 'sale',
     punk_id: event.args.punkId,
+    standard: existing?.standard ?? null,
     actor: event.transaction.from,
     buyer: offerer,
     seller,
@@ -612,6 +628,7 @@ ponder.on('PunksAuction:OfferAcceptedFromLot', async ({ event, context }) => {
       source_event: 'OfferAcceptedFromLot',
       type: 'sale',
       punk_id: item.punk_id,
+      standard: item.standard,
       actor: event.transaction.from,
       buyer: offerer,
       seller,

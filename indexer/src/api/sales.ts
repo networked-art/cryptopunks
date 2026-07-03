@@ -28,6 +28,7 @@ app.get('/', async (c) => {
     source: row.source,
     type: row.type,
     punk_id: row.punk_id?.toString() ?? null,
+    standard: row.standard,
     buyer: row.buyer,
     seller: row.seller,
     wei_amount: row.wei_amount?.toString() ?? null,
