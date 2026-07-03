@@ -76,7 +76,6 @@
 
 <script setup lang="ts">
 import {
-  auctionStatus,
   formatLotItemsLabel,
   lotMatchesOffer,
   punkLink,
@@ -91,9 +90,9 @@ const validId = computed(() => Number.isInteger(id.value) && id.value >= 1)
 const readClient = useReadClient()
 
 if (validId.value) {
-  const activeAuction = await activeAuctionForLot(id.value)
-  if (activeAuction) {
-    await navigateTo(`/auctions/${activeAuction.id}`, { redirectCode: 302 })
+  const auction = await auctionForLot(id.value)
+  if (auction) {
+    await navigateTo(`/auctions/${auction.id}`, { redirectCode: 302 })
   }
 }
 
@@ -122,7 +121,7 @@ const matchingOffers = computed(() => {
 watch(
   sourceAuction,
   (auction) => {
-    if (auction && auctionStatus(auction) === 'live') {
+    if (auction) {
       void navigateTo(`/auctions/${auction.id}`, { redirectCode: 302 })
     }
   },
@@ -134,12 +133,11 @@ function onChanged() {
   void refreshOffers()
 }
 
-async function activeAuctionForLot(lotId: number) {
+async function auctionForLot(lotId: number) {
   const c = readClient.value
   if (!c) return null
   try {
-    const auction = await readAuctionForLot(c, lotId)
-    return auction && auctionStatus(auction) === 'live' ? auction : null
+    return await readAuctionForLot(c, lotId)
   } catch {
     return null
   }
