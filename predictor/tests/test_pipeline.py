@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from punks_predictor.pipeline import (
   PUNK_COUNT,
@@ -92,7 +93,7 @@ def test_ordered_three_sorts_quantiles():
   assert ordered_three(10.0, 5.0, 7.0) == (5.0, 7.0, 10.0)
 
 
-def test_v1_v2_multiplier_shrinks_sparse_data_toward_one():
+def test_v1_v2_multiplier_sparse_data_stays_at_floor_ratio():
   multiplier = v1_v2_multiplier(
     v2_floor_eth=100.0,
     v1_floor_eth=50.0,
@@ -101,7 +102,28 @@ def test_v1_v2_multiplier_shrinks_sparse_data_toward_one():
     recent_v2_eth=np.array([], dtype=float),
     recent_v1_eth=np.array([], dtype=float),
   )
-  assert 0.9 < multiplier < 1.0
+  assert multiplier == pytest.approx(0.5)
+
+
+def test_v1_v2_multiplier_stable_when_recent_v1_sales_roll_off():
+  # 2026-07-04 prod regression: the V1 sale count inside the 30d window
+  # dropped from 3 to 1 and the parity-anchored shrinkage tripled the
+  # multiplier (0.085 -> 0.284) overnight.
+  common = {
+    "v2_floor_eth": 32.44,
+    "v1_floor_eth": 3.79,
+    "v2_bid_eth": 45.0,
+    "v1_bid_eth": 3.5,
+    "recent_v2_eth": np.array([31.0, 32.0, 33.0] * 40, dtype=float),
+    "v1_listed_count": 9,
+  }
+  liquid = v1_v2_multiplier(
+    recent_v1_eth=np.array([2.7, 2.8, 2.9], dtype=float), **common
+  )
+  thin = v1_v2_multiplier(recent_v1_eth=np.array([2.8], dtype=float), **common)
+  assert 0.08 < liquid < 0.13
+  assert 0.08 < thin < 0.13
+  assert abs(thin - liquid) < 0.02
 
 
 def test_v1_v2_multiplier_uses_credible_v1_market_evidence():

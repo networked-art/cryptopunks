@@ -810,9 +810,12 @@ def v1_v2_multiplier(
   recent_v1_eth: np.ndarray,
   v1_listed_count: int = 0,
 ) -> float:
-  ratios: list[tuple[float, float]] = []
+  floor_ratio: float | None = None
   if v1_floor_eth and v2_floor_eth:
-    ratios.append((v1_floor_eth / v2_floor_eth, 0.55))
+    floor_ratio = v1_floor_eth / v2_floor_eth
+  ratios: list[tuple[float, float]] = []
+  if floor_ratio is not None:
+    ratios.append((floor_ratio, 0.55))
   if v1_bid_eth and v2_bid_eth:
     ratios.append((v1_bid_eth / v2_bid_eth, 0.25))
   if len(recent_v1_eth) >= 2 and len(recent_v2_eth) >= 2:
@@ -825,7 +828,10 @@ def v1_v2_multiplier(
   )
   evidence_count = len(recent_v1_eth) + len(ratios) * 3 + min(v1_listed_count, 10)
   liquidity = min(1.0, evidence_count / 20.0)
-  shrunk = 1.0 + liquidity * (raw - 1.0)
+  # Sparse evidence must not drag the ratio toward V2 parity; anchor on the
+  # live floor ratio and only let bid/sale evidence move it as depth grows.
+  prior = floor_ratio if floor_ratio is not None else raw
+  shrunk = prior + liquidity * (raw - prior)
   return float(np.clip(shrunk, 0.05, 2.5))
 
 
