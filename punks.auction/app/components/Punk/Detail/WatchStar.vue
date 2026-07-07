@@ -164,7 +164,7 @@ watch(
 )
 
 // Mirror the dialog in the URL so an open watch dialog is linkable, matching the
-// broker-contact dialog's behaviour.
+// inquire dialog's behaviour.
 const open = ref(route.query.watch === 'open')
 
 watch(open, (isOpen) => {

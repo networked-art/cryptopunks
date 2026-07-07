@@ -1,14 +1,34 @@
 <template>
-  <div class="broker-contact">
-    <Button @click="open = true">Contact broker</Button>
+  <div class="inquire">
+    <Button
+      class="icon-button"
+      @click="open = true"
+    >
+      <Icon name="lucide:message-circle" />
+      <span>Inquire</span>
+    </Button>
 
     <Dialog
       v-model:open="open"
-      title="Contact broker"
-      class="broker-dialog"
+      title="Inquire about this punk"
+      class="inquire-dialog"
       compat
       @closed="reset"
     >
+      <a
+        class="canon-credit"
+        href="https://canonart.co/"
+        target="_blank"
+        rel="noopener"
+      >
+        <span class="muted">Brokerage by</span>
+        <img
+          class="canon-logo"
+          src="https://cdn.punks.auction/canon.svg"
+          alt="Canon"
+        />
+      </a>
+
       <div class="dialog-intro">
         <PunkThumb
           class="intro-thumb"
@@ -29,14 +49,7 @@
 
       <template v-if="!submitted">
         <p
-          v-if="usesConnectedAccount"
-          class="form-note muted"
-        >
-          A broker may reach out to discuss placing a bid or arranging a private
-          sale.
-        </p>
-        <p
-          v-else-if="accountChecking"
+          v-if="accountChecking"
           class="form-note muted"
         >
           Checking your networked.art account…
@@ -45,13 +58,13 @@
           v-else
           class="form-note muted"
         >
-          Leave your email and a broker may reach out to discuss placing a bid
-          or arranging a private sale. We'll email a link to confirm it first —
-          submitting doesn't guarantee a response or a placement.
+          This Punk isn't listed for sale, but Canon can help you reach the
+          owner or find a similar one. Leave your details below and we'll follow
+          up by email or Twitter.
         </p>
 
         <form
-          class="broker-form"
+          class="inquire-form"
           @submit.prevent="submit"
         >
           <label
@@ -69,13 +82,23 @@
             />
           </label>
           <label class="field">
+            <span class="label">Twitter (optional)</span>
+            <input
+              v-model.trim="twitter"
+              type="text"
+              name="twitter"
+              autocomplete="off"
+              placeholder="@handle"
+            />
+          </label>
+          <label class="field">
             <span class="label">Note (optional)</span>
             <textarea
               v-model.trim="note"
               name="note"
               rows="3"
               maxlength="1000"
-              placeholder="What are you looking to do — place a bid, arrange a private sale?"
+              placeholder="What are you looking to do — reach the owner, find a similar Punk?"
             />
           </label>
           <p
@@ -92,13 +115,12 @@
         class="form-note"
       >
         <template v-if="submittedWithAccount">
-          Your request is in. A broker may reach out through your connected
-          networked.art account if there's a match.
+          Your inquiry is in. Canon will follow up by email or Twitter.
         </template>
         <template v-else>
           Check your inbox! We sent a confirmation link to
           <strong>{{ email }}</strong
-          >. Confirm it and a broker may reach out if there's a match.
+          >. Confirm it and Canon will follow up.
         </template>
       </p>
 
@@ -149,25 +171,25 @@ onMounted(() => {
   if (!na.ready.value && !na.pending.value) void na.refresh()
 })
 
-// Mirror the contact modal in the URL so an open dialog is linkable. The query
+// Mirror the inquiry modal in the URL so an open dialog is linkable. The query
 // is the source of truth on load; opening or closing writes it back.
-const open = ref(route.query.broker === 'open')
+const open = ref(route.query.inquire === 'open')
 
 watch(open, (isOpen) => {
-  if ((route.query.broker === 'open') === isOpen) return
-  const { broker: _omit, ...rest } = route.query
-  router.replace({ query: isOpen ? { ...rest, broker: 'open' } : rest })
+  if ((route.query.inquire === 'open') === isOpen) return
+  const { inquire: _omit, ...rest } = route.query
+  router.replace({ query: isOpen ? { ...rest, inquire: 'open' } : rest })
 })
 
 watch(
-  () => route.query.broker,
+  () => route.query.inquire,
   (value) => {
     open.value = value === 'open'
   },
 )
 
-// Owner's wallet last-active, sourced from the indexer's tx-from tracking, so a
-// broker can gauge how reachable the holder is. Held back until the dialog is
+// Owner's wallet last-active, sourced from the indexer's tx-from tracking, so
+// Canon can gauge how reachable the holder is. Held back until the dialog is
 // open so merely viewing a Punk detail page doesn't trigger the lookup — the
 // stats only surface inside the dialog. Custody set covers vault/stash; the EOA
 // drives the last-active lookup.
@@ -191,6 +213,7 @@ const ownerLastActiveIso = computed(() =>
 const ownerLastActiveAgo = useTimeAgo(ownerLastActiveIso)
 
 const email = ref('')
+const twitter = ref('')
 const note = ref('')
 const error = ref<string | null>(null)
 const pending = ref(false)
@@ -204,11 +227,23 @@ const needsEmail = computed(
 const submitLabel = computed(() => {
   if (pending.value) return 'Sending…'
   if (accountChecking.value) return 'Checking…'
-  return 'Request contact'
+  return 'Send inquiry'
 })
 
 // Loose RFC-pragmatic check — good enough to catch typos before handoff.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// The API stores the bare X username; strip @-prefixes and profile URLs so a
+// pasted link still validates.
+function normalizedTwitter() {
+  const handle = twitter.value
+    .replace(/^(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\//i, '')
+    .replace(/^@/, '')
+    .split(/[/?#]/, 1)[0]!
+  if (!handle) return null
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return false
+  return handle
+}
 
 async function submit() {
   if (pending.value) return
@@ -218,6 +253,11 @@ async function submit() {
 
   if (!useAccount && !EMAIL_RE.test(email.value)) {
     error.value = 'Enter a valid email address.'
+    return
+  }
+  const userTwitter = normalizedTwitter()
+  if (userTwitter === false) {
+    error.value = 'Enter a valid Twitter handle.'
     return
   }
   error.value = null
@@ -233,10 +273,12 @@ async function submit() {
       ...(!useAccount ? { email: email.value } : {}),
       source: 'punks_auctions',
       user_address: address.value ?? null,
+      user_twitter: userTwitter,
       redirect_url: redirectUrl,
       user_note: note.value || null,
       scope: {
-        // Market (and so this form) only renders for canonical CryptoPunks.
+        // The header (and so this form) only offers inquiries for canonical
+        // CryptoPunks.
         contract_address: CRYPTOPUNKS_ADDRESS,
         token_id: String(props.punkId),
         search: null,
@@ -258,6 +300,7 @@ async function submit() {
 
 function reset() {
   email.value = ''
+  twitter.value = ''
   note.value = ''
   error.value = null
   pending.value = false
@@ -267,7 +310,7 @@ function reset() {
 </script>
 
 <style scoped>
-.broker-contact {
+.inquire {
   display: contents;
 }
 
@@ -305,7 +348,7 @@ function reset() {
   line-height: 1.6;
 }
 
-.broker-form {
+.inquire-form {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);
@@ -338,7 +381,27 @@ function reset() {
   color: var(--accent);
 }
 
-.broker-dialog :deep(section) {
+.canon-credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-2);
+  border: 0;
+  font-size: var(--font-xs);
+  width: fit-content;
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--size-3) var(--size-4) var(--size-6);
+  border-bottom: var(--border);
+}
+
+.canon-logo {
+  height: 0.75rem;
+  width: auto;
+  display: block;
+}
+
+.inquire-dialog :deep(section) {
   display: flex;
   flex-direction: column;
   gap: var(--size-3);

@@ -10,12 +10,12 @@
       />
 
       <div class="confirm-text">
-        <h1>Request confirmed</h1>
+        <h1>Inquiry confirmed</h1>
         <p class="muted">
-          Thanks for confirming your email. A broker may reach out about
+          Thanks for confirming your email. Canon will follow up about
           <template v-if="punkId !== null">Punk #{{ punkId }}</template>
-          <template v-else>your request</template>
-          if there's a match. A response isn't guaranteed.
+          <template v-else>your inquiry</template>
+          by email or Twitter.
         </p>
       </div>
 
@@ -51,9 +51,9 @@ const punkId = computed(() => {
 })
 
 useSeoMeta({
-  title: 'Request confirmed · Punks Auction',
-  ogTitle: 'Request confirmed · Punks Auction',
-  twitterTitle: 'Request confirmed · Punks Auction',
+  title: 'Inquiry confirmed · Punks Auction',
+  ogTitle: 'Inquiry confirmed · Punks Auction',
+  twitterTitle: 'Inquiry confirmed · Punks Auction',
   robots: 'noindex',
 })
 </script>

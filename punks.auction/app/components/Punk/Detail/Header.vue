@@ -10,10 +10,18 @@
           >V1</Tag
         >
       </h1>
-      <PunkDetailWatchStar
-        v-if="watchEnabled"
-        :punk-id="punkId"
-      />
+      <div
+        v-if="apiEnabled"
+        class="title-actions"
+      >
+        <ClientOnly>
+          <LazyPunkDetailInquire
+            v-if="!isV1"
+            :punk-id="punkId"
+          />
+        </ClientOnly>
+        <PunkDetailWatchStar :punk-id="punkId" />
+      </div>
     </div>
   </header>
 </template>
@@ -26,8 +34,9 @@ defineProps<{
   isV1: boolean
 }>()
 
-// The watch star rides on the networked.art API; hide it unless that's wired up.
-const watchEnabled = isApiConfigured()
+// Watch and Inquire ride on the networked.art API; hide them unless that's
+// wired up.
+const apiEnabled = isApiConfigured()
 </script>
 
 <style scoped>
@@ -41,7 +50,14 @@ const watchEnabled = isApiConfigured()
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--size-3);
+}
+
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
 }
 
 .title {

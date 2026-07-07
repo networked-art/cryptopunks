@@ -134,11 +134,6 @@
                 </Button>
               </div>
             </div>
-
-            <LazyPunkDetailMarketBrokerContact
-              v-if="brokerEnabled"
-              :punk-id="punkId"
-            />
           </template>
         </div>
       </div>
@@ -158,7 +153,6 @@
 import { ZERO_ADDRESS, type ContractWritePlan } from '@networked-art/punks-sdk'
 import { useConnection } from '@wagmi/vue'
 import type { Address, Hash, TransactionReceipt } from 'viem'
-import { isApiConfigured } from '~/utils/api'
 import { transactionTitleForPlan } from '~/utils/transactionFlowText'
 
 const props = defineProps<{
@@ -169,8 +163,6 @@ const emit = defineEmits<{ changed: [tx: Hash] }>()
 const { sdk } = usePunksSdk()
 const { execute } = useWritePlan()
 const { address } = useConnection()
-// Broker contact rides on the networked.art API; hide it unless that's wired up.
-const brokerEnabled = isApiConfigured()
 const detail = usePunkDetailDataContext()
 const {
   owner: resolvedOwner,
