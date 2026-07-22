@@ -148,8 +148,10 @@ set -a && . ./.env.production && set +a && kamal deploy
 
 Copy `.env.local.example` to `.env.local` and set:
 
-- `PONDER_RPC_URLS_1`: one or more mainnet HTTP RPC URLs separated by spaces.
-- `PONDER_RPC_FALLBACK_URLS_1`: optional fallback HTTP RPC URLs.
+- `PONDER_RPC_URLS_1`: one or more mainnet HTTP RPC URLs separated by spaces,
+  tried in order. Later URLs are used only when an earlier transport fails.
+- `PONDER_RPC_FALLBACK_URLS_1`: optional HTTP RPC URLs tried in order after the
+  primary group fails.
 - `PONDER_WS_URL_1`: optional mainnet WebSocket RPC URL.
 - `DATABASE_URL`: Postgres URL for ENS profile cache and Ponder.
 

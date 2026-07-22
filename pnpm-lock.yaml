@@ -99,9 +99,6 @@ importers:
       '@networked-art/punks-sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@ponder/utils':
-        specifier: ^0.2.18
-        version: 0.2.18(typescript@5.8.3)(viem@2.48.4(typescript@5.8.3)(zod@3.25.76))
       abitype:
         specifier: ^0.10.2
         version: 0.10.3(typescript@5.8.3)(zod@3.25.76)

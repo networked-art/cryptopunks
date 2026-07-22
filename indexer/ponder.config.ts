@@ -1,4 +1,3 @@
-import { loadBalance } from '@ponder/utils'
 import { createConfig } from 'ponder'
 import { fallback, http } from 'viem'
 
@@ -38,14 +37,23 @@ const fallbackRpcUrls = (process.env.PONDER_RPC_FALLBACK_URLS_1 ?? '')
   .filter(Boolean)
 const wsUrl = process.env.PONDER_WS_URL_1 || undefined
 
-const primaryTransport = loadBalance(
-  rpcUrls.map((url) => http(url, { timeout: 60_000 })),
-)
+if (rpcUrls.length === 0) {
+  throw new Error('Set PONDER_RPC_URLS_1 to at least one mainnet HTTP RPC URL')
+}
+
+const primaryTransports = rpcUrls.map((url) => http(url, { timeout: 60_000 }))
+const primaryTransport =
+  primaryTransports.length === 1
+    ? primaryTransports[0]!
+    : fallback(primaryTransports, { rank: false })
 const rpcTransport = fallbackRpcUrls.length
-  ? fallback([
-      primaryTransport,
-      ...fallbackRpcUrls.map((url) => http(url, { timeout: 60_000 })),
-    ])
+  ? fallback(
+      [
+        primaryTransport,
+        ...fallbackRpcUrls.map((url) => http(url, { timeout: 60_000 })),
+      ],
+      { rank: false },
+    )
   : primaryTransport
 
 export default createConfig({
