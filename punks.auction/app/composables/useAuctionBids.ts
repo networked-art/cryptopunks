@@ -1,5 +1,6 @@
 import { parseAbiItem, type Address, type Hex, type PublicClient } from 'viem'
 import type { ActivityEvent } from '~/composables/useActivityFeed'
+import { queryIndexer } from '~/utils/indexer'
 import {
   PUNKS_AUCTION_ADDRESS,
   PUNKS_AUCTION_START_BLOCK,
@@ -51,11 +52,31 @@ async function readAuctionBids(
     .reverse()
 }
 
-/**
- * Bid log history for a single `PunksAuction` auction, newest first.
- * Sourced from on-chain `Bid` events — the indexer doesn't cover
- * `PunksAuction` yet.
- */
+async function loadBidUsd(bids: ActivityEvent[]) {
+  for (let offset = 0; offset < bids.length; offset += 1000) {
+    const batch = bids.slice(offset, offset + 1000)
+    const ids = batch.map((bid) => `${bid.blockNumber}-${bid.logIndex}`)
+    const data = await queryIndexer<{
+      events: { items: { id: string; usd_value_cents: string | null }[] }
+    }>(
+      `query BidUsd($ids: [String!]!) {
+        events(where: { id_in: $ids }, limit: 1000) {
+          items { id usd_value_cents }
+        }
+      }`,
+      { ids },
+    )
+    const prices = new Map(
+      data.events.items.map((event) => [event.id, event.usd_value_cents]),
+    )
+    for (const bid of batch) {
+      const cents = prices.get(`${bid.blockNumber}-${bid.logIndex}`)
+      if (cents != null) bid.usdValueCents = BigInt(cents)
+    }
+  }
+}
+
+/** Bid log history for a single `PunksAuction` auction, newest first. */
 export function useAuctionBids(
   id: MaybeRefOrGetter<bigint | number | undefined>,
 ) {
@@ -84,6 +105,7 @@ export function useAuctionBids(
     error.value = null
     try {
       bids.value = await readAuctionBids(c, auctionId)
+      void loadBidUsd(bids.value).catch(() => undefined)
     } catch (e) {
       error.value = (e as Error).message
       bids.value = []
