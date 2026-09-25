@@ -25,6 +25,8 @@
       <EthAmount
         class="summary-amount"
         :wei="wei"
+        :historical="historical"
+        :historical-usd-cents="historicalUsdCents"
       />
     </div>
   </div>
@@ -36,6 +38,8 @@ defineProps<{
   detail?: string
   liveIndicator?: boolean
   wei: bigint | number | string
+  historical?: boolean
+  historicalUsdCents?: bigint | number | string | null
 }>()
 </script>
 
