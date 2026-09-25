@@ -50,6 +50,7 @@
             <LazyAuctionCard
               v-if="entry.kind === 'auction'"
               :auction="entry.auction"
+              :historical-usd-cents="auctionUsd(entry.auction)"
             />
             <LazyLotCard
               v-else
@@ -223,6 +224,7 @@ const myAuctions = computed(() => {
     addrs.has(auction.seller.toLowerCase()),
   )
 })
+const auctionUsd = useAuctionUsd(myAuctions)
 
 const myActiveAuctions = computed(() =>
   myAuctions.value

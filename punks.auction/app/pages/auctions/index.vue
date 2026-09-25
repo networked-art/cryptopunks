@@ -48,6 +48,7 @@
             <LazyAuctionCard
               v-if="entry.kind === 'auction'"
               :auction="entry.auction"
+              :historical-usd-cents="auctionUsd(entry.auction)"
               lift
             />
             <LazyLotCard
@@ -88,6 +89,7 @@ const {
   error: auctionsError,
   refresh: refreshAuctions,
 } = useAuctions()
+const auctionUsd = useAuctionUsd(auctions)
 const {
   lots,
   pending: lotsPending,
