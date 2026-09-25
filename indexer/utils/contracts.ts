@@ -58,8 +58,10 @@ export const STASH_FACTORY_ADDRESS =
   '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
 export const STASH_FACTORY_START_BLOCK = 19_029_676
 
-// Use the maintained ETH/USD proxy so aggregator upgrades keep working.
-// The previous underlying aggregator stopped updating in May 2023.
+// Use the maintained ETH/USD proxy for latestRoundData at the event's block.
+// The underlying aggregator was originally used for AnswerUpdated logs;
+// those are no longer indexed, and it stopped updating in May 2023.
+// The proxy also supports getRoundData with phase-encoded round IDs.
 // Preserve the existing historical read boundary; earlier prices use the CSV.
 export const CHAINLINK_ETH_USD_AGGREGATOR =
   '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' as const
