@@ -57,7 +57,15 @@
       <div class="fact">
         <dt>{{ status === 'live' ? 'Current Bid' : 'Winning Bid' }}</dt>
         <dd>
-          <EthAmount :wei="auction.latestBidWei" />
+          <EthAmount
+            :wei="auction.latestBidWei"
+            :historical="status !== 'live'"
+            :historical-usd-cents="
+              bids[0]?.amountWei === auction.latestBidWei
+                ? bids[0]?.usdValueCents
+                : undefined
+            "
+          />
         </dd>
       </div>
 
