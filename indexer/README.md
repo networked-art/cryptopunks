@@ -73,14 +73,13 @@ Two layered sources fill the cache:
 
 2. **Chainlink ETH/USD live fill** (`source = 'chainlink'`). When a sale
    handler finds no cache row for the event's UTC day, it calls
-   `context.client.readContract` on Chainlink's onchain aggregator
-   (`0x37bC7498f4FF12C19678ee8fE19d713b87F6a9e6`) with `blockNumber:
+   `context.client.readContract` on Chainlink's maintained ETH/USD proxy
+   (`0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419`) with `blockNumber:
 event.block.number` to get the latest round at that historical block,
    inserts it into `eth_usd_prices`, and stamps the event. Subsequent
-   events on the same day hit the cache. Chainlink wasn't deployed before
-   mid-2021, so for blocks earlier than that the call reverts and the
-   event's `usd_value_cents` stays null — the CSV seed should cover any
-   real pre-2021 event.
+   events on the same day hit the cache. The existing historical read
+   boundary remains block `12382429`; earlier events without a CSV price
+   keep a null `usd_value_cents`.
 
 Stamp pseudocode (`src/prices.ts`):
 

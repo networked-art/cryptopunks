@@ -58,13 +58,11 @@ export const STASH_FACTORY_ADDRESS =
   '0x000000000000A6fA31F5fC51c1640aAc76866750' as const
 export const STASH_FACTORY_START_BLOCK = 19_029_676
 
-// Chainlink ETH/USD aggregator (OCR). Not indexed via Ponder — we read it
-// from API-context code with Viem and write the result into the offchain
-// `eth_usd_prices` table for persistence across redeploys. The consumer-
-// facing proxy at 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 does not expose
-// round-by-round reads; the aggregator below does.
+// Use the maintained ETH/USD proxy so aggregator upgrades keep working.
+// The previous underlying aggregator stopped updating in May 2023.
+// Preserve the existing historical read boundary; earlier prices use the CSV.
 export const CHAINLINK_ETH_USD_AGGREGATOR =
-  '0x37bC7498f4FF12C19678ee8fE19d713b87F6a9e6' as const
+  '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' as const
 export const CHAINLINK_ETH_USD_AGGREGATOR_START_BLOCK = 12_382_429n
 
 export const ZERO_ADDRESS =
