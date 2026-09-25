@@ -52,9 +52,15 @@ async function readAuctionBids(
     .reverse()
 }
 
-async function loadBidUsd(bids: ActivityEvent[]) {
-  for (let offset = 0; offset < bids.length; offset += 1000) {
-    const batch = bids.slice(offset, offset + 1000)
+async function loadBidUsd(
+  bids: ActivityEvent[],
+  cachedPrices: Map<string, bigint>,
+) {
+  const unpriced = bids.filter(
+    (bid) => !cachedPrices.has(`${bid.blockNumber}-${bid.logIndex}`),
+  )
+  for (let offset = 0; offset < unpriced.length; offset += 1000) {
+    const batch = unpriced.slice(offset, offset + 1000)
     const ids = batch.map((bid) => `${bid.blockNumber}-${bid.logIndex}`)
     const data = await queryIndexer<{
       events: { items: { id: string; usd_value_cents: string | null }[] }
@@ -70,8 +76,13 @@ async function loadBidUsd(bids: ActivityEvent[]) {
       data.events.items.map((event) => [event.id, event.usd_value_cents]),
     )
     for (const bid of batch) {
-      const cents = prices.get(`${bid.blockNumber}-${bid.logIndex}`)
-      if (cents != null) bid.usdValueCents = BigInt(cents)
+      const eventId = `${bid.blockNumber}-${bid.logIndex}`
+      const cents = prices.get(eventId)
+      if (cents != null) {
+        const value = BigInt(cents)
+        cachedPrices.set(eventId, value)
+        bid.usdValueCents = value
+      }
     }
   }
 }
@@ -84,6 +95,14 @@ export function useAuctionBids(
   const bids = ref<ActivityEvent[]>([])
   const pending = ref(true)
   const error = ref<string | null>(null)
+  const usdPrices = new Map<string, bigint>()
+
+  function applyCachedUsd(items: ActivityEvent[]) {
+    for (const bid of items) {
+      const cents = usdPrices.get(`${bid.blockNumber}-${bid.logIndex}`)
+      if (cents != null) bid.usdValueCents = cents
+    }
+  }
 
   async function load() {
     const raw = toValue(id)
@@ -104,8 +123,12 @@ export function useAuctionBids(
     pending.value = true
     error.value = null
     try {
-      bids.value = await readAuctionBids(c, auctionId)
-      void loadBidUsd(bids.value).catch(() => undefined)
+      const nextBids = await readAuctionBids(c, auctionId)
+      applyCachedUsd(nextBids)
+      bids.value = nextBids
+      void loadBidUsd(bids.value, usdPrices)
+        .finally(() => applyCachedUsd(bids.value))
+        .catch(() => undefined)
     } catch (e) {
       error.value = (e as Error).message
       bids.value = []
