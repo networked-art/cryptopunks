@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:24.22.1-alpine AS base
 RUN apk add --no-cache python3 make g++
 RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
@@ -18,7 +18,7 @@ RUN pnpm build
 WORKDIR /app/punksmarket.app
 RUN pnpm build
 
-FROM node:24-alpine AS production
+FROM node:24.22.1-alpine AS production
 WORKDIR /app
 COPY --from=build /app/punksmarket.app/.output/ ./
 
