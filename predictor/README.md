@@ -3,7 +3,7 @@
 Nightly worker that predicts the 24-hour sale value of every CryptoPunk and
 publishes the results back to the indexer's database.
 
-Each run trains a gradient-boosted model on recent V2 sales, derives V1
+Each run trains a gradient-boosted model on historical V2 sales, derives V1
 valuations from the V2 estimate times a live liquidity multiplier, and writes a
 per-Punk forecast — quick-sale price, fair value, a p10/p50/p90 band, and a
 24-hour sale probability — into the `offchain` schema. The indexer serves those
@@ -92,9 +92,12 @@ Every run is stored, but only a promoted run becomes the one served. A new run
 is promoted (and the previous active run superseded) when it:
 
 1. has a holdout evaluation (`testCount > 0`),
-2. beats the median-price baseline on holdout median absolute percent error, and
-3. does not regress more than 5% (`PROMOTION_REGRESSION_TOLERANCE`) against the
-   currently active run.
+2. matches or beats the median-price baseline on holdout median absolute percent
+   error, or has a qualifying reservation signal that waives that baseline gate.
+
+There is no regression gate against the previous run's frozen holdout score:
+different runs use different evaluation windows. Methodology changes need a
+separate comparison on the same chronological folds before deployment.
 
 The first ever run is promoted unconditionally (bootstrap). A run that fails any
 check is still stored as `superseded` — useful for inspection — but the live
@@ -105,6 +108,33 @@ predictions are left untouched.
 ```sh
 uv run pytest
 ```
+
+## Live improvement cycles
+
+`scripts/snapshot.py` exports a read-only, repeatable-read research snapshot
+through the running production worker over SSH. Load the trusted
+`.env.production` into the process environment first. SSH host-key verification
+remains enabled. Snapshots contain private market history and must stay local in
+the ignored `.evaluation/` directory. Only load pickle files from trusted sources.
+
+```sh
+python3 scripts/snapshot.py .evaluation/YYYY-MM-DD.pkl.gz
+uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase development --output experiments/YYYY-MM-DD-development.json
+# Select a candidate using development results before opening the final fold.
+uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase final --candidate coherent --output experiments/YYYY-MM-DD-final.json
+```
+
+The evaluator reconstructs incumbent labels using only sales observed at each
+historical training origin. Candidate training excludes incomplete outcome
+windows. Three 60-day development folds precede a separate 60-day final fold
+whose 30-day labels are fully mature. Reports include Brier scores, calibration,
+base-rate comparisons, cohort counts, paired daily-block uncertainty, snapshot
+hashes, and realized errors from archived price predictions.
+
+Keep the snapshot alongside its reports for exact reproduction. Record candidate
+selection and acceptance criteria in `experiments/` before final evaluation.
+Advance the windows with fresh data on later cycles. Keep the current production
+model when a candidate fails the release criteria.
 
 ## Deployment
 

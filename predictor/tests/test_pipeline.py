@@ -750,11 +750,15 @@ def test_listing_snapshot_labels_24h_sale():
     sales=sales, listings=listings, moves=empty_moves, bid_events=empty_bids,
     traits_by_punk=tbp, supply=supply,
   )
-  # the frame carries no punk_id column; match rows by ask_ratio (30/40 vs 50/40)
-  rows = {round(float(r["ask_ratio"]), 4): int(r["sold24h"]) for _, r in frame.iterrows()}
-  assert rows[round(30.0 / 40.0, 4)] == 1  # sold within 24h
-  assert rows[round(50.0 / 40.0, 4)] == 0  # sold after 24h
+  rows = frame.set_index("punk_id")
+  assert rows.loc[5, "sold24h"] == 1
+  assert rows.loc[6, "sold24h"] == 0
+  assert rows.loc[5, "next_sale_ts"] == 1_000 + 12 * 3600
+  assert rows.loc[6, "next_sale_ts"] == 1_000 + 3 * 86_400
   assert F.prob_design(frame).shape == (2, len(F.PROB_FEATURES))
+  np.testing.assert_array_equal(
+    F.prob_design(frame), F.prob_design(frame[F.PROB_FEATURES])
+  )
 
 
 def test_training_frame_features_use_only_past_sales():

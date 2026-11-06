@@ -1,0 +1,565 @@
+{
+  "phase": "development",
+  "snapshotSha256": "db349f9d03bf70c282e72167d6c2cdfd8df5583cd51450e50dfef55479279293",
+  "cutoff": "2026-11-06T16:25:01+00:00",
+  "listingRows": 117132,
+  "realized": {
+    "v2_5d": {
+      "n": 10,
+      "medianAPE": 0.04646223621984657,
+      "valueWeightedError": 0.07595010160351179,
+      "intervalCoverage": 0.8,
+      "medianRelativeIntervalWidth": 0.23936888162615355
+    },
+    "v2_14d": {
+      "n": 42,
+      "medianAPE": 0.06988452360987057,
+      "valueWeightedError": 0.0887868932659365,
+      "intervalCoverage": 0.7142857142857143,
+      "medianRelativeIntervalWidth": 0.23636154386204866
+    },
+    "v2_90d": {
+      "n": 308,
+      "medianAPE": 0.05721155242769329,
+      "valueWeightedError": 0.10895045311777284,
+      "intervalCoverage": 0.7694805194805194,
+      "medianRelativeIntervalWidth": 0.22100810698380868
+    },
+    "v1_5d": {
+      "n": 0
+    },
+    "v1_14d": {
+      "n": 0
+    },
+    "v1_90d": {
+      "n": 10,
+      "medianAPE": 1.5869565217391308,
+      "valueWeightedError": 1.3997667087475956,
+      "intervalCoverage": 0.2,
+      "medianRelativeIntervalWidth": 0.7845656060296298
+    }
+  },
+  "folds": [
+    {
+      "start": "2026-02-09T16:25:01+00:00",
+      "end": "2026-04-10T16:25:01+00:00",
+      "incumbent": {
+        "n": 710,
+        "meanBrier": 0.16807081550659828,
+        "incoherentRows": 27,
+        "sold24h": {
+          "brier": 0.1261665473088849,
+          "positiveCount": 132,
+          "meanPredicted": 0.19360413905881857,
+          "observedRate": 0.18591549295774648,
+          "ece10": 0.020408249875076615
+        },
+        "sold_7d": {
+          "brier": 0.18801212003362675,
+          "positiveCount": 267,
+          "meanPredicted": 0.3994354934139705,
+          "observedRate": 0.376056338028169,
+          "ece10": 0.035988967536725376
+        },
+        "sold_30d": {
+          "brier": 0.19003377917728312,
+          "positiveCount": 407,
+          "meanPredicted": 0.6477107919042954,
+          "observedRate": 0.5732394366197183,
+          "ece10": 0.08346273202313402
+        }
+      },
+      "baseRate": {
+        "n": 710,
+        "meanBrier": 0.210275912057143,
+        "incoherentRows": 0,
+        "sold24h": {
+          "brier": 0.15147974118170918,
+          "positiveCount": 132,
+          "meanPredicted": 0.17456565834729698,
+          "observedRate": 0.18591549295774648,
+          "ece10": 0.0113498346104495
+        },
+        "sold_7d": {
+          "brier": 0.23464386842540683,
+          "positiveCount": 267,
+          "meanPredicted": 0.37848528191273323,
+          "observedRate": 0.376056338028169,
+          "ece10": 0.0024289438845642164
+        },
+        "sold_30d": {
+          "brier": 0.244704126564313,
+          "positiveCount": 407,
+          "meanPredicted": 0.5649846416079259,
+          "observedRate": 0.5732394366197183,
+          "ece10": 0.008254795011792382
+        }
+      },
+      "candidates": {
+        "mature": {
+          "n": 710,
+          "meanBrier": 0.1663787138892716,
+          "incoherentRows": 27,
+          "sold24h": {
+            "brier": 0.12543580383874858,
+            "positiveCount": 132,
+            "meanPredicted": 0.186732550886078,
+            "observedRate": 0.18591549295774648,
+            "ece10": 0.017636039805946503
+          },
+          "sold_7d": {
+            "brier": 0.18734147182052954,
+            "positiveCount": 267,
+            "meanPredicted": 0.3907833451178057,
+            "observedRate": 0.376056338028169,
+            "ece10": 0.034600362882907305
+          },
+          "sold_30d": {
+            "brier": 0.18635886600853674,
+            "positiveCount": 407,
+            "meanPredicted": 0.624047998736531,
+            "observedRate": 0.5732394366197183,
+            "ece10": 0.07437151389513173
+          },
+          "trainRowsByHorizon": [
+            113390,
+            113262,
+            112642
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.001692101617326643,
+            "dailyBlockBootstrap95": [
+              -0.002981310766857833,
+              -0.00031392663781088995
+            ]
+          }
+        },
+        "recent": {
+          "n": 710,
+          "meanBrier": 0.17777353492299142,
+          "incoherentRows": 27,
+          "sold24h": {
+            "brier": 0.13414319802166932,
+            "positiveCount": 132,
+            "meanPredicted": 0.22347334554237827,
+            "observedRate": 0.18591549295774648,
+            "ece10": 0.04975057996344533
+          },
+          "sold_7d": {
+            "brier": 0.20398717733703386,
+            "positiveCount": 267,
+            "meanPredicted": 0.4042116362725855,
+            "observedRate": 0.376056338028169,
+            "ece10": 0.0755182420792612
+          },
+          "sold_30d": {
+            "brier": 0.1951902294102712,
+            "positiveCount": 407,
+            "meanPredicted": 0.6346858140211443,
+            "observedRate": 0.5732394366197183,
+            "ece10": 0.07028344119094383
+          },
+          "trainRowsByHorizon": [
+            113390,
+            113262,
+            112642
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": 0.009702719416393195,
+            "dailyBlockBootstrap95": [
+              0.006229184098439964,
+              0.013234852041630336
+            ]
+          }
+        },
+        "coherent": {
+          "n": 710,
+          "meanBrier": 0.1663697804845835,
+          "incoherentRows": 0,
+          "sold24h": {
+            "brier": 0.12544153632434166,
+            "positiveCount": 132,
+            "meanPredicted": 0.18671807841676902,
+            "observedRate": 0.18591549295774648,
+            "ece10": 0.017650512275255506
+          },
+          "sold_7d": {
+            "brier": 0.1872666062491688,
+            "positiveCount": 267,
+            "meanPredicted": 0.3901412577697529,
+            "observedRate": 0.376056338028169,
+            "ece10": 0.035242450230960135
+          },
+          "sold_30d": {
+            "brier": 0.18640119888024015,
+            "positiveCount": 407,
+            "meanPredicted": 0.624704558553893,
+            "observedRate": 0.5732394366197183,
+            "ece10": 0.07502807371249358
+          },
+          "trainRowsByHorizon": [
+            113390,
+            113262,
+            112642
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.0017010350220147438,
+            "dailyBlockBootstrap95": [
+              -0.0029918796828584623,
+              -0.0003218039157232451
+            ]
+          }
+        }
+      }
+    },
+    {
+      "start": "2026-04-10T16:25:01+00:00",
+      "end": "2026-06-09T16:25:01+00:00",
+      "incumbent": {
+        "n": 1095,
+        "meanBrier": 0.14323986855861992,
+        "incoherentRows": 18,
+        "sold24h": {
+          "brier": 0.11977271470510857,
+          "positiveCount": 175,
+          "meanPredicted": 0.20603006437175883,
+          "observedRate": 0.1598173515981735,
+          "ece10": 0.05085111305147293
+        },
+        "sold_7d": {
+          "brier": 0.16387531478542652,
+          "positiveCount": 531,
+          "meanPredicted": 0.45157996763899566,
+          "observedRate": 0.4849315068493151,
+          "ece10": 0.06740897785869805
+        },
+        "sold_30d": {
+          "brier": 0.1460715761853247,
+          "positiveCount": 769,
+          "meanPredicted": 0.6469051616078035,
+          "observedRate": 0.7022831050228311,
+          "ece10": 0.08002426177660069
+        }
+      },
+      "baseRate": {
+        "n": 1095,
+        "meanBrier": 0.2077060280341491,
+        "incoherentRows": 0,
+        "sold24h": {
+          "brier": 0.1344953913276456,
+          "positiveCount": 175,
+          "meanPredicted": 0.17463712222144306,
+          "observedRate": 0.1598173515981735,
+          "ece10": 0.014819770623269555
+        },
+        "sold_7d": {
+          "brier": 0.261050501097987,
+          "positiveCount": 531,
+          "meanPredicted": 0.37873564730752696,
+          "observedRate": 0.4849315068493151,
+          "ece10": 0.10619585954178812
+        },
+        "sold_30d": {
+          "brier": 0.22757219167681467,
+          "positiveCount": 769,
+          "meanPredicted": 0.5663027893352569,
+          "observedRate": 0.7022831050228311,
+          "ece10": 0.13598031568757418
+        }
+      },
+      "candidates": {
+        "mature": {
+          "n": 1095,
+          "meanBrier": 0.1409244339380315,
+          "incoherentRows": 15,
+          "sold24h": {
+            "brier": 0.11695213973068809,
+            "positiveCount": 175,
+            "meanPredicted": 0.20608476333349096,
+            "observedRate": 0.1598173515981735,
+            "ece10": 0.053974528548197995
+          },
+          "sold_7d": {
+            "brier": 0.16299652687800914,
+            "positiveCount": 531,
+            "meanPredicted": 0.46039371524423195,
+            "observedRate": 0.4849315068493151,
+            "ece10": 0.056506408727383765
+          },
+          "sold_30d": {
+            "brier": 0.14282463520539726,
+            "positiveCount": 769,
+            "meanPredicted": 0.6817681413348164,
+            "observedRate": 0.7022831050228311,
+            "ece10": 0.07631827029320101
+          },
+          "trainRowsByHorizon": [
+            114088,
+            114003,
+            113683
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.002315434620588434,
+            "dailyBlockBootstrap95": [
+              -0.004201632349852559,
+              -0.00022828907977304219
+            ]
+          }
+        },
+        "recent": {
+          "n": 1095,
+          "meanBrier": 0.1397473993998648,
+          "incoherentRows": 28,
+          "sold24h": {
+            "brier": 0.1194660618649432,
+            "positiveCount": 175,
+            "meanPredicted": 0.20965079408906173,
+            "observedRate": 0.1598173515981735,
+            "ece10": 0.0555032015492555
+          },
+          "sold_7d": {
+            "brier": 0.15740733969598303,
+            "positiveCount": 531,
+            "meanPredicted": 0.4515447070045551,
+            "observedRate": 0.4849315068493151,
+            "ece10": 0.07262161937471956
+          },
+          "sold_30d": {
+            "brier": 0.1423687966386681,
+            "positiveCount": 769,
+            "meanPredicted": 0.6540163435921563,
+            "observedRate": 0.7022831050228311,
+            "ece10": 0.06412489499167202
+          },
+          "trainRowsByHorizon": [
+            114088,
+            114003,
+            113683
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.003492469158755147,
+            "dailyBlockBootstrap95": [
+              -0.006981619532186484,
+              -0.0001796844393416426
+            ]
+          }
+        },
+        "coherent": {
+          "n": 1095,
+          "meanBrier": 0.1409191392445639,
+          "incoherentRows": 0,
+          "sold24h": {
+            "brier": 0.11695213973068809,
+            "positiveCount": 175,
+            "meanPredicted": 0.20608476333349096,
+            "observedRate": 0.1598173515981735,
+            "ece10": 0.053974528548197995
+          },
+          "sold_7d": {
+            "brier": 0.16297958182896707,
+            "positiveCount": 531,
+            "meanPredicted": 0.460255494757302,
+            "observedRate": 0.4849315068493151,
+            "ece10": 0.05636818824045378
+          },
+          "sold_30d": {
+            "brier": 0.14282569617403656,
+            "positiveCount": 769,
+            "meanPredicted": 0.6819063618217466,
+            "observedRate": 0.7022831050228311,
+            "ece10": 0.07618004980627104
+          },
+          "trainRowsByHorizon": [
+            114088,
+            114003,
+            113683
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.002320729314056026,
+            "dailyBlockBootstrap95": [
+              -0.004203851621616669,
+              -0.00023288727481456
+            ]
+          }
+        }
+      }
+    },
+    {
+      "start": "2026-06-09T16:25:01+00:00",
+      "end": "2026-08-08T16:25:01+00:00",
+      "incumbent": {
+        "n": 669,
+        "meanBrier": 0.1413670139355657,
+        "incoherentRows": 3,
+        "sold24h": {
+          "brier": 0.10318052123427643,
+          "positiveCount": 101,
+          "meanPredicted": 0.1473183586287774,
+          "observedRate": 0.15097159940209268,
+          "ece10": 0.029841911529070116
+        },
+        "sold_7d": {
+          "brier": 0.1610242278163453,
+          "positiveCount": 230,
+          "meanPredicted": 0.32308785886518765,
+          "observedRate": 0.34379671150971597,
+          "ece10": 0.05218303023898151
+        },
+        "sold_30d": {
+          "brier": 0.15989629275607528,
+          "positiveCount": 356,
+          "meanPredicted": 0.5199104024020625,
+          "observedRate": 0.5321375186846039,
+          "ece10": 0.06414354176609395
+        }
+      },
+      "baseRate": {
+        "n": 669,
+        "meanBrier": 0.20193670792260163,
+        "incoherentRows": 0,
+        "sold24h": {
+          "brier": 0.1287333300388079,
+          "positiveCount": 101,
+          "meanPredicted": 0.17451208501180715,
+          "observedRate": 0.15097159940209268,
+          "ece10": 0.023540485609714473
+        },
+        "sold_7d": {
+          "brier": 0.22688543589252286,
+          "positiveCount": 230,
+          "meanPredicted": 0.3796422583419482,
+          "observedRate": 0.34379671150971597,
+          "ece10": 0.035845546832232233
+        },
+        "sold_30d": {
+          "brier": 0.2501913578364741,
+          "positiveCount": 356,
+          "meanPredicted": 0.5671257730519963,
+          "observedRate": 0.5321375186846039,
+          "ece10": 0.03498825436739239
+        }
+      },
+      "candidates": {
+        "mature": {
+          "n": 669,
+          "meanBrier": 0.1424746565624664,
+          "incoherentRows": 2,
+          "sold24h": {
+            "brier": 0.10301320893746706,
+            "positiveCount": 101,
+            "meanPredicted": 0.14662977353150772,
+            "observedRate": 0.15097159940209268,
+            "ece10": 0.02896934617252353
+          },
+          "sold_7d": {
+            "brier": 0.1639998802091737,
+            "positiveCount": 230,
+            "meanPredicted": 0.3155273315189189,
+            "observedRate": 0.34379671150971597,
+            "ece10": 0.06556073070750397
+          },
+          "sold_30d": {
+            "brier": 0.16041088054075842,
+            "positiveCount": 356,
+            "meanPredicted": 0.5220287135002041,
+            "observedRate": 0.5321375186846039,
+            "ece10": 0.0687082587636866
+          },
+          "trainRowsByHorizon": [
+            115184,
+            115111,
+            114643
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": 0.0011076426269007226,
+            "dailyBlockBootstrap95": [
+              -9.467858470642819e-05,
+              0.0022803051711219836
+            ]
+          }
+        },
+        "recent": {
+          "n": 669,
+          "meanBrier": 0.14527385435228696,
+          "incoherentRows": 78,
+          "sold24h": {
+            "brier": 0.10124257442845254,
+            "positiveCount": 101,
+            "meanPredicted": 0.13440860397409382,
+            "observedRate": 0.15097159940209268,
+            "ece10": 0.02570074461247596
+          },
+          "sold_7d": {
+            "brier": 0.17456607512388667,
+            "positiveCount": 230,
+            "meanPredicted": 0.28063929438429047,
+            "observedRate": 0.34379671150971597,
+            "ece10": 0.0766779086589374
+          },
+          "sold_30d": {
+            "brier": 0.16001291350452174,
+            "positiveCount": 356,
+            "meanPredicted": 0.4678522067672195,
+            "observedRate": 0.5321375186846039,
+            "ece10": 0.06560670199171947
+          },
+          "trainRowsByHorizon": [
+            115184,
+            115111,
+            114643
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": 0.0039068404167213,
+            "dailyBlockBootstrap95": [
+              -0.001442796386743117,
+              0.009167217259911965
+            ]
+          }
+        },
+        "coherent": {
+          "n": 669,
+          "meanBrier": 0.1424741944332064,
+          "incoherentRows": 0,
+          "sold24h": {
+            "brier": 0.10301320893746706,
+            "positiveCount": 101,
+            "meanPredicted": 0.14662977353150772,
+            "observedRate": 0.15097159940209268,
+            "ece10": 0.02896934617252353
+          },
+          "sold_7d": {
+            "brier": 0.1639948733430149,
+            "positiveCount": 230,
+            "meanPredicted": 0.3154904982131179,
+            "observedRate": 0.34379671150971597,
+            "ece10": 0.06552389740170302
+          },
+          "sold_30d": {
+            "brier": 0.16041450101913726,
+            "positiveCount": 356,
+            "meanPredicted": 0.522065546806005,
+            "observedRate": 0.5321375186846039,
+            "ece10": 0.06867142545788563
+          },
+          "trainRowsByHorizon": [
+            115184,
+            115111,
+            114643
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": 0.001107180497640744,
+            "dailyBlockBootstrap95": [
+              -9.511439741626998e-05,
+              0.0022794363378593374
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Historical publication time is approximated by training_finished_at plus a 60-second guard; activation time was not recorded.",
+    "Probability results concern historical listing asks, not counterfactual quick-sale asks or V1's heuristic.",
+    "Repeated listings and market regimes create dependence; uncertainty uses daily blocks."
+  ]
+}

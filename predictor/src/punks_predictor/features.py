@@ -498,8 +498,10 @@ def build_listing_training_frame(
     for label, days in PROB_HORIZONS.items():
       row[label] = 1 if (next_sale is not None and next_sale <= T + days * SECONDS_PER_DAY) else 0
     row["ts"] = T
+    row["punk_id"] = punk
+    row["next_sale_ts"] = next_sale
     rows.append(row)
-  return pd.DataFrame(rows, columns=PROB_FEATURES + list(PROB_HORIZONS) + ["ts"])
+  return pd.DataFrame(rows, columns=PROB_FEATURES + list(PROB_HORIZONS) + ["ts", "punk_id", "next_sale_ts"])
 
 
 def prob_row(

@@ -1,0 +1,231 @@
+{
+  "phase": "final",
+  "snapshotSha256": "db349f9d03bf70c282e72167d6c2cdfd8df5583cd51450e50dfef55479279293",
+  "referenceRevision": "eacff719ebcf30067eeceefc80b6e4d29d131978",
+  "evaluatorSha256": "346b2c1d90b307289507bbcbd2d5d9a9209cf08564aa897e03656433e94ae7e3",
+  "featureSha256": "ba10ca21f9a5bf3641d5fac615fcba3530562c34ca79732770ad18c18f846566",
+  "modelParameters": {
+    "categorical_features": "from_dtype",
+    "early_stopping": false,
+    "interaction_cst": null,
+    "l2_regularization": 1.0,
+    "learning_rate": 0.05,
+    "loss": "squared_error",
+    "max_bins": 255,
+    "max_depth": null,
+    "max_features": 1.0,
+    "max_iter": 300,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 80,
+    "monotonic_cst": null,
+    "n_iter_no_change": 10,
+    "quantile": null,
+    "random_state": 1001,
+    "scoring": "loss",
+    "tol": 1e-07,
+    "validation_fraction": 0.1,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "cutoff": "2026-11-06T16:25:01+00:00",
+  "listingRows": 117132,
+  "realized": {
+    "v2_5d": {
+      "n": 10,
+      "medianAPE": 0.04646223621984657,
+      "valueWeightedError": 0.07595010160351179,
+      "intervalCoverage": 0.8,
+      "medianRelativeIntervalWidth": 0.23936888162615355
+    },
+    "v2_14d": {
+      "n": 42,
+      "medianAPE": 0.06988452360987057,
+      "valueWeightedError": 0.0887868932659365,
+      "intervalCoverage": 0.7142857142857143,
+      "medianRelativeIntervalWidth": 0.23636154386204866
+    },
+    "v2_90d": {
+      "n": 308,
+      "medianAPE": 0.05721155242769329,
+      "valueWeightedError": 0.10895045311777284,
+      "intervalCoverage": 0.7694805194805194,
+      "medianRelativeIntervalWidth": 0.22100810698380868
+    },
+    "v1_5d": {
+      "n": 0
+    },
+    "v1_14d": {
+      "n": 0
+    },
+    "v1_90d": {
+      "n": 10,
+      "medianAPE": 1.5869565217391308,
+      "valueWeightedError": 1.3997667087475956,
+      "intervalCoverage": 0.2,
+      "medianRelativeIntervalWidth": 0.7845656060296298
+    }
+  },
+  "folds": [
+    {
+      "start": "2026-08-08T16:25:01+00:00",
+      "end": "2026-10-07T16:25:01+00:00",
+      "incumbent": {
+        "n": 830,
+        "meanBrier": 0.15480509495529,
+        "incoherentRows": 6,
+        "sold24h": {
+          "brier": 0.118302045074675,
+          "positiveCount": 145,
+          "meanPredicted": 0.16376452078023257,
+          "observedRate": 0.1746987951807229,
+          "ece10": 0.03907927489904091
+        },
+        "sold_7d": {
+          "brier": 0.1879948020536737,
+          "positiveCount": 300,
+          "meanPredicted": 0.3929696281009087,
+          "observedRate": 0.3614457831325301,
+          "ece10": 0.07485241187115052
+        },
+        "sold_30d": {
+          "brier": 0.15811843773752124,
+          "positiveCount": 494,
+          "meanPredicted": 0.5625145010920206,
+          "observedRate": 0.5951807228915663,
+          "ece10": 0.08108983799257131
+        },
+        "askCohorts": {
+          "nearFloor": {
+            "n": 541,
+            "meanBrier": 0.18938461633602946,
+            "positiveCounts": [
+              139,
+              272,
+              424
+            ]
+          },
+          "premium": {
+            "n": 289,
+            "meanBrier": 0.09007318814913061,
+            "positiveCounts": [
+              6,
+              28,
+              70
+            ]
+          }
+        }
+      },
+      "baseRate": {
+        "n": 830,
+        "meanBrier": 0.20567510328741376,
+        "incoherentRows": 0,
+        "sold24h": {
+          "brier": 0.14417924401003,
+          "positiveCount": 145,
+          "meanPredicted": 0.17435547768446677,
+          "observedRate": 0.1746987951807229,
+          "ece10": 0.0003433174962561292
+        },
+        "sold_7d": {
+          "brier": 0.23113185600719377,
+          "positiveCount": 300,
+          "meanPredicted": 0.3795876413326077,
+          "observedRate": 0.3614457831325301,
+          "ece10": 0.018141858200077576
+        },
+        "sold_30d": {
+          "brier": 0.24171420984501743,
+          "positiveCount": 494,
+          "meanPredicted": 0.5673674193269312,
+          "observedRate": 0.5951807228915663,
+          "ece10": 0.027813303564635072
+        },
+        "askCohorts": {
+          "nearFloor": {
+            "n": 541,
+            "meanBrier": 0.22640432307644018,
+            "positiveCounts": [
+              139,
+              272,
+              424
+            ]
+          },
+          "premium": {
+            "n": 289,
+            "meanBrier": 0.16687057766158916,
+            "positiveCounts": [
+              6,
+              28,
+              70
+            ]
+          }
+        }
+      },
+      "candidates": {
+        "coherent": {
+          "n": 830,
+          "meanBrier": 0.15387620364172663,
+          "incoherentRows": 0,
+          "sold24h": {
+            "brier": 0.11868067502892457,
+            "positiveCount": 145,
+            "meanPredicted": 0.16308011651710277,
+            "observedRate": 0.1746987951807229,
+            "ece10": 0.040542621672826996
+          },
+          "sold_7d": {
+            "brier": 0.19101935501779096,
+            "positiveCount": 300,
+            "meanPredicted": 0.4053530129787057,
+            "observedRate": 0.3614457831325301,
+            "ece10": 0.07422587809702794
+          },
+          "sold_30d": {
+            "brier": 0.1519285808784644,
+            "positiveCount": 494,
+            "meanPredicted": 0.5952697965499095,
+            "observedRate": 0.5951807228915663,
+            "ece10": 0.05238505222473164
+          },
+          "askCohorts": {
+            "nearFloor": {
+              "n": 541,
+              "meanBrier": 0.1877823165859432,
+              "positiveCounts": [
+                139,
+                272,
+                424
+              ]
+            },
+            "premium": {
+              "n": 289,
+              "meanBrier": 0.09040489878767419,
+              "positiveCounts": [
+                6,
+                28,
+                70
+              ]
+            }
+          },
+          "trainRowsByHorizon": [
+            115861,
+            115773,
+            115590
+          ],
+          "comparison": {
+            "candidateMinusIncumbent": -0.0009288913135633395,
+            "dailyBlockBootstrap95": [
+              -0.002681741624515136,
+              0.00074386467913837
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Historical publication time is approximated by training_finished_at plus a 60-second guard; activation time was not recorded.",
+    "Probability results concern historical listing asks, not counterfactual quick-sale asks or V1's heuristic.",
+    "Repeated listings and market regimes create dependence; uncertainty uses daily blocks."
+  ]
+}
