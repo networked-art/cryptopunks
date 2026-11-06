@@ -9,6 +9,11 @@ per-Punk forecast — quick-sale price, fair value, a p10/p50/p90 band, and a
 24-hour sale probability — into the `offchain` schema. The indexer serves those
 rows at `GET /predictions/v2/:id` and `GET /predictions/v1/:id`.
 
+The V1/V2 liquidity multiplier compares recent human-Punk sales on both sides.
+Alien, Ape, and Zombie premiums remain in the per-Punk V2 estimate. Their sales
+do not set the market-wide sale ratio for ordinary Punks. Market-context inputs
+report the sale cohort and its sample counts separately from total sale volume.
+
 ## Data source
 
 The predictor has **no data of its own** — it reads everything live from the
@@ -135,6 +140,19 @@ Keep the snapshot alongside its reports for exact reproduction. Record candidate
 selection and acceptance criteria in `experiments/` before final evaluation.
 Advance the windows with fresh data on later cycles. Keep the current production
 model when a candidate fails the release criteria.
+
+For V1 pricing changes, snapshots also contain archived V1/V2 forecasts and
+market inputs. Replay from a known reference revision, using the original
+full-precision multiplier from each forecast's drivers:
+
+```sh
+uv run python scripts/evaluate_v1.py .evaluation/YYYY-MM-DD.pkl.gz --reference-revision REFERENCE_COMMIT --human-cohort --full-run --output experiments/YYYY-MM-DD-v1.json
+```
+
+The full run builds both versions locally without database writes, checks that
+V2 predictions are identical, and validates all 20,000 candidate outputs. The
+historical replay reports individual regressions and distinct Punks, since many
+sales of one Punk are not independent evidence.
 
 ## Deployment
 

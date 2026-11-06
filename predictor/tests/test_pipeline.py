@@ -1,4 +1,5 @@
 import math
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import numpy as np
@@ -11,6 +12,7 @@ from punks_predictor.pipeline import (
   MarketContext,
   apply_reservation_band,
   build_reservations,
+  build_market_context,
   compute_trait_premiums,
   credible_relative_floor,
   market_adjusted_own_lasts,
@@ -137,6 +139,38 @@ def test_v1_v2_multiplier_uses_credible_v1_market_evidence():
     v1_listed_count=22,
   )
   assert 0.08 < multiplier < 0.13
+
+
+@pytest.mark.parametrize("rare_type", [0, 1, 4])
+def test_rare_v1_sale_does_not_reprice_the_human_market(rare_type):
+  now = int(datetime.now(UTC).timestamp())
+  dataset = {
+    "v2_listings": pd.DataFrame([{"value_wei": wei_str(32.26)}]),
+    "v1_listings": pd.DataFrame([{"value_wei": wei_str(2.23)}] * 9),
+    "v2_bids": pd.DataFrame([{"value_wei": wei_str(45.0)}]),
+    "v1_bids": pd.DataFrame([{"value_wei": wei_str(0.3)}]),
+    "market_bids": pd.DataFrame(columns=["bid_wei"]),
+    "traits": pd.DataFrame([
+      {"punk_id": 3532, "trait_id": 3},
+      {"punk_id": 2756, "trait_id": 2},
+      {"punk_id": 2890, "trait_id": rare_type},
+    ]),
+  }
+  v2 = pd.DataFrame([
+    {"punk_id": 2756, "timestamp": now - 1000, "eth": 34.0},
+    {"punk_id": 3532, "timestamp": now - 1000, "eth": 34.0},
+  ])
+  human = {"punk_id": 3532, "timestamp": now - 1000, "eth": 2.2}
+  rare = {"punk_id": 2890, "timestamp": now - 2000, "eth": 180.0}
+  before = build_market_context(dataset, v2, pd.DataFrame([human]))
+  after = build_market_context(dataset, v2, pd.DataFrame([human, rare]))
+  assert after.v1_v2_multiplier == pytest.approx(before.v1_v2_multiplier)
+  assert after.v1_v2_multiplier < 0.1
+  assert after.recent_v1_sales_count == 2
+  inputs = after.context_json["v1V2MultiplierInputs"]
+  assert inputs["saleCohort"] == "human"
+  assert inputs["v1CohortSaleCount"] == 1
+  assert inputs["v2CohortSaleCount"] == 2
 
 
 def test_credible_relative_floor_rejects_sparse_or_extreme_floors():
