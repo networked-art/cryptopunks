@@ -757,13 +757,15 @@ def build_market_context(
   recent_cutoff = int(datetime.now(tz=UTC).timestamp()) - 30 * SECONDS_PER_DAY
   recent_v2 = v2_sales[v2_sales["timestamp"] >= recent_cutoff]
   recent_v1 = v1_sales[v1_sales["timestamp"] >= recent_cutoff]
+  market_v2_eth = human_sale_prices(recent_v2, dataset["traits"])
+  market_v1_eth = human_sale_prices(recent_v1, dataset["traits"])
   multiplier = v1_v2_multiplier(
     v2_floor_eth=wei_to_eth(v2_floor),
     v1_floor_eth=wei_to_eth(v1_floor),
     v2_bid_eth=wei_to_eth(v2_bid_floor),
     v1_bid_eth=wei_to_eth(v1_bid_floor),
-    recent_v2_eth=recent_v2["eth"].to_numpy(dtype=float),
-    recent_v1_eth=recent_v1["eth"].to_numpy(dtype=float),
+    recent_v2_eth=market_v2_eth,
+    recent_v1_eth=market_v1_eth,
     v1_listed_count=len(dataset["v1_listings"]),
   )
   context_json = {
@@ -779,9 +781,12 @@ def build_market_context(
       "floorRatio": ratio_or_none(wei_to_eth(v1_floor), wei_to_eth(v2_floor)),
       "bidRatio": ratio_or_none(wei_to_eth(v1_bid_floor), wei_to_eth(v2_bid_floor)),
       "recentMedianRatio": ratio_or_none(
-        median_or_none(recent_v1["eth"]),
-        median_or_none(recent_v2["eth"]),
+        median_or_none(market_v1_eth),
+        median_or_none(market_v2_eth),
       ),
+      "saleCohort": "human",
+      "v1CohortSaleCount": len(market_v1_eth),
+      "v2CohortSaleCount": len(market_v2_eth),
     },
   }
   return MarketContext(
@@ -798,6 +803,16 @@ def build_market_context(
     v1_v2_multiplier=multiplier,
     context_json=context_json,
   )
+
+
+def human_sale_prices(sales: pd.DataFrame, traits: pd.DataFrame) -> np.ndarray:
+  """Compare collection liquidity using human Punks on both sides.
+
+  Normalized type traits 2 and 3 are Female and Male. Alien, Ape, and Zombie
+  premiums belong to the per-Punk V2 estimate, not the market-wide multiplier.
+  """
+  human_ids = traits.loc[traits["trait_id"].isin([2, 3]), "punk_id"]
+  return sales.loc[sales["punk_id"].isin(human_ids), "eth"].to_numpy(dtype=float)
 
 
 def v1_v2_multiplier(

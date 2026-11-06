@@ -49,6 +49,37 @@ with connect(config) as conn:
   """).format(sql.Identifier(config.views_schema)), (cutoff,)).fetchall()
   payload = {"cutoff": int(cutoff), "dataset": dataset, "runs": runs,
     "realized": realized, "captured_at": datetime.now(UTC).isoformat()}
+  payload["v1_replay"] = conn.execute(sql.SQL("""
+    SELECT e.source, e.punk_id, e.timestamp::bigint AS ts, e.tx_hash,
+      e.wei_amount::text AS actual_wei, r.run_id, r.training_finished_at,
+      row_to_json(v1) AS v1_prediction, row_to_json(v2) AS v2_prediction,
+      row_to_json(m) AS market
+    FROM {}.events e
+    JOIN LATERAL (
+      SELECT run_id, training_finished_at FROM offchain.prediction_model_runs
+      WHERE (metrics_json->'promotion'->>'promote')::boolean = true
+        AND training_finished_at < to_timestamp(e.timestamp::bigint)
+      ORDER BY training_finished_at DESC LIMIT 1
+    ) r ON true
+    JOIN offchain.punk_predictions v1 ON v1.run_id = r.run_id
+      AND v1.standard = 'v1' AND v1.punk_id = e.punk_id
+    JOIN offchain.punk_predictions v2 ON v2.run_id = r.run_id
+      AND v2.standard = 'v2' AND v2.punk_id = e.punk_id
+    JOIN offchain.prediction_market_context m ON m.run_id = r.run_id
+    WHERE e.type = 'sale' AND e.wei_amount > 0
+      AND e.source IN ('cryptopunks_v1', 'punks_market')
+      AND e.timestamp::bigint > extract(epoch FROM r.training_finished_at) + 60
+    ORDER BY e.timestamp, e.tx_hash
+  """).format(sql.Identifier(config.views_schema))).fetchall()
+  payload["active_predictions"] = conn.execute("""
+    SELECT p.* FROM offchain.punk_predictions p
+    JOIN offchain.prediction_model_runs r USING (run_id)
+    WHERE r.active ORDER BY p.standard, p.punk_id
+  """).fetchall()
+  payload["active_market"] = conn.execute("""
+    SELECT m.* FROM offchain.prediction_market_context m
+    JOIN offchain.prediction_model_runs r USING (run_id) WHERE r.active
+  """).fetchone()
 with gzip.GzipFile(fileobj=sys.stdout.buffer, mode="wb") as stream:
   pickle.dump(payload, stream, protocol=5)
 '''

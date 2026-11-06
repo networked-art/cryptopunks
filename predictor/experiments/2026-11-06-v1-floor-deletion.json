@@ -1,0 +1,506 @@
+{
+  "referenceRevision": "04d4fc4775f8164054c0d4b7bdde0690e8f1dc08",
+  "candidatePipelineSha256": "3e20a20c16851e98ecd65495305fd2424d9fbc0afca5e88e4ede92df0c8e8fbd",
+  "candidate": "floor_deletion",
+  "snapshotSha256": "ae33ce237d3ba460c27f011362848c7da5aeb0270cd112f99e77b426453854eb",
+  "cutoff": "2026-11-06T17:02:12+00:00",
+  "replayMismatches": [],
+  "overall": {
+    "n": 17,
+    "distinctPunks": 5,
+    "incumbent": {
+      "medianAPE": 1.5869565217391308,
+      "valueWeightedError": 0.41802599898414916,
+      "intervalCoverage": 0.23529411764705882
+    },
+    "candidate": {
+      "medianAPE": 1.04257769948932,
+      "valueWeightedError": 0.36817155309072863,
+      "intervalCoverage": 0.23529411764705882
+    }
+  },
+  "chronologicalSplit": "2026-08-20T19:45:11+00:00",
+  "earlier": {
+    "n": 8,
+    "distinctPunks": 4,
+    "incumbent": {
+      "medianAPE": 1.4095833333333332,
+      "valueWeightedError": 0.32859485910629127,
+      "intervalCoverage": 0.25
+    },
+    "candidate": {
+      "medianAPE": 1.1139276457256189,
+      "valueWeightedError": 0.3229549965462944,
+      "intervalCoverage": 0.25
+    }
+  },
+  "later": {
+    "n": 9,
+    "distinctPunks": 2,
+    "incumbent": {
+      "medianAPE": 1.5869565217391308,
+      "valueWeightedError": 1.2821028269208021,
+      "intervalCoverage": 0.2222222222222222
+    },
+    "candidate": {
+      "medianAPE": 1.04257769948932,
+      "valueWeightedError": 0.8050504612931106,
+      "intervalCoverage": 0.2222222222222222
+    }
+  },
+  "byPunk": {
+    "2756": {
+      "n": 9,
+      "distinctPunks": 1,
+      "incumbent": {
+        "medianAPE": 1.5869565217391308,
+        "valueWeightedError": 1.5255723331709692,
+        "intervalCoverage": 0.1111111111111111
+      },
+      "candidate": {
+        "medianAPE": 1.04257769948932,
+        "valueWeightedError": 0.9851312252973212,
+        "intervalCoverage": 0.1111111111111111
+      }
+    },
+    "2890": {
+      "n": 1,
+      "distinctPunks": 1,
+      "incumbent": {
+        "medianAPE": 0.13463861645289876,
+        "valueWeightedError": 0.13463861645289876,
+        "intervalCoverage": 1.0
+      },
+      "candidate": {
+        "medianAPE": 0.13463861645289876,
+        "valueWeightedError": 0.13463861645289876,
+        "intervalCoverage": 1.0
+      }
+    },
+    "3532": {
+      "n": 5,
+      "distinctPunks": 1,
+      "incumbent": {
+        "medianAPE": 5.189277124183008,
+        "valueWeightedError": 2.9962894605695043,
+        "intervalCoverage": 0.2
+      },
+      "candidate": {
+        "medianAPE": 5.189277124183008,
+        "valueWeightedError": 3.0006720263593945,
+        "intervalCoverage": 0.2
+      }
+    },
+    "7329": {
+      "n": 1,
+      "distinctPunks": 1,
+      "incumbent": {
+        "medianAPE": 0.27749999999999997,
+        "valueWeightedError": 0.27749999999999997,
+        "intervalCoverage": 0.0
+      },
+      "candidate": {
+        "medianAPE": 0.33996421200058957,
+        "valueWeightedError": 0.33996421200058957,
+        "intervalCoverage": 0.0
+      }
+    },
+    "9013": {
+      "n": 1,
+      "distinctPunks": 1,
+      "incumbent": {
+        "medianAPE": 0.07525928853638447,
+        "valueWeightedError": 0.07525928853638447,
+        "intervalCoverage": 1.0
+      },
+      "candidate": {
+        "medianAPE": 0.07525928853638447,
+        "valueWeightedError": 0.07525928853638447,
+        "intervalCoverage": 1.0
+      }
+    }
+  },
+  "salesPerPunk": {
+    "7329": 1,
+    "3532": 5,
+    "2890": 1,
+    "2756": 9,
+    "9013": 1
+  },
+  "priceRegressions": [
+    {
+      "timestamp": 1780499171,
+      "date": "2026-06-03T15:06:11+00:00",
+      "punkId": 7329,
+      "source": "punks_market",
+      "txHash": "0xdd967d2c961450f120322a71d516b1b73551ab77c1585f8d9a33c0f6b4c3b30d",
+      "runId": "20260603T111942Z-719bc12a",
+      "actualEth": 3.4,
+      "v1FloorEth": 2.89,
+      "multiplier": 0.07241438138747969,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.4565,
+      "incumbentP10Eth": 2.0493824503402363,
+      "incumbentP90Eth": 2.4778400545238446,
+      "candidateEth": 2.2441216791979954,
+      "candidateP10Eth": 2.0493824503402363,
+      "candidateP90Eth": 2.4778400545238446
+    },
+    {
+      "timestamp": 1780862699,
+      "date": "2026-06-07T20:04:59+00:00",
+      "punkId": 3532,
+      "source": "punks_market",
+      "txHash": "0x6ece3fb09942d9fa6f510b622dac2e94ff20bc3458000804794987e66eedd970",
+      "runId": "20260607T030003Z-9321b96d",
+      "actualEth": 3.0,
+      "v1FloorEth": 2.79,
+      "multiplier": 0.06847801087801086,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.3715,
+      "incumbentP10Eth": 2.026659101331414,
+      "incumbentP90Eth": 2.4345550899366843,
+      "candidateEth": 2.2255353535353533,
+      "candidateP10Eth": 2.026659101331414,
+      "candidateP90Eth": 2.4345550899366843
+    },
+    {
+      "timestamp": 1785364355,
+      "date": "2026-07-29T22:32:35+00:00",
+      "punkId": 3532,
+      "source": "cryptopunks_v1",
+      "txHash": "0x5d3c7a069b54866adbe6b525198ed1b6bdf90f26f4e64705a077902d3cd92b48",
+      "runId": "20260729T030001Z-3b271515",
+      "actualEth": 2.2,
+      "v1FloorEth": 2.38,
+      "multiplier": 0.058899637009576775,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.0229999999999997,
+      "incumbentP10Eth": 1.731184519485891,
+      "incumbentP90Eth": 2.2415685538588903,
+      "candidateEth": 1.9065812499999997,
+      "candidateP10Eth": 1.731184519485891,
+      "candidateP90Eth": 2.2415685538588903
+    }
+  ],
+  "activeReplay": {
+    "v1Count": 10000,
+    "v2Count": 10000,
+    "changedV1FairValues": 4460,
+    "invalidV1Rows": []
+  },
+  "limitations": [
+    "Repeated sales are dependent; report distinct Punks and chronology rather than treating them as independent trials.",
+    "Archive availability begins in June 2026. These are counterfactual replays of a fixed structural correction, not unseen model-selection evidence.",
+    "Activation time is approximated by training completion plus a one-minute exclusion guard.",
+    "Archived replay omits standing bids for quick sale/probability; fair value and interval must match the served incumbent exactly."
+  ],
+  "sales": [
+    {
+      "timestamp": 1780499171,
+      "date": "2026-06-03T15:06:11+00:00",
+      "punkId": 7329,
+      "source": "punks_market",
+      "txHash": "0xdd967d2c961450f120322a71d516b1b73551ab77c1585f8d9a33c0f6b4c3b30d",
+      "runId": "20260603T111942Z-719bc12a",
+      "actualEth": 3.4,
+      "v1FloorEth": 2.89,
+      "multiplier": 0.07241438138747969,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.4565,
+      "incumbentP10Eth": 2.0493824503402363,
+      "incumbentP90Eth": 2.4778400545238446,
+      "candidateEth": 2.2441216791979954,
+      "candidateP10Eth": 2.0493824503402363,
+      "candidateP90Eth": 2.4778400545238446
+    },
+    {
+      "timestamp": 1780523339,
+      "date": "2026-06-03T21:48:59+00:00",
+      "punkId": 3532,
+      "source": "punks_market",
+      "txHash": "0xfd9c2c1d363d3cd0f6899f86059f51f42b0be541a2adbc3d2a366d1f4ceff24e",
+      "runId": "20260603T111942Z-719bc12a",
+      "actualEth": 0.21,
+      "v1FloorEth": 2.89,
+      "multiplier": 0.07241438138747969,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.4565,
+      "incumbentP10Eth": 2.0493824503402363,
+      "incumbentP90Eth": 2.4778400545238446,
+      "candidateEth": 2.2441216791979954,
+      "candidateP10Eth": 2.0493824503402363,
+      "candidateP90Eth": 2.4778400545238446
+    },
+    {
+      "timestamp": 1780862699,
+      "date": "2026-06-07T20:04:59+00:00",
+      "punkId": 3532,
+      "source": "punks_market",
+      "txHash": "0x6ece3fb09942d9fa6f510b622dac2e94ff20bc3458000804794987e66eedd970",
+      "runId": "20260607T030003Z-9321b96d",
+      "actualEth": 3.0,
+      "v1FloorEth": 2.79,
+      "multiplier": 0.06847801087801086,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.3715,
+      "incumbentP10Eth": 2.026659101331414,
+      "incumbentP90Eth": 2.4345550899366843,
+      "candidateEth": 2.2255353535353533,
+      "candidateP10Eth": 2.026659101331414,
+      "candidateP90Eth": 2.4345550899366843
+    },
+    {
+      "timestamp": 1783645031,
+      "date": "2026-07-10T00:57:11+00:00",
+      "punkId": 2890,
+      "source": "punks_market",
+      "txHash": "0xa6266d33e8ca073fb0dd8cad8277ed43a79e048da91e98c0c22caa09c0266439",
+      "runId": "20260709T030002Z-64d2dd6e",
+      "actualEth": 180.0,
+      "v1FloorEth": 3.79,
+      "multiplier": 0.08961620078826847,
+      "candidateMultiplier": null,
+      "incumbentEth": 204.23495096152178,
+      "incumbentP10Eth": 102.30978061169222,
+      "incumbentP90Eth": 505.38411444529464,
+      "candidateEth": 204.23495096152178,
+      "candidateP10Eth": 102.30978061169222,
+      "candidateP90Eth": 505.38411444529464
+    },
+    {
+      "timestamp": 1785364355,
+      "date": "2026-07-29T22:32:35+00:00",
+      "punkId": 3532,
+      "source": "cryptopunks_v1",
+      "txHash": "0x5d3c7a069b54866adbe6b525198ed1b6bdf90f26f4e64705a077902d3cd92b48",
+      "runId": "20260729T030001Z-3b271515",
+      "actualEth": 2.2,
+      "v1FloorEth": 2.38,
+      "multiplier": 0.058899637009576775,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.0229999999999997,
+      "incumbentP10Eth": 1.731184519485891,
+      "incumbentP90Eth": 2.2415685538588903,
+      "candidateEth": 1.9065812499999997,
+      "candidateP10Eth": 1.731184519485891,
+      "candidateP90Eth": 2.2415685538588903
+    },
+    {
+      "timestamp": 1785878363,
+      "date": "2026-08-04T21:19:23+00:00",
+      "punkId": 3532,
+      "source": "punks_market",
+      "txHash": "0x95188e9828eda0ba835a23c825d52977dcf9f87292e70d00b4b0381bb123e7e1",
+      "runId": "20260804T030002Z-356fd1ff",
+      "actualEth": 3.0,
+      "v1FloorEth": 2.23,
+      "multiplier": 0.5755682384547124,
+      "candidateMultiplier": null,
+      "incumbentEth": 18.567831372549023,
+      "incumbentP10Eth": 16.775656099520596,
+      "incumbentP90Eth": 22.32545440979906,
+      "candidateEth": 18.567831372549023,
+      "candidateP10Eth": 16.775656099520596,
+      "candidateP90Eth": 22.32545440979906
+    },
+    {
+      "timestamp": 1785892547,
+      "date": "2026-08-05T01:15:47+00:00",
+      "punkId": 3532,
+      "source": "cryptopunks_v1",
+      "txHash": "0x06e7ee8b9d2fba209774e1c913b323e1d1febd448c3574889b5620c279e4d680",
+      "runId": "20260804T030002Z-356fd1ff",
+      "actualEth": 3.0,
+      "v1FloorEth": 2.23,
+      "multiplier": 0.5755682384547124,
+      "candidateMultiplier": null,
+      "incumbentEth": 18.567831372549023,
+      "incumbentP10Eth": 16.775656099520596,
+      "incumbentP90Eth": 22.32545440979906,
+      "candidateEth": 18.567831372549023,
+      "candidateP10Eth": 16.775656099520596,
+      "candidateP90Eth": 22.32545440979906
+    },
+    {
+      "timestamp": 1786912355,
+      "date": "2026-08-16T20:32:35+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0xaca71ad6bbf6fa9d375b453b7ef28103bc5e90f059fb22e697843da617b1e3ed",
+      "runId": "20260816T030001Z-0d115f48",
+      "actualEth": 2.1,
+      "v1FloorEth": 8.75,
+      "multiplier": 0.1884577770928018,
+      "candidateMultiplier": null,
+      "incumbentEth": 7.4375,
+      "incumbentP10Eth": 5.369038421490201,
+      "incumbentP90Eth": 7.4375,
+      "candidateEth": 6.064571266846362,
+      "candidateP10Eth": 5.369038421490201,
+      "candidateP90Eth": 7.256139733453455
+    },
+    {
+      "timestamp": 1787255111,
+      "date": "2026-08-20T19:45:11+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x1e4bc7f7289875df12885cfa13eae15b7551d639acf14811f92199d66b9e259b",
+      "runId": "20260820T030002Z-e8621f1b",
+      "actualEth": 2.39,
+      "v1FloorEth": 8.75,
+      "multiplier": 0.17096745047074907,
+      "candidateMultiplier": null,
+      "incumbentEth": 7.4375,
+      "incumbentP10Eth": 4.91553938029996,
+      "incumbentP90Eth": 7.4375,
+      "candidateEth": 5.541055069756975,
+      "candidateP10Eth": 4.91553938029996,
+      "candidateP90Eth": 6.574965936856619
+    },
+    {
+      "timestamp": 1787486519,
+      "date": "2026-08-23T12:01:59+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x8366ce0164002f8f0a3baaabc81182cbad29694d0951eea41699716a07db47cb",
+      "runId": "20260823T030000Z-18051223",
+      "actualEth": 2.2,
+      "v1FloorEth": 7.0,
+      "multiplier": 0.14690208595451643,
+      "candidateMultiplier": null,
+      "incumbentEth": 5.95,
+      "incumbentP10Eth": 4.145499106131852,
+      "incumbentP90Eth": 5.95,
+      "candidateEth": 4.697928708825436,
+      "candidateP10Eth": 4.145499106131852,
+      "candidateP90Eth": 5.4745166856854235
+    },
+    {
+      "timestamp": 1787504099,
+      "date": "2026-08-23T16:54:59+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x035556fd7f13c5308d853d41e1f8e6230973655a902d603b124fb32d2597f74a",
+      "runId": "20260823T030000Z-18051223",
+      "actualEth": 2.3,
+      "v1FloorEth": 7.0,
+      "multiplier": 0.14690208595451643,
+      "candidateMultiplier": null,
+      "incumbentEth": 5.95,
+      "incumbentP10Eth": 4.145499106131852,
+      "incumbentP90Eth": 5.95,
+      "candidateEth": 4.697928708825436,
+      "candidateP10Eth": 4.145499106131852,
+      "candidateP90Eth": 5.4745166856854235
+    },
+    {
+      "timestamp": 1787510123,
+      "date": "2026-08-23T18:35:23+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x2f2500c1a8203a6b09b2eaa400b2b6ccc568aca6355b4d5a5b8adde47daea544",
+      "runId": "20260823T030000Z-18051223",
+      "actualEth": 2.3,
+      "v1FloorEth": 7.0,
+      "multiplier": 0.14690208595451643,
+      "candidateMultiplier": null,
+      "incumbentEth": 5.95,
+      "incumbentP10Eth": 4.145499106131852,
+      "incumbentP90Eth": 5.95,
+      "candidateEth": 4.697928708825436,
+      "candidateP10Eth": 4.145499106131852,
+      "candidateP90Eth": 5.4745166856854235
+    },
+    {
+      "timestamp": 1787516375,
+      "date": "2026-08-23T20:19:35+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0xc48fc7d0a00f283271d89495b4f9de71e7eae97aa53a31a775c81d7e563b7cd9",
+      "runId": "20260823T030000Z-18051223",
+      "actualEth": 2.39,
+      "v1FloorEth": 7.0,
+      "multiplier": 0.14690208595451643,
+      "candidateMultiplier": null,
+      "incumbentEth": 5.95,
+      "incumbentP10Eth": 4.145499106131852,
+      "incumbentP90Eth": 5.95,
+      "candidateEth": 4.697928708825436,
+      "candidateP10Eth": 4.145499106131852,
+      "candidateP90Eth": 5.4745166856854235
+    },
+    {
+      "timestamp": 1787518283,
+      "date": "2026-08-23T20:51:23+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x1a125521f8ef11304c14c51d3df70ac7f1fb721396190ed559b678d6187f9214",
+      "runId": "20260823T030000Z-18051223",
+      "actualEth": 2.3,
+      "v1FloorEth": 7.0,
+      "multiplier": 0.14690208595451643,
+      "candidateMultiplier": null,
+      "incumbentEth": 5.95,
+      "incumbentP10Eth": 4.145499106131852,
+      "incumbentP90Eth": 5.95,
+      "candidateEth": 4.697928708825436,
+      "candidateP10Eth": 4.145499106131852,
+      "candidateP90Eth": 5.4745166856854235
+    },
+    {
+      "timestamp": 1787836547,
+      "date": "2026-08-27T13:15:47+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x379c716b81883c9f1135078070cb76c9a2fdd3e319fa3ad48db3a3bf317d74f4",
+      "runId": "20260827T030001Z-98467601",
+      "actualEth": 2.2,
+      "v1FloorEth": 5.0,
+      "multiplier": 0.10136237381395617,
+      "candidateMultiplier": null,
+      "incumbentEth": 4.25,
+      "incumbentP10Eth": 2.877977002688418,
+      "incumbentP90Eth": 4.25,
+      "candidateEth": 3.2425823383084578,
+      "candidateP10Eth": 2.877977002688418,
+      "candidateP90Eth": 3.6430048517260545
+    },
+    {
+      "timestamp": 1788326327,
+      "date": "2026-09-02T05:18:47+00:00",
+      "punkId": 9013,
+      "source": "punks_market",
+      "txHash": "0xb3f95814a8eca185d96bc2adc8159203b6411e3b9e1ebb58d9247a56953a5af8",
+      "runId": "20260902T030001Z-7df06c51",
+      "actualEth": 1.95,
+      "v1FloorEth": 1.95,
+      "multiplier": 0.05,
+      "candidateMultiplier": null,
+      "incumbentEth": 1.8032443873540502,
+      "incumbentP10Eth": 1.5810979193804524,
+      "incumbentP90Eth": 2.0301177654455764,
+      "candidateEth": 1.8032443873540502,
+      "candidateP10Eth": 1.5810979193804524,
+      "candidateP90Eth": 2.0301177654455764
+    },
+    {
+      "timestamp": 1790293427,
+      "date": "2026-09-24T23:43:47+00:00",
+      "punkId": 2756,
+      "source": "punks_market",
+      "txHash": "0x8cb57829b366186813a993732475daf012c8cafeba79bf938eb8a25e855a975d",
+      "runId": "20260924T030000Z-4937a120",
+      "actualEth": 2.35,
+      "v1FloorEth": 3.5,
+      "multiplier": 0.07108505400926564,
+      "candidateMultiplier": null,
+      "incumbentEth": 2.975,
+      "incumbentP10Eth": 2.1536027897146215,
+      "incumbentP90Eth": 2.975,
+      "candidateEth": 2.416891836315032,
+      "candidateP10Eth": 2.1536027897146215,
+      "candidateP90Eth": 2.635058270982602
+    }
+  ]
+}
