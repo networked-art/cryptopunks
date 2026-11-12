@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 import gzip
 import hashlib
 import json
+import math
 from pathlib import Path
 import pickle
 import subprocess
@@ -144,18 +145,142 @@ def realized_summary(payload):
   return results
 
 
+def fresh_probability_window(previous_report, cutoff):
+  """Advance past all previously inspected final outcomes, without overlap."""
+  if previous_report.get("phase") not in ("final", "monitor"):
+    raise ValueError("Use the previous final or monitoring report")
+  if "probability" in previous_report:
+    previous_end = previous_report["probability"]["end"]
+  else:
+    previous_end = max(fold["end"] for fold in previous_report["folds"])
+  start = datetime.fromisoformat(previous_end)
+  if start.tzinfo is None:
+    raise ValueError("Previous evaluation boundary must include its timezone")
+  start_ts = int(start.timestamp())
+  end_ts = cutoff - max(F.PROB_HORIZONS.values()) * F.SECONDS_PER_DAY
+  return start_ts, max(start_ts, end_ts)
+
+
+def price_summary(rows, runs):
+  if not rows:
+    return {"n": 0}
+  a = np.array([int(r["actual_wei"]) / 1e18 for r in rows])
+  p = np.array([int(r["fair_value_wei"]) / 1e18 for r in rows])
+  lo = np.array([int(r["p10_sale_wei"]) / 1e18 for r in rows])
+  hi = np.array([int(r["p90_sale_wei"]) / 1e18 for r in rows])
+  covered = (lo <= a) & (a <= hi)
+  n, rate, z = len(rows), float(covered.mean()), 1.96
+  denominator = 1 + z*z/n
+  center = (rate + z*z/(2*n)) / denominator
+  radius = z * math.sqrt(rate*(1-rate)/n + z*z/(4*n*n)) / denominator
+  tail = np.argsort(a)[int(0.9*n):]
+  ages = [(r["ts"] - r["training_finished_at"].timestamp()) / 3600 for r in rows]
+  out = {"n": n, "distinctPunks": len({int(r["punk_id"]) for r in rows}),
+    "medianAPE": float(np.median(abs(p-a)/a)),
+    "valueWeightedError": float(np.sum(abs(p-a))/np.sum(a)),
+    "tailCount": len(tail), "tailMedianAPE": float(np.median(abs(p[tail]-a[tail])/a[tail])),
+    "intervalCoverage": rate, "coverageWilson95": [center-radius, center+radius],
+    "medianRelativeIntervalWidth": float(np.median((hi-lo)/a)),
+    "meanRelativeIntervalScore80": float(np.mean((hi-lo + 10*np.maximum(lo-a, 0) + 10*np.maximum(a-hi, 0))/a)),
+    "predictionAgeHours": {"min": min(ages), "median": float(np.median(ages)), "max": max(ages)}}
+  cohorts = {"nearFloor": [], "premium": [], "unknownFloor": []}
+  for r in rows:
+    floor_key = "v2FloorEth" if r["source"] == "cryptopunks_v2" else "v1FloorEth"
+    floor = runs[r["run_id"]]["metrics_json"].get("market", {}).get(floor_key)
+    cohort = "unknownFloor" if not floor else "nearFloor" if int(r["fair_value_wei"])/1e18/float(floor) <= 1.25 else "premium"
+    cohorts[cohort].append(r)
+  out["forecastCohorts"] = {}
+  for name, cohort in cohorts.items():
+    if not cohort:
+      continue
+    actual = np.array([int(r["actual_wei"])/1e18 for r in cohort])
+    pred = np.array([int(r["fair_value_wei"])/1e18 for r in cohort])
+    out["forecastCohorts"][name] = {"n": len(cohort),
+      "medianAPE": float(np.median(abs(pred-actual)/actual)),
+      "valueWeightedError": float(np.sum(abs(pred-actual))/np.sum(actual))}
+  return out
+
+
+def monitor_cycle(args, payload, frame):
+  with gzip.open(args.previous_snapshot, "rb") as stream:
+    previous = pickle.load(stream)
+  previous_report = json.loads(args.previous_report.read_text())
+  start, end = fresh_probability_window(previous_report, payload["cutoff"])
+  sales = normalize_sales(payload["dataset"]["events"])
+  new_sales = sales[(sales["timestamp"] > previous["cutoff"]) & (sales["timestamp"] <= payload["cutoff"])]
+  runs = {r["run_id"]: r for r in payload["runs"]}
+  new_prices = {}
+  for standard, sources in [("v2", {"cryptopunks_v2"}), ("v1", {"cryptopunks_v1", "punks_market"})]:
+    matched = [r for r in payload["realized"] if r["source"] in sources and r["ts"] > previous["cutoff"]]
+    count = int((new_sales["standard"] == standard).sum())
+    new_prices[standard] = {"indexedSales": count, "unscoredSales": count-len(matched),
+      "servedPredictions": price_summary(matched, runs)}
+  probability = {"start": datetime.fromtimestamp(start, UTC).isoformat(),
+    "end": datetime.fromtimestamp(end, UTC).isoformat(),
+    "origin": datetime.fromtimestamp(start, UTC).isoformat(),
+    "newWindowDays": (end-start)/F.SECONDS_PER_DAY,
+    "candidateExperiments": [],
+    "scope": "Chronological replay at observed listing asks; not live calibration of hypothetical quick-sale asks."}
+  hold = frame[(frame["ts"] >= start) & (frame["ts"] < end)]
+  if end > start and not hold.empty:
+    hold, p, counts = fit_predict(frame, start, end, "incumbent")
+    rates = []
+    for label, days in F.PROB_HORIZONS.items():
+      mature = frame[frame["ts"] + days * F.SECONDS_PER_DAY < start]
+      rates.append(float(mature[label].mean()))
+    probability.update({"incumbent": metrics(hold, p), "trainRowsByHorizon": counts,
+      "distinctPunks": int(hold["punk_id"].nunique()),
+      "observationDays": int((hold["ts"] // F.SECONDS_PER_DAY).nunique()),
+      "baseRate": metrics(hold, np.tile(rates, (len(hold), 1)))})
+  else:
+    probability["n"] = 0
+  preflight = json.loads(args.preflight.read_text()) if args.preflight else None
+  return {"phase": "monitor", "referenceRevision": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+    "evaluatorSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "featureSha256": hashlib.sha256(Path(F.__file__).read_bytes()).hexdigest(),
+    "preflightSha256": hashlib.sha256(args.preflight.read_bytes()).hexdigest() if args.preflight else None,
+    "snapshotSha256": hashlib.sha256(args.snapshot.read_bytes()).hexdigest(),
+    "previousSnapshotSha256": hashlib.sha256(args.previous_snapshot.read_bytes()).hexdigest(),
+    "previousReportSha256": hashlib.sha256(args.previous_report.read_bytes()).hexdigest(),
+    "cutoff": datetime.fromtimestamp(payload["cutoff"], UTC).isoformat(),
+    "previousCycleCutoff": datetime.fromtimestamp(previous["cutoff"], UTC).isoformat(),
+    "production": preflight, "newPriceOutcomes": new_prices,
+    "rollingPriceOutcomes": realized_summary(payload), "probability": probability,
+    "v1SalesSinceFix": sum(r["source"] != "cryptopunks_v2" and runs[r["run_id"]]["metrics_json"].get("market", {}).get("v1V2MultiplierInputs", {}).get("saleCohort") == "human" for r in payload["realized"]),
+    "candidateExperiments": [],
+    "limitations": ["Publication is approximated by training completion, excluding the first minute; exact activation time is unavailable.",
+      "The newest final period starts after the previous inspected boundary; rolling the old 60-day fold forward would reuse known outcomes.",
+      "Small samples and repeated listings limit inference. Probability replay includes both sales and non-sales with fully elapsed 30-day horizons.",
+      "Existing V1 rolling errors are historical and cannot demonstrate post-fix performance without new V1 sales."],
+    "decision": {"modelSelectionPerformed": False, "productionDeployment": False,
+      "reason": "Monitoring only. Register a separate candidate experiment before model selection."}}
+
+
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("snapshot", type=Path)
-  parser.add_argument("--phase", choices=["development", "final"], required=True)
+  parser.add_argument("--phase", choices=["development", "final", "monitor"], required=True)
   parser.add_argument("--candidate", choices=["mature", "recent", "coherent"])
   parser.add_argument("--output", type=Path, required=True)
+  parser.add_argument("--previous-snapshot", type=Path)
+  parser.add_argument("--previous-report", type=Path)
+  parser.add_argument("--preflight", type=Path)
   args = parser.parse_args()
   if args.phase == "final" and not args.candidate:
     parser.error("Final evaluation requires a candidate selected on development folds")
+  if args.phase == "monitor" and not (args.previous_snapshot and args.previous_report):
+    parser.error("Monitoring requires the previous snapshot and final/monitor report")
+  if args.phase == "monitor" and args.candidate:
+    parser.error("Monitoring does not evaluate candidate models")
   with gzip.open(args.snapshot, "rb") as stream:
     payload = pickle.load(stream)
   frame = load_frame(args.snapshot, payload)
+  if args.phase == "monitor":
+    report = monitor_cycle(args, payload, frame)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report), flush=True)
+    return
   cutoff = payload["cutoff"]
   origins = [270, 210, 150] if args.phase == "development" else [90]
   candidates = ["mature", "recent", "coherent"] if args.phase == "development" else [args.candidate]

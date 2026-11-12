@@ -1,0 +1,272 @@
+{
+  "phase": "monitor",
+  "referenceRevision": "6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+  "evaluatorSha256": "82ed3982ca2399e9aa2498627a4e6477aa2457a60f98f3d364aa2345a17e4ba7",
+  "featureSha256": "ba10ca21f9a5bf3641d5fac615fcba3530562c34ca79732770ad18c18f846566",
+  "preflightSha256": "5a2da300d50c088c7a4943e8e1b771a56788c61fbe74056ca81b4c3d8f672670",
+  "snapshotSha256": "0ff52a4c6175cca654c7275f20cc72d05ea22fe3db013d81224abca73df68b08",
+  "previousSnapshotSha256": "ae33ce237d3ba460c27f011362848c7da5aeb0270cd112f99e77b426453854eb",
+  "previousReportSha256": "afabcdfbe62d7208f8253390c43299ade583af7b4555cbabe1737bdd19a4fa9d",
+  "cutoff": "2026-11-12T10:09:44+00:00",
+  "previousCycleCutoff": "2026-11-06T17:02:12+00:00",
+  "production": {
+    "revision": "6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+    "packageVersion": "0.1.1",
+    "pipelineSha256": "3e20a20c16851e98ecd65495305fd2424d9fbc0afca5e88e4ede92df0c8e8fbd",
+    "scheduleHourUtc": "3",
+    "databaseTime": "2026-11-12 10:11:55.754601+00:00",
+    "newestIndexedEvent": 1794473663,
+    "activeRun": {
+      "run_id": "20261112T030000Z-e554f601",
+      "model_version": "punks-24h-v0.1.1",
+      "data_cutoff": "2026-11-12 03:00:00+00:00",
+      "training_finished_at": "2026-11-12 03:01:41+00:00",
+      "promotion": {
+        "reason": "daily refresh: beats the median baseline",
+        "promote": true,
+        "modelWape": 0.10142083234644597,
+        "incumbentWape": 0.10676580891108677,
+        "modelMedianApe": 0.04893198956604705,
+        "baselineMedianApe": 0.08974358974358977,
+        "incumbentMedianApe": 0.05555555555555536,
+        "hasReservationSignal": true
+      }
+    },
+    "rows": [
+      {
+        "standard": "v1",
+        "rows": 10000,
+        "distinct_punks": 10000,
+        "invalid": 0
+      },
+      {
+        "standard": "v2",
+        "rows": 10000,
+        "distinct_punks": 10000,
+        "invalid": 0
+      }
+    ],
+    "worker": {
+      "Names": "punk-predictor-worker-6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+      "Image": "jwahdatehagh/punk-predictor:6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+      "Status": "Up 5 days"
+    },
+    "registryAuthenticated": true,
+    "indexerStatus": {
+      "ready": true,
+      "observedAt": "2026-11-12T10:17:21.496280+00:00",
+      "chains": {
+        "mainnet": {
+          "id": 1,
+          "block": {
+            "number": 26398206,
+            "timestamp": 1794478631
+          }
+        }
+      },
+      "headAgeSeconds": 10.496279954910278
+    },
+    "sourceMatchesCheckout": true
+  },
+  "newPriceOutcomes": {
+    "v2": {
+      "indexedSales": 6,
+      "unscoredSales": 0,
+      "servedPredictions": {
+        "n": 6,
+        "distinctPunks": 6,
+        "medianAPE": 0.052574412932413155,
+        "valueWeightedError": 0.07281202118329126,
+        "tailCount": 1,
+        "tailMedianAPE": 0.15739404542300392,
+        "intervalCoverage": 1.0,
+        "coverageWilson95": [
+          0.6096569663469354,
+          0.9999999999999999
+        ],
+        "medianRelativeIntervalWidth": 0.24622812570234215,
+        "meanRelativeIntervalScore80": 0.25392972447701273,
+        "predictionAgeHours": {
+          "min": 0.4519444444444444,
+          "median": 10.113194444444444,
+          "max": 21.461111111111112
+        },
+        "forecastCohorts": {
+          "nearFloor": {
+            "n": 5,
+            "medianAPE": 0.00330033003300323,
+            "valueWeightedError": 0.04095329406930553
+          },
+          "premium": {
+            "n": 1,
+            "medianAPE": 0.15739404542300392,
+            "valueWeightedError": 0.15739404542300392
+          }
+        }
+      }
+    },
+    "v1": {
+      "indexedSales": 0,
+      "unscoredSales": 0,
+      "servedPredictions": {
+        "n": 0
+      }
+    }
+  },
+  "rollingPriceOutcomes": {
+    "v2_5d": {
+      "n": 6,
+      "medianAPE": 0.052574412932413155,
+      "valueWeightedError": 0.07281202118329126,
+      "intervalCoverage": 1.0,
+      "medianRelativeIntervalWidth": 0.24622812570234215
+    },
+    "v2_14d": {
+      "n": 32,
+      "medianAPE": 0.06787294339232769,
+      "valueWeightedError": 0.07906449933493657,
+      "intervalCoverage": 0.8125,
+      "medianRelativeIntervalWidth": 0.23267340600589348
+    },
+    "v2_90d": {
+      "n": 298,
+      "medianAPE": 0.05721155242769329,
+      "valueWeightedError": 0.10962440264860113,
+      "intervalCoverage": 0.7651006711409396,
+      "medianRelativeIntervalWidth": 0.21951459855684033
+    },
+    "v1_5d": {
+      "n": 0
+    },
+    "v1_14d": {
+      "n": 0
+    },
+    "v1_90d": {
+      "n": 10,
+      "medianAPE": 1.5869565217391308,
+      "valueWeightedError": 1.3997667087475956,
+      "intervalCoverage": 0.2,
+      "medianRelativeIntervalWidth": 0.7845656060296298
+    }
+  },
+  "probability": {
+    "start": "2026-10-07T16:25:01+00:00",
+    "end": "2026-10-13T10:09:44+00:00",
+    "origin": "2026-10-07T16:25:01+00:00",
+    "newWindowDays": 5.739386574074074,
+    "candidateExperiments": [],
+    "scope": "Chronological replay at observed listing asks; not live calibration of hypothetical quick-sale asks.",
+    "incumbent": {
+      "n": 98,
+      "meanBrier": 0.15470593450386533,
+      "incoherentRows": 0,
+      "sold24h": {
+        "brier": 0.08247034601394365,
+        "positiveCount": 9,
+        "meanPredicted": 0.1631099694281915,
+        "observedRate": 0.09183673469387756,
+        "ece10": 0.08784882527299913
+      },
+      "sold_7d": {
+        "brier": 0.1483773912991187,
+        "positiveCount": 29,
+        "meanPredicted": 0.388434337310092,
+        "observedRate": 0.29591836734693877,
+        "ece10": 0.1721425247810899
+      },
+      "sold_30d": {
+        "brier": 0.2332700661985336,
+        "positiveCount": 37,
+        "meanPredicted": 0.5998564796817204,
+        "observedRate": 0.37755102040816324,
+        "ece10": 0.23573335655433914
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 68,
+          "meanBrier": 0.1960086719783565,
+          "positiveCounts": [
+            9,
+            28,
+            34
+          ]
+        },
+        "premium": {
+          "n": 30,
+          "meanBrier": 0.06108639622835202,
+          "positiveCounts": [
+            0,
+            1,
+            3
+          ]
+        }
+      }
+    },
+    "trainRowsByHorizon": [
+      116696,
+      116696,
+      116696
+    ],
+    "distinctPunks": 56,
+    "observationDays": 7,
+    "baseRate": {
+      "n": 98,
+      "meanBrier": 0.19220908714526438,
+      "incoherentRows": 0,
+      "sold24h": {
+        "brier": 0.09021588265634504,
+        "positiveCount": 9,
+        "meanPredicted": 0.1743784441606746,
+        "observedRate": 0.09183673469387756,
+        "ece10": 0.08254170946679705
+      },
+      "sold_7d": {
+        "brier": 0.21531615836735057,
+        "positiveCount": 29,
+        "meanPredicted": 0.3793777655815868,
+        "observedRate": 0.29591836734693877,
+        "ece10": 0.08345939823464804
+      },
+      "sold_30d": {
+        "brier": 0.27109522041209766,
+        "positiveCount": 37,
+        "meanPredicted": 0.5675219998107542,
+        "observedRate": 0.37755102040816324,
+        "ece10": 0.189970979402591
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 68,
+          "meanBrier": 0.2048081500906483,
+          "positiveCounts": [
+            9,
+            28,
+            34
+          ]
+        },
+        "premium": {
+          "n": 30,
+          "meanBrier": 0.1636512111357276,
+          "positiveCounts": [
+            0,
+            1,
+            3
+          ]
+        }
+      }
+    }
+  },
+  "v1SalesSinceFix": 0,
+  "candidateExperiments": [],
+  "limitations": [
+    "Publication is approximated by training completion, excluding the first minute; exact activation time is unavailable.",
+    "The newest final period starts after the previous inspected boundary; rolling the old 60-day fold forward would reuse known outcomes.",
+    "Small samples and repeated listings limit inference. Probability replay includes both sales and non-sales with fully elapsed 30-day horizons.",
+    "Existing V1 rolling errors are historical and cannot demonstrate post-fix performance without new V1 sales."
+  ],
+  "decision": {
+    "modelSelectionPerformed": false,
+    "productionDeployment": false,
+    "reason": "Monitoring only. Register a separate candidate experiment before model selection."
+  }
+}
