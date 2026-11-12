@@ -141,6 +141,21 @@ selection and acceptance criteria in `experiments/` before final evaluation.
 Advance the windows with fresh data on later cycles. Keep the current production
 model when a candidate fails the release criteria.
 
+On later cycles, monitor only new price outcomes and newly matured probability
+outcomes. Pass the previous final or monitoring report so the listing evaluation
+starts at its end boundary. A shifted 60-day final fold would reuse known
+outcomes and cannot be called a fresh holdout.
+
+```sh
+uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase monitor --previous-snapshot .evaluation/PREVIOUS-DATE.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --output experiments/YYYY-MM-DD.json
+```
+
+Monitoring evaluates the incumbent at observed listing asks and a base-rate
+baseline. It includes mature sales and non-sales. It does not select candidates
+or prove calibration of production probabilities at hypothetical quick-sale asks.
+Use a separately registered experiment and new reserved outcomes for a model
+change. Pass `--preflight PATH` to include local production-access checks.
+
 For V1 pricing changes, snapshots also contain archived V1/V2 forecasts and
 market inputs. Replay from a known reference revision, using the original
 full-precision multiplier from each forecast's drivers:
