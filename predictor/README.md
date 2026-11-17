@@ -14,6 +14,13 @@ Alien, Ape, and Zombie premiums remain in the per-Punk V2 estimate. Their sales
 do not set the market-wide sale ratio for ordinary Punks. Market-context inputs
 report the sale cohort and its sample counts separately from total sale volume.
 
+V2 sale probabilities form a cumulative curve: 24 hours cannot exceed seven
+days, and seven days cannot exceed 30 days. An equal-weight isotonic projection
+enforces that ordering, with all horizons served at the database's six-decimal
+precision. V1 uses its own 24-hour heuristic and does not inherit V2 seven-day
+or 30-day estimates. The training metrics for independent horizon regressors
+precede this serving correction; evaluate the final curve separately.
+
 ## Data source
 
 The predictor has **no data of its own** — it reads everything live from the
@@ -168,6 +175,17 @@ The full run builds both versions locally without database writes, checks that
 V2 predictions are identical, and validates all 20,000 candidate outputs. The
 historical replay reports individual regressions and distinct Punks, since many
 sales of one Punk are not independent evidence.
+
+To validate the serving-only probability correction on new, fully matured
+listing outcomes and complete frozen runs:
+
+```sh
+uv run python scripts/evaluate_coherence.py .evaluation/YYYY-MM-DD.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --reference-revision REFERENCE_COMMIT --full-run --output experiments/YYYY-MM-DD-coherence.json
+```
+
+This workflow compares the same fitted incumbent before and after projection;
+it changes no training labels or parameters. It checks database precision, price
+identity across both standards, and preservation of V1's 24-hour heuristic.
 
 ## Deployment
 

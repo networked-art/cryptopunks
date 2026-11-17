@@ -1,6 +1,6 @@
 import math
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 import numpy as np
 import pandas as pd
@@ -21,6 +21,8 @@ from punks_predictor.pipeline import (
   ordered_three,
   pair_rejected_bids,
   predict_v2,
+  predict_v1,
+  sale_probabilities,
   prediction_drivers,
   promotion_decision,
   top_trait_premiums,
@@ -447,6 +449,52 @@ def market_context_stub(floor_eth: float) -> MarketContext:
     v1_v2_multiplier=1.0,
     context_json={},
   )
+
+
+def test_served_horizons_remain_cumulative_at_database_precision():
+  class Predictions:
+    def __init__(self, values):
+      self.values = np.array(values)
+
+    def predict(self, design):
+      return self.values
+
+  model = {
+    "supply": {}, "active_listings": 10, "sales_7d": 1, "sales_30d": 4,
+    "classifiers": {
+      "sold_7d": Predictions([0.0890122, 0.7, 0.8, 0.12345648]),
+      "sold24h": Predictions([0.1273627, 0.8, 0.1, 0.12345649]),
+      "sold_30d": Predictions([0.21782, 0.1, 0.6, 0.9]),
+    },
+  }
+  records = [{"punk_id": p, "quick": 1.0, "fair": 2.0, "best_bid_eth": None} for p in range(4)]
+  result = sale_probabilities(records, 30.0, {"traits_by_punk": [[] for _ in records]}, model)
+  curve = np.column_stack([result[label] for label in F.PROB_HORIZONS])
+  expected = np.array([[0.108187, 0.108187, 0.21782], [0.533333]*3,
+                       [0.1, 0.7, 0.7], [0.123456, 0.123456, 0.9]])
+  np.testing.assert_array_equal(curve, expected)
+  stored_day1 = np.array([
+    float(Decimal(str(value)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
+    for value in result["sold24h"]
+  ])
+  assert np.all(stored_day1 <= result["sold_7d"])
+  assert np.all(result["sold_7d"] <= result["sold_30d"])
+
+
+def test_v1_does_not_publish_v2_sale_horizons_as_its_own():
+  base = {
+    "punk_id": 7, "fair_value_wei": wei_str(3.0),
+    "p10_sale_wei": wei_str(2.0), "p90_sale_wei": wei_str(4.0),
+    "drivers_json": [{"kind": "floor", "eth": 3.0}],
+    "comps_json": [], "trait_premiums_json": [],
+  }
+  kwargs = dict(market=market_context_stub(30), current_bids=pd.DataFrame(),
+    market_bids=pd.DataFrame(), static={}, reservations={})
+  original = predict_v1(v2_predictions=[base], **kwargs)[0]
+  base["drivers_json"].append({"kind": "sale_probability", "day1": 0.9, "day7": 0.8, "day30": 0.7})
+  result = predict_v1(v2_predictions=[base], **kwargs)[0]
+  assert result == original
+  assert not any(d["kind"] == "sale_probability" for d in result["drivers_json"])
 
 
 def test_predict_v2_active_bid_drives_quick_sale_and_driver():

@@ -1,0 +1,175 @@
+{
+  "referenceRevision": "6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+  "candidateVersion": "punks-24h-v0.1.2",
+  "snapshotSha256": "ae77f58125767486263527b2896335871c31a44ee1a1f41f216b876fdea6a2ac",
+  "candidatePipelineSha256": "1845755197f3a226e34e8e379986ddfbf2fe7299c97bf9eb57a6d39c7aed5c76",
+  "evaluatorSha256": "9bf13d48370d5875c04a1d9b285f1dbafc8560fa4de7bc1e2ddb88aea237fd36",
+  "probability": {
+    "start": "2026-10-13T10:09:44+00:00",
+    "end": "2026-10-18T08:57:55+00:00",
+    "incumbent": {
+      "n": 74,
+      "meanBrier": 0.1314218514705043,
+      "incoherentRows": 0,
+      "sold24h": {
+        "brier": 0.06731885393452668,
+        "positiveCount": 8,
+        "meanPredicted": 0.14330127021223324,
+        "observedRate": 0.10810810810810811,
+        "ece10": 0.08510231561835879
+      },
+      "sold_7d": {
+        "brier": 0.13664313838661135,
+        "positiveCount": 17,
+        "meanPredicted": 0.31729246620628404,
+        "observedRate": 0.22972972972972974,
+        "ece10": 0.13157069973719104
+      },
+      "sold_30d": {
+        "brier": 0.19030356209037486,
+        "positiveCount": 29,
+        "meanPredicted": 0.4801537105584092,
+        "observedRate": 0.3918918918918919,
+        "ece10": 0.19834045793502608
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 39,
+          "meanBrier": 0.1709413080435968,
+          "positiveCounts": [
+            7,
+            14,
+            23
+          ]
+        },
+        "premium": {
+          "n": 35,
+          "meanBrier": 0.08738588557477267,
+          "positiveCounts": [
+            1,
+            3,
+            6
+          ]
+        }
+      }
+    },
+    "candidate": {
+      "n": 74,
+      "meanBrier": 0.13142183651213063,
+      "incoherentRows": 0,
+      "sold24h": {
+        "brier": 0.06731886102844595,
+        "positiveCount": 8,
+        "meanPredicted": 0.1433012837837838,
+        "observedRate": 0.10810810810810811,
+        "ece10": 0.08510233783783784
+      },
+      "sold_7d": {
+        "brier": 0.1366431013034054,
+        "positiveCount": 17,
+        "meanPredicted": 0.31729245945945944,
+        "observedRate": 0.22972972972972974,
+        "ece10": 0.13157067567567565
+      },
+      "sold_30d": {
+        "brier": 0.19030354720454054,
+        "positiveCount": 29,
+        "meanPredicted": 0.48015372972972975,
+        "observedRate": 0.3918918918918919,
+        "ece10": 0.19834048648648647
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 39,
+          "meanBrier": 0.17094128862860686,
+          "positiveCounts": [
+            7,
+            14,
+            23
+          ]
+        },
+        "premium": {
+          "n": 35,
+          "meanBrier": 0.08738587558234286,
+          "positiveCounts": [
+            1,
+            3,
+            6
+          ]
+        }
+      }
+    },
+    "trainRowsByHorizon": [
+      116794,
+      116794,
+      116794
+    ],
+    "distinctPunks": 52,
+    "comparison": {
+      "candidateMinusIncumbent": -1.4958373675476195e-08,
+      "dailyBlockBootstrap95": [
+        -4.0312552670853986e-08,
+        7.859183280716554e-09
+      ]
+    }
+  },
+  "activeSnapshot": {
+    "v2Count": 10000,
+    "incoherentRawCurves": 168,
+    "incoherentPublishedCurves": 168,
+    "incoherentCorrectedCurves": 0,
+    "v1InheritedCurves": 800,
+    "worstUnroundedSquaredErrorDeltaOverNestedOutcomes": 0.0,
+    "maxQuantizationChange": 4.999432510199853e-07
+  },
+  "gates": {
+    "activeCurvesCumulative": true,
+    "activeCurvesBounded": true,
+    "projectionNestedOutcomeProperty": true,
+    "freshMeanBrierWithinPrecision": true,
+    "freshDay1NonRegression": true
+  },
+  "acceptedForReview": true,
+  "limitations": [
+    "This is an inference-only correctness correction; no fitting, label, calibration or promotion changes.",
+    "Equal-weight projection improves summed squared error before finite-precision rounding, not necessarily each horizon separately.",
+    "Fresh listing replay is not evidence of calibration for hypothetical live quick-sale asks.",
+    "V1 has no learned seven-day or 30-day probability model. Suppressing inherited V2 curves leaves V1 prices and its 24-hour heuristic unchanged."
+  ],
+  "fullRunValidation": {
+    "predictionCount": 20000,
+    "changedPriceRows": 0,
+    "changedV1Day1Rows": 0,
+    "v1CurveDrivers": 0,
+    "v2CurveCount": 10000,
+    "incoherentPublishedV2Curves": 0,
+    "invalidRows": [],
+    "priceFieldsSha256": "c7a5f38d7b92f6f07c45f415ef704e300bace985388f3a0b993d41fb61f7d6f7",
+    "incumbentPriceMetrics": {
+      "kind": "floor_relative_gbm",
+      "testCount": 226,
+      "medianAbsolutePercentError": 0.05845578299384405,
+      "medianAbsoluteLogError": 0.05855069795194682,
+      "valueWeightedError": 0.09258492407047914,
+      "tailMedianAbsolutePercentError": 0.1755681598749694,
+      "valueWeight": 0.6,
+      "baseline": {
+        "medianEth": 34.0,
+        "medianAbsolutePercentError": 0.09131988230348889
+      }
+    },
+    "candidatePriceMetrics": {
+      "kind": "floor_relative_gbm",
+      "testCount": 226,
+      "medianAbsolutePercentError": 0.05845578299384405,
+      "medianAbsoluteLogError": 0.05855069795194682,
+      "valueWeightedError": 0.09258492407047914,
+      "tailMedianAbsolutePercentError": 0.1755681598749694,
+      "valueWeight": 0.6,
+      "baseline": {
+        "medianEth": 34.0,
+        "medianAbsolutePercentError": 0.09131988230348889
+      }
+    }
+  }
+}

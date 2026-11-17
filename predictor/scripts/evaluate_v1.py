@@ -100,7 +100,7 @@ def cohort_multiplier(sales, traits, market, cutoff, exact, reference):
   )
 
 
-def full_run(payload, reference):
+def build_frozen_runs(payload, reference):
   cutoff = datetime.fromtimestamp(payload["cutoff"], UTC)
 
   class FixedDatetime(datetime):
@@ -120,7 +120,11 @@ def full_run(payload, reference):
       runs.append(run)
   finally:
     reference.datetime, pipeline.datetime = original_dates
-  incumbent, candidate = runs
+  return tuple(runs)
+
+
+def full_run(payload, reference):
+  incumbent, candidate = build_frozen_runs(payload, reference)
   base_v2 = [r for r in incumbent.predictions if r["standard"] == "v2"]
   next_v2 = [r for r in candidate.predictions if r["standard"] == "v2"]
   if base_v2 != next_v2:

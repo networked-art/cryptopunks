@@ -19,7 +19,7 @@ spec.loader.exec_module(evaluation)
 
 def test_probability_projection_matches_isotonic_regression():
   p = np.random.default_rng(1001).uniform(0.02, 0.98, size=(200, 3))
-  actual = evaluation.project_curve(p)
+  actual = evaluation.coherent_probability_curve(p)
   expected = np.array([isotonic_regression(row) for row in p])
   np.testing.assert_allclose(actual, expected)
   for outcome in [(0, 0, 0), (0, 0, 1), (0, 1, 1), (1, 1, 1)]:

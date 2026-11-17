@@ -21,25 +21,8 @@ import pandas as pd
 from punks_predictor import features as F
 from punks_predictor.pipeline import (
   _prob_model, build_static_features, normalize_sales,
-  v2_listing_events, v2_bid_events,
+  v2_listing_events, v2_bid_events, coherent_probability_curve,
 )
-
-
-def project_curve(p):
-  """Euclidean projection onto 24h <= 7d <= 30d (three-point PAVA)."""
-  out = p.copy()
-  a, b, c = p.T
-  ab = a > b
-  mean_ab = (a + b) / 2
-  out[ab, :2] = mean_ab[ab, None]
-  all_ab = ab & (mean_ab > c)
-  bc = (~ab) & (b > c)
-  mean_bc = (b + c) / 2
-  out[bc, 1:] = mean_bc[bc, None]
-  all_bc = bc & (a > mean_bc)
-  pooled = all_ab | all_bc
-  out[pooled] = np.mean(p[pooled], axis=1)[:, None]
-  return out
 
 
 def load_frame(snapshot, payload):
@@ -83,7 +66,7 @@ def fit_predict(frame, origin, end, kind):
     counts.append(len(fit))
   p = np.column_stack(predictions)
   if kind == "coherent":
-    p = project_curve(p)
+    p = coherent_probability_curve(p)
   return hold, p, counts
 
 
