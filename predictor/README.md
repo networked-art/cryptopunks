@@ -129,7 +129,14 @@ through the running production worker over SSH. Load the trusted
 remains enabled. Snapshots contain private market history and must stay local in
 the ignored `.evaluation/` directory. Only load pickle files from trusted sources.
 
+`scripts/preflight.py` verifies access, source identity, worker state, prediction
+counts, indexer freshness, and the public active run. It compares running source
+with the deployed Git revision, so an unmerged local candidate is not mistaken
+for production drift. Registry credentials and tokens are never written to its
+local report. Load the same trusted production environment before running it.
+
 ```sh
+python3 scripts/preflight.py .evaluation/YYYY-MM-DD-preflight.json
 python3 scripts/snapshot.py .evaluation/YYYY-MM-DD.pkl.gz
 uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase development --output experiments/YYYY-MM-DD-development.json
 # Select a candidate using development results before opening the final fold.

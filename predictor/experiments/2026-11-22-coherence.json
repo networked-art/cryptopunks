@@ -1,0 +1,139 @@
+{
+  "referenceRevision": "6be00cf19fa1f73b4dfa9bed9dc4a23408f2ef7e",
+  "candidateVersion": "punks-24h-v0.1.2",
+  "snapshotSha256": "7242a12c9a4b5b437340bf6c4783f9dfd989845218ac2cd7b77dfeaad64c4d7a",
+  "candidatePipelineSha256": "1845755197f3a226e34e8e379986ddfbf2fe7299c97bf9eb57a6d39c7aed5c76",
+  "evaluatorSha256": "9bf13d48370d5875c04a1d9b285f1dbafc8560fa4de7bc1e2ddb88aea237fd36",
+  "probability": {
+    "start": "2026-10-18T08:57:55+00:00",
+    "end": "2026-10-23T08:57:13+00:00",
+    "incumbent": {
+      "n": 65,
+      "meanBrier": 0.14110133099761635,
+      "incoherentRows": 1,
+      "sold24h": {
+        "brier": 0.06421163467879774,
+        "positiveCount": 7,
+        "meanPredicted": 0.15631445529508242,
+        "observedRate": 0.1076923076923077,
+        "ece10": 0.0992935167348231
+      },
+      "sold_7d": {
+        "brier": 0.15121752171333175,
+        "positiveCount": 16,
+        "meanPredicted": 0.3392122739262861,
+        "observedRate": 0.24615384615384617,
+        "ece10": 0.15468563552281187
+      },
+      "sold_30d": {
+        "brier": 0.20787483660071956,
+        "positiveCount": 29,
+        "meanPredicted": 0.5203193832097205,
+        "observedRate": 0.4461538461538462,
+        "ece10": 0.14213373640899193
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 40,
+          "meanBrier": 0.17461171670351644,
+          "positiveCounts": [
+            7,
+            13,
+            24
+          ]
+        },
+        "premium": {
+          "n": 25,
+          "meanBrier": 0.0874847138681762,
+          "positiveCounts": [
+            0,
+            3,
+            5
+          ]
+        }
+      }
+    },
+    "candidate": {
+      "n": 65,
+      "meanBrier": 0.14110086127621027,
+      "incoherentRows": 0,
+      "sold24h": {
+        "brier": 0.06421165566970768,
+        "positiveCount": 7,
+        "meanPredicted": 0.15631450769230767,
+        "observedRate": 0.1076923076923077,
+        "ece10": 0.09929358461538461
+      },
+      "sold_7d": {
+        "brier": 0.1512050143174308,
+        "positiveCount": 16,
+        "meanPredicted": 0.33910632307692307,
+        "observedRate": 0.24615384615384617,
+        "ece10": 0.1547916769230769
+      },
+      "sold_30d": {
+        "brier": 0.2078859138414923,
+        "positiveCount": 29,
+        "meanPredicted": 0.5204253999999999,
+        "observedRate": 0.4461538461538462,
+        "ece10": 0.14202780000000004
+      },
+      "askCohorts": {
+        "nearFloor": {
+          "n": 40,
+          "meanBrier": 0.1746117417675,
+          "positiveCounts": [
+            7,
+            13,
+            24
+          ]
+        },
+        "premium": {
+          "n": 25,
+          "meanBrier": 0.08748345249014666,
+          "positiveCounts": [
+            0,
+            3,
+            5
+          ]
+        }
+      }
+    },
+    "trainRowsByHorizon": [
+      116868,
+      116868,
+      116868
+    ],
+    "distinctPunks": 46,
+    "comparison": {
+      "candidateMinusIncumbent": -4.6972140608557073e-07,
+      "dailyBlockBootstrap95": [
+        -1.6160401535849005e-06,
+        4.340658057697203e-08
+      ]
+    }
+  },
+  "activeSnapshot": {
+    "v2Count": 10000,
+    "incoherentRawCurves": 183,
+    "incoherentPublishedCurves": 183,
+    "incoherentCorrectedCurves": 0,
+    "v1InheritedCurves": 800,
+    "worstUnroundedSquaredErrorDeltaOverNestedOutcomes": 0.0,
+    "maxQuantizationChange": 4.999088296653298e-07
+  },
+  "gates": {
+    "activeCurvesCumulative": true,
+    "activeCurvesBounded": true,
+    "projectionNestedOutcomeProperty": true,
+    "freshMeanBrierWithinPrecision": true,
+    "freshDay1NonRegression": true
+  },
+  "acceptedForReview": true,
+  "limitations": [
+    "This is an inference-only correctness correction; no fitting, label, calibration or promotion changes.",
+    "Equal-weight projection improves summed squared error before finite-precision rounding, not necessarily each horizon separately.",
+    "Fresh listing replay is not evidence of calibration for hypothetical live quick-sale asks.",
+    "V1 has no learned seven-day or 30-day probability model. Suppressing inherited V2 curves leaves V1 prices and its 24-hour heuristic unchanged."
+  ]
+}
