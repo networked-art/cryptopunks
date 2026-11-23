@@ -14,6 +14,13 @@ Alien, Ape, and Zombie premiums remain in the per-Punk V2 estimate. Their sales
 do not set the market-wide sale ratio for ordinary Punks. Market-context inputs
 report the sale cohort and its sample counts separately from total sale volume.
 
+V2 sale probabilities form a cumulative curve: 24 hours cannot exceed seven
+days, and seven days cannot exceed 30 days. An equal-weight isotonic projection
+enforces that ordering, with all horizons served at the database's six-decimal
+precision. V1 uses its own 24-hour heuristic and does not inherit V2 seven-day
+or 30-day estimates. The training metrics for independent horizon regressors
+precede this serving correction; evaluate the final curve separately.
+
 ## Data source
 
 The predictor has **no data of its own** — it reads everything live from the
@@ -122,7 +129,14 @@ through the running production worker over SSH. Load the trusted
 remains enabled. Snapshots contain private market history and must stay local in
 the ignored `.evaluation/` directory. Only load pickle files from trusted sources.
 
+`scripts/preflight.py` verifies access, source identity, worker state, prediction
+counts, indexer freshness, and the public active run. It compares running source
+with the deployed Git revision, so an unmerged local candidate is not mistaken
+for production drift. Registry credentials and tokens are never written to its
+local report. Load the same trusted production environment before running it.
+
 ```sh
+python3 scripts/preflight.py .evaluation/YYYY-MM-DD-preflight.json
 python3 scripts/snapshot.py .evaluation/YYYY-MM-DD.pkl.gz
 uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase development --output experiments/YYYY-MM-DD-development.json
 # Select a candidate using development results before opening the final fold.
@@ -141,6 +155,21 @@ selection and acceptance criteria in `experiments/` before final evaluation.
 Advance the windows with fresh data on later cycles. Keep the current production
 model when a candidate fails the release criteria.
 
+On later cycles, monitor only new price outcomes and newly matured probability
+outcomes. Pass the previous final or monitoring report so the listing evaluation
+starts at its end boundary. A shifted 60-day final fold would reuse known
+outcomes and cannot be called a fresh holdout.
+
+```sh
+uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase monitor --previous-snapshot .evaluation/PREVIOUS-DATE.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --output experiments/YYYY-MM-DD.json
+```
+
+Monitoring evaluates the incumbent at observed listing asks and a base-rate
+baseline. It includes mature sales and non-sales. It does not select candidates
+or prove calibration of production probabilities at hypothetical quick-sale asks.
+Use a separately registered experiment and new reserved outcomes for a model
+change. Pass `--preflight PATH` to include local production-access checks.
+
 For V1 pricing changes, snapshots also contain archived V1/V2 forecasts and
 market inputs. Replay from a known reference revision, using the original
 full-precision multiplier from each forecast's drivers:
@@ -153,6 +182,17 @@ The full run builds both versions locally without database writes, checks that
 V2 predictions are identical, and validates all 20,000 candidate outputs. The
 historical replay reports individual regressions and distinct Punks, since many
 sales of one Punk are not independent evidence.
+
+To validate the serving-only probability correction on new, fully matured
+listing outcomes and complete frozen runs:
+
+```sh
+uv run python scripts/evaluate_coherence.py .evaluation/YYYY-MM-DD.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --reference-revision REFERENCE_COMMIT --full-run --output experiments/YYYY-MM-DD-coherence.json
+```
+
+This workflow compares the same fitted incumbent before and after projection;
+it changes no training labels or parameters. It checks database precision, price
+identity across both standards, and preservation of V1's 24-hour heuristic.
 
 ## Deployment
 

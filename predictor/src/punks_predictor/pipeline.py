@@ -1344,6 +1344,22 @@ def predict_v2(
   return out
 
 
+def coherent_probability_curve(predictions: np.ndarray) -> np.ndarray:
+  """Project 24h/7d/30d probabilities onto a nondecreasing cumulative curve."""
+  out = predictions.copy()
+  a, b, c = predictions.T
+  ab = a > b
+  mean_ab = (a + b) / 2
+  out[ab, :2] = mean_ab[ab, None]
+  all_ab = ab & (mean_ab > c)
+  bc = (~ab) & (b > c)
+  mean_bc = (b + c) / 2
+  out[bc, 1:] = mean_bc[bc, None]
+  pooled = all_ab | (bc & (a > mean_bc))
+  out[pooled] = np.mean(predictions[pooled], axis=1)[:, None]
+  return out
+
+
 def sale_probabilities(
   records: list[dict[str, Any]],
   floor_eth: float | None,
@@ -1381,10 +1397,15 @@ def sale_probabilities(
       )
     )
   design = features.prob_design(pd.DataFrame(rows, columns=features.PROB_FEATURES))
-  return {
-    label: np.clip(clf.predict(design), 0.02, 0.98)
-    for label, clf in sale_prob_model["classifiers"].items()
-  }
+  labels = list(features.PROB_HORIZONS)
+  raw = np.column_stack([
+    np.clip(sale_prob_model["classifiers"][label].predict(design), 0.02, 0.98)
+    for label in labels
+  ])
+  # Match the database's 24-hour precision across horizons so scalar storage
+  # rounding cannot place day1 above an equal, full-precision day7 driver.
+  curve = np.round(coherent_probability_curve(raw), 6)
+  return {label: curve[:, idx] for idx, label in enumerate(labels)}
 
 
 def market_adjusted_own_lasts(
@@ -1444,12 +1465,12 @@ def predict_v1(
     quick = min(fair, max(best_bid_eth or 0.0, low * 0.98))
     probability = sale_probability_heuristic(quick, fair, best_bid_eth)
     confidence = "medium" if market.recent_v1_sales_count >= 5 else "low"
-    # The inherited V2 reservation driver is quoted at V2 scale, so drop it and
-    # surface only this Punk's own V1 native rejected bid (if any).
+    # V2 reservation amounts and sale horizons describe a different market.
+    # V1 uses its own reservation signal and 24-hour probability heuristic.
     inherited = [
       driver
       for driver in base["drivers_json"]
-      if driver.get("kind") != "reservation_signal"
+      if driver.get("kind") not in ("reservation_signal", "sale_probability")
     ][:4]
     drivers = [
       {
