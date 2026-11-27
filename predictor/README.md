@@ -161,14 +161,18 @@ starts at its end boundary. A shifted 60-day final fold would reuse known
 outcomes and cannot be called a fresh holdout.
 
 ```sh
-uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase monitor --previous-snapshot .evaluation/PREVIOUS-DATE.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --output experiments/YYYY-MM-DD.json
+uv run python scripts/evaluate_probability.py .evaluation/YYYY-MM-DD.pkl.gz --phase monitor --previous-snapshot .evaluation/PREVIOUS-DATE.pkl.gz --previous-report experiments/PREVIOUS-REPORT.json --preflight .evaluation/YYYY-MM-DD-preflight.json --output experiments/YYYY-MM-DD.json
 ```
 
 Monitoring evaluates the incumbent at observed listing asks and a base-rate
 baseline. It includes mature sales and non-sales. It does not select candidates
 or prove calibration of production probabilities at hypothetical quick-sale asks.
 Use a separately registered experiment and new reserved outcomes for a model
-change. Pass `--preflight PATH` to include local production-access checks.
+change. A verified `--preflight PATH` is required to identify the deployed model's
+serving rule. For 0.1.2, monitoring applies the live cumulative projection and
+six-decimal rounding after the unchanged historical fit; 0.1.1 replay preserves
+its raw classifier outputs. Reports retain raw scores separately for audit.
+Unknown serving versions and unverified production access fail explicitly.
 
 For V1 pricing changes, snapshots also contain archived V1/V2 forecasts and
 market inputs. Replay from a known reference revision, using the original

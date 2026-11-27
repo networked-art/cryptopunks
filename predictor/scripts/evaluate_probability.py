@@ -18,6 +18,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
+from punks_predictor import pipeline
 from punks_predictor import features as F
 from punks_predictor.pipeline import (
   _prob_model, build_static_features, normalize_sales,
@@ -68,6 +69,15 @@ def fit_predict(frame, origin, end, kind):
   if kind == "coherent":
     p = coherent_probability_curve(p)
   return hold, p, counts
+
+
+def served_probabilities(raw, model_version):
+  """Replay the deployed serving rule without changing fitting or labels."""
+  if model_version == "punks-24h-v0.1.1":
+    return raw
+  if model_version == "punks-24h-v0.1.2":
+    return np.round(coherent_probability_curve(raw), 6)
+  raise ValueError(f"Unsupported serving model version: {model_version}")
 
 
 def calibration(y, p):
@@ -185,6 +195,15 @@ def price_summary(rows, runs):
 
 
 def monitor_cycle(args, payload, frame):
+  preflight = json.loads(args.preflight.read_text())
+  if not (preflight["passed"] and preflight["sourceMatchesDeployedGit"]):
+    raise ValueError("Monitoring requires a verified production preflight")
+  model_version = preflight["activeRun"]["model_version"]
+  pipeline_sha = hashlib.sha256(Path(pipeline.__file__).read_bytes()).hexdigest()
+  if model_version == pipeline.MODEL_VERSION and pipeline_sha != preflight["pipelineSha256"]:
+    raise ValueError("Local replay pipeline differs from the verified deployed source")
+  # Reject unknown rules even when this cycle has no newly mature listings.
+  served_probabilities(np.empty((0, 3)), model_version)
   with gzip.open(args.previous_snapshot, "rb") as stream:
     previous = pickle.load(stream)
   previous_report = json.loads(args.previous_report.read_text())
@@ -202,24 +221,27 @@ def monitor_cycle(args, payload, frame):
     "end": datetime.fromtimestamp(end, UTC).isoformat(),
     "origin": datetime.fromtimestamp(start, UTC).isoformat(),
     "newWindowDays": (end-start)/F.SECONDS_PER_DAY,
+    "servingModelVersion": model_version,
     "candidateExperiments": [],
     "scope": "Chronological replay at observed listing asks; not live calibration of hypothetical quick-sale asks."}
   hold = frame[(frame["ts"] >= start) & (frame["ts"] < end)]
   if end > start and not hold.empty:
-    hold, p, counts = fit_predict(frame, start, end, "incumbent")
+    hold, raw, counts = fit_predict(frame, start, end, "incumbent")
+    p = served_probabilities(raw, model_version)
     rates = []
     for label, days in F.PROB_HORIZONS.items():
       mature = frame[frame["ts"] + days * F.SECONDS_PER_DAY < start]
       rates.append(float(mature[label].mean()))
-    probability.update({"incumbent": metrics(hold, p), "trainRowsByHorizon": counts,
+    probability.update({"incumbent": metrics(hold, p), "rawClassifiers": metrics(hold, raw),
+      "servingMinusRaw": paired_interval(hold, raw, p), "trainRowsByHorizon": counts,
       "distinctPunks": int(hold["punk_id"].nunique()),
       "observationDays": int((hold["ts"] // F.SECONDS_PER_DAY).nunique()),
       "baseRate": metrics(hold, np.tile(rates, (len(hold), 1)))})
   else:
     probability["n"] = 0
-  preflight = json.loads(args.preflight.read_text()) if args.preflight else None
   return {"phase": "monitor", "referenceRevision": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
     "evaluatorSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "replayPipelineSha256": pipeline_sha,
     "featureSha256": hashlib.sha256(Path(F.__file__).read_bytes()).hexdigest(),
     "preflightSha256": hashlib.sha256(args.preflight.read_bytes()).hexdigest() if args.preflight else None,
     "snapshotSha256": hashlib.sha256(args.snapshot.read_bytes()).hexdigest(),
@@ -251,8 +273,8 @@ def main():
   args = parser.parse_args()
   if args.phase == "final" and not args.candidate:
     parser.error("Final evaluation requires a candidate selected on development folds")
-  if args.phase == "monitor" and not (args.previous_snapshot and args.previous_report):
-    parser.error("Monitoring requires the previous snapshot and final/monitor report")
+  if args.phase == "monitor" and not (args.previous_snapshot and args.previous_report and args.preflight):
+    parser.error("Monitoring requires the previous snapshot, final/monitor report, and production preflight")
   if args.phase == "monitor" and args.candidate:
     parser.error("Monitoring does not evaluate candidate models")
   with gzip.open(args.snapshot, "rb") as stream:
