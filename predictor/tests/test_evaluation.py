@@ -2,12 +2,18 @@
 
 import importlib.util
 from datetime import UTC, datetime
+import gzip
+import hashlib
+import json
 from pathlib import Path
+import pickle
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.isotonic import isotonic_regression
+from punks_predictor.pipeline import sale_probabilities
 
 
 spec = importlib.util.spec_from_file_location(
@@ -26,6 +32,65 @@ def test_probability_projection_matches_isotonic_regression():
     before = np.sum((p - outcome) ** 2, axis=1)
     after = np.sum((actual - outcome) ** 2, axis=1)
     assert np.all(after <= before + 1e-12)
+
+
+def test_monitoring_matches_served_curves_without_changing_the_legacy_replay():
+  raw = np.array([[0.1273627, 0.0890122, 0.21782], [0.8, 0.7, 0.1]])
+
+  class Classifier:
+    def __init__(self, values):
+      self.values = values
+
+    def predict(self, design):
+      return self.values
+
+  model = {"supply": {}, "active_listings": 10, "sales_7d": 1, "sales_30d": 4,
+    "classifiers": {label: Classifier(raw[:, j]) for j, label in enumerate(evaluation.F.PROB_HORIZONS)}}
+  live = sale_probabilities(
+    [{"punk_id": p, "quick": 1.0, "fair": 2.0, "best_bid_eth": None} for p in range(2)],
+    30.0, {"traits_by_punk": [[], []]}, model,
+  )
+  actual = evaluation.served_probabilities(raw, "punks-24h-v0.1.2")
+  np.testing.assert_array_equal(actual, np.column_stack([live[k] for k in evaluation.F.PROB_HORIZONS]))
+  np.testing.assert_array_equal(actual, [[0.108187, 0.108187, 0.21782], [0.533333]*3])
+  np.testing.assert_array_equal(evaluation.served_probabilities(raw, "punks-24h-v0.1.1"), raw)
+  assert raw[0, 0] == 0.1273627
+  with pytest.raises(ValueError, match="Unsupported serving model"):
+    evaluation.served_probabilities(raw, "unknown")
+
+
+def test_monitor_report_scores_the_served_incumbent(tmp_path, monkeypatch):
+  day = evaluation.F.SECONDS_PER_DAY
+  origin = 100 * day
+  frame = pd.DataFrame({"ts": [0, origin, origin+10], "punk_id": [0, 1, 2],
+    "ask_ratio": [1.0, 1.0, 2.0], "sold24h": [0, 0, 1],
+    "sold_7d": [0, 1, 1], "sold_30d": [1, 1, 1]})
+  hold = frame.iloc[1:]
+  raw = np.array([[0.1273627, 0.0890122, 0.21782], [0.8, 0.7, 0.1]])
+  monkeypatch.setattr(evaluation, "fit_predict", lambda *args: (hold, raw, [1, 1, 1]))
+  args = SimpleNamespace(**{name: tmp_path / name for name in [
+    "snapshot", "previous_snapshot", "previous_report", "preflight"]})
+  payload = {"cutoff": 131*day, "dataset": {"events": pd.DataFrame()}, "runs": [], "realized": []}
+  for path, data in [(args.snapshot, payload), (args.previous_snapshot, {"cutoff": 130*day})]:
+    with gzip.open(path, "wb") as stream:
+      pickle.dump(data, stream)
+  args.previous_report.write_text(json.dumps({"phase": "monitor", "probability": {
+    "end": datetime.fromtimestamp(origin, UTC).isoformat()}}))
+  preflight = {"passed": True, "sourceMatchesDeployedGit": True,
+    "activeRun": {"model_version": "punks-24h-v0.1.2"},
+    "pipelineSha256": hashlib.sha256(Path(evaluation.pipeline.__file__).read_bytes()).hexdigest()}
+  args.preflight.write_text(json.dumps(preflight))
+  report = evaluation.monitor_cycle(args, payload, frame)
+  expected = np.array([[0.108187, 0.108187, 0.21782], [0.533333]*3])
+  outcomes = hold[list(evaluation.F.PROB_HORIZONS)].to_numpy()
+  assert report["probability"]["incumbent"]["meanBrier"] == pytest.approx(np.mean((expected-outcomes)**2))
+  assert report["probability"]["incumbent"]["incoherentRows"] == 0
+  assert report["probability"]["rawClassifiers"]["incoherentRows"] == 2
+  assert report["probability"]["servingModelVersion"] == "punks-24h-v0.1.2"
+  preflight["pipelineSha256"] = "wrong source"
+  args.preflight.write_text(json.dumps(preflight))
+  with pytest.raises(ValueError, match="differs from the verified deployed source"):
+    evaluation.monitor_cycle(args, payload, frame)
 
 
 def test_walk_forward_training_uses_only_outcomes_available_at_origin(monkeypatch):
